@@ -5,7 +5,7 @@ import gspread
 from flask import Flask, render_template, request, redirect, url_for, session, flash
 from google.oauth2.service_account import Credentials
 from werkzeug.utils import secure_filename
-from PIL import Image, ImageDraw
+from PIL import Image
 import pytesseract
 from datetime import datetime
 from flask import send_file
@@ -342,52 +342,51 @@ def prizes():
 @app.route("/ocr_test", methods=["GET", "POST"])
 def ocr_test():
     if request.method == "POST":
-        file = request.files.get("profile_screenshot")
+        file = request.files.get("screenshot")
         if not file:
-            return "No file uploaded", 400
+            flash("Please upload a screenshot.", "error")
+            return redirect(url_for("ocr_test"))
 
         filepath = os.path.join(app.config["UPLOAD_FOLDER"], secure_filename(file.filename))
         file.save(filepath)
 
-        img = Image.open(filepath)
-        width, height = img.size
+        try:
+            img = Image.open(filepath)
+            width, height = img.size
 
-        # === Crop values (tighter for trainer name) ===
-        top = int(height * 0.13)
-        bottom = int(height * 0.20)
-        left = int(width * 0.20)
-        right = int(width * 0.80)
+            # Crop to trainer name area (higher region, near top)
+            top = int(height * 0.13)      # start higher up
+            bottom = int(height * 0.20)   # end before the middle
+            left = int(width * 0.10)      # a little narrower from the left
+            right = int(width * 0.85)     # a little narrower from the right
+            cropped = img.crop((left, top, right, bottom))
 
-        cropped = img.crop((left, top, right, bottom))
+            # OCR the cropped area
+            text = pytesseract.image_to_string(cropped)
+            print(f"🔍 OCR TEST OUTPUT: {text}")
 
-        # Draw red rectangle on original image for debug
-        debug_img = img.copy()
-        draw = ImageDraw.Draw(debug_img)
-        draw.rectangle([left, top, right, bottom], outline="red", width=5)
+            # Encode cropped image to base64 for inline display
+            import io, base64
+            buf = io.BytesIO()
+            cropped.save(buf, format="PNG")
+            base64_img = base64.b64encode(buf.getvalue()).decode("utf-8")
 
-        # OCR on cropped
-        text = pytesseract.image_to_string(cropped)
-
-        # Save debug files
-        debug_path = os.path.join(app.config["UPLOAD_FOLDER"], "debug.png")
-        cropped_path = os.path.join(app.config["UPLOAD_FOLDER"], "cropped.png")
-        debug_img.save(debug_path)
-        cropped.save(cropped_path)
-
-        return f"""
-        <h2>OCR Test Result</h2>
-        <p>Detected Text: {text}</p>
-        <p>Debug Crop Overlay:</p>
-        <img src="/uploads/debug.png" style="max-width:100%;"><br><br>
-        <p>Cropped Region:</p>
-        <img src="/uploads/cropped.png" style="max-width:100%;">
-        <br><a href="/ocr_test">Try another</a>
-        """
+            return f"""
+            <h2>OCR Test Result</h2>
+            <p><b>Detected Text:</b> {text}</p>
+            <h3>Cropped Region:</h3>
+            <img src="data:image/png;base64,{base64_img}" style="max-width:100%;border:1px solid #ccc;" />
+            <p><a href="/ocr_test">Try another</a></p>
+            """
+        finally:
+            os.remove(filepath)
 
     return """
+    <h2>OCR Test</h2>
     <form method="post" enctype="multipart/form-data">
-        <input type="file" name="profile_screenshot" accept="image/*">
-        <button type="submit">Test OCR</button>
+        <p>Upload Trainer Screenshot:</p>
+        <input type="file" name="screenshot" accept="image/*" required>
+        <button type="submit">Run OCR</button>
     </form>
     """
 
