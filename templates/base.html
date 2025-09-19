@@ -30,7 +30,6 @@
             z-index: 9999;
             color: white;
             font-size: 1.2em;
-            transition: opacity 0.8s ease, visibility 0.8s ease;
         }
         #loading-screen img {
             width: 120px;
@@ -39,9 +38,10 @@
         .hidden {
             opacity: 0;
             visibility: hidden;
+            transition: opacity 0.8s ease, visibility 0.8s ease;
         }
 
-        /* Header (floating) */
+        /* Header */
         header {
             position: sticky;
             top: 0;
@@ -67,7 +67,7 @@
             text-decoration: underline;
         }
 
-        /* Main content container */
+        /* Main content */
         .container {
             max-width: 420px;
             margin: 60px auto;
@@ -101,24 +101,6 @@
             color: #856404;
         }
 
-        /* PIN input wrapper */
-        .pin-wrapper {
-            position: relative;
-            width: 100%;
-        }
-        .pin-wrapper input {
-            width: 100%;
-            padding-right: 2.5em;
-        }
-        .pin-wrapper span {
-            position: absolute;
-            right: 10px;
-            top: 50%;
-            transform: translateY(-50%);
-            cursor: pointer;
-            font-size: 1.1em;
-        }
-
         @media (max-width: 480px) {
             .container {
                 margin: 20px auto;
@@ -132,26 +114,19 @@
     </style>
 
     <script>
-        // Loading splash delay
         window.addEventListener("load", () => {
+            // Only show loading screen if NOT on dashboard
+            const onDashboard = window.location.pathname.includes("dashboard");
             const loadingScreen = document.getElementById("loading-screen");
-            setTimeout(() => {
-                loadingScreen.classList.add("hidden");
-            }, 500); // at least 0.5s
-        });
 
-        // Show/hide PIN toggle
-        function togglePin(inputId, iconElement) {
-            const input = document.getElementById(inputId);
-            if (!input) return;
-            if (input.type === "password") {
-                input.type = "text";
-                iconElement.textContent = "🙈";
+            if (!onDashboard) {
+                setTimeout(() => {
+                    loadingScreen.classList.add("hidden");
+                }, 500); // show at least 0.5s
             } else {
-                input.type = "password";
-                iconElement.textContent = "👁️";
+                loadingScreen.style.display = "none";
             }
-        }
+        });
     </script>
 </head>
 <body>

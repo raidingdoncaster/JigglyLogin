@@ -1,10 +1,18 @@
 {% extends "base.html" %}
 {% block content %}
 <h2>Welcome, {{ trainer }}!</h2>
+
+{% if last_login %}
+<p style="text-align: center; font-size: 0.9em; color: #555;">
+    Last login: {{ last_login }}
+</p>
+{% endif %}
+
 <p style="text-align: center; margin-bottom: 1.5em;">
     Choose an option below:
 </p>
 
+<!-- Main navigation -->
 <div style="display: grid; grid-template-columns: 1fr; gap: 15px; margin-top: 20px;">
     <a href="{{ url_for('passport') }}" 
        style="display: block; padding: 15px; background: #3a8dde; color: white; text-align: center; font-weight: 600; border-radius: 8px; text-decoration: none;">
@@ -20,135 +28,121 @@
     </a>
 </div>
 
-<!-- Manage My Account Card -->
-<div style="margin-top: 30px; padding: 20px; background: #f9f9f9; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.1);">
-    <h3 style="text-align:center; margin-bottom: 15px;">🔧 Manage My Account</h3>
-    
-    <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 15px; margin-bottom: 20px;">
-        <button class="toggle-btn" data-target="change-pin">🔒 Change PIN</button>
-        <button class="toggle-btn" data-target="change-memorable">✏️ Change Memorable</button>
-        <button class="toggle-btn" data-target="security">🛡️ Security</button>
-        <button class="toggle-btn" data-target="delete-account">❌ Delete Account</button>
-    </div>
+<!-- Manage Account -->
+<div style="margin-top: 30px; padding: 15px; border: 1px solid #ccc; border-radius: 8px;">
+    <h3 style="margin-top: 0; text-align: center;">⚙️ Manage My Account</h3>
 
-    
-    <!-- Panels -->
-    <!-- Change PIN -->
-<div class="account-panel" id="panel-change-pin" style="display: none; margin-top: 1em;">
-  <form action="{{ url_for('change_pin') }}" method="post" 
-        style="display: flex; flex-direction: column; align-items: center; max-width: 320px; margin: 0 auto;">
+    <!-- Accordion sections -->
+    <div class="accordion">
 
-    <label style="margin-top: 0.5em; text-align: left; width: 100%;">Old PIN:</label>
-    <div class="pin-wrapper">
-        <input type="password" id="old_pin" name="old_pin" required pattern="\d{4}" maxlength="4" 
-               style="margin: 0.5em 0; width: 100%;" placeholder="Enter old PIN">
-        <span onclick="togglePin('old_pin', this)">👁️</span>
-    </div>
+        <!-- Change PIN -->
+        <button type="button" class="accordion-toggle">🔑 Change PIN</button>
+        <div class="accordion-content">
+            <form action="{{ url_for('change_pin') }}" method="post" style="margin-top: 10px;">
+                <input type="password" name="old_pin" placeholder="Old PIN" required style="width: 100%; margin: 5px 0;">
+                <input type="text" name="memorable" placeholder="Memorable Password" required style="width: 100%; margin: 5px 0;">
+                
+                <div style="display: flex; align-items: center; margin: 5px 0;">
+                    <input type="password" name="new_pin" id="new_pin" pattern="\d{4}" maxlength="4" placeholder="New 4-digit PIN" required style="flex: 1;">
+                    <button type="button" onclick="togglePin()" style="margin-left: 5px; padding: 6px 10px; font-size: 0.8em;">Show</button>
+                </div>
 
-    <label style="margin-top: 0.5em; text-align: left; width: 100%;">Memorable Password:</label>
-    <input type="text" name="memorable" required 
-           style="margin: 0.5em 0; width: 100%;" placeholder="Your memorable password">
+                <button type="submit" style="margin-top: 10px; width: 100%;">Update PIN</button>
+            </form>
+        </div>
 
-    <label style="margin-top: 0.5em; text-align: left; width: 100%;">New PIN:</label>
-    <div class="pin-wrapper">
-        <input type="password" id="new_pin" name="new_pin" required pattern="\d{4}" maxlength="4" 
-               style="margin: 0.5em 0; width: 100%;" placeholder="Enter new PIN">
-        <span onclick="togglePin('new_pin', this)">👁️</span>
-    </div>
+        <!-- Change Memorable -->
+        <button type="button" class="accordion-toggle">📝 Change Memorable Password</button>
+        <div class="accordion-content">
+            <form action="{{ url_for('change_memorable') }}" method="post" style="margin-top: 10px;">
+                <input type="text" name="old_memorable" placeholder="Old Memorable" required style="width: 100%; margin: 5px 0;">
+                <input type="text" name="new_memorable" placeholder="New Memorable" required style="width: 100%; margin: 5px 0;">
+                <button type="submit" style="margin-top: 10px; width: 100%;">Update Memorable</button>
+            </form>
+        </div>
 
-    <button type="submit" style="margin-top: 1em; width: 100%;">Update PIN</button>
-  </form>
-</div>
-<!--Change Memorable Password-->
-    <div id="change-memorable" class="panel hidden">
-        <form method="post" action="{{ url_for('change_memorable') }}">
-            <label>Old Memorable Password:</label>
-            <input type="text" name="old_memorable" required>
-            <label>New Memorable Password:</label>
-            <input type="text" name="new_memorable" required>
-            <button type="submit">Update Memorable Password</button>
-        </form>
-    </div>
-<!--Log Out Everywhere-->
-    <div id="security" class="panel hidden">
-        <p><strong>Last Login:</strong> {{ last_login if last_login else "Not available" }}</p>
-        <form method="post" action="{{ url_for('logout_everywhere') }}">
-            <button type="submit">Log out Everywhere</button>
-        </form>
-    </div>
-<!--Delete Account-->
-    <div id="delete-account" class="panel hidden" style="color: red;">
-        <p>⚠️ This will permanently delete your account. You will lose:</p>
-        <ul>
-            <li>All Passport Stamps</li>
-            <li>Your RDAB Profile</li>
-            <li>Prize Redemption History</li>
-        </ul>
-        <p><strong>There is no backup. Once deleted, it cannot be recovered.</strong></p>
-        <form method="post" action="{{ url_for('delete_account') }}">
-            <label>Confirm by typing your Trainer Name:</label>
-            <input type="text" name="confirm_name" required>
-            <button type="submit" style="background:red; color:white;">Yes, Delete My Account</button>
-        </form>
+        <!-- Security -->
+        <button type="button" class="accordion-toggle">🔒 Security</button>
+        <div class="accordion-content">
+            <p style="font-size: 0.9em; color: #333;">Your last login: {{ last_login }}</p>
+            <form action="{{ url_for('logout_everywhere') }}" method="post">
+                <button type="submit" style="width: 100%;">Log Out Everywhere</button>
+            </form>
+        </div>
+
+        <!-- Delete Account -->
+        <button type="button" class="accordion-toggle">🗑️ Delete Account</button>
+        <div class="accordion-content">
+            <p style="font-size: 0.9em; color: #b00;">
+                ⚠️ This will permanently delete your account, including:  
+                Passport stamps, RDAB profile, and prize history.  
+                <strong>This cannot be undone.</strong>
+            </p>
+            <form action="{{ url_for('delete_account') }}" method="post">
+                <input type="text" name="confirm_name" placeholder="Type your trainer name to confirm" required style="width: 100%; margin: 5px 0;">
+                <button type="submit" style="margin-top: 10px; width: 100%; background: #e74c3c; color: white;">Delete My Account</button>
+            </form>
+        </div>
+
     </div>
 </div>
 
+<!-- Accordion + Show/Hide script -->
+<script>
+    // Accordion toggle
+    document.querySelectorAll(".accordion-toggle").forEach(btn => {
+        btn.addEventListener("click", () => {
+            btn.classList.toggle("active");
+            const content = btn.nextElementSibling;
+            if (content.style.maxHeight) {
+                content.style.maxHeight = null;
+            } else {
+                content.style.maxHeight = content.scrollHeight + "px";
+            }
+        });
+    });
+
+    // Show/hide PIN toggle
+    function togglePin() {
+        const input = document.getElementById("new_pin");
+        const btn = event.target;
+        if (input.type === "password") {
+            input.type = "text";
+            btn.textContent = "Hide";
+        } else {
+            input.type = "password";
+            btn.textContent = "Show";
+        }
+    }
+</script>
 
 <style>
-    .toggle-btn {
-        padding: 10px 15px;
+    .accordion button.accordion-toggle {
+        width: 100%;
+        text-align: left;
+        padding: 10px;
+        background: #f0f0f0;
         border: none;
         border-radius: 6px;
-        background: #3a8dde;
-        color: white;
         font-weight: 600;
         cursor: pointer;
+        margin-top: 8px;
     }
-    .toggle-btn:hover {
-        background: #2c6fb3;
+    .accordion button.accordion-toggle.active {
+        background: #ddd;
     }
-    .panel {
-        margin-top: 15px;
-        padding: 15px;
-        background: #fff;
-        border-radius: 6px;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    .accordion .accordion-content {
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.3s ease;
+        padding: 0 5px;
     }
-    .hidden {
-        display: none;
-    }
-    form label {
-        display: block;
-        margin-top: 10px;
-        font-weight: 600;
-    }
-    form input, form button {
-        width: 100%;
-        margin-top: 5px;
+    .accordion .accordion-content form input,
+    .accordion .accordion-content form button {
         padding: 8px;
-        border-radius: 4px;
         border: 1px solid #ccc;
-    }
-    form button {
-        margin-top: 15px;
-        background: #3a8dde;
-        color: white;
-        font-weight: 600;
-        border: none;
+        border-radius: 6px;
     }
 </style>
 
-<script>
-    document.addEventListener("DOMContentLoaded", () => {
-        document.querySelectorAll(".toggle-btn").forEach(btn => {
-            btn.addEventListener("click", () => {
-                const target = document.getElementById(btn.dataset.target);
-                document.querySelectorAll(".panel").forEach(p => {
-                    if (p !== target) p.classList.add("hidden");
-                });
-                target.classList.toggle("hidden");
-            });
-        });
-    });
-</script>
 {% endblock %}
