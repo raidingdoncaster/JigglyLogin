@@ -78,7 +78,7 @@ def signup():
         file = request.files.get("profile_screenshot")  # fixed name
 
         if not (pin and memorable and file):
-            flash("All fields required!")
+            flash("All fields are required!", "warning")
             return redirect(url_for("signup"))
 
         # Save uploaded screenshot temporarily
@@ -92,7 +92,7 @@ def signup():
         os.remove(filepath)
 
         if not trainer_name:
-            flash("Could not detect trainer name from screenshot. Please try again.")
+            flash("Could not detect trainer name from screenshot. Please try again.", "error")
             return redirect(url_for("signup"))
 
         # Store details in session temporarily until user confirms
@@ -112,6 +112,7 @@ def signup():
 def detectname():
     details = session.get("signup_details")
     if not details:
+        flash("Session expired. Please try signing up again.", "warning")
         return redirect(url_for("signup"))
 
     if request.method == "POST":
@@ -124,10 +125,10 @@ def detectname():
                 details["memorable"]
             ])
             session.pop("signup_details", None)
-            flash("Signup successful! Please log in.")
+            flash("Signup successful! Please log in.", "success")
             return redirect(url_for("home"))
         else:
-            flash("Please upload a clearer screenshot with your trainer name visible.")
+            flash("Please upload a clearer screenshot with your trainer name visible.", "warning")
             session.pop("signup_details", None)
             return redirect(url_for("signup"))
 
@@ -142,14 +143,15 @@ def login():
 
     row, user = find_user(username)
     if not user:
-        flash("No trainer found!")
+        flash("No trainer found!", "error")
         return redirect(url_for("home"))
 
     if user.get("PIN Hash") == hash_value(pin):
         session["trainer"] = username
+        flash(f"Welcome back, {username}!", "success")
         return redirect(url_for("dashboard"))
     else:
-        flash("Incorrect PIN!")
+        flash("Incorrect PIN!", "error")
         return redirect(url_for("home"))
 
 
@@ -163,17 +165,17 @@ def recover():
 
         row, user = find_user(username)
         if not user:
-            flash("No trainer found with that username.")
+            flash("No trainer found with that username.", "error")
             return redirect(url_for("recover"))
 
         if user["Memorable Password"] != memorable:
-            flash("Memorable password does not match.")
+            flash("Memorable password does not match.", "error")
             return redirect(url_for("recover"))
 
         # Update PIN hash
         sheet.update_cell(row, 2, hash_value(new_pin))  # 2 = PIN Hash column
 
-        flash("PIN successfully reset! Please log in.")
+        flash("PIN successfully reset! Please log in.", "success")
         return redirect(url_for("home"))
 
     return render_template("recover.html")
@@ -183,6 +185,7 @@ def recover():
 @app.route("/dashboard")
 def dashboard():
     if "trainer" not in session:
+        flash("You must be logged in to view the dashboard.", "warning")
         return redirect(url_for("home"))
     return render_template("dashboard.html", trainer=session["trainer"])
 
@@ -191,12 +194,15 @@ def dashboard():
 @app.route("/logout")
 def logout():
     session.clear()
+    flash("You have been logged out.", "success")
     return redirect(url_for("home"))
+
 
 # ==== Passport Progress ====
 @app.route("/passport")
 def passport():
     if "trainer" not in session:
+        flash("Please log in to view your passport progress.", "warning")
         return redirect(url_for("home"))
 
     # Mock data (later: pull from Google Sheets)
@@ -205,13 +211,14 @@ def passport():
         "total": 10,
         "rewards": ["Sticker Pack", "Discount Band"]
     }
-    return render_template("passport.html", trainer=session["trainer"], data=data)
+    return render_template("passport.html", trainer=session["trainer"], data=data, show_back=True)
 
 
 # ==== Event Check-ins ====
 @app.route("/checkins")
 def checkins():
     if "trainer" not in session:
+        flash("Please log in to view your check-ins.", "warning")
         return redirect(url_for("home"))
 
     # Mock data (later: pull from Google Sheets)
@@ -219,13 +226,14 @@ def checkins():
         {"name": "Max Finale: Eternatus", "date": "2025-07-23"},
         {"name": "Wild Area Community Day", "date": "2025-08-15"},
     ]
-    return render_template("checkins.html", trainer=session["trainer"], events=events)
+    return render_template("checkins.html", trainer=session["trainer"], events=events, show_back=True)
 
 
 # ==== Recently Claimed Prizes ====
 @app.route("/prizes")
 def prizes():
     if "trainer" not in session:
+        flash("Please log in to view your prizes.", "warning")
         return redirect(url_for("home"))
 
     # Mock data (later: pull from Google Sheets)
@@ -233,7 +241,7 @@ def prizes():
         {"item": "GO Fest T-shirt", "date": "2025-07-23"},
         {"item": "Festival Wristband", "date": "2025-08-15"},
     ]
-    return render_template("prizes.html", trainer=session["trainer"], prizes=prizes)
+    return render_template("prizes.html", trainer=session["trainer"], prizes=prizes, show_back=True)
 
 
 if __name__ == "__main__":

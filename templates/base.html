@@ -77,6 +77,30 @@
             box-shadow: 0 4px 10px rgba(0,0,0,0.1);
         }
 
+        /* Flash messages */
+        .flash {
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 6px;
+            font-weight: 600;
+            text-align: center;
+        }
+        .flash-success {
+            background: #d4edda;
+            border: 1px solid #155724;
+            color: #155724;
+        }
+        .flash-error {
+            background: #f8d7da;
+            border: 1px solid #721c24;
+            color: #721c24;
+        }
+        .flash-warning {
+            background: #fff3cd;
+            border: 1px solid #856404;
+            color: #856404;
+        }
+
         @media (max-width: 480px) {
             .container {
                 margin: 20px auto;
@@ -116,17 +140,29 @@
     </header>
 
     <!-- Page content -->
-<div class="container">
-    {% block content %}{% endblock %}
+    <div class="container">
 
-    {% if show_back %}
-        <div style="margin-top: 20px; text-align: center;">
-            <a href="{{ url_for('dashboard') }}" 
-               style="display: inline-block; padding: 10px 18px; background: #3a8dde; color: white; border-radius: 6px; text-decoration: none; font-weight: 600;">
-                ⬅ Back to Dashboard
-            </a>
-        </div>
-    {% endif %}
-</div>
+        <!-- Flash messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="flash flash-{{ category }}">
+                {{ message }}
+              </div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+
+        {% if show_back %}
+            <div style="margin-top: 20px; text-align: center;">
+                <a href="{{ url_for('dashboard') }}" 
+                   style="display: inline-block; padding: 10px 18px; background: #3a8dde; color: white; border-radius: 6px; text-decoration: none; font-weight: 600;">
+                    ⬅ Back to Dashboard
+                </a>
+            </div>
+        {% endif %}
+    </div>
 </body>
 </html>

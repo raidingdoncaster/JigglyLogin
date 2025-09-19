@@ -4,15 +4,16 @@
 
 <p style="text-align: center;">
     We detected your trainer name as:  
-    <strong>{{ detected_name }}</strong>
+    <strong>{{ trainer_name }}</strong>
 </p>
 
-<form action="{{ url_for('confirm_name') }}" method="post">
-    <input type="hidden" name="detected_name" value="{{ detected_name }}">
-    <button type="submit">Confirm</button>
+<form action="{{ url_for('detectname') }}" method="post" style="text-align: center; margin-top: 1em;">
+    <p>Is this correct?</p>
+    <button type="submit" name="choice" value="yes" style="margin: 0.5em;">✅ Yes</button>
+    <button type="submit" name="choice" value="no" style="margin: 0.5em;">❌ No</button>
 </form>
 
-<div class="links">
-    <a href="{{ url_for('signup') }}">Try again</a>
+<div class="links" style="text-align: center; margin-top: 1.5em;">
+    <a href="{{ url_for('signup') }}">⬅️ Back to Sign Up</a>
 </div>
 {% endblock %}
