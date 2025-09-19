@@ -1,2 +1,5 @@
 pogo-passport-key.json
+__pycache__/
+*.pyc
 uploads/
+token.pickle
