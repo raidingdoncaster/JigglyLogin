@@ -8,6 +8,8 @@ from werkzeug.utils import secure_filename
 from PIL import Image
 import pytesseract
 from datetime import datetime
+from flask import send_file
+import io, base64
 
 # ==== Flask setup ====
 app = Flask(__name__)
@@ -50,28 +52,28 @@ def find_user(username):
 
 
 def extract_trainer_name(image_path):
-    """Extract trainer name from uploaded screenshot using OCR (cropped)."""
+    """Extract trainer name from uploaded screenshot using OCR."""
     try:
         img = Image.open(image_path)
         width, height = img.size
 
-        # Crop box (relative % tuned for Pokémon GO profile layout)
-        left = int(0.15 * width)
-        top = int(0.07 * height)
-        right = int(0.75 * width)
-        bottom = int(0.18 * height)
+        # Crop region: only the band where the trainer name usually appears
+        top = int(height * 0.25)   # skip top menus
+        bottom = int(height * 0.50)  # stop before avatar/stats
+        left = int(width * 0.10)   # leave a little margin
+        right = int(width * 0.90)
 
         cropped = img.crop((left, top, right, bottom))
 
-        # OCR with single-line mode
-        text = pytesseract.image_to_string(cropped, config="--psm 7")
+        # OCR on cropped area
+        text = pytesseract.image_to_string(cropped)
+        print(f"🔍 Cropped OCR text: {text}")  # debug in logs
 
-        print(f"🔍 OCR cropped text: {text}")
-
-        # Clean result (alphanum + spaces + - and _)
-        clean = "".join(c for c in text if c.isalnum() or c in (" ", "-", "_")).strip()
-
-        return clean if clean else None
+        # Find candidate lines
+        lines = [line.strip() for line in text.splitlines() if line.strip()]
+        if lines:
+            return lines[0]  # first valid line should be trainer name
+        return None
     except Exception as e:
         print(f"❌ OCR failed: {e}")
         return None
@@ -336,6 +338,57 @@ def prizes():
     ]
     return render_template("prizes.html", trainer=session["trainer"], prizes=prizes, show_back=True)
 
+# ==== OCR Test (debug route) ====
+@app.route("/ocr_test", methods=["GET", "POST"])
+def ocr_test():
+    if request.method == "POST":
+        file = request.files.get("screenshot")
+        if not file:
+            flash("Please upload a screenshot.", "error")
+            return redirect(url_for("ocr_test"))
+
+        filepath = os.path.join(app.config["UPLOAD_FOLDER"], secure_filename(file.filename))
+        file.save(filepath)
+
+        try:
+            img = Image.open(filepath)
+            width, height = img.size
+
+            # Crop to trainer name area (tweak percentages as needed)
+            top = int(height * 0.25)
+            bottom = int(height * 0.50)
+            left = int(width * 0.10)
+            right = int(width * 0.90)
+            cropped = img.crop((left, top, right, bottom))
+
+            # OCR the cropped area
+            text = pytesseract.image_to_string(cropped)
+            print(f"🔍 OCR TEST OUTPUT: {text}")
+
+            # Encode cropped image to base64 for inline display
+            import io, base64
+            buf = io.BytesIO()
+            cropped.save(buf, format="PNG")
+            base64_img = base64.b64encode(buf.getvalue()).decode("utf-8")
+
+            return f"""
+            <h2>OCR Test Result</h2>
+            <p><b>Detected Text:</b> {text}</p>
+            <h3>Cropped Region:</h3>
+            <img src="data:image/png;base64,{base64_img}" style="max-width:100%;border:1px solid #ccc;" />
+            <p><a href="/ocr_test">Try another</a></p>
+            """
+        finally:
+            os.remove(filepath)
+
+    return """
+    <h2>OCR Test</h2>
+    <form method="post" enctype="multipart/form-data">
+        <p>Upload Trainer Screenshot:</p>
+        <input type="file" name="screenshot" accept="image/*" required>
+        <button type="submit">Run OCR</button>
+    </form>
+    """
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)), debug=True)
