@@ -1,10 +1,10 @@
 {% extends "base.html" %}
 {% block content %}
 <!-- Banner -->
-<div style="text-align: center; margin-bottom: 20px;">
+<div style="text-align: center; margin-bottom: 5px;">
     <img src="{{ url_for('static', filename='banner.jpg') }}" 
          alt="Raiding Doncaster and Beyond" 
-         style="max-width: 100%; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);">
+         style="max-width: 100%; border-radius: 0px; box-shadow: 0 0px 0px rgba(0,0,0,0.15);">
 </div>
 
 <form action="{{ url_for('login') }}" method="post" 
@@ -15,8 +15,11 @@
          style="margin: 0.5em 0; width: 100%;" placeholder="Exact Trainer Name">
 
   <label style="margin-top: 0.5em; text-align: left; width: 100%;">4-digit PIN:</label>
-  <input type="password" name="pin" required pattern="\d{4}" 
-         style="margin: 0.5em 0; width: 100%;" placeholder="Enter your PIN">
+  <div class="pin-wrapper">
+      <input type="password" id="login_pin" name="pin" required pattern="\d{4}" 
+             style="margin: 0.5em 0; width: 100%;" placeholder="Enter your PIN">
+      <span onclick="togglePin('login_pin', this)">👁️</span>
+  </div>
 
   <button type="submit" style="margin-top: 1em; width: 100%;">Login</button>
 </form>
@@ -26,7 +29,7 @@
     Enter your trainer name exactly as it appears in Pokémon GO.
 </div>
 
-<div class="links">
+<div class="links" style="text-align:center; margin-top: 1em;">
     <a href="{{ url_for('signup') }}">Sign up</a> |
     <a href="{{ url_for('recover') }}">Forgot PIN?</a>
 </div>

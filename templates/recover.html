@@ -6,19 +6,23 @@
       style="display: flex; flex-direction: column; align-items: center; max-width: 320px; margin: 0 auto;">
 
   <label style="margin-top: 0.5em; text-align: left; width: 100%;">Trainer Name:</label>
-  <input type="text" name="trainer_name" required 
+  <input type="text" name="username" required 
          style="margin: 0.5em 0; width: 100%;" placeholder="Exact Trainer Name">
 
   <label style="margin-top: 0.5em; text-align: left; width: 100%;">Memorable Password:</label>
   <input type="text" name="memorable" required 
          style="margin: 0.5em 0; width: 100%;" placeholder="Your memorable password">
 
-  <button type="submit" style="margin-top: 1em; width: 100%;">Recover</button>
+  <label style="margin-top: 0.5em; text-align: left; width: 100%;">New 4-digit PIN:</label>
+  <input type="text" name="new_pin" pattern="\d{4}" maxlength="4" required 
+         style="margin: 0.5em 0; width: 100%;" placeholder="1234">
+
+  <button type="submit" style="margin-top: 1em; width: 100%;">Reset PIN</button>
 </form>
 
 <div class="notice">
-    🔑 Use the <strong>memorable password</strong> you set during sign-up.  
-    This will help you reset your PIN if forgotten.
+    🔑 Enter your <strong>Trainer Name</strong> and <strong>Memorable Password</strong>  
+    to set a new PIN and recover your account. If you need to reset your Memorable Password, contact an admin.
 </div>
 
 <p style="text-align:center; margin-top: 1em;">

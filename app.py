@@ -179,21 +179,22 @@ def login():
 @app.route("/recover", methods=["GET", "POST"])
 def recover():
     if request.method == "POST":
-        username = request.form["username"]
-        memorable = request.form["memorable"]
-        new_pin = request.form["new_pin"]
+        username = request.form.get("username")
+        memorable = request.form.get("memorable")
+        new_pin = request.form.get("new_pin")
 
         row, user = find_user(username)
         if not user:
-            flash("No trainer found with that username.", "error")
+            flash("❌ No trainer found with that name. Please check your spelling.", "error")
             return redirect(url_for("recover"))
 
         if user["Memorable Password"] != memorable:
-            flash("Memorable password does not match.", "error")
+            flash("⚠️ Memorable password does not match. Try again.", "error")
             return redirect(url_for("recover"))
 
+        # Update PIN hash
         sheet.update_cell(row, 2, hash_value(new_pin))
-        flash("PIN successfully reset! Please log in.", "success")
+        flash("✅ PIN successfully reset! You can now log in with your new PIN.", "success")
         return redirect(url_for("home"))
 
     return render_template("recover.html")

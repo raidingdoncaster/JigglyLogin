@@ -20,8 +20,11 @@
          style="margin: 0.5em 0; width: 100%;">
 
   <label style="margin-top: 0.5em; text-align: left; width: 100%;">Choose a 4-digit PIN:</label>
-  <input type="text" name="pin" pattern="\d{4}" maxlength="4" required 
-         style="margin: 0.5em 0; width: 100%;" placeholder="1234">
+  <div class="pin-wrapper">
+      <input type="password" id="signup_pin" name="pin" pattern="\d{4}" maxlength="4" required 
+             style="margin: 0.5em 0; width: 100%;" placeholder="1234">
+      <span onclick="togglePin('signup_pin', this)">👁️</span>
+  </div>
 
   <label style="margin-top: 0.5em; text-align: left; width: 100%;">Memorable Password (for recovery):</label>
   <input type="text" name="memorable" required 
