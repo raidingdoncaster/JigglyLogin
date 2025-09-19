@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>🎟️ Passport Progress</h2>
+<p>Trainer: {{ trainer }}</p>
+<p>You have <strong>{{ data.stamps }}</strong>,nice work! </p>
+
+<h3>Unlocked Rewards:</h3>
+<ul>
+    {% for reward in data.rewards %}
+        <li>{{ reward }}</li>
+    {% endfor %}
+</ul>
+{% endblock %}

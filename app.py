@@ -193,6 +193,48 @@ def logout():
     session.clear()
     return redirect(url_for("home"))
 
+# ==== Passport Progress ====
+@app.route("/passport")
+def passport():
+    if "trainer" not in session:
+        return redirect(url_for("home"))
+
+    # Mock data (later: pull from Google Sheets)
+    data = {
+        "stamps": 5,
+        "total": 10,
+        "rewards": ["Sticker Pack", "Discount Band"]
+    }
+    return render_template("passport.html", trainer=session["trainer"], data=data)
+
+
+# ==== Event Check-ins ====
+@app.route("/checkins")
+def checkins():
+    if "trainer" not in session:
+        return redirect(url_for("home"))
+
+    # Mock data (later: pull from Google Sheets)
+    events = [
+        {"name": "Max Finale: Eternatus", "date": "2025-07-23"},
+        {"name": "Wild Area Community Day", "date": "2025-08-15"},
+    ]
+    return render_template("checkins.html", trainer=session["trainer"], events=events)
+
+
+# ==== Recently Claimed Prizes ====
+@app.route("/prizes")
+def prizes():
+    if "trainer" not in session:
+        return redirect(url_for("home"))
+
+    # Mock data (later: pull from Google Sheets)
+    prizes = [
+        {"item": "GO Fest T-shirt", "date": "2025-07-23"},
+        {"item": "Festival Wristband", "date": "2025-08-15"},
+    ]
+    return render_template("prizes.html", trainer=session["trainer"], prizes=prizes)
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)), debug=True)

@@ -1,10 +1,19 @@
 {% extends "base.html" %}
 {% block content %}
-<h2>Welcome, {{ trainer_name }}!</h2>
+<h2 style="text-align:center; margin-bottom: 1em;">Welcome, {{ trainer }}!</h2>
+<p style="text-align: center; margin-bottom: 1.5em;">
+    Choose an option below:
+</p>
 
-<p style="text-align: center;">You’re logged in to your Trainer Dashboard.</p>
-
-<div class="links">
-    <a href="{{ url_for('logout') }}">Logout</a>
+<div class="tiles">
+    <a class="tile" href="{{ url_for('passport') }}">
+        🎟️ <span>Passport Progress</span>
+    </a>
+    <a class="tile" href="{{ url_for('checkins') }}">
+        📅 <span>Event Check-ins</span>
+    </a>
+    <a class="tile" href="{{ url_for('prizes') }}">
+        🏆 <span>Recently Claimed Prizes</span>
+    </a>
 </div>
 {% endblock %}

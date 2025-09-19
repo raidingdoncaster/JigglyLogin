@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>🏆 Recently Claimed Prizes</h2>
+<p>Trainer: {{ trainer }}</p>
+
+<ul>
+    {% for prize in prizes %}
+        <li>{{ prize.item }} — {{ prize.date }}</li>
+    {% endfor %}
+</ul>
+{% endblock %}
