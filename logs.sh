@@ -1,9 +1,7 @@
 #!/bin/bash
-# Tail Cloud Run logs for jigglylogin, highlight errors
+# Stream only error logs from Cloud Run service jigglylogin
 
-watch -n 5 gcloud logging read \
-  'resource.type="cloud_run_revision" AND resource.labels.service_name="jigglylogin"' \
+gcloud beta logging tail \
+  'resource.type="cloud_run_revision" AND resource.labels.service_name="jigglylogin" AND severity>=ERROR' \
   --project pogo-passport \
-  --limit 20 \
-  --format "value(timestamp, textPayload)" \
-  --order=desc | GREP_COLOR='01;31' grep --color=always -E "ERROR|$"
+  --format="value(timestamp, severity, textPayload)"

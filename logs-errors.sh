@@ -1,9 +1,7 @@
 #!/bin/bash
-# Tail only ERROR logs for jigglylogin
+# Stream logs from Cloud Run service jigglylogin in project pogo-passport
 
-watch -n 5 gcloud logging read \
-  'resource.type="cloud_run_revision" AND resource.labels.service_name="jigglylogin" AND severity="ERROR"' \
+gcloud beta logging tail \
+  'resource.type="cloud_run_revision" AND resource.labels.service_name="jigglylogin"' \
   --project pogo-passport \
-  --limit 20 \
-  --format "value(timestamp, textPayload)" \
-  --order=desc
+  --format="value(timestamp, severity, textPayload)"
