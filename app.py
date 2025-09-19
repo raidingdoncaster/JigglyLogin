@@ -50,15 +50,28 @@ def find_user(username):
 
 
 def extract_trainer_name(image_path):
-    """Extract trainer name from uploaded screenshot using OCR."""
+    """Extract trainer name from uploaded screenshot using OCR (cropped)."""
     try:
         img = Image.open(image_path)
-        text = pytesseract.image_to_string(img)
-        print(f"🔍 OCR text: {text}")  # helpful for debugging
-        lines = [line.strip() for line in text.splitlines() if line.strip()]
-        if len(lines) >= 2:
-            return lines[1]  # second line usually contains trainer name
-        return None
+        width, height = img.size
+
+        # Crop box (relative % tuned for Pokémon GO profile layout)
+        left = int(0.15 * width)
+        top = int(0.07 * height)
+        right = int(0.75 * width)
+        bottom = int(0.18 * height)
+
+        cropped = img.crop((left, top, right, bottom))
+
+        # OCR with single-line mode
+        text = pytesseract.image_to_string(cropped, config="--psm 7")
+
+        print(f"🔍 OCR cropped text: {text}")
+
+        # Clean result (alphanum + spaces + - and _)
+        clean = "".join(c for c in text if c.isalnum() or c in (" ", "-", "_")).strip()
+
+        return clean if clean else None
     except Exception as e:
         print(f"❌ OCR failed: {e}")
         return None
@@ -144,7 +157,6 @@ def login():
 
     if user.get("PIN Hash") == hash_value(pin):
         session["trainer"] = username
-        # Update last login timestamp
         sheet.update_cell(row, 4, datetime.utcnow().isoformat())
         flash(f"Welcome back, {username}!", "success")
         return redirect(url_for("dashboard"))
