@@ -52,27 +52,26 @@ def find_user(username):
 
 
 def extract_trainer_name(image_path):
-    """Extract trainer name from uploaded screenshot using OCR."""
+    """Extract trainer name from uploaded screenshot using OCR with cropping."""
     try:
         img = Image.open(image_path)
         width, height = img.size
 
-        # Crop region: only the band where the trainer name usually appears
-        top = int(height * 0.25)   # skip top menus
-        bottom = int(height * 0.50)  # stop before avatar/stats
-        left = int(width * 0.10)   # leave a little margin
+        # Crop only the trainer name band
+        top = int(height * 0.15)
+        bottom = int(height * 0.25)
+        left = int(width * 0.05)
         right = int(width * 0.90)
-
         cropped = img.crop((left, top, right, bottom))
 
-        # OCR on cropped area
+        # OCR on cropped region
         text = pytesseract.image_to_string(cropped)
-        print(f"🔍 Cropped OCR text: {text}")  # debug in logs
+        print(f"🔍 OCR text (cropped): {text}")
 
-        # Find candidate lines
+        # Split into lines, keep only first non-empty
         lines = [line.strip() for line in text.splitlines() if line.strip()]
         if lines:
-            return lines[0]  # first valid line should be trainer name
+            return lines[0]  # trainer name always first
         return None
     except Exception as e:
         print(f"❌ OCR failed: {e}")
