@@ -43,10 +43,10 @@ def hash_value(value: str) -> str:
 
 
 def find_user(username):
-    """Find a trainer in the sheet and return their row + record safely."""
+    """Find a trainer in the sheet (case-insensitive)."""
     records = sheet.get_all_records()
     for i, record in enumerate(records, start=2):  # row 1 = header
-        if record.get("Trainer Username") == username:
+        if record.get("Trainer Username", "").lower() == username.lower():
             return i, record
     return None, None
 
@@ -90,7 +90,7 @@ def signup():
     if request.method == "POST":
         pin = request.form.get("pin")
         memorable = request.form.get("memorable")
-        file = request.files.get("profile_screenshot")  # fixed name
+        file = request.files.get("profile_screenshot")
 
         if not (pin and memorable and file):
             flash("All fields are required!", "warning")
@@ -128,11 +128,20 @@ def detectname():
     if request.method == "POST":
         choice = request.form.get("choice")
         if choice == "yes":
+            # ✅ Prevent duplicate usernames (case-insensitive)
+            all_users = sheet.get_all_records()
+            for record in all_users:
+                if record.get("Trainer Username", "").lower() == details["trainer_name"].lower():
+                    flash("This trainer name is already registered. Please log in instead.", "error")
+                    session.pop("signup_details", None)
+                    return redirect(url_for("home"))
+
+            # Save trainer name exactly as OCR detected, but compare case-insensitive
             sheet.append_row([
                 details["trainer_name"],
                 hash_value(details["pin"]),
                 details["memorable"],
-                datetime.utcnow().isoformat()  # store signup time as last login
+                datetime.utcnow().isoformat()
             ])
             session.pop("signup_details", None)
             flash("Signup successful! Please log in.", "success")
@@ -157,9 +166,9 @@ def login():
         return redirect(url_for("home"))
 
     if user.get("PIN Hash") == hash_value(pin):
-        session["trainer"] = username
+        session["trainer"] = user.get("Trainer Username")  # preserve original case
         sheet.update_cell(row, 4, datetime.utcnow().isoformat())
-        flash(f"Welcome back, {username}!", "success")
+        flash(f"Welcome back, {user.get('Trainer Username')}!", "success")
         return redirect(url_for("dashboard"))
     else:
         flash("Incorrect PIN!", "error")
@@ -289,7 +298,7 @@ def delete_account():
         flash("User not found.", "error")
         return redirect(url_for("dashboard"))
 
-    if confirm_name != session["trainer"]:
+    if confirm_name.lower() != session["trainer"].lower():
         flash("Trainer name does not match. Account not deleted.", "error")
         return redirect(url_for("dashboard"))
 
@@ -337,6 +346,7 @@ def prizes():
     ]
     return render_template("prizes.html", trainer=session["trainer"], prizes=prizes, show_back=True)
 
+
 # ==== OCR Test (debug route) ====
 @app.route("/ocr_test", methods=["GET", "POST"])
 def ocr_test():
@@ -354,18 +364,15 @@ def ocr_test():
             width, height = img.size
 
             # Crop to trainer name area (higher region, near top)
-            top = int(height * 0.15)      # start higher up
-            bottom = int(height * 0.25)   # end before the middle
-            left = int(width * 0.05)      # a little narrower from the left
-            right = int(width * 0.90)     # a little narrower from the right
+            top = int(height * 0.15)
+            bottom = int(height * 0.25)
+            left = int(width * 0.05)
+            right = int(width * 0.90)
             cropped = img.crop((left, top, right, bottom))
 
-            # OCR the cropped area
             text = pytesseract.image_to_string(cropped)
             print(f"🔍 OCR TEST OUTPUT: {text}")
 
-            # Encode cropped image to base64 for inline display
-            import io, base64
             buf = io.BytesIO()
             cropped.save(buf, format="PNG")
             base64_img = base64.b64encode(buf.getvalue()).decode("utf-8")
@@ -388,6 +395,7 @@ def ocr_test():
         <button type="submit">Run OCR</button>
     </form>
     """
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)), debug=True)

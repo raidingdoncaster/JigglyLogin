@@ -1,6 +1,11 @@
 {% extends "base.html" %}
 {% block content %}
-<h2>Raiding Doncaster and Beyond Login</h2>
+<!-- Banner -->
+<div style="text-align: center; margin-bottom: 20px;">
+    <img src="{{ url_for('static', filename='banner.jpg') }}" 
+         alt="Raiding Doncaster and Beyond" 
+         style="max-width: 100%; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);">
+</div>
 
 <form action="{{ url_for('login') }}" method="post" 
       style="display: flex; flex-direction: column; align-items: center; max-width: 320px; margin: 0 auto;">
