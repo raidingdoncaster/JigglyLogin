@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Trainer Login</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f4f9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background: white;
+            padding: 2em;
+            border-radius: 8px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+            width: 360px;
+            text-align: center;
+        }
+        h2 {
+            margin-bottom: 1em;
+        }
+        input, button {
+            margin: 0.5em 0;
+            padding: 0.6em;
+            width: 90%;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        button {
+            background: #4285f4;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #3367d6;
+        }
+        .flash {
+            color: red;
+            margin-bottom: 1em;
+        }
+        .notice {
+            margin-top: 1em;
+            padding: 0.8em;
+            background: #e8f4fd;
+            border: 1px solid #b6e0fe;
+            border-radius: 6px;
+            color: #0b5394;
+            font-size: 0.9em;
+            text-align: left;
+        }
+        .notice strong {
+            margin-right: 0.3em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Trainer Login</h2>
+
+        {% with messages = get_flashed_messages() %}
+          {% if messages %}
+            <div class="flash">
+              {% for message in messages %}
+                <p>{{ message }}</p>
+              {% endfor %}
+            </div>
+          {% endif %}
+        {% endwith %}
+
+        <form action="{{ url_for('login') }}" method="post">
+            <input type="text" name="username" placeholder="Trainer Name" required><br>
+            <input type="password" name="pin" placeholder="Enter PIN" required><br>
+            <button type="submit">Login</button>
+        </form>
+
+        <div class="notice">
+            ℹ️ <strong>Reminder:</strong> Trainer names are <u>case-sensitive</u>.  
+            Enter your trainer name exactly as it appears in Pokémon GO.
+        </div>
+
+        <p>
+            <a href="{{ url_for('signup') }}">Sign up</a> | 
+            <a href="{{ url_for('recover') }}">Forgot PIN?</a>
+        </p>
+    </div>
+</body>
+</html>
