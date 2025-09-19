@@ -1,9 +1,10 @@
 import os
+import json
 import hashlib
 import gspread
 from flask import Flask, render_template, request, redirect, url_for, session, flash
 from google.oauth2.service_account import Credentials
-from werkzeug.utils import secure_filename 
+from werkzeug.utils import secure_filename
 from PIL import Image
 import pytesseract
 
@@ -11,25 +12,32 @@ import pytesseract
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
 
+# Uploads folder setup (temporary screenshots for OCR)
 UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
 # ==== Google Sheets setup ====
-SERVICE_ACCOUNT_FILE = "pogo-passport-key.json"
 SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
     "https://www.googleapis.com/auth/drive"
 ]
 
-creds = Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPES)
+# Load service account creds from environment variable
+creds = Credentials.from_service_account_info(
+    json.loads(os.environ["GOOGLE_APPLICATION_CREDENTIALS_JSON"]),
+    scopes=SCOPES
+)
+
 client = gspread.authorize(creds)
 sheet = client.open("POGO Passport Sign-Ins").sheet1
+
 
 # ==== Helpers ====
 def hash_value(value: str) -> str:
     """Hash sensitive values securely with SHA256."""
     return hashlib.sha256(value.encode()).hexdigest()
+
 
 def find_user(username):
     """Find a trainer in the sheet and return their row + record safely."""
@@ -39,91 +47,98 @@ def find_user(username):
             return i, record
     return None, None
 
+
 def extract_trainer_name(image_path):
-    """Pulls the trainer name from a profile screenshot."""
-    img = Image.open(image_path)
-    text = pytesseract.image_to_string(img)
+    """Extract trainer name from uploaded screenshot using OCR."""
+    try:
+        img = Image.open(image_path)
+        text = pytesseract.image_to_string(img)
+        print(f"🔍 OCR text: {text}")  # helpful for debugging
+        lines = [line.strip() for line in text.splitlines() if line.strip()]
+        if len(lines) >= 2:
+            return lines[1]  # second line usually contains trainer name
+        return None
+    except Exception as e:
+        print(f"❌ OCR failed: {e}")
+        return None
 
-    # Debug: print everything it reads
-    print("OCR Extracted Text:", text)
-
-    # Pick the second non-empty line as trainer name
-    lines = [line.strip() for line in text.splitlines() if line.strip()]
-    if len(lines) > 1:
-        return lines[1]  # the line with the trainer name
-    return None
 
 # ==== Routes ====
 @app.route("/")
 def home():
     return render_template("login.html")
 
+
 # ==== Sign Up ====
 @app.route("/signup", methods=["GET", "POST"])
 def signup():
     if request.method == "POST":
-        pin = request.form["pin"].strip()
-        memorable = request.form["memorable"].strip()
-        file = request.files.get("screenshot")
+        pin = request.form["pin"]
+        memorable = request.form["memorable"]
+        file = request.files["screenshot"]
 
-        if not (pin and memorable and file and file.filename):
+        if not (pin and memorable and file):
             flash("All fields required!")
             return redirect(url_for("signup"))
 
-        # Save screenshot temporarily
+        # Save uploaded screenshot temporarily
         filepath = os.path.join(app.config["UPLOAD_FOLDER"], secure_filename(file.filename))
         file.save(filepath)
 
-        # Extract trainer name via OCR
+        # OCR to detect trainer name
         trainer_name = extract_trainer_name(filepath)
 
-        # Delete screenshot after processing
-        try:
-            os.remove(filepath)
-        except OSError:
-            pass
+        # Delete screenshot after OCR
+        os.remove(filepath)
 
         if not trainer_name:
             flash("Could not detect trainer name from screenshot. Please try again.")
             return redirect(url_for("signup"))
 
-        # Send user to confirmation page
-        return render_template("detectname.html", trainer_name=trainer_name, pin=pin, memorable=memorable)
+        # Store details in session temporarily until user confirms
+        session["signup_details"] = {
+            "trainer_name": trainer_name,
+            "pin": pin,
+            "memorable": memorable
+        }
+
+        return redirect(url_for("detectname"))
 
     return render_template("signup.html")
 
-# ==== Detects Name =====
+
+# ==== Confirm Detected Name ====
 @app.route("/detectname", methods=["GET", "POST"])
 def detectname():
-    if request.method == "POST":
-        trainer_name = request.form["trainer_name"]
-        pin = request.form["pin"]
-        memorable = request.form["memorable"]
+    details = session.get("signup_details")
+    if not details:
+        return redirect(url_for("signup"))
 
-        # Check if trainer already exists
-        row, existing = find_user(trainer_name)
-        if existing:
-            flash("Trainer already registered!")
+    if request.method == "POST":
+        choice = request.form.get("choice")
+        if choice == "yes":
+            # Save to Google Sheets
+            sheet.append_row([
+                details["trainer_name"],
+                hash_value(details["pin"]),
+                details["memorable"]
+            ])
+            session.pop("signup_details", None)
+            flash("Signup successful! Please log in.")
+            return redirect(url_for("home"))
+        else:
+            flash("Please upload a clearer screenshot with your trainer name visible.")
+            session.pop("signup_details", None)
             return redirect(url_for("signup"))
 
-        # Save row in Google Sheets
-        sheet.append_row([
-            trainer_name,
-            hash_value(pin),
-            memorable
-        ])
+    return render_template("detectname.html", trainer_name=details["trainer_name"])
 
-        flash(f"Signup successful! Welcome, {trainer_name}. Please log in.")
-        return redirect(url_for("home"))
-
-    # GET request just bounces back
-    return redirect(url_for("signup"))
 
 # ==== Login ====
 @app.route("/login", methods=["POST"])
 def login():
-    username = request.form["username"].strip()
-    pin = request.form["pin"].strip()
+    username = request.form["username"]
+    pin = request.form["pin"]
 
     row, user = find_user(username)
     if not user:
@@ -137,30 +152,32 @@ def login():
         flash("Incorrect PIN!")
         return redirect(url_for("home"))
 
+
 # ==== Recover ====
 @app.route("/recover", methods=["GET", "POST"])
 def recover():
     if request.method == "POST":
-        username = request.form["username"].strip()
-        memorable = request.form["memorable"].strip()
-        new_pin = request.form["new_pin"].strip()
+        username = request.form["username"]
+        memorable = request.form["memorable"]
+        new_pin = request.form["new_pin"]
 
         row, user = find_user(username)
         if not user:
             flash("No trainer found with that username.")
             return redirect(url_for("recover"))
 
-        if user.get("Memorable Password") != memorable:
+        if user["Memorable Password"] != memorable:
             flash("Memorable password does not match.")
             return redirect(url_for("recover"))
 
         # Update PIN hash
-        sheet.update_cell(row, 2, hash_value(new_pin))  # col 2 = PIN Hash
+        sheet.update_cell(row, 2, hash_value(new_pin))  # 2 = PIN Hash column
 
         flash("PIN successfully reset! Please log in.")
         return redirect(url_for("home"))
 
     return render_template("recover.html")
+
 
 # ==== Dashboard ====
 @app.route("/dashboard")
@@ -169,11 +186,13 @@ def dashboard():
         return redirect(url_for("home"))
     return render_template("dashboard.html", trainer=session["trainer"])
 
+
 # ==== Logout ====
 @app.route("/logout")
 def logout():
     session.clear()
     return redirect(url_for("home"))
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)), debug=True)
