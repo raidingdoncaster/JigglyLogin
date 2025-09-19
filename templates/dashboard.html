@@ -1,65 +1,10 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Trainer Dashboard</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: #f4f4f9;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-        }
-        .container {
-            background: white;
-            padding: 2em;
-            border-radius: 8px;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
-            width: 380px;
-            text-align: center;
-        }
-        h2 {
-            margin-bottom: 1em;
-            color: #333;
-        }
-        p {
-            margin-bottom: 1em;
-        }
-        .btn {
-            display: inline-block;
-            margin: 0.5em;
-            padding: 0.6em 1.2em;
-            border-radius: 4px;
-            text-decoration: none;
-            font-weight: bold;
-            transition: background 0.2s ease;
-        }
-        .btn-logout {
-            background: #d9534f;
-            color: white;
-        }
-        .btn-logout:hover {
-            background: #c9302c;
-        }
-        .btn-home {
-            background: #4285f4;
-            color: white;
-        }
-        .btn-home:hover {
-            background: #3367d6;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h2>Welcome, {{ trainer }}!</h2>
-        <p>You are signed in to <strong>Raiding Doncaster and Beyond</strong>.</p>
+{% extends "base.html" %}
+{% block content %}
+<h2>Welcome, {{ trainer_name }}!</h2>
 
-        <a href="{{ url_for('home') }}" class="btn btn-home">Home</a>
-        <a href="{{ url_for('logout') }}" class="btn btn-logout">Logout</a>
-    </div>
-</body>
-</html>
+<p style="text-align: center;">You’re logged in to your Trainer Dashboard.</p>
+
+<div class="links">
+    <a href="{{ url_for('logout') }}">Logout</a>
+</div>
+{% endblock %}

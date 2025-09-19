@@ -1,126 +1,30 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Trainer Signup</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: #f4f4f9;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-        }
-        .container {
-            background: white;
-            padding: 2em;
-            border-radius: 8px;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
-            width: 400px;
-            text-align: center;
-        }
-        h2 {
-            margin-bottom: 1em;
-        }
-        input, button {
-            margin: 0.5em 0;
-            padding: 0.6em;
-            width: 90%;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-        }
-        button {
-            background: #4285f4;
-            color: white;
-            border: none;
-            cursor: pointer;
-        }
-        button:hover {
-            background: #3367d6;
-        }
-        .flash {
-            color: red;
-            margin-bottom: 1em;
-        }
-        .notice {
-            margin-top: 1em;
-            padding: 0.8em;
-            background: #e8f4fd;
-            border: 1px solid #b6e0fe;
-            border-radius: 6px;
-            color: #0b5394;
-            font-size: 0.9em;
-            text-align: left;
-        }
-        .notice strong {
-            margin-right: 0.3em;
-        }
-        /* Tutorial section */
-        .tutorial {
-            display: flex;
-            align-items: center;
-            justify-content: flex-start;
-            margin-bottom: 1.5em;
-            text-align: left;
-            background: #fafafa;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            padding: 1em;
-        }
-        .tutorial img.example {
-            max-width: 120px;
-            height: auto;
-            border-radius: 6px;
-            margin-right: 1em;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.2);
-        }
-        .tutorial-text {
-            flex: 1;
-        }
-        .tutorial-text h3 {
-            margin: 0 0 0.3em 0;
-            color: #333;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h2>Trainer Signup</h2>
+{% extends "base.html" %}
+{% block content %}
+<h2>Welcome, Trainer!</h2>
 
-        <!-- Tutorial -->
-        <div class="tutorial">
-            <img src="{{ url_for('static', filename='example_profile.png') }}" alt="Example Trainer Profile Screenshot" class="example">
-            <div class="tutorial-text">
-                <h3>Welcome, Trainer!</h3>
-                <p>Upload a screenshot of your <strong>Trainer Profile</strong> in Pokémon GO.</p>
-                <p>Choose a <strong>4-digit PIN</strong> and a <strong>Memorable Password</strong>.</p>
-            </div>
-        </div>
+<div style="display: flex; flex-direction: row; align-items: center; margin-bottom: 1.5em;">
+    <img src="{{ url_for('static', filename='example_profile.png') }}" 
+         alt="Example Trainer Profile" 
+         style="width: 120px; border-radius: 6px; margin-right: 1em;">
+    <p style="font-size: 0.9em; color: #333; line-height: 1.4;">
+        Upload a screenshot of your <strong>Trainer Profile</strong> in Pokémon GO.<br>
+        Then choose a <strong>4-digit PIN</strong> and a <strong>memorable password</strong>.
+    </p>
+</div>
 
-        {% with messages = get_flashed_messages() %}
-          {% if messages %}
-            <div class="flash">
-              {% for message in messages %}
-                <p>{{ message }}</p>
-              {% endfor %}
-            </div>
-          {% endif %}
-        {% endwith %}
+<form action="{{ url_for('signup') }}" method="post" enctype="multipart/form-data">
+    <input type="file" name="profile_screenshot" accept="image/*" required>
+    <input type="password" name="pin" placeholder="Choose 4-digit PIN" required>
+    <input type="text" name="memorable" placeholder="Memorable password (for recovery)" required>
+    <button type="submit">Sign Up</button>
+</form>
 
-        <form action="{{ url_for('signup') }}" method="post" enctype="multipart/form-data">
-            <input type="password" name="pin" placeholder="Choose a 4-digit PIN" required><br>
-            <input type="text" name="memorable" placeholder="Enter a memorable word" required><br>
-            <input type="file" name="screenshot" accept="image/*" required><br>
-            <button type="submit">Sign Up</button>
-        </form>
+<div class="notice">
+    ⚠️ If detection doesn’t work, try again with a clear screenshot showing your trainer name.  
+    If issues continue, contact a community admin.
+</div>
 
-        <div class="notice">
-            ℹ️ <strong>Tip:</strong> Make sure your trainer name is clearly visible on your profile screenshot.
-        </div>
-
-        <p><a href="{{ url_for('home') }}">Back to login</a></p>
-    </div>
-</body>
-</html>
+<div class="links">
+    <a href="{{ url_for('login') }}">Back to Login</a>
+</div>
+{% endblock %}

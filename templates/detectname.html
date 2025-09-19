@@ -1,80 +1,18 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Confirm Trainer Name</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: #f4f4f9;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-        }
-        .container {
-            background: white;
-            padding: 2em;
-            border-radius: 8px;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
-            width: 360px;
-            text-align: center;
-        }
-        h2 {
-            margin-bottom: 1em;
-        }
-        input, button {
-            margin: 0.5em 0;
-            padding: 0.6em;
-            width: 90%;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-        }
-        button {
-            background: #4285f4;
-            color: white;
-            border: none;
-            cursor: pointer;
-        }
-        button:hover {
-            background: #3367d6;
-        }
-        .warning {
-            margin-top: 1em;
-            padding: 0.8em;
-            background: #fff3cd;
-            border: 1px solid #ffeeba;
-            border-radius: 6px;
-            color: #856404;
-            font-size: 0.9em;
-            text-align: left;
-        }
-        .warning strong {
-            margin-right: 0.3em;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h2>Confirm Your Trainer Name</h2>
-        <p>We detected your trainer name is:</p>
-        <h3>{{ trainer_name }}</h3>
+{% extends "base.html" %}
+{% block content %}
+<h2>Confirm Trainer Name</h2>
 
-        <form action="{{ url_for('detectname') }}" method="post">
-            <input type="hidden" name="trainer_name" value="{{ trainer_name }}">
-            <input type="hidden" name="pin" value="{{ pin }}">
-            <input type="hidden" name="memorable" value="{{ memorable }}">
-            <button type="submit">Yes, this is correct</button>
-        </form>
+<p style="text-align: center;">
+    We detected your trainer name as:  
+    <strong>{{ detected_name }}</strong>
+</p>
 
-        <p><a href="{{ url_for('signup') }}">No, go back</a></p>
+<form action="{{ url_for('confirm_name') }}" method="post">
+    <input type="hidden" name="detected_name" value="{{ detected_name }}">
+    <button type="submit">Confirm</button>
+</form>
 
-        <div class="warning">
-            ⚠️ <strong>Having trouble?</strong>  
-            If this isn’t working, try taking a screenshot of your trainer profile where your username is clearly visible.  
-            If it still doesn’t work, please contact one of the community admins.
-        </div>
-    </div>
-</body>
-</html>
+<div class="links">
+    <a href="{{ url_for('signup') }}">Try again</a>
+</div>
+{% endblock %}
