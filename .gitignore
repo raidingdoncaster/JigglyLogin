@@ -3,3 +3,54 @@ __pycache__/
 *.pyc
 uploads/
 token.pickle
+
+# --- Python ---
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pdb
+*.egg-info/
+*.egg
+*.log
+
+# --- Virtual environments ---
+venv/
+ENV/
+env/
+.venv/
+.pytest_cache/
+
+# --- Flask / uploads ---
+instance/
+uploads/
+*.db
+*.sqlite3
+
+# --- Google Cloud / secrets ---
+pogo-passport-key.json
+*.json
+*.yaml
+*.yml
+*.ini
+
+# --- Google SDK (don’t commit the whole SDK!) ---
+google-cloud-sdk/
+google-cloud-cli-*.tar.gz
+
+# --- IDE / editor ---
+.vscode/
+.idea/
+.DS_Store
+*.swp
+
+# --- Jupyter ---
+.ipynb_checkpoints/
+
+# --- Build / cache ---
+dist/
+build/
+.eggs/
+.mypy_cache/
+.pyre/
+.pytype/
