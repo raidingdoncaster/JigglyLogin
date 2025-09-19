@@ -73,9 +73,9 @@ def home():
 @app.route("/signup", methods=["GET", "POST"])
 def signup():
     if request.method == "POST":
-        pin = request.form["pin"]
-        memorable = request.form["memorable"]
-        file = request.files["screenshot"]
+        pin = request.form.get("pin")
+        memorable = request.form.get("memorable")
+        file = request.files.get("profile_screenshot")  # fixed name
 
         if not (pin and memorable and file):
             flash("All fields required!")
