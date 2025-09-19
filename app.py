@@ -7,6 +7,7 @@ from google.oauth2.service_account import Credentials
 from werkzeug.utils import secure_filename
 from PIL import Image
 import pytesseract
+from datetime import datetime
 
 # ==== Flask setup ====
 app = Flask(__name__)
@@ -81,21 +82,16 @@ def signup():
             flash("All fields are required!", "warning")
             return redirect(url_for("signup"))
 
-        # Save uploaded screenshot temporarily
         filepath = os.path.join(app.config["UPLOAD_FOLDER"], secure_filename(file.filename))
         file.save(filepath)
 
-        # OCR to detect trainer name
         trainer_name = extract_trainer_name(filepath)
-
-        # Delete screenshot after OCR
         os.remove(filepath)
 
         if not trainer_name:
             flash("Could not detect trainer name from screenshot. Please try again.", "error")
             return redirect(url_for("signup"))
 
-        # Store details in session temporarily until user confirms
         session["signup_details"] = {
             "trainer_name": trainer_name,
             "pin": pin,
@@ -118,11 +114,11 @@ def detectname():
     if request.method == "POST":
         choice = request.form.get("choice")
         if choice == "yes":
-            # Save to Google Sheets
             sheet.append_row([
                 details["trainer_name"],
                 hash_value(details["pin"]),
-                details["memorable"]
+                details["memorable"],
+                datetime.utcnow().isoformat()  # store signup time as last login
             ])
             session.pop("signup_details", None)
             flash("Signup successful! Please log in.", "success")
@@ -148,6 +144,8 @@ def login():
 
     if user.get("PIN Hash") == hash_value(pin):
         session["trainer"] = username
+        # Update last login timestamp
+        sheet.update_cell(row, 4, datetime.utcnow().isoformat())
         flash(f"Welcome back, {username}!", "success")
         return redirect(url_for("dashboard"))
     else:
@@ -172,9 +170,7 @@ def recover():
             flash("Memorable password does not match.", "error")
             return redirect(url_for("recover"))
 
-        # Update PIN hash
-        sheet.update_cell(row, 2, hash_value(new_pin))  # 2 = PIN Hash column
-
+        sheet.update_cell(row, 2, hash_value(new_pin))
         flash("PIN successfully reset! Please log in.", "success")
         return redirect(url_for("home"))
 
@@ -187,7 +183,15 @@ def dashboard():
     if "trainer" not in session:
         flash("You must be logged in to view the dashboard.", "warning")
         return redirect(url_for("home"))
-    return render_template("dashboard.html", trainer=session["trainer"])
+
+    row, user = find_user(session["trainer"])
+    last_login = user.get("Last Login") if user else None
+
+    return render_template(
+        "dashboard.html",
+        trainer=session["trainer"],
+        last_login=last_login
+    )
 
 
 # ==== Logout ====
@@ -198,6 +202,90 @@ def logout():
     return redirect(url_for("home"))
 
 
+# ==== Manage Account: Change PIN ====
+@app.route("/change_pin", methods=["POST"])
+def change_pin():
+    if "trainer" not in session:
+        return redirect(url_for("home"))
+
+    old_pin = request.form["old_pin"]
+    memorable = request.form["memorable"]
+    new_pin = request.form["new_pin"]
+
+    row, user = find_user(session["trainer"])
+    if not user:
+        flash("User not found.", "error")
+        return redirect(url_for("dashboard"))
+
+    if user.get("PIN Hash") != hash_value(old_pin):
+        flash("Old PIN is incorrect.", "error")
+        return redirect(url_for("dashboard"))
+
+    if user.get("Memorable Password") != memorable:
+        flash("Memorable password is incorrect.", "error")
+        return redirect(url_for("dashboard"))
+
+    sheet.update_cell(row, 2, hash_value(new_pin))
+    flash("PIN updated successfully.", "success")
+    return redirect(url_for("dashboard"))
+
+
+# ==== Manage Account: Change Memorable Password ====
+@app.route("/change_memorable", methods=["POST"])
+def change_memorable():
+    if "trainer" not in session:
+        return redirect(url_for("home"))
+
+    old_memorable = request.form["old_memorable"]
+    new_memorable = request.form["new_memorable"]
+
+    row, user = find_user(session["trainer"])
+    if not user:
+        flash("User not found.", "error")
+        return redirect(url_for("dashboard"))
+
+    if user.get("Memorable Password") != old_memorable:
+        flash("Old memorable password is incorrect.", "error")
+        return redirect(url_for("dashboard"))
+
+    sheet.update_cell(row, 3, new_memorable)
+    flash("Memorable password updated successfully.", "success")
+    return redirect(url_for("dashboard"))
+
+
+# ==== Manage Account: Log Out Everywhere ====
+@app.route("/logout_everywhere", methods=["POST"])
+def logout_everywhere():
+    if "trainer" not in session:
+        return redirect(url_for("home"))
+
+    session.clear()
+    flash("You have been logged out everywhere.", "success")
+    return redirect(url_for("home"))
+
+
+# ==== Manage Account: Delete Account ====
+@app.route("/delete_account", methods=["POST"])
+def delete_account():
+    if "trainer" not in session:
+        return redirect(url_for("home"))
+
+    confirm_name = request.form["confirm_name"]
+    row, user = find_user(session["trainer"])
+    if not user:
+        flash("User not found.", "error")
+        return redirect(url_for("dashboard"))
+
+    if confirm_name != session["trainer"]:
+        flash("Trainer name does not match. Account not deleted.", "error")
+        return redirect(url_for("dashboard"))
+
+    sheet.delete_rows(row)
+    session.clear()
+    flash("Your account has been permanently deleted.", "success")
+    return redirect(url_for("home"))
+
+
 # ==== Passport Progress ====
 @app.route("/passport")
 def passport():
@@ -205,12 +293,7 @@ def passport():
         flash("Please log in to view your passport progress.", "warning")
         return redirect(url_for("home"))
 
-    # Mock data (later: pull from Google Sheets)
-    data = {
-        "stamps": 5,
-        "total": 10,
-        "rewards": ["Sticker Pack", "Discount Band"]
-    }
+    data = {"stamps": 5, "total": 10, "rewards": ["Sticker Pack", "Discount Band"]}
     return render_template("passport.html", trainer=session["trainer"], data=data, show_back=True)
 
 
@@ -221,7 +304,6 @@ def checkins():
         flash("Please log in to view your check-ins.", "warning")
         return redirect(url_for("home"))
 
-    # Mock data (later: pull from Google Sheets)
     events = [
         {"name": "Max Finale: Eternatus", "date": "2025-07-23"},
         {"name": "Wild Area Community Day", "date": "2025-08-15"},
@@ -236,7 +318,6 @@ def prizes():
         flash("Please log in to view your prizes.", "warning")
         return redirect(url_for("home"))
 
-    # Mock data (later: pull from Google Sheets)
     prizes = [
         {"item": "GO Fest T-shirt", "date": "2025-07-23"},
         {"item": "Festival Wristband", "date": "2025-08-15"},
