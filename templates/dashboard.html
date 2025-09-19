@@ -20,21 +20,3 @@
     </a>
 </div>
 {% endblock %}
-
-{% extends "base.html" %}
-{% block content %}
-<h2 style="text-align:center; margin-bottom: 1em;">Welcome, {{ trainer }}!</h2>
-
-
-<div class="tiles">
-    <a class="tile" href="{{ url_for('passport') }}">
-         <span>Passport Progress</span>
-    </a>
-    <a class="tile" href="{{ url_for('checkins') }}">
-        📅 <span>Event Check-ins</span>
-    </a>
-    <a class="tile" href="{{ url_for('prizes') }}">
-        🏆 <span>Recently Claimed Prizes</span>
-    </a>
-</div>
-{% endblock %}

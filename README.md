@@ -22,11 +22,11 @@ Confirm cmd:
 gcloud run services describe jigglylogin --region europe-west1
 
 # See Logs:
-real time logs:
-./logs.sh
-
 error only logs:
 ./logs-errors.sh
+
+Logs debug:
+./logs-debug.sh
 
 # Update Commands
 pip install --upgrade pip
