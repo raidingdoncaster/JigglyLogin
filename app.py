@@ -355,10 +355,10 @@ def ocr_test():
             width, height = img.size
 
             # Crop to trainer name area (higher region, near top)
-            top = int(height * 0.13)      # start higher up
+            top = int(height * 0.15)      # start higher up
             bottom = int(height * 0.20)   # end before the middle
-            left = int(width * 0.10)      # a little narrower from the left
-            right = int(width * 0.85)     # a little narrower from the right
+            left = int(width * 0.05)      # a little narrower from the left
+            right = int(width * 0.90)     # a little narrower from the right
             cropped = img.crop((left, top, right, bottom))
 
             # OCR the cropped area
