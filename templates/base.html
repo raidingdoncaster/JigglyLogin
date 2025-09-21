@@ -41,7 +41,7 @@
             transition: opacity 0.8s ease, visibility 0.8s ease;
         }
 
-        /* Header */
+        /* Header (floating) */
         header {
             position: sticky;
             top: 0;
@@ -67,7 +67,7 @@
             text-decoration: underline;
         }
 
-        /* Main content */
+        /* Main content container */
         .container {
             max-width: 420px;
             margin: 60px auto;
@@ -101,6 +101,26 @@
             color: #856404;
         }
 
+        /* Input + button grouping for PIN toggle */
+        .pin-group {
+            display: flex;
+            width: 100%;
+        }
+        .pin-group input {
+            flex: 1;
+            border-top-right-radius: 0;
+            border-bottom-right-radius: 0;
+        }
+        .pin-group button {
+            border-top-left-radius: 0;
+            border-bottom-left-radius: 0;
+            background: #ddd;
+            border: 1px solid #ccc;
+            cursor: pointer;
+            padding: 0 10px;
+            font-size: 0.85em;
+        }
+
         @media (max-width: 480px) {
             .container {
                 margin: 20px auto;
@@ -115,18 +135,22 @@
 
     <script>
         window.addEventListener("load", () => {
-            // Only show loading screen if NOT on dashboard
-            const onDashboard = window.location.pathname.includes("dashboard");
             const loadingScreen = document.getElementById("loading-screen");
-
-            if (!onDashboard) {
-                setTimeout(() => {
-                    loadingScreen.classList.add("hidden");
-                }, 500); // show at least 0.5s
-            } else {
-                loadingScreen.style.display = "none";
-            }
+            loadingScreen.classList.add("hidden");
         });
+
+        // Show/Hide PIN toggle logic
+        function togglePin(id, btn) {
+            const input = document.getElementById(id);
+            if (!input) return;
+            if (input.type === "password") {
+                input.type = "text";
+                btn.textContent = "Hide";
+            } else {
+                input.type = "password";
+                btn.textContent = "Show";
+            }
+        }
     </script>
 </head>
 <body>

@@ -1,10 +1,10 @@
 {% extends "base.html" %}
 {% block content %}
 <!-- Banner -->
-<div style="text-align: center; margin-bottom: 20px;">
+<div style="text-align: center; margin-bottom: 10px;">
     <img src="{{ url_for('static', filename='banner.jpg') }}" 
          alt="Raiding Doncaster and Beyond" 
-         style="max-width: 100%; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);">
+         style="max-width: 100%; border-radius: 0; box-shadow: none;">
 </div>
 
 <form action="{{ url_for('login') }}" method="post" 
@@ -98,7 +98,7 @@
 <script>
     // Reminders
     let reminders = [
-        "🔑 Never share your PIN or memorable password with anyone – admins will never ask for it.",
+        "📱 Add the Raiding Doncaster and Beyond app to your homescreen! Just press the share button, then add to home!",
         "🎉 Every check-in brings you closer to rewards – don’t miss out!",
         "🔄 Forgot your PIN? Use the recovery option with your memorable password.",
         "✍️ Write down your memorable password somewhere safe so you don’t lose access.",
@@ -127,7 +127,7 @@
             pokeball.classList.add("pop");
             setTimeout(() => pokeball.classList.remove("pop"), 300);
         }, 1000);
-    }, 5000);
+    }, 7000);
 </script>
 
 <div class="links">
