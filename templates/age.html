@@ -2,20 +2,23 @@
 {% block content %}
 <h2>How old are you?</h2>
 
-<p style="text-align: center; margin-bottom: 1em;">
+<p style="text-align: center; margin-bottom: 1.5em;">
     Please select your age group. This helps us set up your account correctly.
 </p>
 
 <form action="{{ url_for('age') }}" method="post" style="text-align: center;">
-    <input type="submit" name="age" value="13_or_older"
-           style="padding: 0.8em 1.5em; margin: 0.5em; background: #007bff; color: white; border: none; border-radius: 6px;"
-           value="👤 I am 13 or older">
-    <input type="submit" name="age" value="12_or_younger"
-           style="padding: 0.8em 1.5em; margin: 0.5em; background: #ff9800; color: white; border: none; border-radius: 6px;"
-           value="🐵 I am 12 or younger">
+    <button type="submit" name="age_choice" value="13plus"
+            style="margin: 0.5em; padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 6px;">
+        👤 I am 13 or older
+    </button>
+
+    <button type="submit" name="age_choice" value="under13"
+            style="margin: 0.5em; padding: 10px 20px; background: #ff9800; color: white; border: none; border-radius: 6px;">
+        🧒 I am 12 or younger
+    </button>
 </form>
 
-<div style="text-align:center; margin-top: 1em;">
-    <a href="{{ url_for('detectname') }}">⬅ Back</a>
-</div>
+<p style="text-align:center; margin-top: 1.5em;">
+    <a href="{{ url_for('detectname') }}">⬅️ Back</a>
+</p>
 {% endblock %}
