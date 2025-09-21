@@ -15,19 +15,120 @@
          style="margin: 0.5em 0; width: 100%;" placeholder="Exact Trainer Name">
 
   <label style="margin-top: 0.5em; text-align: left; width: 100%;">4-digit PIN:</label>
-  <div class="pin-wrapper">
-      <input type="password" id="login-pin" name="pin" required pattern="\d{4}" maxlength="4" 
-             style="margin: 0.5em 0; width: 100%;" placeholder="Enter your PIN">
-      <button type="button" class="toggle-pin" onclick="togglePIN('login-pin', this)">Show</button>
+  <div style="width: 100%; display: flex; gap: 6px;">
+      <input type="password" id="pin" name="pin" required pattern="\d{4}" 
+             style="flex: 1; padding: 0.5em;" placeholder="Enter your PIN">
+      <button type="button" id="togglePin" 
+              style="padding: 0.5em; font-size: 0.8em;">Show</button>
   </div>
 
   <button type="submit" style="margin-top: 1em; width: 100%;">Login</button>
 </form>
 
-<div class="notice">
-    📌 <strong>Reminder:</strong> Trainer names are <em>case-sensitive</em>.  
-    Enter your trainer name exactly as it appears in Pokémon GO.
+<!-- Log-in page Reminders! -->
+<div class="notice" id="reminder-carousel">
+    <span id="reminder-text">
+        🔑 Never share your PIN or memorable password with anyone – admins will never ask for it.
+    </span>
+    <div id="pokeball-loader"></div>
 </div>
+
+<style>
+    /* Reminder section */
+    #reminder-carousel {
+        position: relative;
+        text-align: center;
+        margin-top: 1em;
+        font-size: 0.9em;
+        line-height: 1.4;
+    }
+
+    /* Fade animation for text */
+    #reminder-text {
+        display: inline-block;
+        opacity: 1;
+        transition: opacity 1s ease-in-out;
+    }
+
+    /* Pokéball loader */
+    #pokeball-loader {
+        margin: 10px auto 0;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: linear-gradient(to bottom, #ff1c1c 50%, #fff 50%);
+        border: 2px solid #000;
+        position: relative;
+        animation: spin 5s linear infinite;
+        transition: transform 0.3s ease;
+    }
+
+    /* Black center line */
+    #pokeball-loader::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 0;
+        width: 100%;
+        height: 2px;
+        background: #000;
+        transform: translateY(-50%);
+    }
+
+    /* Center button */
+    #pokeball-loader::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 8px;
+        height: 8px;
+        background: #fff;
+        border: 2px solid #000;
+        border-radius: 50%;
+        transform: translate(-50%, -50%);
+    }
+
+    /* Pop bounce effect */
+    .pop {
+        transform: scale(1.3);
+    }
+</style>
+
+<script>
+    // Reminders
+    let reminders = [
+        "🔑 Never share your PIN or memorable password with anyone – admins will never ask for it.",
+        "🎉 Every check-in brings you closer to rewards – don’t miss out!",
+        "🔄 Forgot your PIN? Use the recovery option with your memorable password.",
+        "✍️ Write down your memorable password somewhere safe so you don’t lose access.",
+        "🎮 Remember: signing in here helps track your Passport stamps, check-ins, and prizes!"
+    ];
+
+    // Shuffle reminders
+    reminders = reminders
+        .map(value => ({ value, sort: Math.random() }))
+        .sort((a, b) => a.sort - b.sort)
+        .map(({ value }) => value);
+
+    let currentIndex = 0;
+    const reminderElement = document.getElementById("reminder-text");
+    const pokeball = document.getElementById("pokeball-loader");
+
+    setInterval(() => {
+        reminderElement.style.opacity = 0;
+
+        setTimeout(() => {
+            currentIndex = (currentIndex + 1) % reminders.length;
+            reminderElement.textContent = reminders[currentIndex];
+
+            reminderElement.style.opacity = 1;
+
+            pokeball.classList.add("pop");
+            setTimeout(() => pokeball.classList.remove("pop"), 300);
+        }, 1000);
+    }, 5000);
+</script>
 
 <div class="links">
     <a href="{{ url_for('signup') }}">Sign up</a> |
