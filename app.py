@@ -41,10 +41,13 @@ def hash_value(value: str) -> str:
     return hashlib.sha256(value.encode()).hexdigest()
 
 def find_user(username):
-    """Find a trainer in the sheet (case-insensitive)."""
+    """Find a trainer in the sheet (case-insensitive) and return their row + record."""
     records = sheet.get_all_records()
     for i, record in enumerate(records, start=2):  # row 1 = header
         if record.get("Trainer Username", "").lower() == username.lower():
+            # Ensure Avatar field always exists
+            if "Avatar" not in record or not record["Avatar"]:
+                record["Avatar"] = "avatar1.png"  # default avatar
             return i, record
     return None, None
 
@@ -169,7 +172,9 @@ def age():
                 hash_value(details["pin"]),
                 details["memorable"],
                 datetime.utcnow().isoformat(),
-                "Kids Account"  # Column E
+                "Kids Account",   # Column E
+                "0",               # Column F (leave empty if unused)
+                "avatar1.png"     # Column G (default avatar)
             ])
             trigger_lugia_refresh()
             session.pop("signup_details", None)
@@ -200,7 +205,9 @@ def campfire():
             hash_value(details["pin"]),
             details["memorable"],
             datetime.utcnow().isoformat(),
-            campfire_username  # Column E
+            campfire_username,  # Column E
+            "",                 # Column F (leave empty if unused)
+            "avatar1.png"       # Column G (default avatar)
         ])
         trigger_lugia_refresh()
         session.pop("signup_details", None)
@@ -263,6 +270,7 @@ def dashboard():
     row, user = find_user(session["trainer"])
     last_login = user.get("Last Login") if user else None
     campfire_username = user.get("Campfire Username", "")
+    avatar = user.get("Avatar", "avatar1.png")  # Column G
 
     # Detect account type
     if campfire_username == "Kids Account":
@@ -275,7 +283,8 @@ def dashboard():
         trainer=session["trainer"],
         last_login=last_login,
         account_type=account_type,
-        campfire_username=campfire_username
+        campfire_username=campfire_username,
+        avatar=avatar
     )
 
 # ==== Logout ====
@@ -449,6 +458,30 @@ def ocr_test():
         <button type="submit">Run OCR</button>
     </form>
     """
+
+# ==== Change Avatar ====
+@app.route("/change_avatar", methods=["GET", "POST"])
+def change_avatar():
+    if "trainer" not in session:
+        return redirect(url_for("home"))
+
+    row, user = find_user(session["trainer"])
+    if not user:
+        flash("User not found.", "error")
+        return redirect(url_for("dashboard"))
+
+    if request.method == "POST":
+        avatar_choice = request.form.get("avatar_choice")
+        if not avatar_choice:
+            flash("Please select an avatar.", "warning")
+            return redirect(url_for("change_avatar"))
+
+        sheet.update_cell(row, 7, avatar_choice)  # Column G
+        flash("✅ Avatar updated successfully!", "success")
+        return redirect(url_for("dashboard"))
+
+    current_avatar = user.get("Avatar", "")
+    return render_template("change_avatar.html", current_avatar=current_avatar)
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)), debug=True)

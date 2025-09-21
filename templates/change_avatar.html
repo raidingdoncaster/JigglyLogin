@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block content %}
+<h2 style="text-align:center; margin-bottom: 1em;">Choose Your Avatar</h2>
+
+<p style="text-align:center; margin-bottom: 1.5em; font-size:0.95em; color:#333;">
+  Pick one of the preset avatars below. This will be shown on your dashboard.
+</p>
+
+<form action="{{ url_for('change_avatar') }}" method="post" style="max-width:600px; margin:0 auto; text-align:center;">
+  <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:15px; justify-items:center;">
+
+    {% for i in range(1, 13) %}
+      <label style="cursor:pointer;">
+        <input type="radio" name="avatar_choice" value="avatar{{ i }}.png" 
+               style="display:none;" 
+               {% if current_avatar == "avatar" ~ i ~ ".png" %}checked{% endif %}>
+        <img src="{{ url_for('static', filename='avatars/avatar' ~ i ~ '.png') }}" 
+             alt="Avatar {{ i }}"
+             style="width:80px; height:80px; border-radius:50%; border:3px solid {% if current_avatar == 'avatar' ~ i ~ '.png' %}#3a8dde{% else %}#ccc{% endif %}; object-fit:cover;">
+      </label>
+    {% endfor %}
+
+  </div>
+
+  <button type="submit" style="margin-top:20px; padding:10px 20px; border:none; border-radius:6px; background:#3a8dde; color:#fff; font-weight:600; cursor:pointer;">
+    Save Avatar
+  </button>
+</form>
+
+<p style="text-align:center; margin-top:1.5em;">
+  <a href="{{ url_for('dashboard') }}">⬅ Back to Dashboard</a>
+</p>
+
+<style>
+  /* Highlight avatar when selected */
+  input[type="radio"]:checked + img {
+    border-color: #3a8dde !important;
+    box-shadow: 0 0 6px rgba(58, 141, 222, 0.6);
+  }
+</style>
+{% endblock %}

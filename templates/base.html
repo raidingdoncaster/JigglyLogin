@@ -197,5 +197,17 @@
             </div>
         {% endif %}
     </div>
+
+    <script>
+  // Auto-hide flash messages after 4 seconds
+  setTimeout(() => {
+    document.querySelectorAll(".flash-message").forEach(el => {
+      el.style.transition = "opacity 0.5s ease";
+      el.style.opacity = 0;
+      setTimeout(() => el.remove(), 500); // remove fully after fade
+    });
+  }, 4000);
+</script>
+
 </body>
 </html>
