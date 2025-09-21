@@ -2,6 +2,17 @@
 {% block content %}
 <h2>Welcome, {{ trainer }}!</h2>
 
+{% if account_type == "Kids Account" %}
+    <p><strong>Account Type:</strong> 👶 Kids Account</p>
+{% else %}
+    <p><strong>Account Type:</strong> Standard Account</p>
+    <p><strong>Campfire Username:</strong> {{ campfire_username }}</p>
+{% endif %}
+
+{% if last_login %}
+    <p><em>Last login:</em> {{ last_login }}</p>
+{% endif %}
+
 {% if last_login %}
 <p style="text-align: center; font-size: 0.9em; color: #555;">
     Last login: {{ last_login }}

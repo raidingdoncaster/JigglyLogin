@@ -145,32 +145,39 @@ def detectname():
     return render_template("detectname.html", trainer_name=details["trainer_name"])
 
 
-# ==== Age Step ====
+# ==== Age Selection ====
 @app.route("/age", methods=["GET", "POST"])
 def age():
     details = session.get("signup_details")
     if not details:
-        flash("Session expired. Please try signing up again.", "warning")
+        flash("Session expired. Please start again.", "warning")
         return redirect(url_for("signup"))
 
     if request.method == "POST":
-        choice = request.form.get("age_choice")
-        if choice == "13plus":
-            return redirect(url_for("campfire"))
-        elif choice == "under13":
-            # Save user with Kids Account
+        age_choice = request.form.get("age")
+        if not age_choice:
+            flash("Please select an option.", "warning")
+            return redirect(url_for("age"))
+
+        if age_choice == "13_or_older":
+            session["signup_details"]["age_group"] = "13+"
+            flash("✅ Great! You’re signing up as 13 or older.", "success")
+            return redirect(url_for("campfire_username"))
+        elif age_choice == "12_or_younger":
+            session["signup_details"]["age_group"] = "kids"
+            session["signup_details"]["campfire_username"] = "Kids Account"
+
+            # Save immediately
             sheet.append_row([
                 details["trainer_name"],
                 hash_value(details["pin"]),
                 details["memorable"],
                 datetime.utcnow().isoformat(),
-                "Kids Account"  # Column E
+                "Kids Account"
             ])
             session.pop("signup_details", None)
-            flash("Signup successful! Please log in.", "success")
+            flash("✅ Kids Account created successfully!", "success")
             return redirect(url_for("home"))
-        else:
-            flash("Please select an option.", "warning")
 
     return render_template("age.html")
 
@@ -259,11 +266,20 @@ def dashboard():
 
     row, user = find_user(session["trainer"])
     last_login = user.get("Last Login") if user else None
+    campfire_username = user.get("Campfire Username", "")
+
+    # Detect account type
+    if campfire_username == "Kids Account":
+        account_type = "Kids Account"
+    else:
+        account_type = "Standard Account"
 
     return render_template(
         "dashboard.html",
         trainer=session["trainer"],
-        last_login=last_login
+        last_login=last_login,
+        account_type=account_type,
+        campfire_username=campfire_username
     )
 
 
