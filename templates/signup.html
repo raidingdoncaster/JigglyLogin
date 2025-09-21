@@ -6,9 +6,9 @@
     <img src="{{ url_for('static', filename='example_profile.png') }}" 
          alt="Example Trainer Profile" 
          style="width: 120px; border-radius: 6px; margin-right: 1em;">
-    <p style="font-size: 0.9em; color: #333; line-height: 1.4;">
-        Upload a screenshot of your <strong>Trainer Profile</strong> in Pokémon GO.<br>
-        Then choose a <strong>4-digit PIN</strong> and a <strong>memorable password</strong>.<br>
+    <p style="font-size: 0.9em; color: #333; line-height: 1.6;">
+        Upload a screenshot of your <strong>Trainer Profile</strong> in Pokémon GO.<br><br>
+        Then choose a <strong>4-digit PIN</strong> and a <strong>memorable password</strong>.<br><br>
         ⚠️ Do <strong>not</strong> use a memorable password you use anywhere else — make it unique and write it down safely.
     </p>
 </div>
@@ -18,19 +18,19 @@
 
   <label style="margin-top: 0.5em; text-align: left; width: 100%;">Upload Profile Screenshot:</label>
   <input type="file" name="profile_screenshot" accept="image/*" required 
-         style="margin: 0.5em 0; width: 100%;">
+         style="margin: 0.5em 0; width: 100%; padding: 0.5em;">
 
   <label style="margin-top: 0.5em; text-align: left; width: 100%;">Choose a 4-digit PIN:</label>
   <div style="width: 100%; display: flex; gap: 6px;">
-      <input type="password" id="pin" name="pin" pattern="\d{4}" maxlength="4" required 
+      <input type="password" id="signup-pin" name="pin" pattern="\d{4}" maxlength="4" required 
              style="flex: 1; padding: 0.5em;" placeholder="1234">
-      <button type="button" id="togglePin" 
-              style="padding: 0.5em; font-size: 0.8em;">Show</button>
+      <button type="button" onclick="togglePin('signup-pin', this)" 
+              style="padding: 0.5em; font-size: 0.8em; min-width: 60px;">Show</button>
   </div>
 
   <label style="margin-top: 0.5em; text-align: left; width: 100%;">Memorable Password (for recovery):</label>
   <input type="text" name="memorable" required 
-         style="margin: 0.5em 0; width: 100%;" placeholder="e.g. Pikachu">
+         style="margin: 0.5em 0; width: 100%; padding: 0.5em;" placeholder="e.g. Pikachu">
 
   <button type="submit" style="margin-top: 1em; width: 100%;">Sign Up</button>
 </form>

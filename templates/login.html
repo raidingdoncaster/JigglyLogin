@@ -12,14 +12,14 @@
 
   <label style="margin-top: 0.5em; text-align: left; width: 100%;">Trainer Name:</label>
   <input type="text" name="username" required 
-         style="margin: 0.5em 0; width: 100%;" placeholder="Exact Trainer Name">
+         style="margin: 0.5em 0; width: 100%; padding: 0.5em;" placeholder="Exact Trainer Name">
 
   <label style="margin-top: 0.5em; text-align: left; width: 100%;">4-digit PIN:</label>
   <div style="width: 100%; display: flex; gap: 6px;">
-      <input type="password" id="pin" name="pin" required pattern="\d{4}" 
+      <input type="password" id="login-pin" name="pin" required pattern="\d{4}" maxlength="4"
              style="flex: 1; padding: 0.5em;" placeholder="Enter your PIN">
-      <button type="button" id="togglePin" 
-              style="padding: 0.5em; font-size: 0.8em;">Show</button>
+      <button type="button" onclick="togglePin('login-pin', this)" 
+              style="padding: 0.5em; font-size: 0.8em; min-width: 60px;">Show</button>
   </div>
 
   <button type="submit" style="margin-top: 1em; width: 100%;">Login</button>
@@ -59,7 +59,7 @@
         background: linear-gradient(to bottom, #ff1c1c 50%, #fff 50%);
         border: 2px solid #000;
         position: relative;
-        animation: spin 5s linear infinite;
+        animation: spin 7s linear infinite;
         transition: transform 0.3s ease;
     }
 
