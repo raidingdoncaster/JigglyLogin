@@ -1,41 +1,89 @@
 {% extends "base.html" %}
 {% block content %}
-<h2 style="text-align:center; margin-bottom: 1em;">Choose Your Avatar</h2>
+<h2 style="text-align: center; margin-bottom: 1em;">Choose Your Avatar</h2>
 
-<p style="text-align:center; margin-bottom: 1.5em; font-size:0.95em; color:#333;">
-  Pick one of the preset avatars below. This will be shown on your dashboard.
-</p>
+<!-- Live Preview -->
+<div id="avatar-preview-box" style="text-align:center; margin-bottom: 1.5em;">
+    <img id="selected-avatar" src="{{ url_for('static', filename='avatars/' + avatars[0]) }}" 
+         alt="Selected Avatar" style="width: 80px; height: 80px; border-radius: 50%; border: 3px solid #3a8dde; box-shadow: 0 0 8px rgba(58,141,222,0.6);">
+    <p style="margin-top: 0.5em; font-size: 0.9em; color: #555;">Your selected avatar</p>
+</div>
 
-<form action="{{ url_for('change_avatar') }}" method="post" style="max-width:600px; margin:0 auto; text-align:center;">
-  <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:15px; justify-items:center;">
+<form action="{{ url_for('change_avatar') }}" method="post" style="display: flex; flex-wrap: wrap; justify-content: center; gap: 20px;">
 
-    {% for i in range(1, 13) %}
-      <label style="cursor:pointer;">
-        <input type="radio" name="avatar_choice" value="avatar{{ i }}.png" 
-               style="display:none;" 
-               {% if current_avatar == "avatar" ~ i ~ ".png" %}checked{% endif %}>
-        <img src="{{ url_for('static', filename='avatars/avatar' ~ i ~ '.png') }}" 
-             alt="Avatar {{ i }}"
-             style="width:80px; height:80px; border-radius:50%; border:3px solid {% if current_avatar == 'avatar' ~ i ~ '.png' %}#3a8dde{% else %}#ccc{% endif %}; object-fit:cover;">
-      </label>
+    {% for icon in avatars %}
+    <label class="avatar-option">
+        <input type="radio" name="avatar_choice" value="{{ icon }}" {% if loop.first %}checked{% endif %}>
+        <div class="avatar-preview">
+            <img src="{{ url_for('static', filename='avatars/' + icon) }}" alt="Avatar" class="avatar-img">
+            <div class="avatar-hover"></div>
+        </div>
+    </label>
     {% endfor %}
 
-  </div>
-
-  <button type="submit" style="margin-top:20px; padding:10px 20px; border:none; border-radius:6px; background:#3a8dde; color:#fff; font-weight:600; cursor:pointer;">
-    Save Avatar
-  </button>
+    <button type="submit" style="margin-top: 20px; padding: 10px 20px; font-size: 1em; border-radius: 6px; background: #3a8dde; color: white; border: none; cursor: pointer;">
+        Save Avatar
+    </button>
 </form>
 
-<p style="text-align:center; margin-top:1.5em;">
-  <a href="{{ url_for('dashboard') }}">⬅ Back to Dashboard</a>
+<p style="text-align:center; margin-top: 1em;">
+    <a href="{{ url_for('dashboard') }}">⬅️ Back to Dashboard</a>
 </p>
 
 <style>
-  /* Highlight avatar when selected */
-  input[type="radio"]:checked + img {
-    border-color: #3a8dde !important;
-    box-shadow: 0 0 6px rgba(58, 141, 222, 0.6);
-  }
+    .avatar-option {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        cursor: pointer;
+    }
+    .avatar-option input[type="radio"] {
+        display: none;
+    }
+    .avatar-preview {
+        position: relative;
+        width: 64px;
+        height: 64px;
+    }
+    .avatar-img {
+        width: 64px;
+        height: 64px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 2px solid #ccc;
+        transition: transform 0.3s, box-shadow 0.3s;
+    }
+    .avatar-hover {
+        position: absolute;
+        top: 0; left: 0;
+        width: 100%; height: 100%;
+        border-radius: 50%;
+        background: rgba(58,141,222,0.2);
+        opacity: 0;
+        transition: opacity 0.3s;
+    }
+    .avatar-option:hover .avatar-img {
+        transform: scale(1.05);
+        box-shadow: 0 0 8px rgba(58,141,222,0.6);
+    }
+    .avatar-option:hover .avatar-hover {
+        opacity: 1;
+    }
+    .avatar-option input[type="radio"]:checked + .avatar-preview .avatar-img {
+        border: 2px solid #3a8dde;
+        box-shadow: 0 0 8px rgba(58,141,222,0.8);
+    }
 </style>
+
+<script>
+    // Live preview updater
+    const radios = document.querySelectorAll("input[name='avatar_choice']");
+    const preview = document.getElementById("selected-avatar");
+
+    radios.forEach(radio => {
+        radio.addEventListener("change", () => {
+            preview.src = "/static/avatars/" + radio.value;
+        });
+    });
+</script>
 {% endblock %}

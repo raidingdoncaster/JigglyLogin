@@ -1,27 +1,33 @@
 {% block content %}
-<div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1em;">
-    <!-- Avatar -->
-    <a href="{{ url_for('change_avatar') }}" style="text-decoration: none;">
-        <img src="{{ url_for('static', filename='avatars/' + (avatar_choice if avatar_choice else 'default.png')) }}"
-             alt="Avatar"
-             style="width: 60px; height: 60px; border-radius: 50%; border: 2px solid #ccc; object-fit: cover;">
-    </a>
+<div style="display: flex; align-items: center; margin-bottom: 20px;">
+    <!-- Avatar with edit icon -->
+    <div class="avatar-wrapper">
+        <a href="{{ url_for('change_avatar') }}">
+            <img src="{{ url_for('static', filename='avatars/' + (avatar or 'avatar1.png')) }}" 
+                 alt="Avatar"
+                 class="avatar-img">
+            <!-- Edit icon overlay -->
+            <span class="avatar-edit">✏️</span>
+            <!-- Hover overlay -->
+            <div class="avatar-hover"></div>
+        </a>
+    </div>
 
-    <!-- Welcome -->
-    <h2 style="margin: 0; flex: 1; text-align: center;">Welcome, {{ trainer }}!</h2>
+    <!-- Welcome message -->
+    <div>
+        <h2 style="margin: 0;">Welcome, {{ trainer }}!</h2>
+        {% if last_login %}
+        <p style="margin: 2px 0; font-size: 0.9em; color: #555;">
+            Last login: {{ last_login }}
+        </p>
+        {% endif %}
+    </div>
 </div>
 
-{% if account_type == "Kids Account" %}
-    <p><strong>Account Type:</strong> 👶 Kids Account</p>
-{% else %}
-    <p><strong>Account Type:</strong> Standard Account</p>
-    <p><strong>Campfire Username:</strong> {{ campfire_username }}</p>
-{% endif %}
-
-{% if last_login %}
-    <p style="font-size: 0.9em; color: #555; text-align: center;">
-        <em>Last login:</em> {{ last_login }}
-    </p>
+<!-- Account info -->
+<p><strong>Account Type:</strong> {{ account_type }}</p>
+{% if account_type != "Kids Account" %}
+<p><strong>Campfire Username:</strong> {{ campfire_username }}</p>
 {% endif %}
 
 <p style="text-align: center; margin-bottom: 1.5em;">
@@ -32,24 +38,23 @@
 <div style="display: grid; grid-template-columns: 1fr; gap: 15px; margin-top: 20px;">
     <a href="{{ url_for('passport') }}"
        style="display: block; padding: 15px; background: #3a8dde; color: white; text-align: center; font-weight: 600; border-radius: 8px; text-decoration: none;">
-       🎟️ Passport Progress
+        🎟️ Passport Progress
     </a>
     <a href="{{ url_for('checkins') }}"
        style="display: block; padding: 15px; background: #5eb8ff; color: white; text-align: center; font-weight: 600; border-radius: 8px; text-decoration: none;">
-       📍 Event Check-ins
+        📍 Event Check-ins
     </a>
     <a href="{{ url_for('prizes') }}"
        style="display: block; padding: 15px; background: #2ecc71; color: white; text-align: center; font-weight: 600; border-radius: 8px; text-decoration: none;">
-       🎁 Recently Claimed Prizes
+        🎁 Recently Claimed Prizes
     </a>
 </div>
 
 <!-- Manage Account -->
 <div style="margin-top: 30px; padding: 15px; border: 1px solid #ccc; border-radius: 8px;">
     <h3 style="margin-top: 0; text-align: center;">⚙️ Manage My Account</h3>
-
-    <!-- Accordion sections -->
     <div class="accordion">
+
         <!-- Change PIN -->
         <button type="button" class="accordion-toggle">🔑 Change PIN</button>
         <div class="accordion-content">
@@ -57,8 +62,7 @@
                 <input type="password" name="old_pin" placeholder="Old PIN" required style="width: 100%; margin: 5px 0;">
                 <input type="text" name="memorable" placeholder="Memorable Password" required style="width: 100%; margin: 5px 0;">
                 <div style="display: flex; align-items: center; margin: 5px 0;">
-                    <input type="password" name="new_pin" id="new_pin" pattern="\d{4}" maxlength="4"
-                           placeholder="New 4-digit PIN" required style="flex: 1;">
+                    <input type="password" name="new_pin" id="new_pin" pattern="\d{4}" maxlength="4" placeholder="New 4-digit PIN" required style="flex: 1;">
                     <button type="button" onclick="togglePin()" style="margin-left: 5px; padding: 6px 10px; font-size: 0.8em;">Show</button>
                 </div>
                 <button type="submit" style="margin-top: 10px; width: 100%;">Update PIN</button>
@@ -99,7 +103,7 @@
     </div>
 </div>
 
-<!-- Accordion + Show/Hide script -->
+<!-- Scripts -->
 <script>
     // Accordion toggle
     document.querySelectorAll(".accordion-toggle").forEach(btn => {
@@ -127,17 +131,60 @@
         }
     }
 
-    // Fade flash messages
+    // Auto-fade flash messages
     setTimeout(() => {
-        document.querySelectorAll(".flash-message").forEach(el => {
-            el.style.transition = "opacity 1s";
-            el.style.opacity = 0;
-            setTimeout(() => el.remove(), 1000);
+        document.querySelectorAll('.flash-message').forEach(el => {
+            el.style.transition = "opacity 1s ease";
+            el.style.opacity = "0";
         });
     }, 4000);
 </script>
 
 <style>
+    /* Avatar wrapper */
+    .avatar-wrapper {
+        position: relative;
+        width: 64px;
+        height: 64px;
+    }
+    .avatar-img {
+        width: 64px;
+        height: 64px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 2px solid #ccc;
+        transition: transform 0.3s, box-shadow 0.3s;
+    }
+    .avatar-edit {
+        position: absolute;
+        bottom: -4px;
+        right: -4px;
+        background: #3a8dde;
+        color: white;
+        font-size: 0.7em;
+        padding: 4px;
+        border-radius: 50%;
+        border: 2px solid white;
+        line-height: 1;
+    }
+    .avatar-hover {
+        position: absolute;
+        top: 0; left: 0;
+        width: 100%; height: 100%;
+        border-radius: 50%;
+        background: rgba(58,141,222,0.2);
+        opacity: 0;
+        transition: opacity 0.3s;
+    }
+    .avatar-wrapper:hover .avatar-hover {
+        opacity: 1;
+    }
+    .avatar-wrapper:hover .avatar-img {
+        transform: scale(1.05);
+        box-shadow: 0 0 8px rgba(58,141,222,0.6);
+    }
+
+    /* Accordion styles */
     .accordion button.accordion-toggle {
         width: 100%;
         text-align: left;
