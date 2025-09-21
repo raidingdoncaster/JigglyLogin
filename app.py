@@ -8,7 +8,6 @@ from werkzeug.utils import secure_filename
 from PIL import Image
 import pytesseract
 from datetime import datetime
-from flask import send_file
 import io, base64
 
 # ==== Flask setup ====
@@ -136,22 +135,73 @@ def detectname():
                     session.pop("signup_details", None)
                     return redirect(url_for("home"))
 
-            # Save trainer name exactly as OCR detected, but compare case-insensitive
-            sheet.append_row([
-                details["trainer_name"],
-                hash_value(details["pin"]),
-                details["memorable"],
-                datetime.utcnow().isoformat()
-            ])
-            session.pop("signup_details", None)
-            flash("Signup successful! Please log in.", "success")
-            return redirect(url_for("home"))
+            # Go to Age step next
+            return redirect(url_for("age"))
         else:
             flash("Please upload a clearer screenshot with your trainer name visible.", "warning")
             session.pop("signup_details", None)
             return redirect(url_for("signup"))
 
     return render_template("detectname.html", trainer_name=details["trainer_name"])
+
+
+# ==== Age Step ====
+@app.route("/age", methods=["GET", "POST"])
+def age():
+    details = session.get("signup_details")
+    if not details:
+        flash("Session expired. Please try signing up again.", "warning")
+        return redirect(url_for("signup"))
+
+    if request.method == "POST":
+        choice = request.form.get("age_choice")
+        if choice == "13plus":
+            return redirect(url_for("campfire"))
+        elif choice == "under13":
+            # Save user with Kids Account
+            sheet.append_row([
+                details["trainer_name"],
+                hash_value(details["pin"]),
+                details["memorable"],
+                datetime.utcnow().isoformat(),
+                "Kids Account"  # Column E
+            ])
+            session.pop("signup_details", None)
+            flash("Signup successful! Please log in.", "success")
+            return redirect(url_for("home"))
+        else:
+            flash("Please select an option.", "warning")
+
+    return render_template("age.html")
+
+
+# ==== Campfire Username Step ====
+@app.route("/campfire", methods=["GET", "POST"])
+def campfire():
+    details = session.get("signup_details")
+    if not details:
+        flash("Session expired. Please try signing up again.", "warning")
+        return redirect(url_for("signup"))
+
+    if request.method == "POST":
+        campfire_username = request.form.get("campfire_username")
+        if not campfire_username:
+            flash("Campfire username is required.", "warning")
+            return redirect(url_for("campfire"))
+
+        # Save full signup to Google Sheet
+        sheet.append_row([
+            details["trainer_name"],
+            hash_value(details["pin"]),
+            details["memorable"],
+            datetime.utcnow().isoformat(),
+            campfire_username  # Column E
+        ])
+        session.pop("signup_details", None)
+        flash("Signup successful! Please log in.", "success")
+        return redirect(url_for("home"))
+
+    return render_template("campfire.html")
 
 
 # ==== Login ====
