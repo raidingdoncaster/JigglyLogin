@@ -2,6 +2,7 @@ import os
 import json
 import hashlib
 import gspread
+import requests
 from flask import Flask, render_template, request, redirect, url_for, session, flash
 from google.oauth2.service_account import Credentials
 from werkzeug.utils import secure_filename
@@ -34,12 +35,10 @@ creds = Credentials.from_service_account_info(
 client = gspread.authorize(creds)
 sheet = client.open("POGO Passport Sign-Ins").sheet1
 
-
 # ==== Helpers ====
 def hash_value(value: str) -> str:
     """Hash sensitive values securely with SHA256."""
     return hashlib.sha256(value.encode()).hexdigest()
-
 
 def find_user(username):
     """Find a trainer in the sheet (case-insensitive)."""
@@ -48,7 +47,6 @@ def find_user(username):
         if record.get("Trainer Username", "").lower() == username.lower():
             return i, record
     return None, None
-
 
 def extract_trainer_name(image_path):
     """Extract trainer name from uploaded screenshot using OCR with cropping."""
@@ -76,12 +74,20 @@ def extract_trainer_name(image_path):
         print(f"❌ OCR failed: {e}")
         return None
 
+def trigger_lugia_refresh():
+    """Call Lugia refresh Apps Script after signup."""
+    url = "https://script.google.com/macros/s/AKfycbwx33Twu9HGwW4bsSJb7vwHoaBS56gCldNlqiNjxGBJEhckVDAnv520MN4ZQWxI1U9D/exec"
+    params = {"action": "lugiaRefresh"}
+    try:
+        r = requests.get(url, params=params, timeout=10)
+        print("Lugia response:", r.text)
+    except Exception as e:
+        print("Error calling Lugia:", e)
 
 # ==== Routes ====
 @app.route("/")
 def home():
     return render_template("login.html")
-
 
 # ==== Sign Up ====
 @app.route("/signup", methods=["GET", "POST"])
@@ -115,7 +121,6 @@ def signup():
 
     return render_template("signup.html")
 
-
 # ==== Confirm Detected Name ====
 @app.route("/detectname", methods=["GET", "POST"])
 def detectname():
@@ -144,7 +149,6 @@ def detectname():
 
     return render_template("detectname.html", trainer_name=details["trainer_name"])
 
-
 # ==== Age Selection ====
 @app.route("/age", methods=["GET", "POST"])
 def age():
@@ -167,6 +171,7 @@ def age():
                 datetime.utcnow().isoformat(),
                 "Kids Account"  # Column E
             ])
+            trigger_lugia_refresh()
             session.pop("signup_details", None)
             flash("👶 Kids Account created successfully!", "success")
             return redirect(url_for("home"))
@@ -174,7 +179,6 @@ def age():
             flash("Please select an option.", "warning")
 
     return render_template("age.html")
-
 
 # ==== Campfire Username Step ====
 @app.route("/campfire", methods=["GET", "POST"])
@@ -198,12 +202,12 @@ def campfire():
             datetime.utcnow().isoformat(),
             campfire_username  # Column E
         ])
+        trigger_lugia_refresh()
         session.pop("signup_details", None)
         flash("Signup successful! Please log in.", "success")
         return redirect(url_for("home"))
 
     return render_template("campfire.html")
-
 
 # ==== Login ====
 @app.route("/login", methods=["POST"])
@@ -224,7 +228,6 @@ def login():
     else:
         flash("Incorrect PIN!", "error")
         return redirect(url_for("home"))
-
 
 # ==== Recover ====
 @app.route("/recover", methods=["GET", "POST"])
@@ -249,7 +252,6 @@ def recover():
         return redirect(url_for("home"))
 
     return render_template("recover.html")
-
 
 # ==== Dashboard ====
 @app.route("/dashboard")
@@ -276,14 +278,12 @@ def dashboard():
         campfire_username=campfire_username
     )
 
-
 # ==== Logout ====
 @app.route("/logout")
 def logout():
     session.clear()
     flash("You have been logged out.", "success")
     return redirect(url_for("home"))
-
 
 # ==== Manage Account: Change PIN ====
 @app.route("/change_pin", methods=["POST"])
@@ -312,7 +312,6 @@ def change_pin():
     flash("PIN updated successfully.", "success")
     return redirect(url_for("dashboard"))
 
-
 # ==== Manage Account: Change Memorable Password ====
 @app.route("/change_memorable", methods=["POST"])
 def change_memorable():
@@ -335,7 +334,6 @@ def change_memorable():
     flash("Memorable password updated successfully.", "success")
     return redirect(url_for("dashboard"))
 
-
 # ==== Manage Account: Log Out Everywhere ====
 @app.route("/logout_everywhere", methods=["POST"])
 def logout_everywhere():
@@ -345,7 +343,6 @@ def logout_everywhere():
     session.clear()
     flash("You have been logged out everywhere.", "success")
     return redirect(url_for("home"))
-
 
 # ==== Manage Account: Delete Account ====
 @app.route("/delete_account", methods=["POST"])
@@ -368,7 +365,6 @@ def delete_account():
     flash("Your account has been permanently deleted.", "success")
     return redirect(url_for("home"))
 
-
 # ==== Passport Progress ====
 @app.route("/passport")
 def passport():
@@ -378,7 +374,6 @@ def passport():
 
     data = {"stamps": 5, "total": 10, "rewards": ["Sticker Pack", "Discount Band"]}
     return render_template("passport.html", trainer=session["trainer"], data=data, show_back=True)
-
 
 # ==== Event Check-ins ====
 @app.route("/checkins")
@@ -393,7 +388,6 @@ def checkins():
     ]
     return render_template("checkins.html", trainer=session["trainer"], events=events, show_back=True)
 
-
 # ==== Recently Claimed Prizes ====
 @app.route("/prizes")
 def prizes():
@@ -406,7 +400,6 @@ def prizes():
         {"item": "Festival Wristband", "date": "2025-08-15"},
     ]
     return render_template("prizes.html", trainer=session["trainer"], prizes=prizes, show_back=True)
-
 
 # ==== OCR Test (debug route) ====
 @app.route("/ocr_test", methods=["GET", "POST"])
@@ -456,7 +449,6 @@ def ocr_test():
         <button type="submit">Run OCR</button>
     </form>
     """
-
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)), debug=True)
