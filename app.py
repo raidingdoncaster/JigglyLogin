@@ -476,12 +476,19 @@ def change_avatar():
             flash("Please select an avatar.", "warning")
             return redirect(url_for("change_avatar"))
 
+        # Only allow valid avatars
+        allowed_avatars = [f"avatar{i}.png" for i in range(1, 13)]
+        if avatar_choice not in allowed_avatars:
+            flash("Invalid avatar selected.", "error")
+            return redirect(url_for("change_avatar"))
+
         sheet.update_cell(row, 7, avatar_choice)  # Column G
         flash("✅ Avatar updated successfully!", "success")
         return redirect(url_for("dashboard"))
 
-    current_avatar = user.get("Avatar", "")
-    return render_template("change_avatar.html", current_avatar=current_avatar)
+    current_avatar = user.get("Avatar", "avatar1.png")
+    avatars = [f"avatar{i}.png" for i in range(1, 13)]  # 👈 ADD THIS
+    return render_template("change_avatar.html", current_avatar=current_avatar, avatars=avatars)
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)), debug=True)
