@@ -1,11 +1,12 @@
 {% extends "base.html" %}
 {% block content %}
-<h2>Enter Campfire Username</h2>
+<h2 style="text-align: center; margin-bottom: 0.5em;">Campfire Username</h2>
 
-<p style="text-align: center; margin-bottom: 1.5em;">
-    Since you are 13 or older, you can link your <strong>Campfire Username</strong>.  
-    This will be used for awarding your check-in stamps, linking your profile to events and community features.
-    To find your username, head to the Campfire App, and tap your avatar icon in the bottom right corner. Your username comes after the '@' symbol.
+<p style="text-align: center; font-size: 0.9em; line-height: 1.6; margin-bottom: 1.5em;">
+    Since you are <strong>13 or older</strong>, you can link your <strong>Campfire Username</strong>.  
+    This will be used for awarding your <strong>check-in stamps</strong>, and linking your profile to events and community features.  
+    <br><br>
+    To find your username, open the <strong>Campfire App</strong>, tap your avatar in the bottom right corner, and look for the name after the <code>@</code> symbol.
 </p>
 
 <form action="{{ url_for('campfire') }}" method="post" 
@@ -13,16 +14,16 @@
 
   <label style="margin-top: 0.5em; text-align: left; width: 100%;">Campfire Username:</label>
   <input type="text" name="campfire_username" required 
-         style="margin: 0.5em 0; width: 100%;" placeholder="Your Campfire Username">
+         style="margin: 0.5em 0; width: 100%; padding: 0.5em;" placeholder="e.g. @Trainer123">
 
-  <button type="submit" style="margin-top: 1em; width: 100%;">Continue</button>
+  <button type="submit" style="margin-top: 1em; width: 100%;">Finish Signup</button>
 </form>
 
-<div class="notice">
-    🔥 If you don’t have Campfire yet, download it from your app store and create a username.
+<div class="notice" style="margin-top: 1.5em;">
+    🔥 Don’t have Campfire yet? Download it from your app store and create a username to link later.
 </div>
 
-<p style="text-align:center; margin-top: 1em;">
+<p style="text-align:center; margin-top: 1.5em;">
     <a href="{{ url_for('age') }}">⬅️ Back</a>
 </p>
 {% endblock %}

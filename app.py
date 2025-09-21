@@ -150,34 +150,28 @@ def detectname():
 def age():
     details = session.get("signup_details")
     if not details:
-        flash("Session expired. Please start again.", "warning")
+        flash("Session expired. Please try signing up again.", "warning")
         return redirect(url_for("signup"))
 
     if request.method == "POST":
-        age_choice = request.form.get("age")
-        if not age_choice:
-            flash("Please select an option.", "warning")
-            return redirect(url_for("age"))
-
-        if age_choice == "13_or_older":
-            session["signup_details"]["age_group"] = "13+"
+        choice = request.form.get("age_choice")
+        if choice == "13plus":
             flash("✅ Great! You’re signing up as 13 or older.", "success")
-            return redirect(url_for("campfire_username"))
-        elif age_choice == "12_or_younger":
-            session["signup_details"]["age_group"] = "kids"
-            session["signup_details"]["campfire_username"] = "Kids Account"
-
-            # Save immediately
+            return redirect(url_for("campfire"))
+        elif choice == "under13":
+            # Save user with Kids Account
             sheet.append_row([
                 details["trainer_name"],
                 hash_value(details["pin"]),
                 details["memorable"],
                 datetime.utcnow().isoformat(),
-                "Kids Account"
+                "Kids Account"  # Column E
             ])
             session.pop("signup_details", None)
-            flash("✅ Kids Account created successfully!", "success")
+            flash("👶 Kids Account created successfully!", "success")
             return redirect(url_for("home"))
+        else:
+            flash("Please select an option.", "warning")
 
     return render_template("age.html")
 
