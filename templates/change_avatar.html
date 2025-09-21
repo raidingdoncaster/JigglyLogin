@@ -76,6 +76,32 @@
 </style>
 
 <script>
+document.querySelector("form").addEventListener("submit", function(e) {
+    e.preventDefault(); // Stop normal form submit
+
+    const formData = new FormData(this);
+
+    fetch("{{ url_for('change_avatar') }}", {
+        method: "POST",
+        body: formData,
+        headers: { "X-Requested-With": "XMLHttpRequest" }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            // Update avatar on dashboard immediately
+            const dashboardAvatar = window.opener?.document.getElementById("dashboard-avatar");
+            if (dashboardAvatar) {
+                dashboardAvatar.src = "/static/avatars/" + data.avatar;
+            }
+            alert("✅ Avatar updated successfully!");
+            window.location.href = "{{ url_for('dashboard') }}";
+        }
+    });
+});
+</script>
+
+<script>
     // Live preview updater
     const radios = document.querySelectorAll("input[name='avatar_choice']");
     const preview = document.getElementById("selected-avatar");

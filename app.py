@@ -459,6 +459,8 @@ def ocr_test():
     </form>
     """
 
+from flask import jsonify
+
 # ==== Change Avatar ====
 @app.route("/change_avatar", methods=["GET", "POST"])
 def change_avatar():
@@ -477,18 +479,24 @@ def change_avatar():
             return redirect(url_for("change_avatar"))
 
         # Only allow valid avatars
-        allowed_avatars = [f"avatar{i}.png" for i in range(1, 13)]
-        if avatar_choice not in allowed_avatars:
-            flash("Invalid avatar selected.", "error")
+        valid_avatars = [f"avatar{i}.png" for i in range(1, 13)]
+        if avatar_choice not in valid_avatars:
+            flash("Invalid avatar choice.", "error")
             return redirect(url_for("change_avatar"))
 
-        sheet.update_cell(row, 7, avatar_choice)  # Column G
+        # Update in Google Sheet
+        sheet.update_cell(row, 7, avatar_choice)
+
+        # If AJAX, return JSON instead of redirect
+        if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+            return jsonify({"success": True, "avatar": avatar_choice})
+
         flash("✅ Avatar updated successfully!", "success")
         return redirect(url_for("dashboard"))
 
+    avatars = [f"avatar{i}.png" for i in range(1, 13)]
     current_avatar = user.get("Avatar", "avatar1.png")
-    avatars = [f"avatar{i}.png" for i in range(1, 13)]  # 👈 ADD THIS
-    return render_template("change_avatar.html", current_avatar=current_avatar, avatars=avatars)
+    return render_template("change_avatar.html", avatars=avatars, current_avatar=current_avatar)
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)), debug=True)

@@ -84,6 +84,7 @@
             border-radius: 6px;
             font-weight: 600;
             text-align: center;
+            transition: opacity 0.5s ease, transform 0.5s ease;
         }
         .flash-success {
             background: #d4edda;
@@ -131,6 +132,14 @@
                 font-size: 0.8em;
             }
         }
+
+        .logo {
+            width: 120px;
+            height: 36px;
+            background: url('/static/logo.png') no-repeat center center;
+            background-size: cover;
+        }
+
     </style>
 
     <script>
@@ -151,6 +160,17 @@
                 btn.textContent = "Show";
             }
         }
+
+        // Auto-hide flash messages after 4 seconds
+        window.addEventListener("DOMContentLoaded", () => {
+            setTimeout(() => {
+                document.querySelectorAll(".flash").forEach(el => {
+                    el.style.opacity = 0;
+                    el.style.transform = "translateY(-10px)";
+                    setTimeout(() => el.remove(), 500); // remove after fade
+                });
+            }, 4000);
+        });
     </script>
 </head>
 <body>
@@ -162,7 +182,7 @@
 
     <!-- Header -->
     <header>
-        <img src="/static/logo.png" alt="App Logo">
+        <div class="logo"></div>
         <nav>
             <a href="{{ url_for('dashboard') }}">Home</a>
             <a href="https://pogoprizes.my.canva.site" target="_blank">Back to Website</a>
@@ -197,17 +217,5 @@
             </div>
         {% endif %}
     </div>
-
-    <script>
-  // Auto-hide flash messages after 4 seconds
-  setTimeout(() => {
-    document.querySelectorAll(".flash-message").forEach(el => {
-      el.style.transition = "opacity 0.5s ease";
-      el.style.opacity = 0;
-      setTimeout(() => el.remove(), 500); // remove fully after fade
-    });
-  }, 4000);
-</script>
-
 </body>
 </html>
