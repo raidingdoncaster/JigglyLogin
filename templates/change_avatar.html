@@ -13,7 +13,7 @@
 
     {% for icon in avatars %}
     <label class="avatar-option">
-        <input type="radio" name="avatar_choice" value="{{ icon }}" {% if loop.first %}checked{% endif %}>
+        <input type="radio" name="avatar_choice" value="{{ icon }}" {% if icon == current_avatar %}checked{% endif %}>
         <div class="avatar-preview">
             <img src="{{ url_for('static', filename='avatars/' + icon) }}" alt="Avatar" class="avatar-img">
             <div class="avatar-hover"></div>
@@ -89,7 +89,7 @@ document.querySelector("form").addEventListener("submit", function(e) {
     .then(r => r.json())
     .then(data => {
         if (data.success) {
-            // Update avatar on dashboard immediately
+            // ✅ Update avatar on dashboard immediately
             const dashboardAvatar = window.opener?.document.getElementById("dashboard-avatar");
             if (dashboardAvatar) {
                 dashboardAvatar.src = "/static/avatars/" + data.avatar;
@@ -99,17 +99,15 @@ document.querySelector("form").addEventListener("submit", function(e) {
         }
     });
 });
-</script>
 
-<script>
-    // Live preview updater
-    const radios = document.querySelectorAll("input[name='avatar_choice']");
-    const preview = document.getElementById("selected-avatar");
+// Live preview updater
+const radios = document.querySelectorAll("input[name='avatar_choice']");
+const preview = document.getElementById("selected-avatar");
 
-    radios.forEach(radio => {
-        radio.addEventListener("change", () => {
-            preview.src = "/static/avatars/" + radio.value;
-        });
+radios.forEach(radio => {
+    radio.addEventListener("change", () => {
+        preview.src = "/static/avatars/" + radio.value;
     });
+});
 </script>
 {% endblock %}

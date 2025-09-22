@@ -4,7 +4,7 @@
 <!-- Trainer Card -->
 <div class="trainer-card">
     <div style="display: flex; align-items: center;">
-        <img src="{{ url_for('static', filename='avatars/' ~ avatar) }}" 
+        <img id="dashboard-avatar" src="{{ url_for('static', filename='avatars/' ~ avatar) }}" 
              alt="Avatar" 
              class="avatar">
         <div style="margin-left: 15px;">
@@ -44,8 +44,7 @@
             <ul style="list-style:none; padding:0; margin:0; font-size:0.85em; text-align:left;">
                 {% for message in inbox[:2] %}
                     <li style="margin-bottom:6px;">
-                        <strong>{{ message.title }}</strong><br>
-                        <span style="color:#555;">{{ message.date }}</span>
+                        <strong>{{ message.subject }}</strong>
                     </li>
                 {% endfor %}
             </ul>
@@ -80,7 +79,7 @@
                 <input type="password" name="new_pin" id="new_pin" pattern="\d{4}" maxlength="4" placeholder="New 4-digit PIN" required>
                 <button type="button" onclick="togglePin('new_pin', this)">Show</button>
             </div>
-            <button type="submit">Update PIN</button>
+            <button type="submit" class="btn">Update PIN</button>
         </form>
     </div>
 
@@ -89,19 +88,24 @@
         <form action="{{ url_for('change_memorable') }}" method="post">
             <input type="text" name="old_memorable" placeholder="Old Memorable" required>
             <input type="text" name="new_memorable" placeholder="New Memorable" required>
-            <button type="submit">Update Memorable</button>
+            <button type="submit" class="btn">Update Memorable</button>
         </form>
     </div>
 
     <button class="accordion-toggle">🔒 Security</button>
     <div class="accordion-content">
+        <p><strong>Last Login:</strong> {{ last_login }}</p>
+        <p><strong>Active Sessions:</strong> 1 (this device)</p>
         <form action="{{ url_for('logout_everywhere') }}" method="post">
-            <button type="submit">Log Out Everywhere</button>
+            <button type="submit" class="btn">Log Out Everywhere</button>
         </form>
     </div>
 
     <button class="accordion-toggle">🗑️ Delete Account</button>
     <div class="accordion-content">
+        <p style="color:#b00020; font-size:0.85em; font-weight:600;">
+            ⚠️ Warning: This will permanently delete your account and all Passport progress.
+        </p>
         <form action="{{ url_for('delete_account') }}" method="post">
             <input type="text" name="confirm_name" placeholder="Type your trainer name to confirm" required>
             <button type="submit" style="background:#e74c3c; color:white;">Delete My Account</button>
@@ -139,6 +143,9 @@
     box-shadow: 0 2px 6px rgba(0,0,0,0.1);
     text-align: center;
     font-size: 0.9em;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
 }
 .widget h3 {
     margin-top: 0;
@@ -153,7 +160,8 @@
     border-radius: 6px;
     text-decoration: none;
     font-size: 0.9em;
-    margin-top: 6px;
+    margin-top: auto;
+    text-align: center;
 }
 
 /* Explore Section */
@@ -167,11 +175,14 @@
 }
 .explore-card {
     background: #ff7675;
-    padding: 20px;
+    height: 80px;
     border-radius: 8px;
     text-align: center;
     font-weight: 600;
     color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 /* Manage Account */
@@ -211,6 +222,7 @@
     padding: 8px;
     border-radius: 6px;
     border: 1px solid #ccc;
+    box-sizing: border-box;
 }
 </style>
 

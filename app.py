@@ -294,8 +294,13 @@ def dashboard():
         flash("You must be logged in to view the dashboard.", "warning")
         return redirect(url_for("home"))
 
+    # ✅ Always reload fresh from Sheets
     row, user = find_user(session["trainer"])
-    last_login = user.get("Last Login") if user else None
+    if not user:
+        flash("User not found.", "error")
+        return redirect(url_for("home"))
+
+    last_login = user.get("Last Login")
     campfire_username = user.get("Campfire Username", "")
     avatar = user.get("Avatar", "avatar1.png")  # Column G
 
@@ -304,18 +309,6 @@ def dashboard():
         account_type = "Kids Account"
     else:
         account_type = "Standard Account"
-
-    # Placeholder demo data
-    data = {"stamps": 5, "total": 10, "rewards": ["Sticker Pack", "Discount Band"]}
-    events = [
-        {"name": "Max Finale: Eternatus", "date": "2025-07-23"},
-        {"name": "Wild Area Community Day", "date": "2025-08-15"},
-    ]
-    inbox = [
-        {"subject": "🎉 You earned a new stamp!"},
-        {"subject": "📅 New meetup near you this weekend"},
-        {"subject": "🎁 Claim your Doncaster T-shirt reward"},
-    ]
 
     return render_template(
         "dashboard.html",
