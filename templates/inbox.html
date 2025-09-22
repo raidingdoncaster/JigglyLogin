@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>📨 Inbox</h2>
+
+{% if inbox and inbox|length > 0 %}
+    <div style="margin-top: 15px;">
+        {% for msg in inbox %}
+            <div style="background: #f4f7fa; padding: 12px; margin: 10px 0; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
+                <h3 style="margin: 0 0 5px 0; font-size: 1em; color:#3a8dde;">{{ msg.subject }}</h3>
+                <p style="margin: 0; font-size: 0.8em; color:#555;"><em>{{ msg.date }}</em></p>
+                <p style="margin-top: 8px; font-size: 0.9em; color:#333;">{{ msg.content }}</p>
+            </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <p style="color: #666; font-style: italic;">No messages in your inbox.</p>
+{% endif %}
+{% endblock %}

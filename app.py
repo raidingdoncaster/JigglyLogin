@@ -87,6 +87,33 @@ def trigger_lugia_refresh():
     except Exception as e:
         print("Error calling Lugia:", e)
 
+def get_passport_stamps(username):
+    stamps = []
+
+    # Pull ledger records
+    ledger = client.open("POGO Passport Sign-Ins").worksheet("Lugia_Ledger")
+    events = client.open("POGO Passport Sign-Ins").worksheet("events")
+
+    ledger_records = ledger.get_all_records()
+    event_records = events.get_all_records()
+
+    # Event mapping: {name: cover_photo_url}
+    event_map = {r["Name"]: r["cover_photo_url"] for r in event_records}
+
+    for record in ledger_records:
+        if record["Trainer Username"].lower() == username.lower():
+            reason = record["Reason"]
+            count = record["Count"]
+
+            if reason.lower() == "signup bonus":
+                icon = url_for("static", filename="avatars/avatar1.png")
+            else:
+                icon = event_map.get(reason, url_for("static", filename="avatars/avatar1.png"))
+
+            stamps.append({"icon": icon, "name": reason, "count": count})
+
+    return stamps
+
 # ==== Routes ====
 @app.route("/")
 def home():
@@ -270,7 +297,7 @@ def dashboard():
     row, user = find_user(session["trainer"])
     last_login = user.get("Last Login") if user else None
     campfire_username = user.get("Campfire Username", "")
-    avatar = user.get("Avatar Icon", "avatar1.png")  # Column G
+    avatar = user.get("Avatar", "avatar1.png")  # Column G
 
     # Detect account type
     if campfire_username == "Kids Account":
@@ -278,14 +305,45 @@ def dashboard():
     else:
         account_type = "Standard Account"
 
+    # Placeholder demo data
+    data = {"stamps": 5, "total": 10, "rewards": ["Sticker Pack", "Discount Band"]}
+    events = [
+        {"name": "Max Finale: Eternatus", "date": "2025-07-23"},
+        {"name": "Wild Area Community Day", "date": "2025-08-15"},
+    ]
+    inbox = [
+        {"subject": "🎉 You earned a new stamp!"},
+        {"subject": "📅 New meetup near you this weekend"},
+        {"subject": "🎁 Claim your Doncaster T-shirt reward"},
+    ]
+
     return render_template(
         "dashboard.html",
         trainer=session["trainer"],
         last_login=last_login,
         account_type=account_type,
         campfire_username=campfire_username,
-        avatar=avatar
+        avatar=avatar,
+        data=data,
+        events=events,
+        inbox=inbox
     )
+
+# ==== Inbox ====
+@app.route("/inbox")
+def inbox():
+    if "trainer" not in session:
+        flash("Please log in to view your inbox.", "warning")
+        return redirect(url_for("home"))
+
+    # Placeholder inbox messages
+    inbox_messages = [
+        {"subject": "🎉 You earned a new stamp!", "date": "2025-09-20", "content": "Congrats on checking in at Wild Area. You’ve been awarded a stamp."},
+        {"subject": "📅 New meetup near you", "date": "2025-09-19", "content": "Join us for the Doncaster meetup this weekend. RSVP now to secure your spot."},
+        {"subject": "🎁 Claim your reward", "date": "2025-09-18", "content": "You’ve unlocked a T-shirt from your Passport progress! Collect at the next event."},
+    ]
+
+    return render_template("inbox.html", trainer=session["trainer"], inbox=inbox_messages, show_back=True)
 
 # ==== Logout ====
 @app.route("/logout")
@@ -381,8 +439,40 @@ def passport():
         flash("Please log in to view your passport progress.", "warning")
         return redirect(url_for("home"))
 
-    data = {"stamps": 5, "total": 10, "rewards": ["Sticker Pack", "Discount Band"]}
-    return render_template("passport.html", trainer=session["trainer"], data=data, show_back=True)
+    username = session["trainer"]
+
+    # 🔍 Collect stamps from Lugia_Ledger
+    records = client.open("POGO Passport Sign-Ins").worksheet("Lugia_Ledger").get_all_records()
+    events = client.open("POGO Passport Sign-Ins").worksheet("events").get_all_records()
+
+    stamps = []
+    for record in records:
+        if record.get("Trainer Username", "").lower() == username.lower():
+            reason = record.get("Reason")
+            count = record.get("Count", 1)
+
+            # Default icon if not matched
+            icon = url_for("static", filename="avatars/avatar1.png")
+
+            if reason and reason.lower() != "signup bonus":
+                # Try to match against events tab
+                for ev in events:
+                    if ev.get("Name", "").lower() == reason.lower():
+                        icon = ev.get("cover_photo_url", icon)
+                        break
+
+            stamps.append({
+                "name": reason,
+                "count": count,
+                "icon": icon
+            })
+
+    return render_template(
+        "passport.html",
+        trainer=username,
+        stamps=stamps,
+        show_back=True
+    )
 
 # ==== Event Check-ins ====
 @app.route("/checkins")

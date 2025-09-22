@@ -1,164 +1,232 @@
 {% extends "base.html" %}
 {% block content %}
 
-<div style="display: flex; align-items: center; margin-bottom: 20px;">
-    <!-- Avatar Icon -->
-    <div style="position: relative; display: inline-block;">
+<!-- Trainer Card -->
+<div class="trainer-card">
+    <div style="display: flex; align-items: center;">
         <img src="{{ url_for('static', filename='avatars/' ~ avatar) }}" 
-             alt="Avatar Icon" 
-             style="width: 64px; height: 64px; border-radius: 50%; border: 2px solid #3a8dde;">
-        <!-- Edit Avatar Icon -->
-        <a href="{{ url_for('change_avatar') }}" 
-           style="position: absolute; bottom: 0; right: 0; background: #3a8dde; color: white; border-radius: 50%; padding: 4px; font-size: 0.8em; text-decoration: none;">
-            ✏️
-        </a>
+             alt="Avatar" 
+             class="avatar">
+        <div style="margin-left: 15px;">
+            <h2 style="margin: 0;">Welcome, {{ trainer }}!</h2>
+            <p style="font-size: 0.9em; color: #555;">
+                Last login: {{ last_login }}
+            </p>
+            <p><strong>Account Type:</strong> {{ account_type }}</p>
+            {% if account_type != "Kids Account" %}
+                <p><strong>Campfire Username:</strong> {{ campfire_username }}</p>
+            {% endif %}
+        </div>
     </div>
-
-    <div style="margin-left: 15px;">
-        <h2 style="margin: 0;">Welcome, {{ trainer }}!</h2>
-        {% if account_type == "Kids Account" %}
-            <p style="margin: 4px 0;"><strong>Account Type:</strong> 👶 Kids Account</p>
-        {% else %}
-            <p style="margin: 4px 0;"><strong>Account Type:</strong> Standard Account</p>
-            <p style="margin: 4px 0;"><strong>Campfire Username:</strong> {{ campfire_username }}</p>
-        {% endif %}
+    <div style="margin-top: 10px; text-align: right;">
+        <a href="{{ url_for('change_avatar') }}" 
+           style="font-size: 0.85em; color: #3a8dde; text-decoration: none;">
+           ✏️ Change Avatar
+        </a>
     </div>
 </div>
 
-{% if last_login %}
-    <p style="text-align: center; font-size: 0.9em; color: #555;">
-        Last login: {{ last_login }}
-    </p>
-{% endif %}
+<!-- Widgets -->
+<div class="widgets">
+    <div class="widget">
+        <h3>🎟️ Passport Progress</h3>
+        <p>Your stamps: {{ data.stamps }}/{{ data.total }}</p>
+        <a href="{{ url_for('passport') }}" class="btn">View Full Passport</a>
+    </div>
+    <div class="widget">
+        <h3>📅 Upcoming Meet-ups</h3>
+        <p>No events yet</p>
+        <a href="{{ url_for('checkins') }}" class="btn">See Calendar</a>
+    </div>
+    <div class="widget">
+        <h3>📨 Inbox</h3>
+        {% if inbox and inbox|length > 0 %}
+            <ul style="list-style:none; padding:0; margin:0; font-size:0.85em; text-align:left;">
+                {% for message in inbox[:2] %}
+                    <li style="margin-bottom:6px;">
+                        <strong>{{ message.title }}</strong><br>
+                        <span style="color:#555;">{{ message.date }}</span>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p>No messages yet</p>
+        {% endif %}
+        <a href="{{ url_for('inbox') }}" class="btn">View Inbox</a>
+    </div>
+</div>
 
-<p style="text-align: center; margin-bottom: 1.5em;">
-    Choose an option below:
-</p>
-
-<!-- Main navigation -->
-<div style="display: grid; grid-template-columns: 1fr; gap: 15px; margin-top: 20px;">
-    <a href="{{ url_for('passport') }}"
-       style="display: block; padding: 15px; background: #3a8dde; color: white; text-align: center; font-weight: 600; border-radius: 8px; text-decoration: none;">
-        🎟️ Passport Progress
-    </a>
-    <a href="{{ url_for('checkins') }}"
-       style="display: block; padding: 15px; background: #5eb8ff; color: white; text-align: center; font-weight: 600; border-radius: 8px; text-decoration: none;">
-        📍 Event Check-ins
-    </a>
-    <a href="{{ url_for('prizes') }}"
-       style="display: block; padding: 15px; background: #2ecc71; color: white; text-align: center; font-weight: 600; border-radius: 8px; text-decoration: none;">
-        🎁 Recently Claimed Prizes
-    </a>
+<!-- Explore Section -->
+<div class="explore">
+    <h3>🔍 Explore</h3>
+    <div class="explore-grid">
+        <div class="explore-card">📖 Catalog</div>
+        <div class="explore-card">🎁 Perks</div>
+        <div class="explore-card">🌆 City Guides</div>
+        <div class="explore-card">⚔️ Leagues</div>
+    </div>
 </div>
 
 <!-- Manage Account -->
-<div style="margin-top: 30px; padding: 15px; border: 1px solid #ccc; border-radius: 8px;">
-    <h3 style="margin-top: 0; text-align: center;">⚙️ Manage My Account</h3>
+<div class="manage-account">
+    <h3>⚙️ Manage My Account</h3>
 
-    <div class="accordion">
-        <!-- Change PIN -->
-        <button type="button" class="accordion-toggle">🔑 Change PIN</button>
-        <div class="accordion-content">
-            <form action="{{ url_for('change_pin') }}" method="post" style="margin-top: 10px;">
-                <input type="password" name="old_pin" placeholder="Old PIN" required style="width: 100%; margin: 5px 0;">
-                <input type="text" name="memorable" placeholder="Memorable Password" required style="width: 100%; margin: 5px 0;">
-                <div style="display: flex; align-items: center; margin: 5px 0;">
-                    <input type="password" name="new_pin" id="new_pin" pattern="\d{4}" maxlength="4" placeholder="New 4-digit PIN" required style="flex: 1;">
-                    <button type="button" onclick="togglePin()" style="margin-left: 5px; padding: 6px 10px; font-size: 0.8em;">Show</button>
-                </div>
-                <button type="submit" style="margin-top: 10px; width: 100%;">Update PIN</button>
-            </form>
-        </div>
+    <button class="accordion-toggle">🔑 Change PIN</button>
+    <div class="accordion-content">
+        <form action="{{ url_for('change_pin') }}" method="post">
+            <input type="password" name="old_pin" placeholder="Old PIN" required>
+            <input type="text" name="memorable" placeholder="Memorable Password" required>
+            <div class="pin-group">
+                <input type="password" name="new_pin" id="new_pin" pattern="\d{4}" maxlength="4" placeholder="New 4-digit PIN" required>
+                <button type="button" onclick="togglePin('new_pin', this)">Show</button>
+            </div>
+            <button type="submit">Update PIN</button>
+        </form>
+    </div>
 
-        <!-- Change Memorable -->
-        <button type="button" class="accordion-toggle">📝 Change Memorable Password</button>
-        <div class="accordion-content">
-            <form action="{{ url_for('change_memorable') }}" method="post" style="margin-top: 10px;">
-                <input type="text" name="old_memorable" placeholder="Old Memorable" required style="width: 100%; margin: 5px 0;">
-                <input type="text" name="new_memorable" placeholder="New Memorable" required style="width: 100%; margin: 5px 0;">
-                <button type="submit" style="margin-top: 10px; width: 100%;">Update Memorable</button>
-            </form>
-        </div>
+    <button class="accordion-toggle">📝 Change Memorable Password</button>
+    <div class="accordion-content">
+        <form action="{{ url_for('change_memorable') }}" method="post">
+            <input type="text" name="old_memorable" placeholder="Old Memorable" required>
+            <input type="text" name="new_memorable" placeholder="New Memorable" required>
+            <button type="submit">Update Memorable</button>
+        </form>
+    </div>
 
-        <!-- Security -->
-        <button type="button" class="accordion-toggle">🔒 Security</button>
-        <div class="accordion-content">
-            <form action="{{ url_for('logout_everywhere') }}" method="post">
-                <button type="submit" style="width: 100%;">Log Out Everywhere</button>
-            </form>
-        </div>
+    <button class="accordion-toggle">🔒 Security</button>
+    <div class="accordion-content">
+        <form action="{{ url_for('logout_everywhere') }}" method="post">
+            <button type="submit">Log Out Everywhere</button>
+        </form>
+    </div>
 
-        <!-- Delete Account -->
-        <button type="button" class="accordion-toggle">🗑️ Delete Account</button>
-        <div class="accordion-content">
-            <p style="font-size: 0.9em; color: #b00;">
-                ⚠️ This will permanently delete your account, including:  
-                Passport stamps, RDAB profile, and prize history.  
-                <strong>This cannot be undone.</strong>
-            </p>
-            <form action="{{ url_for('delete_account') }}" method="post">
-                <input type="text" name="confirm_name" placeholder="Type your trainer name to confirm" required style="width: 100%; margin: 5px 0;">
-                <button type="submit" style="margin-top: 10px; width: 100%; background: #e74c3c; color: white;">Delete My Account</button>
-            </form>
-        </div>
+    <button class="accordion-toggle">🗑️ Delete Account</button>
+    <div class="accordion-content">
+        <form action="{{ url_for('delete_account') }}" method="post">
+            <input type="text" name="confirm_name" placeholder="Type your trainer name to confirm" required>
+            <button type="submit" style="background:#e74c3c; color:white;">Delete My Account</button>
+        </form>
     </div>
 </div>
 
-<script>
-    // Accordion toggle
-    document.querySelectorAll(".accordion-toggle").forEach(btn => {
-        btn.addEventListener("click", () => {
-            btn.classList.toggle("active");
-            const content = btn.nextElementSibling;
-            if (content.style.maxHeight) {
-                content.style.maxHeight = null;
-            } else {
-                content.style.maxHeight = content.scrollHeight + "px";
-            }
-        });
-    });
-
-    // Show/hide PIN toggle
-    function togglePin() {
-        const input = document.getElementById("new_pin");
-        const btn = event.target;
-        if (input.type === "password") {
-            input.type = "text";
-            btn.textContent = "Hide";
-        } else {
-            input.type = "password";
-            btn.textContent = "Show";
-        }
-    }
-</script>
-
 <style>
-    .accordion button.accordion-toggle {
-        width: 100%;
-        text-align: left;
-        padding: 10px;
-        background: #f0f0f0;
-        border: none;
-        border-radius: 6px;
-        font-weight: 600;
-        cursor: pointer;
-        margin-top: 8px;
-    }
-    .accordion button.accordion-toggle.active {
-        background: #ddd;
-    }
-    .accordion .accordion-content {
-        max-height: 0;
-        overflow: hidden;
-        transition: max-height 0.3s ease;
-        padding: 0 5px;
-    }
-    .accordion .accordion-content form input,
-    .accordion .accordion-content form button {
-        padding: 8px;
-        border: 1px solid #ccc;
-        border-radius: 6px;
-    }
+/* Trainer Card */
+.trainer-card {
+    background: #f4f7fa;
+    border-radius: 12px;
+    padding: 15px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+.avatar {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    border: 3px solid #3a8dde;
+}
+
+/* Widgets */
+.widgets {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+}
+.widget {
+    background: #fff;
+    padding: 12px;
+    border-radius: 10px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    text-align: center;
+    font-size: 0.9em;
+}
+.widget h3 {
+    margin-top: 0;
+    font-size: 1em;
+    color: #3a8dde;
+}
+.btn {
+    display: inline-block;
+    padding: 6px 12px;
+    background: #3a8dde;
+    color: white;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 0.9em;
+    margin-top: 6px;
+}
+
+/* Explore Section */
+.explore {
+    margin-bottom: 20px;
+}
+.explore-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+}
+.explore-card {
+    background: #ff7675;
+    padding: 20px;
+    border-radius: 8px;
+    text-align: center;
+    font-weight: 600;
+    color: white;
+}
+
+/* Manage Account */
+.manage-account {
+    background: #fff;
+    border: 1px solid #ccc;
+    border-radius: 12px;
+    padding: 15px;
+}
+.manage-account h3 {
+    margin-top: 0;
+    text-align: center;
+}
+.accordion-toggle {
+    width: 100%;
+    text-align: left;
+    padding: 10px;
+    background: #f0f0f0;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 8px;
+}
+.accordion-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+    padding: 0 5px;
+}
+.accordion-content form {
+    margin-top: 10px;
+}
+.accordion-content input, .accordion-content button {
+    width: 100%;
+    margin: 5px 0;
+    padding: 8px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+}
 </style>
+
+<script>
+// Accordion toggle
+document.querySelectorAll(".accordion-toggle").forEach(btn => {
+    btn.addEventListener("click", () => {
+        btn.classList.toggle("active");
+        const content = btn.nextElementSibling;
+        if (content.style.maxHeight) {
+            content.style.maxHeight = null;
+        } else {
+            content.style.maxHeight = content.scrollHeight + "px";
+        }
+    });
+});
+</script>
 
 {% endblock %}

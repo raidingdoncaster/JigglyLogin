@@ -1,14 +1,76 @@
 {% extends "base.html" %}
-{% set show_back = true %}
 {% block content %}
-<h2>🎟️ Passport Progress</h2>
-<p>Trainer: {{ trainer }}</p>
-<p>You have <strong>{{ data.stamps }}</strong>,nice work! </p>
+<h2 style="text-align: center; margin-bottom: 1em;">🎟️ Passport Progress</h2>
 
-<h3>Unlocked Rewards:</h3>
-<ul>
-    {% for reward in data.rewards %}
-        <li>{{ reward }}</li>
+{% if stamps and stamps|length > 0 %}
+  <div class="stamps-grid">
+    {% for stamp in stamps %}
+      <div class="stamp-card">
+        <div class="stamp-icon">
+          <img src="{{ stamp.icon }}" alt="{{ stamp.name }}">
+          {% if stamp.count|int > 1 %}
+            <span class="stamp-count">x{{ stamp.count }}</span>
+          {% endif %}
+        </div>
+        <p class="stamp-name">{{ stamp.name }}</p>
+      </div>
     {% endfor %}
-</ul>
+  </div>
+{% else %}
+  <p style="text-align:center; color:#555;">You don’t have any stamps yet. Check in at events to earn them!</p>
+{% endif %}
+
+{% if show_back %}
+  <div style="margin-top: 20px; text-align: center;">
+    <a href="{{ url_for('dashboard') }}" 
+       style="display: inline-block; padding: 10px 18px; background: #3a8dde; color: white; border-radius: 6px; text-decoration: none; font-weight: 600;">
+      ⬅ Back to Dashboard
+    </a>
+  </div>
+{% endif %}
+
+<style>
+  .stamps-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 15px;
+    margin-top: 1.5em;
+  }
+  .stamp-card {
+    background: #f9f9f9;
+    border-radius: 10px;
+    text-align: center;
+    padding: 10px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  }
+  .stamp-icon {
+    position: relative;
+    width: 64px;
+    height: 64px;
+    margin: 0 auto 8px;
+  }
+  .stamp-icon img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+  .stamp-count {
+    position: absolute;
+    bottom: -5px;
+    right: -5px;
+    background: #3a8dde;
+    color: white;
+    font-size: 0.8em;
+    font-weight: 600;
+    padding: 3px 6px;
+    border-radius: 50%;
+    border: 2px solid white;
+  }
+  .stamp-name {
+    font-size: 0.85em;
+    color: #333;
+    font-weight: 600;
+    margin: 0;
+  }
+</style>
 {% endblock %}
