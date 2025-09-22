@@ -270,7 +270,7 @@ def dashboard():
     row, user = find_user(session["trainer"])
     last_login = user.get("Last Login") if user else None
     campfire_username = user.get("Campfire Username", "")
-    avatar = user.get("Avatar", "avatar1.png")  # Column G
+    avatar = user.get("Avatar Icon", "avatar1.png")  # Column G
 
     # Detect account type
     if campfire_username == "Kids Account":

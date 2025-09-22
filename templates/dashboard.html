@@ -1,31 +1,35 @@
 {% extends "base.html" %}
 {% block content %}
-<div style="display: flex; align-items: center; gap: 15px; margin-bottom: 20px;">
-    <!-- Avatar -->
-    <img id="dashboard-avatar"
-         src="{{ url_for('static', filename='avatars/' + avatar) }}"
-         alt="Avatar"
-         style="width: 80px; height: 80px; border-radius: 50%; border: 3px solid #3a8dde; object-fit: cover; box-shadow: 0 0 8px rgba(58,141,222,0.6);">
 
-    <!-- Welcome + Info -->
-    <div>
+<div style="display: flex; align-items: center; margin-bottom: 20px;">
+    <!-- Avatar Icon -->
+    <div style="position: relative; display: inline-block;">
+        <img src="{{ url_for('static', filename='avatars/' ~ avatar) }}" 
+             alt="Avatar Icon" 
+             style="width: 64px; height: 64px; border-radius: 50%; border: 2px solid #3a8dde;">
+        <!-- Edit Avatar Icon -->
+        <a href="{{ url_for('change_avatar') }}" 
+           style="position: absolute; bottom: 0; right: 0; background: #3a8dde; color: white; border-radius: 50%; padding: 4px; font-size: 0.8em; text-decoration: none;">
+            ✏️
+        </a>
+    </div>
+
+    <div style="margin-left: 15px;">
         <h2 style="margin: 0;">Welcome, {{ trainer }}!</h2>
-        {% if last_login %}
-            <p style="font-size: 0.9em; color: #555; margin: 4px 0;">
-                Last login: {{ last_login }}
-            </p>
+        {% if account_type == "Kids Account" %}
+            <p style="margin: 4px 0;"><strong>Account Type:</strong> 👶 Kids Account</p>
+        {% else %}
+            <p style="margin: 4px 0;"><strong>Account Type:</strong> Standard Account</p>
+            <p style="margin: 4px 0;"><strong>Campfire Username:</strong> {{ campfire_username }}</p>
         {% endif %}
-        <p style="margin: 2px 0;"><strong>Account Type:</strong> {{ account_type }}</p>
-        {% if account_type != "Kids Account" %}
-            <p style="margin: 2px 0;"><strong>Campfire Username:</strong> {{ campfire_username }}</p>
-        {% endif %}
-        <p style="margin: 2px 0;">
-            <a href="{{ url_for('change_avatar') }}" style="font-size: 0.85em; text-decoration: none; color: #3a8dde;">
-                ✏️ Change Avatar
-            </a>
-        </p>
     </div>
 </div>
+
+{% if last_login %}
+    <p style="text-align: center; font-size: 0.9em; color: #555;">
+        Last login: {{ last_login }}
+    </p>
+{% endif %}
 
 <p style="text-align: center; margin-bottom: 1.5em;">
     Choose an option below:
@@ -50,7 +54,7 @@
 <!-- Manage Account -->
 <div style="margin-top: 30px; padding: 15px; border: 1px solid #ccc; border-radius: 8px;">
     <h3 style="margin-top: 0; text-align: center;">⚙️ Manage My Account</h3>
-    <!-- Accordion sections -->
+
     <div class="accordion">
         <!-- Change PIN -->
         <button type="button" class="accordion-toggle">🔑 Change PIN</button>
@@ -59,8 +63,7 @@
                 <input type="password" name="old_pin" placeholder="Old PIN" required style="width: 100%; margin: 5px 0;">
                 <input type="text" name="memorable" placeholder="Memorable Password" required style="width: 100%; margin: 5px 0;">
                 <div style="display: flex; align-items: center; margin: 5px 0;">
-                    <input type="password" name="new_pin" id="new_pin" pattern="\d{4}" maxlength="4"
-                           placeholder="New 4-digit PIN" required style="flex: 1;">
+                    <input type="password" name="new_pin" id="new_pin" pattern="\d{4}" maxlength="4" placeholder="New 4-digit PIN" required style="flex: 1;">
                     <button type="button" onclick="togglePin()" style="margin-left: 5px; padding: 6px 10px; font-size: 0.8em;">Show</button>
                 </div>
                 <button type="submit" style="margin-top: 10px; width: 100%;">Update PIN</button>
@@ -89,21 +92,18 @@
         <button type="button" class="accordion-toggle">🗑️ Delete Account</button>
         <div class="accordion-content">
             <p style="font-size: 0.9em; color: #b00;">
-                ⚠️ This will permanently delete your account, including Passport stamps, RDAB profile, and prize history.  
+                ⚠️ This will permanently delete your account, including:  
+                Passport stamps, RDAB profile, and prize history.  
                 <strong>This cannot be undone.</strong>
             </p>
             <form action="{{ url_for('delete_account') }}" method="post">
-                <input type="text" name="confirm_name" placeholder="Type your trainer name to confirm"
-                       required style="width: 100%; margin: 5px 0;">
-                <button type="submit" style="margin-top: 10px; width: 100%; background: #e74c3c; color: white;">
-                    Delete My Account
-                </button>
+                <input type="text" name="confirm_name" placeholder="Type your trainer name to confirm" required style="width: 100%; margin: 5px 0;">
+                <button type="submit" style="margin-top: 10px; width: 100%; background: #e74c3c; color: white;">Delete My Account</button>
             </form>
         </div>
     </div>
 </div>
 
-<!-- Scripts -->
 <script>
     // Accordion toggle
     document.querySelectorAll(".accordion-toggle").forEach(btn => {
@@ -130,18 +130,6 @@
             btn.textContent = "Show";
         }
     }
-
-    // Auto-hide flash messages
-    window.addEventListener("DOMContentLoaded", () => {
-        const flash = document.querySelector(".flash-message");
-        if (flash) {
-            setTimeout(() => {
-                flash.style.transition = "opacity 1s ease";
-                flash.style.opacity = "0";
-                setTimeout(() => flash.remove(), 1000);
-            }, 4000); // 4 seconds
-        }
-    });
 </script>
 
 <style>
@@ -172,4 +160,5 @@
         border-radius: 6px;
     }
 </style>
+
 {% endblock %}
