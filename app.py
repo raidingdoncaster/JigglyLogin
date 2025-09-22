@@ -288,16 +288,18 @@ def recover():
     return render_template("recover.html")
 
 # ==== Dashboard ====
+# ==== Dashboard ====
 @app.route("/dashboard")
 def dashboard():
     if "trainer" not in session:
         flash("You must be logged in to view the dashboard.", "warning")
         return redirect(url_for("home"))
 
-    # ✅ Always reload fresh from Sheets
+    # ✅ Always re-fetch latest row from Google Sheets
     row, user = find_user(session["trainer"])
     if not user:
-        flash("User not found.", "error")
+        flash("User not found. Please log in again.", "error")
+        session.clear()
         return redirect(url_for("home"))
 
     last_login = user.get("Last Login")
@@ -310,13 +312,29 @@ def dashboard():
     else:
         account_type = "Standard Account"
 
+    # ✅ Cache-buster for avatar (forces reload)
+    import time
+    avatar_url = url_for("static", filename=f"avatars/{avatar}") + f"?v={int(time.time())}"
+
+    # Demo data (placeholder until fully wired up)
+    data = {"stamps": 5, "total": 10, "rewards": ["Sticker Pack", "Discount Band"]}
+    events = [
+        {"name": "Max Finale: Eternatus", "date": "2025-07-23"},
+        {"name": "Wild Area Community Day", "date": "2025-08-15"},
+    ]
+    inbox = [
+        {"subject": "🎉 You earned a new stamp!"},
+        {"subject": "📅 New meetup near you this weekend"},
+        {"subject": "🎁 Claim your Doncaster T-shirt reward"},
+    ]
+
     return render_template(
         "dashboard.html",
-        trainer=session["trainer"],
+        trainer=user.get("Trainer Username", session["trainer"]),  # ✅ safe fallback
         last_login=last_login,
         account_type=account_type,
         campfire_username=campfire_username,
-        avatar=avatar,
+        avatar=avatar_url,   # ✅ pass cache-busted URL
         data=data,
         events=events,
         inbox=inbox
