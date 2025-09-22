@@ -45,9 +45,9 @@ def find_user(username):
     records = sheet.get_all_records()
     for i, record in enumerate(records, start=2):  # row 1 = header
         if record.get("Trainer Username", "").lower() == username.lower():
-            # Ensure Avatar field always exists
-            if "Avatar" not in record or not record["Avatar"]:
-                record["Avatar"] = "avatar1.png"  # default avatar
+            # Ensure Avatar Icon field always exists
+            if "Avatar Icon" not in record or not record["Avatar Icon"]:
+                record["Avatar Icon"] = "avatar1.png"  # default avatar
             return i, record
     return None, None
 
@@ -294,28 +294,14 @@ def dashboard():
         flash("You must be logged in to view the dashboard.", "warning")
         return redirect(url_for("home"))
 
-    # ✅ Always re-fetch the latest row from Google Sheets
     row, user = find_user(session["trainer"])
-    if not user:
-        flash("User not found. Please log in again.", "error")
-        session.clear()
-        return redirect(url_for("home"))
-
-    last_login = user.get("Last Login")
+    last_login = user.get("Last Login") if user else None
     campfire_username = user.get("Campfire Username", "")
+    avatar = user.get("Avatar Icon", "avatar1.png")  # ✅ FIX: Column G
 
-    # ✅ Ensure Avatar always has a valid filename
-    avatar = user.get("Avatar")
-    if not avatar or not avatar.strip():
-        avatar = "avatar1.png"
+    account_type = "Kids Account" if campfire_username == "Kids Account" else "Standard Account"
 
-    # ✅ Detect account type
-    if campfire_username == "Kids Account":
-        account_type = "Kids Account"
-    else:
-        account_type = "Standard Account"
-
-    # Placeholder demo data
+    # Demo data
     data = {"stamps": 5, "total": 10, "rewards": ["Sticker Pack", "Discount Band"]}
     events = [
         {"name": "Max Finale: Eternatus", "date": "2025-07-23"},
@@ -333,11 +319,10 @@ def dashboard():
         last_login=last_login,
         account_type=account_type,
         campfire_username=campfire_username,
-        avatar=avatar,  # ✅ Always correct
+        avatar=avatar,
         data=data,
         events=events,
-        inbox=inbox,
-        cache_buster=datetime.utcnow().timestamp()  # ✅ bust browser cache
+        inbox=inbox
     )
 
 # ==== Inbox ====
@@ -579,40 +564,24 @@ def change_avatar():
 
     if request.method == "POST":
         avatar_choice = request.form.get("avatar_choice")
-        if not avatar_choice:
-            flash("Please select an avatar.", "warning")
-            return redirect(url_for("change_avatar"))
-
-        # ✅ Only allow valid avatars
         valid_avatars = [f"avatar{i}.png" for i in range(1, 13)]
+
         if avatar_choice not in valid_avatars:
             flash("Invalid avatar choice.", "error")
             return redirect(url_for("change_avatar"))
 
-        # Update in Google Sheet (Column G)
+        # Update Google Sheet Column G
         sheet.update_cell(row, 7, avatar_choice)
 
-        # Return JSON for AJAX
+        # ✅ AJAX: return JSON if called via fetch()
         if request.headers.get("X-Requested-With") == "XMLHttpRequest":
-            return jsonify({
-                "success": True,
-                "avatar": avatar_choice,
-                "cache_buster": str(int(time.time()))  # 💡 cache-busting timestamp
-            })
+            return jsonify({"success": True, "avatar": avatar_choice})
 
         flash("✅ Avatar updated successfully!", "success")
         return redirect(url_for("dashboard"))
 
-    # GET → render page
     avatars = [f"avatar{i}.png" for i in range(1, 13)]
-    current_avatar = user.get("Avatar", "avatar1.png")
-
-    return render_template(
-        "change_avatar.html",
-        avatars=avatars,
-        current_avatar=current_avatar,
-        cache_buster=str(int(time.time()))  # pass cache-buster to template
-    )
-
+    current_avatar = user.get("Avatar Icon", "avatar1.png")
+    return render_template("change_avatar.html", avatars=avatars, current_avatar=current_avatar)
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)), debug=True)

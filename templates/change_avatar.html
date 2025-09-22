@@ -1,116 +1,64 @@
 {% extends "base.html" %}
 {% block content %}
-<h2 style="text-align: center; margin-bottom: 1em;">Choose Your Avatar</h2>
+<h2 style="text-align:center; margin-bottom:1em;">Choose Your Avatar</h2>
 
-<!-- Live Preview -->
-<div id="avatar-preview-box" style="text-align:center; margin-bottom: 1.5em;">
-    <img id="selected-avatar" 
-         src="{{ url_for('static', filename='avatars/' + current_avatar) }}?v={{ cache_buster }}"
-         alt="Selected Avatar" 
-         style="width: 80px; height: 80px; border-radius: 50%; border: 3px solid #3a8dde; box-shadow: 0 0 8px rgba(58,141,222,0.6);">
-    <p style="margin-top: 0.5em; font-size: 0.9em; color: #555;">Your selected avatar</p>
+<div style="text-align:center; margin-bottom:1.5em;">
+  <img id="selected-avatar" src="{{ url_for('static', filename='avatars/' + current_avatar) }}"
+       alt="Selected Avatar" style="width:80px; height:80px; border-radius:50%; border:3px solid #3a8dde;">
+  <p style="margin-top:0.5em; font-size:0.9em; color:#555;">Your current avatar</p>
 </div>
 
-<form id="avatar-form" action="{{ url_for('change_avatar') }}" method="post" style="display: flex; flex-wrap: wrap; justify-content: center; gap: 20px;">
-
-    {% for icon in avatars %}
-    <label class="avatar-option">
-        <input type="radio" name="avatar_choice" value="{{ icon }}" {% if icon == current_avatar %}checked{% endif %}>
-        <div class="avatar-preview">
-            <img src="{{ url_for('static', filename='avatars/' + icon) }}?v={{ cache_buster }}" alt="Avatar" class="avatar-img">
-            <div class="avatar-hover"></div>
-        </div>
-    </label>
-    {% endfor %}
-
-    <button type="submit" style="margin-top: 20px; padding: 10px 20px; font-size: 1em; border-radius: 6px; background: #3a8dde; color: white; border: none; cursor: pointer;">
-        Save Avatar
-    </button>
+<form id="avatar-form" action="{{ url_for('change_avatar') }}" method="post"
+      style="display:flex; flex-wrap:wrap; justify-content:center; gap:20px;">
+  {% for icon in avatars %}
+  <label class="avatar-option">
+    <input type="radio" name="avatar_choice" value="{{ icon }}" {% if icon == current_avatar %}checked{% endif %}>
+    <img src="{{ url_for('static', filename='avatars/' + icon) }}" alt="Avatar" class="avatar-img">
+  </label>
+  {% endfor %}
+  <button type="submit" style="margin-top:20px; padding:10px 20px; background:#3a8dde; color:white; border:none; border-radius:6px; cursor:pointer;">
+    Save Avatar
+  </button>
 </form>
 
-<p style="text-align:center; margin-top: 1em;">
-    <a href="{{ url_for('dashboard') }}">⬅️ Back to Dashboard</a>
-</p>
+<p style="text-align:center; margin-top:1em;"><a href="{{ url_for('dashboard') }}">⬅️ Back to Dashboard</a></p>
 
 <style>
-    .avatar-option {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        cursor: pointer;
-    }
-    .avatar-option input[type="radio"] {
-        display: none;
-    }
-    .avatar-preview {
-        position: relative;
-        width: 64px;
-        height: 64px;
-    }
-    .avatar-img {
-        width: 64px;
-        height: 64px;
-        border-radius: 50%;
-        object-fit: cover;
-        border: 2px solid #ccc;
-        transition: transform 0.3s, box-shadow 0.3s;
-    }
-    .avatar-hover {
-        position: absolute;
-        top: 0; left: 0;
-        width: 100%; height: 100%;
-        border-radius: 50%;
-        background: rgba(58,141,222,0.2);
-        opacity: 0;
-        transition: opacity 0.3s;
-    }
-    .avatar-option:hover .avatar-img {
-        transform: scale(1.05);
-        box-shadow: 0 0 8px rgba(58,141,222,0.6);
-    }
-    .avatar-option:hover .avatar-hover {
-        opacity: 1;
-    }
-    .avatar-option input[type="radio"]:checked + .avatar-preview .avatar-img {
-        border: 2px solid #3a8dde;
-        box-shadow: 0 0 8px rgba(58,141,222,0.8);
-    }
+.avatar-option input[type="radio"] { display:none; }
+.avatar-img {
+  width:64px; height:64px; border-radius:50%; border:2px solid #ccc; cursor:pointer;
+  transition:transform 0.2s, border 0.2s;
+}
+.avatar-option input[type="radio"]:checked + .avatar-img {
+  border:2px solid #3a8dde; transform:scale(1.05);
+}
 </style>
 
 <script>
-// Live preview updater with cache busting
-const radios = document.querySelectorAll("input[name='avatar_choice']");
-const preview = document.getElementById("selected-avatar");
-
-radios.forEach(radio => {
-    radio.addEventListener("change", () => {
-        preview.src = "/static/avatars/" + radio.value + "?v=" + new Date().getTime();
-    });
-});
-
-// AJAX form submit to update avatar instantly
 document.getElementById("avatar-form").addEventListener("submit", function(e) {
-    e.preventDefault();
+  e.preventDefault();
+  const formData = new FormData(this);
 
-    const formData = new FormData(this);
+  fetch("{{ url_for('change_avatar') }}", {
+    method: "POST",
+    body: formData,
+    headers: { "X-Requested-With": "XMLHttpRequest" }
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.success) {
+      // ✅ Update preview on THIS page
+      document.getElementById("selected-avatar").src = "/static/avatars/" + data.avatar;
 
-    fetch("{{ url_for('change_avatar') }}", {
-        method: "POST",
-        body: formData,
-        headers: { "X-Requested-With": "XMLHttpRequest" }
-    })
-    .then(r => r.json())
-    .then(data => {
-        if (data.success) {
-            // Update dashboard avatar instantly
-            const dashboardAvatar = window.opener?.document.getElementById("dashboard-avatar");
-            if (dashboardAvatar) {
-                dashboardAvatar.src = "/static/avatars/" + data.avatar + "?v=" + new Date().getTime();
-            }
-            alert("✅ Avatar updated successfully!");
-            window.location.href = "{{ url_for('dashboard') }}";
-        }
-    });
+      // ✅ Update dashboard avatar (if dashboard is open in another tab)
+      const openerAvatar = window.opener?.document.getElementById("dashboard-avatar");
+      if (openerAvatar) {
+        openerAvatar.src = "/static/avatars/" + data.avatar;
+      }
+
+      alert("✅ Avatar updated successfully!");
+    }
+  });
 });
 </script>
 {% endblock %}
