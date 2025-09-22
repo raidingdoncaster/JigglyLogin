@@ -288,14 +288,13 @@ def recover():
     return render_template("recover.html")
 
 # ==== Dashboard ====
-# ==== Dashboard ====
 @app.route("/dashboard")
 def dashboard():
     if "trainer" not in session:
         flash("You must be logged in to view the dashboard.", "warning")
         return redirect(url_for("home"))
 
-    # ✅ Always re-fetch latest row from Google Sheets
+    # ✅ Always re-fetch the latest row from Google Sheets
     row, user = find_user(session["trainer"])
     if not user:
         flash("User not found. Please log in again.", "error")
@@ -304,19 +303,19 @@ def dashboard():
 
     last_login = user.get("Last Login")
     campfire_username = user.get("Campfire Username", "")
-    avatar = user.get("Avatar", "avatar1.png")  # Column G
 
-    # Detect account type
+    # ✅ Ensure Avatar always has a valid filename
+    avatar = user.get("Avatar")
+    if not avatar or not avatar.strip():
+        avatar = "avatar1.png"
+
+    # ✅ Detect account type
     if campfire_username == "Kids Account":
         account_type = "Kids Account"
     else:
         account_type = "Standard Account"
 
-    # ✅ Cache-buster for avatar (forces reload)
-    import time
-    avatar_url = url_for("static", filename=f"avatars/{avatar}") + f"?v={int(time.time())}"
-
-    # Demo data (placeholder until fully wired up)
+    # Placeholder demo data
     data = {"stamps": 5, "total": 10, "rewards": ["Sticker Pack", "Discount Band"]}
     events = [
         {"name": "Max Finale: Eternatus", "date": "2025-07-23"},
@@ -330,14 +329,15 @@ def dashboard():
 
     return render_template(
         "dashboard.html",
-        trainer=user.get("Trainer Username", session["trainer"]),  # ✅ safe fallback
+        trainer=session["trainer"],
         last_login=last_login,
         account_type=account_type,
         campfire_username=campfire_username,
-        avatar=avatar_url,   # ✅ pass cache-busted URL
+        avatar=avatar,  # ✅ Always correct
         data=data,
         events=events,
-        inbox=inbox
+        inbox=inbox,
+        cache_buster=datetime.utcnow().timestamp()  # ✅ bust browser cache
     )
 
 # ==== Inbox ====
@@ -563,6 +563,10 @@ def ocr_test():
 from flask import jsonify
 
 # ==== Change Avatar ====
+from flask import jsonify
+import time
+
+# ==== Change Avatar ====
 @app.route("/change_avatar", methods=["GET", "POST"])
 def change_avatar():
     if "trainer" not in session:
@@ -579,25 +583,36 @@ def change_avatar():
             flash("Please select an avatar.", "warning")
             return redirect(url_for("change_avatar"))
 
-        # Only allow valid avatars
+        # ✅ Only allow valid avatars
         valid_avatars = [f"avatar{i}.png" for i in range(1, 13)]
         if avatar_choice not in valid_avatars:
             flash("Invalid avatar choice.", "error")
             return redirect(url_for("change_avatar"))
 
-        # Update in Google Sheet
+        # Update in Google Sheet (Column G)
         sheet.update_cell(row, 7, avatar_choice)
 
-        # If AJAX, return JSON instead of redirect
+        # Return JSON for AJAX
         if request.headers.get("X-Requested-With") == "XMLHttpRequest":
-            return jsonify({"success": True, "avatar": avatar_choice})
+            return jsonify({
+                "success": True,
+                "avatar": avatar_choice,
+                "cache_buster": str(int(time.time()))  # 💡 cache-busting timestamp
+            })
 
         flash("✅ Avatar updated successfully!", "success")
         return redirect(url_for("dashboard"))
 
+    # GET → render page
     avatars = [f"avatar{i}.png" for i in range(1, 13)]
     current_avatar = user.get("Avatar", "avatar1.png")
-    return render_template("change_avatar.html", avatars=avatars, current_avatar=current_avatar)
+
+    return render_template(
+        "change_avatar.html",
+        avatars=avatars,
+        current_avatar=current_avatar,
+        cache_buster=str(int(time.time()))  # pass cache-buster to template
+    )
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)), debug=True)

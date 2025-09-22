@@ -4,18 +4,20 @@
 
 <!-- Live Preview -->
 <div id="avatar-preview-box" style="text-align:center; margin-bottom: 1.5em;">
-    <img id="selected-avatar" src="{{ url_for('static', filename='avatars/' + avatars[0]) }}" 
-         alt="Selected Avatar" style="width: 80px; height: 80px; border-radius: 50%; border: 3px solid #3a8dde; box-shadow: 0 0 8px rgba(58,141,222,0.6);">
+    <img id="selected-avatar" 
+         src="{{ url_for('static', filename='avatars/' + current_avatar) }}?v={{ cache_buster }}"
+         alt="Selected Avatar" 
+         style="width: 80px; height: 80px; border-radius: 50%; border: 3px solid #3a8dde; box-shadow: 0 0 8px rgba(58,141,222,0.6);">
     <p style="margin-top: 0.5em; font-size: 0.9em; color: #555;">Your selected avatar</p>
 </div>
 
-<form action="{{ url_for('change_avatar') }}" method="post" style="display: flex; flex-wrap: wrap; justify-content: center; gap: 20px;">
+<form id="avatar-form" action="{{ url_for('change_avatar') }}" method="post" style="display: flex; flex-wrap: wrap; justify-content: center; gap: 20px;">
 
     {% for icon in avatars %}
     <label class="avatar-option">
         <input type="radio" name="avatar_choice" value="{{ icon }}" {% if icon == current_avatar %}checked{% endif %}>
         <div class="avatar-preview">
-            <img src="{{ url_for('static', filename='avatars/' + icon) }}" alt="Avatar" class="avatar-img">
+            <img src="{{ url_for('static', filename='avatars/' + icon) }}?v={{ cache_buster }}" alt="Avatar" class="avatar-img">
             <div class="avatar-hover"></div>
         </div>
     </label>
@@ -76,8 +78,19 @@
 </style>
 
 <script>
-document.querySelector("form").addEventListener("submit", function(e) {
-    e.preventDefault(); // Stop normal form submit
+// Live preview updater with cache busting
+const radios = document.querySelectorAll("input[name='avatar_choice']");
+const preview = document.getElementById("selected-avatar");
+
+radios.forEach(radio => {
+    radio.addEventListener("change", () => {
+        preview.src = "/static/avatars/" + radio.value + "?v=" + new Date().getTime();
+    });
+});
+
+// AJAX form submit to update avatar instantly
+document.getElementById("avatar-form").addEventListener("submit", function(e) {
+    e.preventDefault();
 
     const formData = new FormData(this);
 
@@ -89,24 +102,14 @@ document.querySelector("form").addEventListener("submit", function(e) {
     .then(r => r.json())
     .then(data => {
         if (data.success) {
-            // ✅ Update avatar on dashboard immediately
+            // Update dashboard avatar instantly
             const dashboardAvatar = window.opener?.document.getElementById("dashboard-avatar");
             if (dashboardAvatar) {
-                dashboardAvatar.src = "/static/avatars/" + data.avatar;
+                dashboardAvatar.src = "/static/avatars/" + data.avatar + "?v=" + new Date().getTime();
             }
             alert("✅ Avatar updated successfully!");
             window.location.href = "{{ url_for('dashboard') }}";
         }
-    });
-});
-
-// Live preview updater
-const radios = document.querySelectorAll("input[name='avatar_choice']");
-const preview = document.getElementById("selected-avatar");
-
-radios.forEach(radio => {
-    radio.addEventListener("change", () => {
-        preview.src = "/static/avatars/" + radio.value;
     });
 });
 </script>
