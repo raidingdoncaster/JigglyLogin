@@ -87,47 +87,75 @@ def trigger_lugia_refresh():
     except Exception as e:
         print("Error calling Lugia:", e)
 
-def get_passport_stamps(username):
-    """Return a trainer's stamps as a list of dicts with icon, name, and count."""
-    ledger = client.open("POGO Passport Sign-Ins").worksheet("Lugia_Ledger")
-    events = client.open("POGO Passport Sign-Ins").worksheet("events")
+def _norm_handle(s: str) -> str:
+    """lowercase, trim, drop a leading @"""
+    if s is None:
+      return ""
+    s = str(s).strip().lower()
+    return s[1:] if s.startswith("@") else s
 
-    ledger_records = ledger.get_all_records()
-    event_records = events.get_all_records()
+def _event_icon_map():
+    """Build {meetup name -> icon url} from 'events' tab."""
+    ws = client.open("POGO Passport Sign-Ins").worksheet("events")
+    recs = ws.get_all_records()
+    m = {}
+    for r in recs:
+        name = (
+            r.get("Meetup Name")
+            or r.get("Event Name")
+            or r.get("Name")
+            or r.get("Event")
+            or ""
+        )
+        name = str(name).strip().lower()
+        if not name:
+            continue
+        icon = str(r.get("cover_photo_url", "")).strip()
+        m[name] = icon
+    return m
 
-    # Map meet-up names to icons
-    event_map = {}
-    for r in event_records:
-        name = str(r.get("Meetup Name", "")).strip().lower()
-        icon = r.get("cover_photo_url", "").strip()
-        if name:
-            event_map[name] = icon
+def get_passport_stamps(username: str, campfire_username: str):
+    """
+    Returns (total_ever_count, stamps_list)
+      total_ever_count -> sum of Count from Lugia_Ledger for this user
+      stamps_list      -> [{name, count, icon}, ...] in ledger order
+    Matches by Lugia_Ledger columns B:'Trainer' OR D:'Campfire'
+    (case-insensitive, '@' ignored).
+    """
+    ws = client.open("POGO Passport Sign-Ins").worksheet("Lugia_Ledger")
+    rows = ws.get_all_records()
+    icons = _event_icon_map()
 
+    u = _norm_handle(username)
+    c = _norm_handle(campfire_username)
+    needles = {u, c}
+
+    total = 0
     stamps = []
-    total_count = 0
 
-    for record in ledger_records:
-        # ✅ Fix: use "Trainer" for Lugia_Ledger
-        trainer = str(record.get("Trainer", "")).strip().lower()
-        if trainer == username.lower():
-            reason = str(record.get("Reason", "")).strip()
-            count = int(record.get("Count", 1) or 1)
-            total_count += count
+    for r in rows:
+        trainer = _norm_handle(r.get("Trainer"))
+        camp    = _norm_handle(r.get("Campfire"))
+        if trainer not in needles and camp not in needles:
+            continue
 
-            # Decide icon
-            if reason.lower() == "signup bonus":
-                icon = url_for("static", filename="icons/tickstamp.png")
-            else:
-                icon = event_map.get(reason.lower(), url_for("static", filename="icons/tickstamp.png"))
+        reason = str(r.get("Reason", "")).strip()
+        try:
+            count = int(r.get("Count", 1) or 1)
+        except Exception:
+            count = 1
 
-            stamps.append({
-                "name": reason,
-                "count": count,
-                "icon": icon
-            })
+        total += count
 
-    print(f"🔍 get_passport_stamps({username}) → total={total_count}, stamps={len(stamps)}")
-    return total_count, stamps
+        if reason.lower() == "signup bonus":
+            icon = url_for("static", filename="icons/tickstamp.png")
+        else:
+            icon = icons.get(reason.lower(), url_for("static", filename="icons/tickstamp.png"))
+
+        stamps.append({"name": reason or "Stamp", "count": count, "icon": icon})
+
+    print(f"🔍 get_passport_stamps({username}/{campfire_username}) → total={total}, stamps={len(stamps)}")
+    return total, stamps
 
 # ==== Routes ====
 @app.route("/")
@@ -447,30 +475,30 @@ def passport():
         return redirect(url_for("home"))
 
     username = session["trainer"]
+    row, user = find_user(username)
+    if not user:
+        flash("User not found.", "error")
+        return redirect(url_for("home"))
 
-    # ✅ Get detailed stamp history from Lugia_Ledger
-    total_earned, stamps = get_passport_stamps(username)
+    # Sheet1 col F = current stamps
+    try:
+        current_stamps = int(user.get("Stamps", 0) or 0)
+    except Exception:
+        current_stamps = 0
 
-    # ✅ Get current stamp count from Sheet1 (Column F)
-    sheet1 = client.open("POGO Passport Sign-Ins").worksheet("Sheet1")
-    sheet1_records = sheet1.get_all_records()
-    current_stamps = 0
-    for r in sheet1_records:
-        if str(r.get("Trainer Username", "")).strip().lower() == username.lower():
-            current_stamps = int(r.get("Stamps", 0) or 0)
-            break
+    campfire_username = user.get("Campfire Username", "")
+    total_stamps, stamps = get_passport_stamps(username, campfire_username)
 
-    # Split stamp history into "passports" of 12 slots
     passports = [stamps[i:i+12] for i in range(0, len(stamps), 12)]
 
-    print(f"🔍 /passport route: user={username}, current={current_stamps}, total_earned={total_earned}, passports={len(passports)}")
+    print(f"🔍 /passport route: user={username}, current={current_stamps}, total={total_stamps}, passports={len(passports)}")
 
     return render_template(
         "passport.html",
         trainer=username,
         stamps=stamps,
         passports=passports,
-        total_stamps=total_earned,
+        total_stamps=total_stamps,
         current_stamps=current_stamps,
         show_back=True
     )

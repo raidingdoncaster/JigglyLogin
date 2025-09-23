@@ -63,7 +63,7 @@
 <div class="widgets">
   <div class="widget">
     <h3>🎟️ Passport Progress</h3>
-    <p>Your stamps: {{ total_stamps }}</p>
+    <p>Your stamps: {{ current_stamps }}</p>
     <div class="stamp-preview">
       {% for s in stamps[:3] %}
         {% if s.icon.startswith('http') %}
