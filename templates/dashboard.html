@@ -65,10 +65,15 @@
     <h3>🎟️ Passport Progress</h3>
     <p>Your stamps: {{ total_stamps }}</p>
     <div class="stamp-preview">
-      {% for s in stamps %}
-        <a href="{{ url_for('passport') }}">
-          <img src="{{ s.icon }}" alt="{{ s.name }}" class="stamp-icon" title="{{ s.name }}">
-        </a>
+      {% for s in stamps[:3] %}
+        {% if s.icon.startswith('http') %}
+          <!-- External icon from Google Sheets -->
+          <img src="{{ s.icon }}" alt="{{ s.name }}" class="stamp-icon">
+        {% else %}
+          <!-- Local static icon -->
+          <img src="{{ url_for('static', filename=s.icon.replace('static/', '')) }}" 
+              alt="{{ s.name }}" class="stamp-icon">
+        {% endif %}
       {% endfor %}
     </div>
     <a href="{{ url_for('passport') }}" class="btn">View Full Passport</a>

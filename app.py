@@ -88,44 +88,41 @@ def trigger_lugia_refresh():
         print("Error calling Lugia:", e)
 
 def get_passport_stamps(username):
-    """Return a player's stamp total (from Sheet1) and detailed stamp list (from Lugia_Ledger + events)."""
-
-    # --- Step 1: Get quick total from Sheet1 ---
-    sheet1 = client.open("POGO Passport Sign-Ins").worksheet("Sheet1")
-    sheet1_records = sheet1.get_all_records()
-
-    total_stamps = 0
-    for record in sheet1_records:
-        if record.get("Trainer Username", "").lower() == username.lower():
-            try:
-                total_stamps = int(record.get("Stamps", 0))  # Column F
-            except ValueError:
-                total_stamps = 0
-            break
-
-    # --- Step 2: Get detailed stamps from Lugia_Ledger ---
-    ledger = client.open("POGO Passport Sign-Ins").worksheet("Lugia_Ledger")
-    ledger_records = ledger.get_all_records()
-
-    events = client.open("POGO Passport Sign-Ins").worksheet("events")
-    event_records = events.get_all_records()
-    event_map = {str(r["Name"]).lower(): r.get("cover_photo_url", "") for r in event_records}
-
     stamps = []
+
+    # Pull ledger + events
+    ledger = client.open("POGO Passport Sign-Ins").worksheet("Lugia_Ledger")
+    events = client.open("POGO Passport Sign-Ins").worksheet("events")
+
+    ledger_records = ledger.get_all_records()
+    event_records = events.get_all_records()
+
+    # ✅ Use Event column + cover_photo_url, fallback to tickstamp.png
+    event_map = {
+        str(r.get("Event", "")).lower(): r.get("cover_photo_url", "")
+        for r in event_records if r.get("Event")
+    }
+
     for record in ledger_records:
-        if record.get("Trainer", "").lower() == username.lower():
+        if record.get("Trainer Username", "").lower() == username.lower():
             reason = record.get("Reason", "Unknown")
             count = int(record.get("Count", 1))
 
-            # Get event icon if available
-            icon = event_map.get(reason.lower(), url_for("static", filename="avatars/avatar1.png"))
+            # Default fallback icon
+            icon = url_for("static", filename="icons/tickstamp.png")
 
-            stamps.append({
-                "name": reason,
-                "count": count,
-                "icon": icon
-            })
+            # Signup bonus always = Pokéball (avatar1.png)
+            if reason.lower() == "signup bonus":
+                icon = url_for("static", filename="avatars/avatar1.png")
+            else:
+                # If event exists in map, use its cover_photo_url
+                match = event_map.get(reason.lower())
+                if match:
+                    icon = match
 
+            stamps.append({"icon": icon, "name": reason, "count": count})
+
+    total_stamps = sum(s["count"] for s in stamps)
     return total_stamps, stamps
 
 # ==== Routes ====
