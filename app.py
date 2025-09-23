@@ -88,34 +88,41 @@ def trigger_lugia_refresh():
         print("Error calling Lugia:", e)
 
 def get_passport_stamps(username):
+    """Return all passport stamps for a trainer, with safe defaults."""
     stamps = []
+    try:
+        ledger = client.open("POGO Passport Sign-Ins").worksheet("Lugia_Ledger")
+        events = client.open("POGO Passport Sign-Ins").worksheet("events")
 
-    ledger = client.open("POGO Passport Sign-Ins").worksheet("Lugia_Ledger")
-    events = client.open("POGO Passport Sign-Ins").worksheet("events")
+        ledger_records = ledger.get_all_records()
+        event_records = events.get_all_records()
 
-    ledger_records = ledger.get_all_records()
-    event_records = events.get_all_records()
+        # Build event -> cover photo map (safe lookup)
+        event_map = {}
+        for r in event_records:
+            name = r.get("Name", "").strip().lower()
+            if name:
+                event_map[name] = r.get("cover_photo_url", url_for("static", filename="avatars/avatar1.png"))
 
-    # Map event names → cover photos
-    event_map = {r["Name"].lower(): r["cover_photo_url"] for r in event_records}
+        for record in ledger_records:
+            if record.get("Trainer Username", "").lower() == username.lower():
+                reason = record.get("Reason", "Unknown")
+                count = int(record.get("Count", 1))
 
-    # ✅ Sort by latest earned (reverse sheet order)
-    for record in reversed(ledger_records):
-        if record["Trainer Username"].lower() == username.lower():
-            reason = record["Reason"]
-            count = record.get("Count", 1)
+                # Default icon
+                icon = url_for("static", filename="avatars/avatar1.png")
 
-            # Default icon
-            icon = url_for("static", filename="avatars/avatar1.png")
+                # Lookup event cover if not signup bonus
+                if reason.lower() != "signup bonus":
+                    icon = event_map.get(reason.lower(), icon)
 
-            if reason and reason.lower() != "signup bonus":
-                icon = event_map.get(reason.lower(), icon)
-
-            stamps.append({
-                "name": reason,
-                "count": count,
-                "icon": icon
-            })
+                stamps.append({
+                    "name": reason,
+                    "count": count,
+                    "icon": icon
+                })
+    except Exception as e:
+        print(f"⚠️ Error in get_passport_stamps: {e}")
 
     return stamps
 
@@ -306,14 +313,14 @@ def dashboard():
 
     last_login = user.get("Last Login")
     campfire_username = user.get("Campfire Username", "")
-    avatar = user.get("Avatar Icon", "avatar1.png")   # ✅ Column G
-    background = user.get("Trainer Card Background", "default.jpg")  # ✅ Column H (fallback)
+    avatar = user.get("Avatar Icon", "avatar1.png")   # Column G
+    background = user.get("Trainer Card Background", "default.png")  # Column H (default fallback)
 
     account_type = "Kids Account" if campfire_username == "Kids Account" else "Standard Account"
 
-    # 🟢 Load stamps
-        stamps = get_passport_stamps(session["trainer"])
-        total_stamps = sum(s["count"] for s in stamps)
+    # ✅ Real passport stamps
+    stamps = get_passport_stamps(session["trainer"])
+    total_stamps = sum(s["count"] for s in stamps)
 
     return render_template(
         "dashboard.html",
@@ -323,15 +330,8 @@ def dashboard():
         campfire_username=campfire_username,
         avatar=avatar,
         background=background,
-        data=data,
         stamps=stamps,
-        total_stamps=total_stamps,
-        events=events,
-        inbox=[
-                {"subject": "🎉 You earned a new stamp!"},
-                {"subject": "📆 New meetup near you this weekend"}
-        
-        ]
+        total_stamps=total_stamps
     )
 
 # ==== Inbox ====
