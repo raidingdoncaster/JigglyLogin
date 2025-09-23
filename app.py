@@ -88,26 +88,32 @@ def trigger_lugia_refresh():
         print("Error calling Lugia:", e)
 
 def get_passport_stamps(username):
-    """Return (total_count, stamps[]) for a trainer."""
+    """Return a trainer's stamps as a list of dicts with icon, name, and count."""
     ledger = client.open("POGO Passport Sign-Ins").worksheet("Lugia_Ledger")
     events = client.open("POGO Passport Sign-Ins").worksheet("events")
 
     ledger_records = ledger.get_all_records()
     event_records = events.get_all_records()
 
-    # Map meetup names to icons
+    print(f"DEBUG: Checking stamps for trainer={username}")
+    print(f"DEBUG: Ledger rows={len(ledger_records)}")
+    print(f"DEBUG: First 3 ledger rows={ledger_records[:3]}")
+
+    # Map meet-up names to icons
     event_map = {}
     for r in event_records:
         name = str(r.get("Meetup Name", "")).strip().lower()
         icon = r.get("cover_photo_url", "").strip()
         if name:
             event_map[name] = icon
+    print(f"DEBUG: Event map built with {len(event_map)} entries")
 
     stamps = []
     total_count = 0
 
     for record in ledger_records:
-        if record.get("Trainer Username", "").lower() == username.lower():
+        trainer_name = str(record.get("Trainer Username", "")).strip().lower()
+        if trainer_name == username.lower():
             reason = str(record.get("Reason", "")).strip()
             count = int(record.get("Count", 1))
             total_count += count
@@ -123,12 +129,9 @@ def get_passport_stamps(username):
                 "count": count,
                 "icon": icon
             })
+            print(f"DEBUG: Added stamp {reason} x{count}")
 
-    # 🔍 Debug output
-    print(f"🔍 get_passport_stamps({username}) → total={total_count}, stamps={len(stamps)}")
-    for s in stamps:
-        print(f"   - {s}")
-
+    print(f"DEBUG: Returning total_count={total_count}, stamps={stamps}")
     return total_count, stamps
 
 # ==== Routes ====
@@ -449,20 +452,20 @@ def passport():
         return redirect(url_for("home"))
 
     username = session["trainer"]
+    print(f"DEBUG: /passport accessed by {username}")
 
     total_stamps, stamps = get_passport_stamps(username)
     current_stamps = len(stamps)
 
-    # Split into passports (12 stamps per passport page)
+    # Split into chunks of 12 for passport pages
     passports = [stamps[i:i+12] for i in range(0, len(stamps), 12)]
-
-    print(f"🔍 /passport route: user={username}, total_stamps={total_stamps}, passports={len(passports)}")
+    print(f"DEBUG: /passport -> total_stamps={total_stamps}, current_stamps={current_stamps}, passports={len(passports)}")
 
     return render_template(
         "passport.html",
         trainer=username,
-        passports=passports,
         stamps=stamps,
+        passports=passports,
         total_stamps=total_stamps,
         current_stamps=current_stamps,
         show_back=True
