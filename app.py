@@ -334,34 +334,34 @@ def recover():
 @app.route("/dashboard")
 def dashboard():
     if "trainer" not in session:
-        flash("You must be logged in to view the dashboard.", "warning")
+        flash("Please log in to access your dashboard.", "warning")
         return redirect(url_for("home"))
 
-    row, user = find_user(session["trainer"])
-    if not user:
-        flash("User not found.", "error")
-        return redirect(url_for("home"))
+    trainer = session["trainer"]
 
-    last_login = user.get("Last Login")
-    campfire_username = user.get("Campfire Username", "")
-    avatar = user.get("Avatar Icon", "avatar1.png")   # Column G
-    background = user.get("Trainer Card Background", "default.png")  # Column H fallback
+    # Lookup user row from Sheet1
+    row, user = find_user(trainer)
+    campfire_username = user.get("Campfire Username", "") if user else ""
 
-    account_type = "Kids Account" if campfire_username == "Kids Account" else "Standard Account"
+    # Get stamps info
+    total_stamps, stamps = get_passport_stamps(trainer, campfire_username)
 
-    # 🟢 Load stamps from Sheet1 + Ledger
-    total_stamps, stamps = get_passport_stamps(session["trainer"])
+    # Current stamps from Sheet1 (col F)
+    try:
+        current_stamps = int(user.get("Stamps", 0) or 0)
+    except Exception:
+        current_stamps = 0
 
     return render_template(
         "dashboard.html",
-        trainer=session["trainer"],
-        last_login=last_login,
-        account_type=account_type,
-        campfire_username=campfire_username,
-        avatar=avatar,
-        background=background,
+        trainer=trainer,
+        stamps=stamps,
         total_stamps=total_stamps,
-        stamps=stamps[:3],  # Show preview of first 3 stamps in dashboard widget
+        current_stamps=current_stamps,
+        avatar=user.get("Avatar Icon", "avatar1.png") if user else "avatar1.png",
+        background=user.get("Trainer Card Background", "default.png") if user else "default.png",
+        campfire_username=campfire_username,
+        show_back=False
     )
 
 # ==== Inbox ====
