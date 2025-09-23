@@ -88,14 +88,14 @@ def trigger_lugia_refresh():
         print("Error calling Lugia:", e)
 
 def get_passport_stamps(username):
-    """Return (total_count, stamps) where stamps is a list of dicts with icon, name, and count."""
+    """Return (total_count, stamps[]) for a trainer."""
     ledger = client.open("POGO Passport Sign-Ins").worksheet("Lugia_Ledger")
     events = client.open("POGO Passport Sign-Ins").worksheet("events")
 
     ledger_records = ledger.get_all_records()
     event_records = events.get_all_records()
 
-    # Map meet-up names to icons
+    # Map meetup names to icons
     event_map = {}
     for r in event_records:
         name = str(r.get("Meetup Name", "")).strip().lower()
@@ -123,6 +123,11 @@ def get_passport_stamps(username):
                 "count": count,
                 "icon": icon
             })
+
+    # 🔍 Debug output
+    print(f"🔍 get_passport_stamps({username}) → total={total_count}, stamps={len(stamps)}")
+    for s in stamps:
+        print(f"   - {s}")
 
     return total_count, stamps
 
@@ -445,18 +450,19 @@ def passport():
 
     username = session["trainer"]
 
-    # ✅ Unpack the tuple correctly
     total_stamps, stamps = get_passport_stamps(username)
     current_stamps = len(stamps)
 
-    # Split into chunks of 12 for passport pages
+    # Split into passports (12 stamps per passport page)
     passports = [stamps[i:i+12] for i in range(0, len(stamps), 12)]
+
+    print(f"🔍 /passport route: user={username}, total_stamps={total_stamps}, passports={len(passports)}")
 
     return render_template(
         "passport.html",
         trainer=username,
-        stamps=stamps,
         passports=passports,
+        stamps=stamps,
         total_stamps=total_stamps,
         current_stamps=current_stamps,
         show_back=True
