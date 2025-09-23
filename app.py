@@ -88,42 +88,43 @@ def trigger_lugia_refresh():
         print("Error calling Lugia:", e)
 
 def get_passport_stamps(username):
-    stamps = []
-
-    # Pull ledger + events
+    """Return a trainer's stamps as a list of dicts with icon, name, and count."""
     ledger = client.open("POGO Passport Sign-Ins").worksheet("Lugia_Ledger")
     events = client.open("POGO Passport Sign-Ins").worksheet("events")
 
     ledger_records = ledger.get_all_records()
     event_records = events.get_all_records()
 
-    # ✅ Use Event column + cover_photo_url, fallback to tickstamp.png
-    event_map = {
-        str(r.get("Event", "")).lower(): r.get("cover_photo_url", "")
-        for r in event_records if r.get("Event")
-    }
+    # Map meet-up names to icons
+    event_map = {}
+    for r in event_records:
+        name = str(r.get("Meetup Name", "")).strip().lower()
+        icon = r.get("cover_photo_url", "").strip()
+        if name:
+            event_map[name] = icon
+
+    stamps = []
+    total_count = 0
 
     for record in ledger_records:
         if record.get("Trainer Username", "").lower() == username.lower():
-            reason = record.get("Reason", "Unknown")
+            reason = str(record.get("Reason", "")).strip()
             count = int(record.get("Count", 1))
+            total_count += count
 
-            # Default fallback icon
-            icon = url_for("static", filename="icons/tickstamp.png")
-
-            # Signup bonus always = Pokéball (avatar1.png)
+            # Decide icon
             if reason.lower() == "signup bonus":
-                icon = url_for("static", filename="avatars/avatar1.png")
+                icon = url_for("static", filename="icons/tickstamp.png")
             else:
-                # If event exists in map, use its cover_photo_url
-                match = event_map.get(reason.lower())
-                if match:
-                    icon = match
+                icon = event_map.get(reason.lower(), url_for("static", filename="icons/tickstamp.png"))
 
-            stamps.append({"icon": icon, "name": reason, "count": count})
+            stamps.append({
+                "name": reason,
+                "count": count,
+                "icon": icon
+            })
 
-    total_stamps = sum(s["count"] for s in stamps)
-    return total_stamps, stamps
+    return total_count, stamps
 
 # ==== Routes ====
 @app.route("/")
@@ -444,13 +445,20 @@ def passport():
 
     username = session["trainer"]
 
-    total_stamps, stamps = get_passport_stamps(username)
+    stamps = get_passport_stamps(username)  # list of {icon, name, count}
+    total_stamps = sum(int(s.get("count", 1)) for s in stamps)
+    current_stamps = len(stamps)
+
+    # Split into chunks of 12
+    passports = [stamps[i:i+12] for i in range(0, len(stamps), 12)]
 
     return render_template(
         "passport.html",
         trainer=username,
-        total_stamps=total_stamps,
         stamps=stamps,
+        passports=passports,
+        total_stamps=total_stamps,
+        current_stamps=current_stamps,
         show_back=True
     )
 

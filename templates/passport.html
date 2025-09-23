@@ -1,82 +1,115 @@
 {% extends "base.html" %}
 {% block content %}
-<h2 style="text-align: center; margin-bottom: 1em;">🎟️ Passport Progress</h2>
+<h2 style="text-align:center; margin-bottom:1em;">🎟️ Passport Progress</h2>
 
-{% if stamps and stamps|length > 0 %}
-  <div class="stamps-grid">
-    {% for stamp in stamps %}
-      <div class="stamp-card">
-        <div class="stamp-icon">
-          {% if stamp.icon.startswith('http') %}
-            <!-- External image (from events sheet) -->
-            <img src="{{ stamp.icon }}" alt="{{ stamp.name }}">
-          {% else %}
-            <!-- Local static file (from /static/) -->
-            <img src="{{ url_for('static', filename=stamp.icon.replace('static/', '')) }}" alt="{{ stamp.name }}">
-          {% endif %}
-          {% if stamp.count|int > 1 %}
-            <span class="stamp-count">x{{ stamp.count }}</span>
-          {% endif %}
+<div class="passport-page">
+  {% if passports and passports|length > 0 %}
+    {% for passport in passports %}
+      <div class="passport-card">
+        <h3 class="passport-title">Passport {{ loop.index }}</h3>
+        <div class="passport-grid">
+          {% for s in passport %}
+            <div class="stamp-slot">
+              {% if s %}
+                <img src="{{ s.icon }}" alt="{{ s.name }}" 
+                     class="stamp-icon {% if s.new %}animate-stamp{% endif %}">
+                {% if s.count|int > 1 %}
+                  <span class="stamp-count">x{{ s.count }}</span>
+                {% endif %}
+              {% else %}
+                <div class="empty-slot"></div>
+              {% endif %}
+            </div>
+          {% endfor %}
         </div>
-        <p class="stamp-name">{{ stamp.name }}</p>
       </div>
     {% endfor %}
-  </div>
-{% else %}
-  <p style="text-align:center; color:#555;">You don’t have any stamps yet. Check in at events to earn them!</p>
-{% endif %}
+  {% else %}
+    <p style="text-align:center; color:#555;">You don’t have any stamps yet. Check in at events to earn them!</p>
+  {% endif %}
 
-{% if show_back %}
-  <div style="margin-top: 20px; text-align: center;">
-    <a href="{{ url_for('dashboard') }}" 
-       style="display: inline-block; padding: 10px 18px; background: #3a8dde; color: white; border-radius: 6px; text-decoration: none; font-weight: 600;">
-      ⬅ Back to Dashboard
-    </a>
-  </div>
-{% endif %}
+  {% if show_back %}
+    <div style="margin-top:20px; text-align:center;">
+      <a href="{{ url_for('dashboard') }}" 
+         style="display:inline-block; padding:10px 18px; background:#3a8dde; color:white; border-radius:6px; text-decoration:none; font-weight:600;">
+        ⬅ Back to Dashboard
+      </a>
+    </div>
+  {% endif %}
+</div>
 
 <style>
-  .stamps-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-    gap: 15px;
-    margin-top: 1.5em;
-  }
-  .stamp-card {
-    background: #f9f9f9;
-    border-radius: 10px;
-    text-align: center;
-    padding: 10px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-  }
-  .stamp-icon {
-    position: relative;
-    width: 64px;
-    height: 64px;
-    margin: 0 auto 8px;
-  }
-  .stamp-icon img {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-  }
-  .stamp-count {
-    position: absolute;
-    bottom: -5px;
-    right: -5px;
-    background: #3a8dde;
-    color: white;
-    font-size: 0.8em;
-    font-weight: 600;
-    padding: 3px 6px;
-    border-radius: 50%;
-    border: 2px solid white;
-  }
-  .stamp-name {
-    font-size: 0.85em;
-    color: #333;
-    font-weight: 600;
-    margin: 0;
-  }
+/* Background */
+.passport-page {
+  background: url("{{ url_for('static', filename='passport/bg.png') }}") no-repeat center center fixed;
+  background-size: cover;
+  padding: 20px;
+  border-radius: 12px;
+}
+
+/* Passport Card */
+.passport-card {
+  background: white;
+  border-radius: 12px;
+  padding: 15px;
+  margin-bottom: 25px;
+  box-shadow: 0 3px 8px rgba(0,0,0,0.15);
+}
+.passport-title {
+  text-align:center;
+  margin:0 0 12px;
+  font-size:1.1em;
+  color:#3a8dde;
+}
+
+/* Stamp Grid (12 slots per passport) */
+.passport-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 15px;
+}
+.stamp-slot {
+  position: relative;
+  width: 70px;
+  height: 70px;
+  margin: auto;
+}
+.stamp-icon {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 50%;
+  border: 2px solid #3a8dde;
+  background: #f9f9f9;
+}
+.empty-slot {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  border: 2px dashed #ccc;
+  background: #f4f4f4;
+}
+.stamp-count {
+  position: absolute;
+  bottom: -6px;
+  right: -6px;
+  background: #3a8dde;
+  color: white;
+  font-size: 0.8em;
+  font-weight: 600;
+  padding: 3px 6px;
+  border-radius: 50%;
+  border: 2px solid white;
+}
+
+/* Animation for newest stamp */
+@keyframes popIn {
+  0%   { transform: scale(0.5); opacity: 0; }
+  70%  { transform: scale(1.2); opacity: 1; }
+  100% { transform: scale(1); }
+}
+.animate-stamp {
+  animation: popIn 0.6s ease;
+}
 </style>
 {% endblock %}
