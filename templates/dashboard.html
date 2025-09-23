@@ -36,7 +36,6 @@
   box-shadow: 0 4px 12px rgba(0,0,0,0.15);
   color: white;
 }
-
 .trainer-card-overlay {
   position: absolute;
   top: 0; left: 0;
@@ -44,19 +43,16 @@
   background: linear-gradient(to bottom, rgba(0,0,0,0.45), rgba(0,0,0,0.15));
   z-index: 0;
 }
-
 .trainer-card-content {
   position: relative;
   z-index: 1;
   padding: 15px;
 }
-
 .trainer-card h2,
 .trainer-card p {
   margin: 4px 0;
   text-shadow: 0 2px 4px rgba(0,0,0,0.7);
 }
-
 .avatar {
   width:64px; height:64px; border-radius:50%; border:3px solid #fff;
   box-shadow: 0 2px 6px rgba(0,0,0,0.4);
@@ -66,30 +62,40 @@
 <!-- Widgets -->
 <div class="widgets">
   <div class="widget">
-      <h3>🎟️ Passport Progress</h3>
-      <p>Your stamps: {{ total_stamps }}</p>
-      <div class="stamp-preview">
-        {% for s in stamps[:3] %}
-          <img src="{{ s.icon }}" alt="{{ s.name }}" class="stamp-icon">
-        {% endfor %}
-      </div>
-      <a href="{{ url_for('passport') }}" class="btn">View Full Passport</a>
+    <h3>🎟️ Passport Progress</h3>
+    <p>Your stamps: {{ total_stamps }}</p>
+    <div class="stamp-preview">
+      {% for s in stamps %}
+        <a href="{{ url_for('passport') }}">
+          <img src="{{ s.icon }}" alt="{{ s.name }}" class="stamp-icon" title="{{ s.name }}">
+        </a>
+      {% endfor %}
     </div>
+    <a href="{{ url_for('passport') }}" class="btn">View Full Passport</a>
+  </div>
 
-    <style>
-    .stamp-preview {
-      display:flex;
-      justify-content:center;
-      gap:6px;
-      margin:8px 0;
-    }
-    .stamp-icon {
-      width:28px; height:28px;
-      border-radius:50%;
-      border:2px solid #3a8dde;
-      object-fit:cover;
-    }
-    </style>
+  <style>
+  .stamp-preview {
+    display:flex;
+    justify-content:center;
+    gap:6px;
+    margin:8px 0;
+  }
+  .stamp-preview a {
+    display:inline-block;
+  }
+  .stamp-icon {
+    width:28px; height:28px;
+    border-radius:50%;
+    border:2px solid #3a8dde;
+    object-fit:cover;
+    transition: transform 0.2s;
+  }
+  .stamp-icon:hover {
+    transform: scale(1.15);
+  }
+  </style>
+
   <div class="widget">
     <h3>📅 Upcoming Meet-ups</h3>
     <p>No events yet</p>
@@ -170,24 +176,6 @@
 </div>
 
 <style>
-/* Trainer Card */
-.trainer-card {
-  border-radius:12px; padding:15px; margin-bottom:20px;
-  box-shadow:0 2px 6px rgba(0,0,0,0.1); color:white;
-  background-size:cover; background-position:center;
-}
-.trainer-info { display:flex; align-items:center; }
-.trainer-text { margin-left:15px; }
-.trainer-text h2 { margin:0; }
-.trainer-text .meta { font-size:0.9em; color:#eee; }
-.trainer-actions { margin-top:10px; text-align:right; }
-.edit-link { font-size:0.85em; color:#ffd700; text-decoration:none; }
-
-/* Avatar */
-.avatar {
-  width:64px; height:64px; border-radius:50%; border:3px solid #fff;
-}
-
 /* Widgets */
 .widgets { display:flex; gap:12px; margin-bottom:20px; }
 .widget {
