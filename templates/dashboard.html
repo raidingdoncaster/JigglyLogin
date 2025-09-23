@@ -63,20 +63,21 @@
 <div class="widgets">
   <div class="widget">
     <h3>🎟️ Passport Progress</h3>
-    <p>Your stamps: {{ current_stamps }}</p>
+    <p>
+      Your stamps: {{ current_stamps }}
+    </p>
+
     <div class="stamp-preview">
-      {% for s in stamps[:3] %}
-        {% if s.icon.startswith('http') %}
-          <!-- External icon from Google Sheets -->
-          <img src="{{ s.icon }}" alt="{{ s.name }}" class="stamp-icon">
-        {% else %}
-          <!-- Local static icon -->
-          <img src="{{ url_for('static', filename=s.icon.replace('static/', '')) }}" 
-              alt="{{ s.name }}" class="stamp-icon">
-        {% endif %}
-      {% endfor %}
+      {% if stamps and stamps|length > 0 %}
+        {% for s in stamps[-3:]|reverse %}
+          <img src="{{ s.icon }}" alt="{{ s.name }}" class="stamp-icon" title="{{ s.name }}">
+        {% endfor %}
+      {% else %}
+        <p style="font-size:0.85em; color:#777;">No stamps yet</p>
+      {% endif %}
     </div>
-    <a href="{{ url_for('passport') }}" class="btn">View Full Passport</a>
+
+    <a href="{{ url_for('passport') }}" class="btn">View Passport</a>
   </div>
 
   <style>
@@ -86,18 +87,11 @@
     gap:6px;
     margin:8px 0;
   }
-  .stamp-preview a {
-    display:inline-block;
-  }
   .stamp-icon {
     width:28px; height:28px;
     border-radius:50%;
     border:2px solid #3a8dde;
     object-fit:cover;
-    transition: transform 0.2s;
-  }
-  .stamp-icon:hover {
-    transform: scale(1.15);
   }
   </style>
 

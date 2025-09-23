@@ -114,48 +114,57 @@ def _event_icon_map():
         m[name] = icon
     return m
 
-def get_passport_stamps(username: str, campfire_username: str):
-    """
-    Returns (total_ever_count, stamps_list)
-      total_ever_count -> sum of Count from Lugia_Ledger for this user
-      stamps_list      -> [{name, count, icon}, ...] in ledger order
-    Matches by Lugia_Ledger columns B:'Trainer' OR D:'Campfire'
-    (case-insensitive, '@' ignored).
-    """
-    ws = client.open("POGO Passport Sign-Ins").worksheet("Lugia_Ledger")
-    rows = ws.get_all_records()
-    icons = _event_icon_map()
+def get_passport_stamps(username, campfire_username=None):
+    """Return a trainer's stamps as a list of dicts with icon, name, and count."""
 
-    u = _norm_handle(username)
-    c = _norm_handle(campfire_username)
-    needles = {u, c}
+    # Load sheets
+    ledger = client.open("POGO Passport Sign-Ins").worksheet("Lugia_Ledger")
+    events = client.open("POGO Passport Sign-Ins").worksheet("events")
 
-    total = 0
+    ledger_records = ledger.get_all_records()
+    event_records = events.get_all_records()
+
+    # Map event_id → cover_photo_url
+    event_map = {}
+    for r in event_records:
+        event_id = str(r.get("event_id", "")).strip().lower()
+        cover = str(r.get("cover_photo_url", "")).strip()
+        if event_id:
+            event_map[event_id] = cover
+
     stamps = []
+    total_count = 0
 
-    for r in rows:
-        trainer = _norm_handle(r.get("Trainer"))
-        camp    = _norm_handle(r.get("Campfire"))
-        if trainer not in needles and camp not in needles:
-            continue
+    for record in ledger_records:
+        trainer = str(record.get("Trainer", "")).strip().lower()
+        campfire = str(record.get("Campfire", "")).strip().lower()
 
-        reason = str(r.get("Reason", "")).strip()
-        try:
-            count = int(r.get("Count", 1) or 1)
-        except Exception:
-            count = 1
+        # Match either Trainer Username OR Campfire Username
+        if trainer == username.lower() or (campfire_username and campfire == campfire_username.lower()):
+            reason = str(record.get("Reason", "")).strip()
+            count = int(record.get("Count", 1))
+            event_id = str(record.get("EventID", "")).strip().lower()
+            total_count += count
 
-        total += count
+            # Decide icon
+            if reason.lower() == "signup bonus":
+                icon = url_for("static", filename="icons/signup.png")
+            elif "cdl" in reason.lower():
+                icon = url_for("static", filename="icons/cdl.png")
+            elif "win" in reason.lower():
+                icon = url_for("static", filename="icons/win.png")
+            elif event_id in event_map:
+                icon = event_map[event_id]  # raw cover_photo_url
+            else:
+                icon = url_for("static", filename="icons/tickstamp.png")
 
-        if reason.lower() == "signup bonus":
-            icon = url_for("static", filename="icons/tickstamp.png")
-        else:
-            icon = icons.get(reason.lower(), url_for("static", filename="icons/tickstamp.png"))
+            stamps.append({
+                "name": reason,
+                "count": count,
+                "icon": icon
+            })
 
-        stamps.append({"name": reason or "Stamp", "count": count, "icon": icon})
-
-    print(f"🔍 get_passport_stamps({username}/{campfire_username}) → total={total}, stamps={len(stamps)}")
-    return total, stamps
+    return total_count, stamps
 
 # ==== Routes ====
 @app.route("/")
@@ -475,23 +484,21 @@ def passport():
         return redirect(url_for("home"))
 
     username = session["trainer"]
-    row, user = find_user(username)
-    if not user:
-        flash("User not found.", "error")
-        return redirect(url_for("home"))
 
-    # Sheet1 col F = current stamps
-    try:
-        current_stamps = int(user.get("Stamps", 0) or 0)
-    except Exception:
-        current_stamps = 0
+    # Pull Campfire Username from Sheet1
+    sheet1 = client.open("POGO Passport Sign-Ins").worksheet("Sheet1")
+    user_rows = sheet1.get_all_records()
+    campfire_username = None
+    for row in user_rows:
+        if str(row.get("Trainer Username", "")).lower() == username.lower():
+            campfire_username = row.get("Campfire Username", "")
+            break
 
-    campfire_username = user.get("Campfire Username", "")
     total_stamps, stamps = get_passport_stamps(username, campfire_username)
+    current_stamps = len(stamps)
 
+    # Split into passport "pages" (12 per page)
     passports = [stamps[i:i+12] for i in range(0, len(stamps), 12)]
-
-    print(f"🔍 /passport route: user={username}, current={current_stamps}, total={total_stamps}, passports={len(passports)}")
 
     return render_template(
         "passport.html",
