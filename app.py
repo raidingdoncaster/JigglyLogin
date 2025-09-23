@@ -90,27 +90,32 @@ def trigger_lugia_refresh():
 def get_passport_stamps(username):
     stamps = []
 
-    # Pull ledger records
     ledger = client.open("POGO Passport Sign-Ins").worksheet("Lugia_Ledger")
     events = client.open("POGO Passport Sign-Ins").worksheet("events")
 
     ledger_records = ledger.get_all_records()
     event_records = events.get_all_records()
 
-    # Event mapping: {name: cover_photo_url}
-    event_map = {r["Name"]: r["cover_photo_url"] for r in event_records}
+    # Map event names → cover photos
+    event_map = {r["Name"].lower(): r["cover_photo_url"] for r in event_records}
 
-    for record in ledger_records:
+    # ✅ Sort by latest earned (reverse sheet order)
+    for record in reversed(ledger_records):
         if record["Trainer Username"].lower() == username.lower():
             reason = record["Reason"]
-            count = record["Count"]
+            count = record.get("Count", 1)
 
-            if reason.lower() == "signup bonus":
-                icon = url_for("static", filename="avatars/avatar1.png")
-            else:
-                icon = event_map.get(reason, url_for("static", filename="avatars/avatar1.png"))
+            # Default icon
+            icon = url_for("static", filename="avatars/avatar1.png")
 
-            stamps.append({"icon": icon, "name": reason, "count": count})
+            if reason and reason.lower() != "signup bonus":
+                icon = event_map.get(reason.lower(), icon)
+
+            stamps.append({
+                "name": reason,
+                "count": count,
+                "icon": icon
+            })
 
     return stamps
 
@@ -288,7 +293,6 @@ def recover():
     return render_template("recover.html")
 
 # ==== Dashboard ====
-# ==== Dashboard ====
 @app.route("/dashboard")
 def dashboard():
     if "trainer" not in session:
@@ -307,17 +311,9 @@ def dashboard():
 
     account_type = "Kids Account" if campfire_username == "Kids Account" else "Standard Account"
 
-    # Demo placeholders (replace later with real data)
-    data = {"stamps": 5, "total": 10, "rewards": ["Sticker Pack", "Discount Band"]}
-    events = [
-        {"name": "Max Finale: Eternatus", "date": "2025-07-23"},
-        {"name": "Wild Area Community Day", "date": "2025-08-15"},
-    ]
-    inbox = [
-        {"subject": "🎉 You earned a new stamp!"},
-        {"subject": "📅 New meetup near you this weekend"},
-        {"subject": "🎁 Claim your Doncaster T-shirt reward"},
-    ]
+    # 🟢 Load stamps
+        stamps = get_passport_stamps(session["trainer"])
+        total_stamps = sum(s["count"] for s in stamps)
 
     return render_template(
         "dashboard.html",
@@ -326,10 +322,16 @@ def dashboard():
         account_type=account_type,
         campfire_username=campfire_username,
         avatar=avatar,
-        background=background,   # ✅ now available in dashboard.html
+        background=background,
         data=data,
+        stamps=stamps,
+        total_stamps=total_stamps,
         events=events,
-        inbox=inbox
+        inbox=[
+                {"subject": "🎉 You earned a new stamp!"},
+                {"subject": "📆 New meetup near you this weekend"}
+        
+        ]
     )
 
 # ==== Inbox ====

@@ -66,10 +66,30 @@
 <!-- Widgets -->
 <div class="widgets">
   <div class="widget">
-    <h3>🎟️ Passport Progress</h3>
-    <p>Your stamps: {{ data.stamps }}/{{ data.total }}</p>
-    <a href="{{ url_for('passport') }}" class="btn">View Full Passport</a>
-  </div>
+      <h3>🎟️ Passport Progress</h3>
+      <p>Your stamps: {{ total_stamps }}</p>
+      <div class="stamp-preview">
+        {% for s in stamps[:3] %}
+          <img src="{{ s.icon }}" alt="{{ s.name }}" class="stamp-icon">
+        {% endfor %}
+      </div>
+      <a href="{{ url_for('passport') }}" class="btn">View Full Passport</a>
+    </div>
+
+    <style>
+    .stamp-preview {
+      display:flex;
+      justify-content:center;
+      gap:6px;
+      margin:8px 0;
+    }
+    .stamp-icon {
+      width:28px; height:28px;
+      border-radius:50%;
+      border:2px solid #3a8dde;
+      object-fit:cover;
+    }
+    </style>
   <div class="widget">
     <h3>📅 Upcoming Meet-ups</h3>
     <p>No events yet</p>
