@@ -2,24 +2,66 @@
 {% block content %}
 
 <!-- Trainer Card -->
-<div class="trainer-card" 
-     style="background: url('{{ url_for('static', filename='backgrounds/' ~ background) }}') center/cover no-repeat;">
-  <div class="trainer-info">
-    <img src="{{ url_for('static', filename='avatars/' ~ avatar) }}" 
-         alt="Avatar" class="avatar" id="dashboard-avatar">
-    <div class="trainer-text">
-      <h2>Welcome, {{ trainer }}!</h2>
-      <p class="meta">Last login: {{ last_login }}</p>
-      <p><strong>Account Type:</strong> {{ account_type }}</p>
-      {% if account_type != "Kids Account" %}
-        <p><strong>Campfire Username:</strong> {{ campfire_username }}</p>
-      {% endif %}
+<div class="trainer-card" style="background-image: url('{{ url_for('static', filename='backgrounds/' ~ background) }}');">
+  <div class="trainer-card-overlay"></div>
+  <div class="trainer-card-content">
+    <div style="display:flex; align-items:center;">
+      <img src="{{ url_for('static', filename='avatars/' ~ avatar) }}" 
+           alt="Avatar" class="avatar" id="dashboard-avatar">
+      <div style="margin-left:15px;">
+        <h2 style="margin:0;">Welcome, {{ trainer }}!</h2>
+        <p style="font-size:0.9em;">Last login: {{ last_login }}</p>
+        <p><strong>Account Type:</strong> {{ account_type }}</p>
+        {% if account_type != "Kids Account" %}
+          <p><strong>Campfire Username:</strong> {{ campfire_username }}</p>
+        {% endif %}
+      </div>
+    </div>
+    <div style="margin-top:10px; text-align:right;">
+      <a href="{{ url_for('change_avatar') }}" style="font-size:0.85em; color:#ffdd57; text-decoration:none; font-weight:600;">
+        ✏️ Customize
+      </a>
     </div>
   </div>
-  <div class="trainer-actions">
-    <a href="{{ url_for('change_avatar') }}" class="edit-link">✏️ Customize</a>
-  </div>
 </div>
+
+<style>
+.trainer-card {
+  position: relative;
+  background-size: cover;
+  background-position: center;
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  color: white;
+}
+
+.trainer-card-overlay {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: linear-gradient(to bottom, rgba(0,0,0,0.45), rgba(0,0,0,0.15));
+  z-index: 0;
+}
+
+.trainer-card-content {
+  position: relative;
+  z-index: 1;
+  padding: 15px;
+}
+
+.trainer-card h2,
+.trainer-card p {
+  margin: 4px 0;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.7);
+}
+
+.avatar {
+  width:64px; height:64px; border-radius:50%; border:3px solid #fff;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+}
+</style>
 
 <!-- Widgets -->
 <div class="widgets">

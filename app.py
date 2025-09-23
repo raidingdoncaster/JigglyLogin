@@ -605,7 +605,7 @@ def change_avatar():
     backgrounds = os.listdir(backgrounds_folder)
 
     current_avatar = user.get("Avatar Icon", "avatar1.png")
-    current_background = user.get("Trainer Card Background", backgrounds[0] if backgrounds else "")
+    current_background = user.get("Trainer Card Background") or "default.png"
 
     return render_template(
         "change_avatar.html",
