@@ -288,6 +288,7 @@ def recover():
     return render_template("recover.html")
 
 # ==== Dashboard ====
+# ==== Dashboard ====
 @app.route("/dashboard")
 def dashboard():
     if "trainer" not in session:
@@ -295,13 +296,18 @@ def dashboard():
         return redirect(url_for("home"))
 
     row, user = find_user(session["trainer"])
-    last_login = user.get("Last Login") if user else None
+    if not user:
+        flash("User not found.", "error")
+        return redirect(url_for("home"))
+
+    last_login = user.get("Last Login")
     campfire_username = user.get("Campfire Username", "")
-    avatar = user.get("Avatar Icon", "avatar1.png")  # ✅ FIX: Column G
+    avatar = user.get("Avatar Icon", "avatar1.png")   # ✅ Column G
+    background = user.get("Trainer Card Background", "default.jpg")  # ✅ Column H (fallback)
 
     account_type = "Kids Account" if campfire_username == "Kids Account" else "Standard Account"
 
-    # Demo data
+    # Demo placeholders (replace later with real data)
     data = {"stamps": 5, "total": 10, "rewards": ["Sticker Pack", "Discount Band"]}
     events = [
         {"name": "Max Finale: Eternatus", "date": "2025-07-23"},
@@ -320,6 +326,7 @@ def dashboard():
         account_type=account_type,
         campfire_username=campfire_username,
         avatar=avatar,
+        background=background,   # ✅ now available in dashboard.html
         data=data,
         events=events,
         inbox=inbox
@@ -551,7 +558,7 @@ from flask import jsonify
 from flask import jsonify
 import time
 
-# ==== Change Avatar ====
+# ==== Change Avatar & Background ====
 @app.route("/change_avatar", methods=["GET", "POST"])
 def change_avatar():
     if "trainer" not in session:
@@ -564,24 +571,49 @@ def change_avatar():
 
     if request.method == "POST":
         avatar_choice = request.form.get("avatar_choice")
-        valid_avatars = [f"avatar{i}.png" for i in range(1, 13)]
+        background_choice = request.form.get("background_choice")
 
+        # ✅ Validate avatar
+        valid_avatars = [f"avatar{i}.png" for i in range(1, 13)]
         if avatar_choice not in valid_avatars:
             flash("Invalid avatar choice.", "error")
             return redirect(url_for("change_avatar"))
 
-        # Update Google Sheet Column G
-        sheet.update_cell(row, 7, avatar_choice)
+        # ✅ Validate background
+        # List all files inside /static/backgrounds
+        backgrounds_folder = os.path.join(app.root_path, "static", "backgrounds")
+        valid_backgrounds = os.listdir(backgrounds_folder)
+
+        if background_choice not in valid_backgrounds:
+            flash("Invalid background choice.", "error")
+            return redirect(url_for("change_avatar"))
+
+        # ✅ Update in Google Sheet
+        sheet.update_cell(row, 7, avatar_choice)   # Column G = Avatar Icon
+        sheet.update_cell(row, 8, background_choice)  # Column H = Trainer Card Background
 
         # ✅ AJAX: return JSON if called via fetch()
         if request.headers.get("X-Requested-With") == "XMLHttpRequest":
-            return jsonify({"success": True, "avatar": avatar_choice})
+            return jsonify({"success": True, "avatar": avatar_choice, "background": background_choice})
 
-        flash("✅ Avatar updated successfully!", "success")
+        flash("✅ Appearance updated successfully!", "success")
         return redirect(url_for("dashboard"))
 
+    # ✅ GET request: load current values
     avatars = [f"avatar{i}.png" for i in range(1, 13)]
+    backgrounds_folder = os.path.join(app.root_path, "static", "backgrounds")
+    backgrounds = os.listdir(backgrounds_folder)
+
     current_avatar = user.get("Avatar Icon", "avatar1.png")
-    return render_template("change_avatar.html", avatars=avatars, current_avatar=current_avatar)
+    current_background = user.get("Trainer Card Background", backgrounds[0] if backgrounds else "")
+
+    return render_template(
+        "change_avatar.html",
+        avatars=avatars,
+        backgrounds=backgrounds,
+        current_avatar=current_avatar,
+        current_background=current_background
+    )
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)), debug=True)

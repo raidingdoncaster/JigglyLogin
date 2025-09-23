@@ -2,27 +2,26 @@
 {% block content %}
 
 <!-- Trainer Card -->
-<div class="trainer-card">
-  <div style="display:flex; align-items:center;">
+<div class="trainer-card" 
+     style="background: url('{{ url_for('static', filename='backgrounds/' ~ background) }}') center/cover no-repeat;">
+  <div class="trainer-info">
     <img src="{{ url_for('static', filename='avatars/' ~ avatar) }}" 
          alt="Avatar" class="avatar" id="dashboard-avatar">
-    <div style="margin-left:15px;">
-      <h2 style="margin:0;">Welcome, {{ trainer }}!</h2>
-      <p style="font-size:0.9em; color:#555;">Last login: {{ last_login }}</p>
+    <div class="trainer-text">
+      <h2>Welcome, {{ trainer }}!</h2>
+      <p class="meta">Last login: {{ last_login }}</p>
       <p><strong>Account Type:</strong> {{ account_type }}</p>
       {% if account_type != "Kids Account" %}
         <p><strong>Campfire Username:</strong> {{ campfire_username }}</p>
       {% endif %}
     </div>
   </div>
-  <div style="margin-top:10px; text-align:right;">
-    <a href="{{ url_for('change_avatar') }}" style="font-size:0.85em; color:#3a8dde; text-decoration:none;">
-      ✏️ Change Avatar
-    </a>
+  <div class="trainer-actions">
+    <a href="{{ url_for('change_avatar') }}" class="edit-link">✏️ Customize</a>
   </div>
 </div>
 
-<!-- Widgets Row -->
+<!-- Widgets -->
 <div class="widgets">
   <div class="widget">
     <h3>🎟️ Passport Progress</h3>
@@ -37,9 +36,9 @@
   <div class="widget">
     <h3>📨 Inbox</h3>
     {% if inbox and inbox|length > 0 %}
-      <ul style="list-style:none; padding:0; margin:0; font-size:0.85em; text-align:left;">
+      <ul class="inbox-list">
         {% for message in inbox[:2] %}
-          <li style="margin-bottom:6px;">{{ message.subject }}</li>
+          <li>{{ message.subject }}</li>
         {% endfor %}
       </ul>
     {% else %}
@@ -89,7 +88,7 @@
 
   <button class="accordion-toggle">🔒 Security</button>
   <div class="accordion-content">
-    <p style="font-size:0.9em; color:#333;">Last login: {{ last_login }}</p>
+    <p class="meta">Last login: {{ last_login }}</p>
     <form action="{{ url_for('logout_everywhere') }}" method="post">
       <button type="submit">Log Out Everywhere</button>
     </form>
@@ -97,50 +96,73 @@
 
   <button class="accordion-toggle">🗑️ Delete Account</button>
   <div class="accordion-content">
-    <p style="font-size:0.9em; color:#b00;">
+    <p class="warning">
       ⚠️ This will permanently delete your account, including Passport stamps, profile, and prize history.
       <strong>This cannot be undone.</strong>
     </p>
     <form action="{{ url_for('delete_account') }}" method="post">
       <input type="text" name="confirm_name" placeholder="Type your trainer name to confirm" required>
-      <button type="submit" style="background:#e74c3c; color:white;">Delete My Account</button>
+      <button type="submit" class="danger-btn">Delete My Account</button>
     </form>
   </div>
 </div>
 
 <style>
+/* Trainer Card */
 .trainer-card {
-  background:#f4f7fa; border-radius:12px; padding:15px; margin-bottom:20px;
-  box-shadow:0 2px 6px rgba(0,0,0,0.1);
+  border-radius:12px; padding:15px; margin-bottom:20px;
+  box-shadow:0 2px 6px rgba(0,0,0,0.1); color:white;
+  background-size:cover; background-position:center;
 }
+.trainer-info { display:flex; align-items:center; }
+.trainer-text { margin-left:15px; }
+.trainer-text h2 { margin:0; }
+.trainer-text .meta { font-size:0.9em; color:#eee; }
+.trainer-actions { margin-top:10px; text-align:right; }
+.edit-link { font-size:0.85em; color:#ffd700; text-decoration:none; }
+
+/* Avatar */
 .avatar {
-  width:64px; height:64px; border-radius:50%; border:3px solid #3a8dde;
+  width:64px; height:64px; border-radius:50%; border:3px solid #fff;
 }
+
+/* Widgets */
 .widgets { display:flex; gap:12px; margin-bottom:20px; }
 .widget {
   flex:1; background:#fff; padding:12px; border-radius:10px;
   box-shadow:0 2px 6px rgba(0,0,0,0.1);
-  display:flex; flex-direction:column; justify-content:space-between; text-align:center;
+  display:flex; flex-direction:column; justify-content:space-between;
+  text-align:center; min-height:120px;
 }
 .widget h3 { margin-top:0; font-size:1em; color:#3a8dde; }
-.btn { padding:6px 12px; background:#3a8dde; color:#fff; border-radius:6px; text-decoration:none; font-size:0.9em; }
+.btn { padding:6px 12px; background:#3a8dde; color:#fff;
+       border-radius:6px; text-decoration:none; font-size:0.9em; margin-top:auto; }
+.inbox-list { list-style:none; padding:0; margin:0; font-size:0.85em; text-align:left; }
+
+/* Explore */
 .explore-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
 .explore-card {
-  background:#ff7675; min-height:100px; display:flex; align-items:center; justify-content:center;
-  border-radius:8px; color:white; font-weight:600;
+  background:#ff7675; height:100px; display:flex; align-items:center; justify-content:center;
+  border-radius:8px; color:white; font-weight:600; font-size:0.95em;
 }
-.pin-group { display:flex; width:100%; gap:6px; }
-.pin-group input { flex:1; padding:8px; }
-.pin-group button { width:70px; flex-shrink:0; }
+
+/* Manage Account */
 .manage-account { background:#fff; border:1px solid #ccc; border-radius:12px; padding:15px; }
+.manage-account h3 { text-align:center; margin-top:0; }
 .accordion-toggle {
-  width:100%; padding:10px; background:#f0f0f0; border:none; border-radius:6px; font-weight:600; cursor:pointer; margin-top:8px;
+  width:100%; padding:10px; background:#f0f0f0; border:none;
+  border-radius:6px; font-weight:600; cursor:pointer; margin-top:8px;
 }
 .accordion-content { max-height:0; overflow:hidden; transition:max-height 0.3s ease; padding:0 5px; }
 .accordion-content form { margin-top:10px; }
 .accordion-content input, .accordion-content button {
   width:100%; margin:5px 0; padding:8px; border-radius:6px; border:1px solid #ccc;
 }
+.pin-group { display:flex; gap:6px; }
+.pin-group input { flex:1; }
+.pin-group button { width:70px; flex-shrink:0; }
+.warning { font-size:0.9em; color:#b00; }
+.danger-btn { background:#e74c3c; color:white; }
 </style>
 
 <script>

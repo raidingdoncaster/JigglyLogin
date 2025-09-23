@@ -1,41 +1,120 @@
 {% extends "base.html" %}
 {% block content %}
-<h2 style="text-align:center; margin-bottom:1em;">Choose Your Avatar</h2>
+<h2 style="text-align:center; margin-bottom:1em;">Customize Your Trainer Card</h2>
 
+<!-- Current preview -->
 <div style="text-align:center; margin-bottom:1.5em;">
-  <img id="selected-avatar" src="{{ url_for('static', filename='avatars/' + current_avatar) }}"
-       alt="Selected Avatar" style="width:80px; height:80px; border-radius:50%; border:3px solid #3a8dde;">
-  <p style="margin-top:0.5em; font-size:0.9em; color:#555;">Your current avatar</p>
+  <div style="display:inline-block; padding:15px; border-radius:12px; background:#f4f7fa;">
+    <img id="selected-avatar"
+         src="{{ url_for('static', filename='avatars/' + current_avatar) }}"
+         alt="Avatar"
+         style="width:80px; height:80px; border-radius:50%; border:3px solid #3a8dde;">
+    <p style="margin:0.5em 0 0; font-size:0.9em; color:#555;">Current Avatar</p>
+    {% if current_background %}
+      <p style="font-size:0.85em; color:#777;">Background: {{ current_background }}</p>
+    {% endif %}
+  </div>
 </div>
 
-<form id="avatar-form" action="{{ url_for('change_avatar') }}" method="post"
-      style="display:flex; flex-wrap:wrap; justify-content:center; gap:20px;">
-  {% for icon in avatars %}
-  <label class="avatar-option">
-    <input type="radio" name="avatar_choice" value="{{ icon }}" {% if icon == current_avatar %}checked{% endif %}>
-    <img src="{{ url_for('static', filename='avatars/' + icon) }}" alt="Avatar" class="avatar-img">
-  </label>
-  {% endfor %}
-  <button type="submit" style="margin-top:20px; padding:10px 20px; background:#3a8dde; color:white; border:none; border-radius:6px; cursor:pointer;">
-    Save Avatar
-  </button>
+<!-- Tabs -->
+<div class="tab-buttons">
+  <button type="button" class="tab-btn active" data-tab="avatars">Avatars</button>
+  <button type="button" class="tab-btn" data-tab="backgrounds">Backgrounds</button>
+</div>
+
+<form id="appearance-form" action="{{ url_for('change_avatar') }}" method="post">
+  <!-- Avatars -->
+  <div class="tab-content active" id="avatars">
+    <div class="grid">
+      {% for icon in avatars %}
+      <label class="option">
+        <input type="radio" name="avatar_choice" value="{{ icon }}"
+               {% if icon == current_avatar %}checked{% endif %}>
+        <img src="{{ url_for('static', filename='avatars/' + icon) }}" alt="Avatar">
+      </label>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Backgrounds -->
+  <div class="tab-content" id="backgrounds">
+    <div class="grid">
+      {% for bg in backgrounds %}
+      <label class="option">
+        <input type="radio" name="background_choice" value="{{ bg }}"
+               {% if bg == current_background %}checked{% endif %}>
+        <img src="{{ url_for('static', filename='backgrounds/' + bg) }}" alt="Background"
+             style="border-radius:8px; width:100px; height:60px; object-fit:cover;">
+      </label>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div style="text-align:center; margin-top:20px;">
+    <button type="submit"
+            style="padding:10px 20px; background:#3a8dde; color:white;
+                   border:none; border-radius:6px; cursor:pointer;">
+      Save Changes
+    </button>
+  </div>
 </form>
 
-<p style="text-align:center; margin-top:1em;"><a href="{{ url_for('dashboard') }}">⬅️ Back to Dashboard</a></p>
+<p style="text-align:center; margin-top:1em;">
+  <a href="{{ url_for('dashboard') }}">⬅️ Back to Dashboard</a>
+</p>
 
 <style>
-.avatar-option input[type="radio"] { display:none; }
-.avatar-img {
-  width:64px; height:64px; border-radius:50%; border:2px solid #ccc; cursor:pointer;
+.tab-buttons {
+  display:flex;
+  justify-content:center;
+  margin-bottom:15px;
+  gap:10px;
+}
+.tab-btn {
+  padding:8px 16px;
+  border:none;
+  border-radius:6px;
+  background:#eee;
+  cursor:pointer;
+  font-weight:600;
+}
+.tab-btn.active { background:#3a8dde; color:white; }
+
+.tab-content { display:none; }
+.tab-content.active { display:block; }
+
+.grid {
+  display:flex;
+  flex-wrap:wrap;
+  gap:15px;
+  justify-content:center;
+}
+.option input[type="radio"] { display:none; }
+.option img {
+  width:64px; height:64px; border-radius:50%;
+  border:2px solid #ccc;
+  cursor:pointer;
   transition:transform 0.2s, border 0.2s;
 }
-.avatar-option input[type="radio"]:checked + .avatar-img {
-  border:2px solid #3a8dde; transform:scale(1.05);
+.option input[type="radio"]:checked + img {
+  border:2px solid #3a8dde;
+  transform:scale(1.05);
 }
 </style>
 
 <script>
-document.getElementById("avatar-form").addEventListener("submit", function(e) {
+// Tabs
+document.querySelectorAll(".tab-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+    document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
+    btn.classList.add("active");
+    document.getElementById(btn.dataset.tab).classList.add("active");
+  });
+});
+
+// AJAX submit
+document.getElementById("appearance-form").addEventListener("submit", function(e) {
   e.preventDefault();
   const formData = new FormData(this);
 
@@ -47,16 +126,8 @@ document.getElementById("avatar-form").addEventListener("submit", function(e) {
   .then(r => r.json())
   .then(data => {
     if (data.success) {
-      // ✅ Update preview on THIS page
       document.getElementById("selected-avatar").src = "/static/avatars/" + data.avatar;
-
-      // ✅ Update dashboard avatar (if dashboard is open in another tab)
-      const openerAvatar = window.opener?.document.getElementById("dashboard-avatar");
-      if (openerAvatar) {
-        openerAvatar.src = "/static/avatars/" + data.avatar;
-      }
-
-      alert("✅ Avatar updated successfully!");
+      alert("✅ Appearance updated!");
     }
   });
 });
