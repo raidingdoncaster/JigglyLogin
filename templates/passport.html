@@ -15,11 +15,16 @@
             {% for i in range(12) %}
               {% if i < passport|length %}
                 <div class="stamp-slot filled {% if passport[i].is_new %}new-stamp{% endif %}">
-                  <div class="stamp-rays"></div>
                   <img src="{{ passport[i].icon }}" alt="{{ passport[i].name }}">
                   <p class="stamp-label" title="{{ passport[i].name }}">
                     {{ passport[i].name }}
                   </p>
+                  {% if passport[i].is_new %}
+                    <div class="stamper">
+                      <img src="{{ url_for('static', filename='passport/stampbot.png') }}" class="stampbot">
+                      <img src="{{ url_for('static', filename='passport/stamptop.png') }}" class="stamptop">
+                    </div>
+                  {% endif %}
                 </div>
               {% else %}
                 <div class="stamp-slot empty">
@@ -40,191 +45,67 @@
   </div>
 </div>
 
-<!-- Stamper overlay -->
-<div id="stamper-animation" class="stamper-hidden">
-  <img src="{{ url_for('static', filename='passport/stampbot.png') }}" class="stamp-bot">
-  <img src="{{ url_for('static', filename='passport/stamptop.png') }}" class="stamp-top">
-</div>
-
 <style>
-.passport-container {
-  background: url("{{ url_for('static', filename='passport/passport-bg.png') }}") no-repeat center center fixed;
-  background-size: cover;
-  padding: 20px;
-  border-radius: 12px;
-  min-height: 80vh;
-  text-align: center;
-}
-
-.stamp-counts {
-  margin-bottom: 20px;
-  font-size: 1em;
-  color: #333;
-  background: rgba(255,255,255,0.8);
-  display: inline-block;
-  padding: 10px 15px;
-  border-radius: 8px;
-}
-
-.passport-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 20px;
-  justify-content: center;
-}
-
-.passport-card {
-  background: rgba(255,255,255,0.9);
-  border-radius: 12px;
-  padding: 15px;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.15);
-}
-
-.passport-slots {
-  display: grid;
-  grid-template-columns: repeat(4, 80px);
-  grid-template-rows: repeat(3, 100px);
-  gap: 12px;
-  justify-content: center;
-}
-
-.stamp-slot {
-  width: 80px;
-  text-align: center;
+/* Burst effect */
+.new-stamp {
   position: relative;
 }
-
-.stamp-slot.filled img {
-  width: 64px;
-  height: 64px;
-  object-fit: cover;
-  border-radius: 50%;
-  border: 2px solid #3a8dde;
-  margin-bottom: 5px;
-  position: relative;
-  z-index: 2;
-}
-
-.stamp-label {
-  font-size: 0.65em;
-  color: #333;
-  line-height: 1.1;
-  margin: 0;
-  max-width: 80px;
-  display: -webkit-box;
-  -webkit-line-clamp: 2; /* ✅ allows 2 lines */
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.stamp-slot.empty {
-  width: 64px;
-  height: 64px;
-  margin: 0 auto;
-  background: rgba(0,0,0,0.05);
-  border: 2px dashed #bbb;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.pokeball-placeholder {
-  width: 70%;
-  height: 70%;
-  border-radius: 50%;
-  border: 2px solid #bbb;
-  position: relative;
-}
-.pokeball-placeholder::before {
+.new-stamp.animate::after {
   content: "";
   position: absolute;
-  top: 45%;
-  left: 0;
-  width: 100%;
-  height: 2px;
-  background: #bbb;
-}
-
-/* New stamp ray burst */
-.new-stamp .stamp-rays {
-  position: absolute;
-  top: 0;
-  left: 50%;
-  width: 100px;
-  height: 100px;
-  transform: translateX(-50%);
-  background: radial-gradient(circle, rgba(255,223,0,0.7) 20%, transparent 70%);
-  border-radius: 50%;
-  animation: rays 1.2s ease-out forwards;
-  z-index: 1;
-}
-@keyframes rays {
-  from { transform: translateX(-50%) scale(0.2); opacity: 0.8; }
-  to   { transform: translateX(-50%) scale(1.2); opacity: 0; }
-}
-
-/* Stamper overlay */
-#stamper-animation {
-  position: fixed;
   top: 50%;
   left: 50%;
-  transform: translate(-50%, -50%) scale(0.5);
-  z-index: 9999;
+  width: 140px;
+  height: 140px;
+  background: radial-gradient(circle, rgba(0,136,255,0.6), transparent 70%);
+  border-radius: 50%;
+  transform: translate(-50%, -50%) scale(0);
+  animation: burst 1s ease-out forwards;
+  z-index: -1;
+}
+
+@keyframes burst {
+  to { transform: translate(-50%, -50%) scale(1); opacity: 0; }
+}
+
+/* Stamper tool */
+.stamper {
+  position: absolute;
+  top: -40px;
+  left: 50%;
+  transform: translateX(-50%);
+  opacity: 0;
   pointer-events: none;
 }
-#stamper-animation.stamper-hidden {
-  display: none;
-}
-#stamper-animation img {
+
+.stampbot,
+.stamptop {
+  width: 80px;
   display: block;
-  max-width: 200px;
+  margin: 0 auto;
+  position: relative;
 }
-.stamp-bot, .stamp-top {
-  position: absolute;
-  left: 0;
-  right: 0;
-  margin: auto;
+
+.new-stamp.animate .stamper {
+  animation: stamper-sequence 1.5s ease-out forwards;
 }
-.stamp-top {
-  animation: stampMove 1s ease forwards;
-}
-@keyframes stampMove {
-  0% { transform: translateY(-200px); opacity: 0; }
-  40% { transform: translateY(0); opacity: 1; }
-  70% { transform: translateY(0); opacity: 1; }
-  100% { transform: translateY(-200px); opacity: 0; }
+
+@keyframes stamper-sequence {
+  0%   { opacity: 0; transform: translate(-50%, -60px) scale(1); }
+  20%  { opacity: 1; transform: translate(-50%, -20px) scale(1.05); }
+  50%  { opacity: 1; transform: translate(-50%, 0px) scale(1); }
+  80%  { opacity: 1; transform: translate(-50%, 0px) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -60px) scale(0.9); }
 }
 </style>
 
 <script>
-document.addEventListener("DOMContentLoaded", function() {
-  const newStamps = document.querySelectorAll(".new-stamp");
-  if (newStamps.length > 0) {
-    const stamper = document.getElementById("stamper-animation");
-    stamper.classList.remove("stamper-hidden");
+window.addEventListener("load", () => {
+  const newStamp = document.querySelector(".stamp-slot.new-stamp");
+  if (newStamp) {
     setTimeout(() => {
-      stamper.classList.add("stamper-hidden");
-    }, 1500);
-  }
-});
-</script>
-
-<!-- TEST ANIMATION -->
-<div class="stamp-slot filled new-stamp" style="margin:40px auto;">
-  <img src="{{ url_for('static', filename='icons/tickstamp.png') }}" alt="Test Stamp">
-  <p class="stamp-label">Test Stamp</p>
-</div>
-
-<script>
-document.addEventListener("DOMContentLoaded", () => {
-  const testStamp = document.querySelector(".new-stamp");
-  if (testStamp) {
-    console.log("✅ Found .new-stamp, running animation");
-    setTimeout(() => testStamp.classList.remove("new-stamp"), 3000);
-  } else {
-    console.log("❌ No .new-stamp found");
+      newStamp.classList.add("animate");
+    }, 3000); // delay burst + stamper until after loading screen
   }
 });
 </script>

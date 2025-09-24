@@ -114,8 +114,8 @@ def _event_icon_map():
         m[name] = icon
     return m
 
-def get_passport_stamps(username, campfire_username=None, last_login=None):
-    """Return a trainer's stamps as a list of dicts with icon, name, count, and is_new flag."""
+def get_passport_stamps(username, campfire_username=None):
+    """Return a trainer's stamps as a list of dicts with icon, name, count, is_new."""
 
     ledger = client.open("POGO Passport Sign-Ins").worksheet("Lugia_Ledger")
     events = client.open("POGO Passport Sign-Ins").worksheet("events")
@@ -124,57 +124,52 @@ def get_passport_stamps(username, campfire_username=None, last_login=None):
     event_records = events.get_all_records()
 
     # Map event_id → cover_photo_url
-    event_map = {}
-    for r in event_records:
-        event_id = str(r.get("event_id", "")).strip().lower()
-        cover = str(r.get("cover_photo_url", "")).strip()
-        if event_id:
-            event_map[event_id] = cover
+    event_map = {str(r.get("event_id", "")).strip().lower(): str(r.get("cover_photo_url", "")).strip()
+                 for r in event_records if r.get("event_id")}
+
+    # Filter only this trainer's records
+    trainer_records = []
+    for record in ledger_records:
+        trainer = str(record.get("Trainer", "")).strip().lower()
+        campfire = str(record.get("Campfire", "")).strip().lower()
+        if trainer == username.lower() or (campfire_username and campfire == campfire_username.lower()):
+            trainer_records.append(record)
+
+    # Sort so most recent comes last
+    trainer_records_sorted = sorted(trainer_records, key=lambda r: r.get("Timestamp", ""), reverse=False)
 
     stamps = []
     total_count = 0
 
-    for record in ledger_records:
-        trainer = str(record.get("Trainer", "")).strip().lower()
-        campfire = str(record.get("Campfire", "")).strip().lower()
+    for idx, record in enumerate(trainer_records_sorted):
+        reason = str(record.get("Reason", "")).strip()
+        count = int(record.get("Count", 1))
+        event_id = str(record.get("EventID", "")).strip().lower()
+        total_count += count
 
-        if trainer == username.lower() or (campfire_username and campfire == campfire_username.lower()):
-            reason = str(record.get("Reason", "")).strip()
-            count = int(record.get("Count", 1))
-            event_id = str(record.get("EventID", "")).strip().lower()
-            awarded_at = record.get("Timestamp")  # ✅ must exist in your ledger sheet
+        # Decide icon
+        if reason.lower() == "signup bonus":
+            icon = url_for("static", filename="icons/signup.png")
+        elif "cdl" in reason.lower():
+            icon = url_for("static", filename="icons/cdl.png")
+        elif "win" in reason.lower():
+            icon = url_for("static", filename="icons/win.png")
+        elif "owed" in reason.lower():
+            icon = url_for("static", filename="icons/owed.png")
+        elif event_id in event_map:
+            icon = event_map[event_id]
+        else:
+            icon = url_for("static", filename="icons/tickstamp.png")
 
-            # Decide icon
-            if reason.lower() == "signup bonus":
-                icon = url_for("static", filename="icons/signup.png")
-            elif "cdl" in reason.lower():
-                icon = url_for("static", filename="icons/cdl.png")
-            elif "win" in reason.lower():
-                icon = url_for("static", filename="icons/win.png")
-            elif event_id in event_map:
-                icon = event_map[event_id]
-            else:
-                icon = url_for("static", filename="icons/tickstamp.png")
+        # Mark only the last record as new
+        is_new = (idx == len(trainer_records_sorted) - 1)
 
-            # ✅ Check if this is a new stamp (after last_login)
-            is_new = False
-            if last_login and awarded_at:
-                try:
-                    from dateutil import parser
-                    awarded_dt = parser.parse(awarded_at)
-                    last_login_dt = parser.parse(last_login)
-                    if awarded_dt > last_login_dt:
-                        is_new = True
-                except Exception as e:
-                    print("⚠️ Timestamp parse error:", e)
-
-            total_count += count
-            stamps.append({
-                "name": reason,
-                "count": count,
-                "icon": icon,
-                "is_new": is_new
-            })
+        stamps.append({
+            "name": reason,
+            "count": count,
+            "icon": icon,
+            "is_new": is_new
+        })
 
     return total_count, stamps
 
