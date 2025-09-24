@@ -114,10 +114,9 @@ def _event_icon_map():
         m[name] = icon
     return m
 
-def get_passport_stamps(username, campfire_username=None):
-    """Return a trainer's stamps as a list of dicts with icon, name, and count."""
+def get_passport_stamps(username, campfire_username=None, last_login=None):
+    """Return a trainer's stamps as a list of dicts with icon, name, count, and is_new flag."""
 
-    # Load sheets
     ledger = client.open("POGO Passport Sign-Ins").worksheet("Lugia_Ledger")
     events = client.open("POGO Passport Sign-Ins").worksheet("events")
 
@@ -139,12 +138,11 @@ def get_passport_stamps(username, campfire_username=None):
         trainer = str(record.get("Trainer", "")).strip().lower()
         campfire = str(record.get("Campfire", "")).strip().lower()
 
-        # Match either Trainer Username OR Campfire Username
         if trainer == username.lower() or (campfire_username and campfire == campfire_username.lower()):
             reason = str(record.get("Reason", "")).strip()
             count = int(record.get("Count", 1))
             event_id = str(record.get("EventID", "")).strip().lower()
-            total_count += count
+            awarded_at = record.get("Timestamp")  # ✅ must exist in your ledger sheet
 
             # Decide icon
             if reason.lower() == "signup bonus":
@@ -154,14 +152,28 @@ def get_passport_stamps(username, campfire_username=None):
             elif "win" in reason.lower():
                 icon = url_for("static", filename="icons/win.png")
             elif event_id in event_map:
-                icon = event_map[event_id]  # raw cover_photo_url
+                icon = event_map[event_id]
             else:
                 icon = url_for("static", filename="icons/tickstamp.png")
 
+            # ✅ Check if this is a new stamp (after last_login)
+            is_new = False
+            if last_login and awarded_at:
+                try:
+                    from dateutil import parser
+                    awarded_dt = parser.parse(awarded_at)
+                    last_login_dt = parser.parse(last_login)
+                    if awarded_dt > last_login_dt:
+                        is_new = True
+                except Exception as e:
+                    print("⚠️ Timestamp parse error:", e)
+
+            total_count += count
             stamps.append({
                 "name": reason,
                 "count": count,
-                "icon": icon
+                "icon": icon,
+                "is_new": is_new
             })
 
     return total_count, stamps
@@ -485,19 +497,20 @@ def passport():
 
     username = session["trainer"]
 
-    # Pull Campfire Username from Sheet1
+    # Pull Campfire + Last Login from Sheet1
     sheet1 = client.open("POGO Passport Sign-Ins").worksheet("Sheet1")
     user_rows = sheet1.get_all_records()
     campfire_username = None
+    last_login = None
     for row in user_rows:
         if str(row.get("Trainer Username", "")).lower() == username.lower():
             campfire_username = row.get("Campfire Username", "")
+            last_login = row.get("Last Login", "")
             break
 
-    total_stamps, stamps = get_passport_stamps(username, campfire_username)
+    total_stamps, stamps = get_passport_stamps(username, campfire_username, last_login)
     current_stamps = len(stamps)
 
-    # Split into passport "pages" (12 per page)
     passports = [stamps[i:i+12] for i in range(0, len(stamps), 12)]
 
     return render_template(

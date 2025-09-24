@@ -14,7 +14,8 @@
           <div class="passport-slots">
             {% for i in range(12) %}
               {% if i < passport|length %}
-                <div class="stamp-slot filled">
+                <div class="stamp-slot filled {% if passport[i].is_new %}new-stamp{% endif %}">
+                  <div class="stamp-rays"></div>
                   <img src="{{ passport[i].icon }}" alt="{{ passport[i].name }}">
                   <p class="stamp-label" title="{{ passport[i].name }}">
                     {{ passport[i].name }}
@@ -37,6 +38,12 @@
   <div style="margin-top:20px; text-align:center;">
     <a href="{{ url_for('dashboard') }}" class="btn">⬅ Back to Dashboard</a>
   </div>
+</div>
+
+<!-- Stamper overlay -->
+<div id="stamper-animation" class="stamper-hidden">
+  <img src="{{ url_for('static', filename='passport/stampbot.png') }}" class="stamp-bot">
+  <img src="{{ url_for('static', filename='passport/stamptop.png') }}" class="stamp-top">
 </div>
 
 <style>
@@ -84,6 +91,7 @@
 .stamp-slot {
   width: 80px;
   text-align: center;
+  position: relative;
 }
 
 .stamp-slot.filled img {
@@ -93,6 +101,8 @@
   border-radius: 50%;
   border: 2px solid #3a8dde;
   margin-bottom: 5px;
+  position: relative;
+  z-index: 2;
 }
 
 .stamp-label {
@@ -101,7 +111,9 @@
   line-height: 1.1;
   margin: 0;
   max-width: 80px;
-  white-space: nowrap;
+  display: -webkit-box;
+  -webkit-line-clamp: 2; /* ✅ allows 2 lines */
+  -webkit-box-orient: vertical;
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -125,7 +137,6 @@
   border: 2px solid #bbb;
   position: relative;
 }
-
 .pokeball-placeholder::before {
   content: "";
   position: absolute;
@@ -135,6 +146,69 @@
   height: 2px;
   background: #bbb;
 }
+
+/* New stamp ray burst */
+.new-stamp .stamp-rays {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 100px;
+  height: 100px;
+  transform: translateX(-50%);
+  background: radial-gradient(circle, rgba(255,223,0,0.7) 20%, transparent 70%);
+  border-radius: 50%;
+  animation: rays 1.2s ease-out forwards;
+  z-index: 1;
+}
+@keyframes rays {
+  from { transform: translateX(-50%) scale(0.2); opacity: 0.8; }
+  to   { transform: translateX(-50%) scale(1.2); opacity: 0; }
+}
+
+/* Stamper overlay */
+#stamper-animation {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.5);
+  z-index: 9999;
+  pointer-events: none;
+}
+#stamper-animation.stamper-hidden {
+  display: none;
+}
+#stamper-animation img {
+  display: block;
+  max-width: 200px;
+}
+.stamp-bot, .stamp-top {
+  position: absolute;
+  left: 0;
+  right: 0;
+  margin: auto;
+}
+.stamp-top {
+  animation: stampMove 1s ease forwards;
+}
+@keyframes stampMove {
+  0% { transform: translateY(-200px); opacity: 0; }
+  40% { transform: translateY(0); opacity: 1; }
+  70% { transform: translateY(0); opacity: 1; }
+  100% { transform: translateY(-200px); opacity: 0; }
+}
 </style>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+  const newStamps = document.querySelectorAll(".new-stamp");
+  if (newStamps.length > 0) {
+    const stamper = document.getElementById("stamper-animation");
+    stamper.classList.remove("stamper-hidden");
+    setTimeout(() => {
+      stamper.classList.add("stamper-hidden");
+    }, 1500);
+  }
+});
+</script>
 
 {% endblock %}
