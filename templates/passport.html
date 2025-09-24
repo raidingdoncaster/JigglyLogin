@@ -211,4 +211,22 @@ document.addEventListener("DOMContentLoaded", function() {
 });
 </script>
 
+<!-- TEST ANIMATION -->
+<div class="stamp-slot filled new-stamp" style="margin:40px auto;">
+  <img src="{{ url_for('static', filename='icons/tickstamp.png') }}" alt="Test Stamp">
+  <p class="stamp-label">Test Stamp</p>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const testStamp = document.querySelector(".new-stamp");
+  if (testStamp) {
+    console.log("✅ Found .new-stamp, running animation");
+    setTimeout(() => testStamp.classList.remove("new-stamp"), 3000);
+  } else {
+    console.log("❌ No .new-stamp found");
+  }
+});
+</script>
+
 {% endblock %}
