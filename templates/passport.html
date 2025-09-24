@@ -14,15 +14,18 @@
           <div class="passport-slots">
             {% for i in range(12) %}
               {% if i < passport|length %}
-                <div class="stamp-slot filled {% if passport[i].is_new %}new-stamp{% endif %}">
+                <div class="stamp-slot filled {% if loop.last and loop.parent.last %}new-stamp{% endif %}">
                   <img src="{{ passport[i].icon }}" alt="{{ passport[i].name }}">
                   <p class="stamp-label" title="{{ passport[i].name }}">
                     {{ passport[i].name }}
                   </p>
-                  {% if passport[i].is_new %}
-                    <div class="stamp-burst"></div>
-                    <img src="{{ url_for('static', filename='passport/stampbot.png') }}" class="stamper stamper-bot">
-                    <img src="{{ url_for('static', filename='passport/stamptop.png') }}" class="stamper stamper-top">
+
+                  {% if loop.last and loop.parent.last %}
+                  <!-- Stamper animation for newest stamp -->
+                  <div class="stamper">
+                    <img src="{{ url_for('static', filename='passport/stampbot.png') }}" class="stamper-bot">
+                    <img src="{{ url_for('static', filename='passport/stamptop.png') }}" class="stamper-top">
+                  </div>
                   {% endif %}
                 </div>
               {% else %}
@@ -89,7 +92,7 @@
 .stamp-slot {
   width: 80px;
   text-align: center;
-  position: relative;
+  position: relative; /* needed for animation overlays */
 }
 
 .stamp-slot.filled img {
@@ -144,54 +147,54 @@
   background: #bbb;
 }
 
-/* Animation styles */
-.new-stamp .stamp-burst {
+/* === Animation for newest stamp === */
+.stamp-slot.new-stamp::after {
+  content: "";
   position: absolute;
-  top: 0;
+  top: 50%;
   left: 50%;
-  width: 120px;
-  height: 120px;
-  background: radial-gradient(circle, rgba(0,162,255,0.6) 0%, transparent 70%);
+  width: 90px;
+  height: 90px;
+  background: radial-gradient(circle, rgba(0,136,255,0.4) 0%, transparent 70%);
   border-radius: 50%;
-  transform: translateX(-50%) scale(0);
-  animation: burstAnim 1s ease-out forwards 3s;
+  transform: translate(-50%, -50%) scale(0.8);
+  opacity: 0;
+  animation: burst 1s ease-out forwards 3s;
   z-index: 1;
 }
 
-@keyframes burstAnim {
-  0% { transform: translateX(-50%) scale(0); opacity: 0.8; }
-  60% { transform: translateX(-50%) scale(1.2); opacity: 1; }
-  100% { transform: translateX(-50%) scale(1.5); opacity: 0; }
+@keyframes burst {
+  0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0.7; }
+  80% { transform: translate(-50%, -50%) scale(1.2); opacity: 0.4; }
+  100% { transform: translate(-50%, -50%) scale(1); opacity: 0; }
 }
 
+/* Stamper animation */
 .stamper {
   position: absolute;
+  top: 50%;
   left: 50%;
-  transform: translateX(-50%) scale(0.8);
+  width: 90px;
+  height: 90px;
+  transform: translate(-50%, -50%) scale(1);
+  animation: stamp 1s ease forwards 3s;
   opacity: 0;
   z-index: 3;
 }
 
-.stamper-bot {
-  bottom: 100%;
-  animation: stampBot 1s ease forwards 3s;
+.stamper-bot, .stamper-top {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 90px;
+  height: 90px;
 }
 
-.stamper-top {
-  bottom: 100%;
-  animation: stampTop 1s ease forwards 3s;
-}
-
-@keyframes stampBot {
-  0% { opacity: 0; transform: translate(-50%, -50px) scale(0.8); }
-  50% { opacity: 1; transform: translate(-50%, 0) scale(1); }
-  100% { opacity: 0; transform: translate(-50%, 50px) scale(0.8); }
-}
-
-@keyframes stampTop {
-  0% { opacity: 0; transform: translate(-50%, -70px) scale(0.8); }
-  50% { opacity: 1; transform: translate(-50%, -20px) scale(1); }
-  100% { opacity: 0; transform: translate(-50%, 0) scale(0.8); }
+@keyframes stamp {
+  0%   { opacity: 0; transform: translate(-50%, -80%) scale(1.3); }
+  40%  { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  70%  { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1); }
 }
 </style>
 
