@@ -115,38 +115,27 @@ def _event_icon_map():
     return m
 
 def get_passport_stamps(username, campfire_username=None):
-    """Return total stamps, a list of stamps, and the most recent stamp dict."""
+    """Return stamps: (total_count, stamps_list, most_recent_stamp)."""
 
-    # Load sheets
     ledger = client.open("POGO Passport Sign-Ins").worksheet("Lugia_Ledger")
     events = client.open("POGO Passport Sign-Ins").worksheet("events")
 
     ledger_records = ledger.get_all_records()
     event_records = events.get_all_records()
 
-    # Map event_id → event details (cover, title, date)
-    event_map = {}
-    for r in event_records:
-        event_id = str(r.get("event_id", "")).strip().lower()
-        cover = str(r.get("cover_photo_url", "")).strip()
-        title = str(r.get("Meetup Name", "")).strip()
-        date = str(r.get("Date", "")).strip()
-        if event_id:
-            event_map[event_id] = {
-                "icon": cover,
-                "title": title,
-                "date": date
-            }
+    # Map event_id → cover_photo_url
+    event_map = {
+        str(r.get("event_id", "")).strip().lower(): str(r.get("cover_photo_url", "")).strip()
+        for r in event_records if r.get("event_id")
+    }
 
-    stamps = []
-    total_count = 0
-    latest_stamp = None
+    stamps, total_count = [], 0
+    most_recent_stamp = None
 
     for record in ledger_records:
         trainer = str(record.get("Trainer", "")).strip().lower()
         campfire = str(record.get("Campfire", "")).strip().lower()
 
-        # Match either Trainer Username OR Campfire Username
         if trainer == username.lower() or (campfire_username and campfire == campfire_username.lower()):
             reason = str(record.get("Reason", "")).strip()
             count = int(record.get("Count", 1))
@@ -161,36 +150,15 @@ def get_passport_stamps(username, campfire_username=None):
             elif "win" in reason.lower():
                 icon = url_for("static", filename="icons/win.png")
             elif event_id in event_map:
-                icon = event_map[event_id]["icon"]  # raw cover_photo_url
+                icon = event_map[event_id]
             else:
                 icon = url_for("static", filename="icons/tickstamp.png")
 
-            stamp_data = {
-                "name": reason,
-                "count": count,
-                "icon": icon,
-                "event_id": event_id,
-                "date": record.get("Date", "")
-            }
-            stamps.append(stamp_data)
+            stamp = {"name": reason, "count": count, "icon": icon}
+            stamps.append(stamp)
+            most_recent_stamp = stamp  # last one found becomes "most recent"
 
-    # Pick the most recent stamp (last in the ledger list if any)
-    if stamps:
-        last = stamps[-1]
-        if last["event_id"] in event_map:
-            latest_stamp = {
-                "title": event_map[last["event_id"]]["title"],
-                "icon": event_map[last["event_id"]]["icon"],
-                "date": event_map[last["event_id"]]["date"]
-            }
-        else:
-            latest_stamp = {
-                "title": last["name"],
-                "icon": last["icon"],
-                "date": last.get("date", "")
-            }
-
-    return total_count, stamps, latest_stamp
+    return total_count, stamps, most_recent_stamp
 
 def get_most_recent_meetup(trainer_username: str, campfire_username: str = ""):
     """
@@ -603,16 +571,9 @@ def passport():
             campfire_username = row.get("Campfire Username", "")
             break
 
-    total_stamps, stamps = get_passport_stamps(username, campfire_username)
+    total_stamps, stamps, most_recent_stamp = get_passport_stamps(username, campfire_username)
     current_stamps = len(stamps)
 
-    # Mark the latest stamp as new (visual animation only)
-    if stamps:
-        for s in stamps:
-            s["is_new"] = False
-        stamps[-1]["is_new"] = True
-
-    # Split into passport "pages" (12 per page)
     passports = [stamps[i:i+12] for i in range(0, len(stamps), 12)]
 
     return render_template(
@@ -622,6 +583,7 @@ def passport():
         passports=passports,
         total_stamps=total_stamps,
         current_stamps=current_stamps,
+        most_recent_stamp=most_recent_stamp,
         show_back=True
     )
 
