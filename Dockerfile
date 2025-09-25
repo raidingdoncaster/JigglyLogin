@@ -26,4 +26,4 @@ EXPOSE 8080
 # Use Gunicorn to run Flask in production
 CMD ["gunicorn", "-b", "0.0.0.0:8080", "app:app"]
 
-pip install supabase
+RUN pip install supabase
