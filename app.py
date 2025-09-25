@@ -285,7 +285,6 @@ def detectname():
 
     return render_template("detectname.html", trainer_name=details["trainer_name"])
 
-
 # ====== Age Selection ======
 @app.route("/age", methods=["GET", "POST"])
 def age():
@@ -296,24 +295,66 @@ def age():
 
     if request.method == "POST":
         choice = request.form.get("age_choice")
+        trainer_name = details["trainer_name"].strip()
+
         if choice == "13plus":
             flash("✅ Great! You’re signing up as 13 or older.", "success")
             return redirect(url_for("campfire"))
+
         elif choice == "under13":
-            # Kids Account: store in Sheet1
-            sheet.append_row([
-                details["trainer_name"],
-                hash_value(details["pin"]),
-                details["memorable"],
-                datetime.utcnow().isoformat(),
-                "Kids Account",      # E
-                "0",                 # F Stamps
-                "avatar1.png"        # G Avatar
-            ])
+            exists = False
+            if supabase:
+                resp = supabase.table("sheet1").select("trainer_username").ilike("trainer_username", trainer_name).execute()
+                if resp.data:
+                    exists = True
+
+            records = sheet.get_all_records()
+            for record in records:
+                if record.get("Trainer Username", "").lower() == trainer_name.lower():
+                    exists = True
+                    break
+
+            if exists:
+                flash("This trainer name is already registered. Please log in instead.", "error")
+                session.pop("signup_details", None)
+                return redirect(url_for("home"))
+
+            try:
+                if supabase:
+                    supabase.table("sheet1").insert({
+                        "trainer_username": trainer_name,
+                        "pin_hash": hash_value(details["pin"]),
+                        "memorable_password": details["memorable"],
+                        "last_login": datetime.utcnow().isoformat(),
+                        "campfire_username": "Kids Account",
+                        "stamps": 0,
+                        "avatar_icon": "avatar1.png",
+                        "trainer_card_background": "default.png",
+                        "account_type": "Kids Account",
+                    }).execute()
+            except Exception as e:
+                print("⚠️ Supabase insert failed:", e)
+
+            try:
+                sheet.append_row([
+                    trainer_name,
+                    hash_value(details["pin"]),
+                    details["memorable"],
+                    datetime.utcnow().isoformat(),
+                    "Kids Account",   # Column E
+                    "0",              # Column F
+                    "avatar1.png",    # Column G
+                    "default.png",    # Column H
+                    "Kids Account"    # Column I
+                ])
+            except Exception as e:
+                print("⚠️ Sheets insert failed:", e)
+
             trigger_lugia_refresh()
             session.pop("signup_details", None)
             flash("👶 Kids Account created successfully!", "success")
             return redirect(url_for("home"))
+
         else:
             flash("Please select an option.", "warning")
 
@@ -329,21 +370,61 @@ def campfire():
         return redirect(url_for("signup"))
 
     if request.method == "POST":
-        campfire_username = request.form.get("campfire_username")
+        campfire_username = request.form.get("campfire_username", "").strip()
         if not campfire_username:
             flash("Campfire username is required.", "warning")
             return redirect(url_for("campfire"))
 
-        # Save to Sheet1
-        sheet.append_row([
-            details["trainer_name"],
-            hash_value(details["pin"]),
-            details["memorable"],
-            datetime.utcnow().isoformat(),
-            campfire_username,  # E
-            "",                 # F Stamps (blank / or formula)
-            "avatar1.png"       # G
-        ])
+        trainer_name = details["trainer_name"].strip()
+
+        exists = False
+        if supabase:
+            resp = supabase.table("sheet1").select("trainer_username").ilike("trainer_username", trainer_name).execute()
+            if resp.data:
+                exists = True
+
+        records = sheet.get_all_records()
+        for record in records:
+            if record.get("Trainer Username", "").lower() == trainer_name.lower():
+                exists = True
+                break
+
+        if exists:
+            flash("This trainer name is already registered. Please log in instead.", "error")
+            session.pop("signup_details", None)
+            return redirect(url_for("home"))
+
+        try:
+            if supabase:
+                supabase.table("sheet1").insert({
+                    "trainer_username": trainer_name,
+                    "pin_hash": hash_value(details["pin"]),
+                    "memorable_password": details["memorable"],
+                    "last_login": datetime.utcnow().isoformat(),
+                    "campfire_username": campfire_username,
+                    "stamps": 0,
+                    "avatar_icon": "avatar1.png",
+                    "trainer_card_background": "default.png",
+                    "account_type": "Standard",
+                }).execute()
+        except Exception as e:
+            print("⚠️ Supabase insert failed:", e)
+
+        try:
+            sheet.append_row([
+                trainer_name,
+                hash_value(details["pin"]),
+                details["memorable"],
+                datetime.utcnow().isoformat(),
+                campfire_username,  # Column E
+                "",                 # Column F
+                "avatar1.png",      # Column G
+                "default.png",      # Column H
+                "Standard"          # Column I
+            ])
+        except Exception as e:
+            print("⚠️ Sheets insert failed:", e)
+
         trigger_lugia_refresh()
         session.pop("signup_details", None)
         flash("Signup successful! Please log in.", "success")
@@ -351,25 +432,43 @@ def campfire():
 
     return render_template("campfire.html")
 
-
 # ====== Login ======
 @app.route("/login", methods=["POST"])
 def login():
-    username = request.form["username"]
-    pin = request.form["pin"]
+    username = request.form["username"].strip()
+    pin = request.form["pin"].strip()
 
-    row, user = find_user(username)
-    if not user:
-        flash("No trainer found!", "error")
+    if not supabase:
+        flash("⚠️ Supabase not available. Please try again later.", "error")
         return redirect(url_for("home"))
 
-    if user.get("PIN Hash") == hash_value(pin):
-        session["trainer"] = user.get("Trainer Username")  # keep original case
-        sheet.update_cell(row, 4, datetime.utcnow().isoformat())  # Last Login
-        flash(f"Welcome back, {user.get('Trainer Username')}!", "success")
+    try:
+        # Fetch user from Supabase (case-insensitive match)
+        resp = supabase.table("sheet1").select("*").ilike("trainer_username", username).limit(1).execute()
+        if not resp.data:
+            flash("No trainer found!", "error")
+            return redirect(url_for("home"))
+
+        user = resp.data[0]
+
+        # Verify PIN
+        if user.get("pin_hash") != hash_value(pin):
+            flash("Incorrect PIN!", "error")
+            return redirect(url_for("home"))
+
+        # ✅ Success: log them in
+        session["trainer"] = user.get("trainer_username")
+
+        # Update last_login
+        supabase.table("sheet1").update({"last_login": datetime.utcnow().isoformat()}) \
+            .eq("trainer_username", user.get("trainer_username")).execute()
+
+        flash(f"Welcome back, {user.get('trainer_username')}!", "success")
         return redirect(url_for("dashboard"))
-    else:
-        flash("Incorrect PIN!", "error")
+
+    except Exception as e:
+        print("⚠️ Supabase login error:", e)
+        flash("Login failed. Please try again.", "error")
         return redirect(url_for("home"))
 
 
