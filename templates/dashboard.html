@@ -16,19 +16,15 @@
           <p><strong>Campfire Username:</strong> {{ campfire_username }}</p>
         {% endif %}
 
-        {% if recent_event_title or recent_event_date %}
-          <div class="recent-meetup">
-            {% if recent_event_icon %}
-              <img src="{{ recent_event_icon }}" alt="Meet-up icon" class="recent-icon">
-            {% else %}
-              <div class="recent-icon recent-icon--fallback"></div>
-            {% endif %}
-            <div class="recent-details">
-              <div class="recent-label">Most Recent Meet-up</div>
-              <div class="recent-title">{{ recent_event_title or "—" }}</div>
-              {% if recent_event_date %}
-                <div class="recent-date">{{ recent_event_date }}</div>
-              {% endif %}
+        {% if latest_stamp %}
+          <div class="recent-stamp">
+            <img src="{{ latest_stamp.icon }}" alt="Latest Stamp" class="recent-stamp-icon">
+            <div class="recent-stamp-text">
+              <p class="recent-stamp-title">Most recent meet-up:</p>
+              <p class="recent-stamp-detail">
+                {{ latest_stamp.name }}<br>
+                <small>{{ latest_stamp.date }}</small>
+              </p>
             </div>
           </div>
         {% endif %}
@@ -74,36 +70,22 @@
   width:64px; height:64px; border-radius:50%; border:3px solid #fff;
   box-shadow: 0 2px 6px rgba(0,0,0,0.4);
 }
-
-/* Recent meet-up styles */
-.recent-meetup{
-  display:flex; align-items:center; gap:10px; margin-top:8px;
+.recent-stamp {
+  display:flex; align-items:center; margin-top:6px;
 }
-.recent-icon{
-  width:40px; height:40px; border-radius:50%;
-  border:2px solid rgba(255,255,255,.85);
-  object-fit:cover;
-  box-shadow:0 2px 6px rgba(0,0,0,.35);
-  background: rgba(255,255,255,.2);
+.recent-stamp-icon {
+  width:28px; height:28px; border-radius:50%; margin-right:8px;
+  border:2px solid #3a8dde; object-fit:cover;
 }
-.recent-icon--fallback{
-  display:inline-block;
+.recent-stamp-text {
+  font-size:0.85em; line-height:1.2;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.7);
 }
-.recent-details{
-  line-height:1.1;
-  text-shadow:0 2px 4px rgba(0,0,0,.8);
+.recent-stamp-title {
+  font-weight:600; margin:0; color:#ffdd57;
 }
-.recent-label{
-  font-size:.8em; font-weight:800; letter-spacing:.2px;
-  color:#ffdd57; text-transform:uppercase; opacity:.95;
-}
-.recent-title{
-  font-weight:700; font-size:.95em; color:#fff;
-  max-width: 420px;
-  overflow-wrap: anywhere;
-}
-.recent-date{
-  font-size:.85em; color:#eaeaea;
+.recent-stamp-detail {
+  margin:0;
 }
 </style>
 

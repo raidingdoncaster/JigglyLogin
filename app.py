@@ -115,7 +115,7 @@ def _event_icon_map():
     return m
 
 def get_passport_stamps(username, campfire_username=None):
-    """Return total, stamps list, and latest stamp details."""
+    """Return total stamps, a list of stamps, and the most recent stamp dict."""
 
     # Load sheets
     ledger = client.open("POGO Passport Sign-Ins").worksheet("Lugia_Ledger")
@@ -124,28 +124,33 @@ def get_passport_stamps(username, campfire_username=None):
     ledger_records = ledger.get_all_records()
     event_records = events.get_all_records()
 
-    # Map event_id → cover_photo_url
+    # Map event_id → event details (cover, title, date)
     event_map = {}
     for r in event_records:
         event_id = str(r.get("event_id", "")).strip().lower()
         cover = str(r.get("cover_photo_url", "")).strip()
+        title = str(r.get("Meetup Name", "")).strip()
+        date = str(r.get("Date", "")).strip()
         if event_id:
-            event_map[event_id] = cover
+            event_map[event_id] = {
+                "icon": cover,
+                "title": title,
+                "date": date
+            }
 
     stamps = []
     total_count = 0
-    latest_record = None
+    latest_stamp = None
 
     for record in ledger_records:
         trainer = str(record.get("Trainer", "")).strip().lower()
         campfire = str(record.get("Campfire", "")).strip().lower()
 
+        # Match either Trainer Username OR Campfire Username
         if trainer == username.lower() or (campfire_username and campfire == campfire_username.lower()):
             reason = str(record.get("Reason", "")).strip()
             count = int(record.get("Count", 1))
             event_id = str(record.get("EventID", "")).strip().lower()
-            timestamp = record.get("Timestamp", "")
-
             total_count += count
 
             # Decide icon
@@ -155,25 +160,37 @@ def get_passport_stamps(username, campfire_username=None):
                 icon = url_for("static", filename="icons/cdl.png")
             elif "win" in reason.lower():
                 icon = url_for("static", filename="icons/win.png")
-            elif "owed" in reason.lower():
-                icon = url_for("static", filename="icons/owed.png")
             elif event_id in event_map:
-                icon = event_map[event_id]
+                icon = event_map[event_id]["icon"]  # raw cover_photo_url
             else:
                 icon = url_for("static", filename="icons/tickstamp.png")
 
-            stamps.append({
+            stamp_data = {
                 "name": reason,
                 "count": count,
                 "icon": icon,
-                "timestamp": timestamp
-            })
+                "event_id": event_id,
+                "date": record.get("Date", "")
+            }
+            stamps.append(stamp_data)
 
-            # Track latest
-            if not latest_record or timestamp > latest_record.get("timestamp", ""):
-                latest_record = {"name": reason, "icon": icon, "timestamp": timestamp}
+    # Pick the most recent stamp (last in the ledger list if any)
+    if stamps:
+        last = stamps[-1]
+        if last["event_id"] in event_map:
+            latest_stamp = {
+                "title": event_map[last["event_id"]]["title"],
+                "icon": event_map[last["event_id"]]["icon"],
+                "date": event_map[last["event_id"]]["date"]
+            }
+        else:
+            latest_stamp = {
+                "title": last["name"],
+                "icon": last["icon"],
+                "date": last.get("date", "")
+            }
 
-    return total_count, stamps, latest_record
+    return total_count, stamps, latest_stamp
 
 def get_most_recent_meetup(trainer_username: str, campfire_username: str = ""):
     """
@@ -395,6 +412,8 @@ def recover():
 
     return render_template("recover.html")
 
+from datetime import datetime
+
 # ==== Dashboard ====
 @app.route("/dashboard")
 def dashboard():
@@ -409,23 +428,22 @@ def dashboard():
     campfire_username = user.get("Campfire Username", "") if user else ""
 
     # Get stamps info
-    total_stamps, stamps = get_passport_stamps(trainer, campfire_username)
+    total_stamps, stamps, latest_stamp = get_passport_stamps(trainer, campfire_username)
+
+    # Format latest_stamp date
+    if latest_stamp and latest_stamp.get("date"):
+        try:
+            raw_date = latest_stamp["date"]
+            parsed = datetime.fromisoformat(raw_date)  # expect ISO format like "2025-09-25T19:00:00"
+            latest_stamp["date"] = parsed.strftime("%d %b %Y, %H:%M")
+        except Exception:
+            pass  # leave as-is if parsing fails
 
     # Current stamps from Sheet1 (col F)
     try:
         current_stamps = int(user.get("Stamps", 0) or 0)
     except Exception:
         current_stamps = 0
-
-    # Most recent meet-up (icon, title, date)
-    recent = get_most_recent_meetup(trainer, campfire_username)
-    recent_event_title = recent["title"]
-    recent_event_date  = recent["date"]
-    recent_event_icon  = recent["icon"]
-
-    # Optional extras you may already be passing:
-    last_login = user.get("Last Login", "") if user else ""
-    account_type = "Kids Account" if (user and user.get("Campfire Username", "") == "Kids Account") else "Standard Account"
 
     return render_template(
         "dashboard.html",
@@ -436,12 +454,9 @@ def dashboard():
         avatar=user.get("Avatar Icon", "avatar1.png") if user else "avatar1.png",
         background=user.get("Trainer Card Background", "default.png") if user else "default.png",
         campfire_username=campfire_username,
-        last_login=last_login,
-        account_type=account_type,
-        # NEW: recent meet-up details for the trainer card
-        recent_event_title=recent_event_title,
-        recent_event_date=recent_event_date,
-        recent_event_icon=recent_event_icon,
+        account_type=user.get("Account Type", "Standard") if user else "Standard",
+        last_login=user.get("Last Login", ""),
+        latest_stamp=latest_stamp,
         show_back=False
     )
 
