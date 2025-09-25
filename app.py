@@ -34,10 +34,11 @@ SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
     "https://www.googleapis.com/auth/drive",
 ]
-creds = Credentials.from_service_account_file(
-    "pogo-passport-key.json",
-    scopes=SCOPES,
+creds = Credentials.from_service_account_info(
+    json.loads(os.environ["GOOGLE_APPLICATION_CREDENTIALS_JSON"]),
+    scopes=SCOPES
 )
+
 gclient = gspread.authorize(creds)
 sheet = gclient.open("POGO Passport Sign-Ins").worksheet("Sheet1")
 
