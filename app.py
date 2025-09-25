@@ -114,8 +114,8 @@ def _event_icon_map():
         m[name] = icon
     return m
 
-def get_passport_stamps(username, campfire_username=None, last_login=None):
-    """Return a trainer's stamps as a list of dicts with icon, name, count, and is_new flag."""
+def get_passport_stamps(username, campfire_username=None):
+    """Return total, stamps list, and latest stamp details."""
 
     # Load sheets
     ledger = client.open("POGO Passport Sign-Ins").worksheet("Lugia_Ledger")
@@ -134,6 +134,7 @@ def get_passport_stamps(username, campfire_username=None, last_login=None):
 
     stamps = []
     total_count = 0
+    latest_record = None
 
     for record in ledger_records:
         trainer = str(record.get("Trainer", "")).strip().lower()
@@ -143,7 +144,8 @@ def get_passport_stamps(username, campfire_username=None, last_login=None):
             reason = str(record.get("Reason", "")).strip()
             count = int(record.get("Count", 1))
             event_id = str(record.get("EventID", "")).strip().lower()
-            timestamp = record.get("Timestamp", None)
+            timestamp = record.get("Timestamp", "")
+
             total_count += count
 
             # Decide icon
@@ -164,15 +166,14 @@ def get_passport_stamps(username, campfire_username=None, last_login=None):
                 "name": reason,
                 "count": count,
                 "icon": icon,
-                "timestamp": timestamp,
-                "is_new": False  # mark later
+                "timestamp": timestamp
             })
 
-    # Only flag the most recent stamp as new
-    if stamps:
-        stamps[-1]["is_new"] = True
+            # Track latest
+            if not latest_record or timestamp > latest_record.get("timestamp", ""):
+                latest_record = {"name": reason, "icon": icon, "timestamp": timestamp}
 
-    return total_count, stamps
+    return total_count, stamps, latest_record
 
 # ==== Routes ====
 @app.route("/")
@@ -369,6 +370,9 @@ def dashboard():
     except Exception:
         current_stamps = 0
 
+    # Most recent stamp (last in list if exists)
+    latest_stamp = stamps[-1] if stamps else None
+
     return render_template(
         "dashboard.html",
         trainer=trainer,
@@ -378,6 +382,9 @@ def dashboard():
         avatar=user.get("Avatar Icon", "avatar1.png") if user else "avatar1.png",
         background=user.get("Trainer Card Background", "default.png") if user else "default.png",
         campfire_username=campfire_username,
+        last_login=user.get("Last Login", "Unknown"),
+        account_type=user.get("Account Type", "Standard Account"),
+        latest_stamp=latest_stamp,
         show_back=False
     )
 

@@ -15,6 +15,18 @@
         {% if account_type != "Kids Account" %}
           <p><strong>Campfire Username:</strong> {{ campfire_username }}</p>
         {% endif %}
+
+        <!-- New: Stamp info -->
+        <p><strong>Current stamps:</strong> {{ current_stamps }}</p>
+        <p><strong>Total check-ins:</strong> {{ total_stamps }}</p>
+
+        {% if latest_stamp %}
+          <div class="latest-stamp">
+            <strong>Most recent meet-up:</strong><br>
+            <span>{{ latest_stamp.name }}</span><br>
+            <img src="{{ latest_stamp.icon }}" alt="{{ latest_stamp.name }}" class="latest-stamp-icon">
+          </div>
+        {% endif %}
       </div>
     </div>
     <div style="margin-top:10px; text-align:right;">
@@ -56,6 +68,22 @@
 .avatar {
   width:64px; height:64px; border-radius:50%; border:3px solid #fff;
   box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+}
+.latest-stamp {
+  margin-top: 6px;
+  font-size: 0.85em;
+  background: rgba(0,0,0,0.35);
+  padding: 6px 8px;
+  border-radius: 6px;
+  display: inline-block;
+}
+.latest-stamp-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid #3a8dde;
+  margin-top: 4px;
+  object-fit: cover;
 }
 </style>
 
