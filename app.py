@@ -175,6 +175,53 @@ def get_passport_stamps(username, campfire_username=None):
 
     return total_count, stamps, latest_record
 
+def get_most_recent_meetup(trainer_username: str, campfire_username: str = ""):
+    """
+    Returns dict: {title, date, icon, event_id} for the user's most recent meet-up.
+    Uses Lugia_Summary for title/date (+ optional Most Recent Event ID),
+    and events sheet to map event_id -> cover_photo_url.
+    """
+    # Sheets
+    summary_ws = client.open("POGO Passport Sign-Ins").worksheet("Lugia_Summary")
+    events_ws = client.open("POGO Passport Sign-Ins").worksheet("events")
+
+    summary_rows = summary_ws.get_all_records()
+    event_rows = events_ws.get_all_records()
+
+    # Build event_id -> cover url map
+    event_map = {}
+    for r in event_rows:
+        eid = str(r.get("event_id", "")).strip().lower()
+        cover = str(r.get("cover_photo_url", "")).strip()
+        if eid:
+            event_map[eid] = cover
+
+    # Find this user’s summary row (by Trainer Username OR Campfire Username)
+    t = (trainer_username or "").strip().lower()
+    c = (campfire_username or "").strip().lower()
+    rec = None
+    for row in summary_rows:
+        ru = str(row.get("Trainer Username", "")).strip().lower()
+        rc = str(row.get("Campfire Username", "")).strip().lower()
+        if ru == t or (c and rc == c):
+            rec = row
+            break
+
+    if not rec:
+        return {"title": "", "date": "", "icon": "", "event_id": ""}
+
+    title = rec.get("Most Recent Event", "") or rec.get("Most recent event", "")
+    date  = rec.get("Most Recent Event Date", "") or rec.get("Most recent event date", "")
+    eid   = str(
+        rec.get("Most Recent Event ID", "") 
+        or rec.get("EventID", "") 
+        or rec.get("Event Id", "")
+    ).strip().lower()
+
+    icon = event_map.get(eid, "")
+
+    return {"title": title, "date": date, "icon": icon, "event_id": eid}
+
 # ==== Routes ====
 @app.route("/")
 def home():
@@ -361,14 +408,24 @@ def dashboard():
     row, user = find_user(trainer)
     campfire_username = user.get("Campfire Username", "") if user else ""
 
-    # Get stamps info (now returns 3 values)
-    total_stamps, stamps, latest_stamp = get_passport_stamps(trainer, campfire_username)
+    # Get stamps info
+    total_stamps, stamps = get_passport_stamps(trainer, campfire_username)
 
     # Current stamps from Sheet1 (col F)
     try:
         current_stamps = int(user.get("Stamps", 0) or 0)
     except Exception:
         current_stamps = 0
+
+    # Most recent meet-up (icon, title, date)
+    recent = get_most_recent_meetup(trainer, campfire_username)
+    recent_event_title = recent["title"]
+    recent_event_date  = recent["date"]
+    recent_event_icon  = recent["icon"]
+
+    # Optional extras you may already be passing:
+    last_login = user.get("Last Login", "") if user else ""
+    account_type = "Kids Account" if (user and user.get("Campfire Username", "") == "Kids Account") else "Standard Account"
 
     return render_template(
         "dashboard.html",
@@ -379,7 +436,12 @@ def dashboard():
         avatar=user.get("Avatar Icon", "avatar1.png") if user else "avatar1.png",
         background=user.get("Trainer Card Background", "default.png") if user else "default.png",
         campfire_username=campfire_username,
-        latest_stamp=latest_stamp,   # 🟢 pass into template
+        last_login=last_login,
+        account_type=account_type,
+        # NEW: recent meet-up details for the trainer card
+        recent_event_title=recent_event_title,
+        recent_event_date=recent_event_date,
+        recent_event_icon=recent_event_icon,
         show_back=False
     )
 
