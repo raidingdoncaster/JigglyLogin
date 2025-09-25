@@ -54,3 +54,7 @@ build/
 .mypy_cache/
 .pyre/
 .pytype/
+
+.env
+*.env
+.env.*
