@@ -428,22 +428,33 @@ def dashboard():
     campfire_username = user.get("Campfire Username", "") if user else ""
 
     # Get stamps info
-    total_stamps, stamps, latest_stamp = get_passport_stamps(trainer, campfire_username)
-
-    # Format latest_stamp date
-    if latest_stamp and latest_stamp.get("date"):
-        try:
-            raw_date = latest_stamp["date"]
-            parsed = datetime.fromisoformat(raw_date)  # expect ISO format like "2025-09-25T19:00:00"
-            latest_stamp["date"] = parsed.strftime("%d %b %Y, %H:%M")
-        except Exception:
-            pass  # leave as-is if parsing fails
+    result = get_passport_stamps(trainer, campfire_username)
+    if isinstance(result, tuple) and len(result) == 2:
+        total_stamps, stamps = result
+    else:
+        total_stamps, stamps = 0, []
 
     # Current stamps from Sheet1 (col F)
     try:
         current_stamps = int(user.get("Stamps", 0) or 0)
     except Exception:
         current_stamps = 0
+
+    # === Pull Most Recent Meetup from Lugia_Summary ===
+    summary_ws = client.open("POGO Passport Sign-Ins").worksheet("Lugia_Summary")
+    summary_records = summary_ws.get_all_records()
+
+    most_recent_meetup = None
+    for record in summary_records:
+        if str(record.get("Trainer Username", "")).lower() == trainer.lower():
+            title = record.get("Most Recent Event", "")
+            date = record.get("Most Recent Event Date", "")
+            most_recent_meetup = {
+                "title": title,
+                "date": date,
+                "icon": url_for("static", filename="icons/tickstamp.png")
+            }
+            break
 
     return render_template(
         "dashboard.html",
@@ -454,9 +465,7 @@ def dashboard():
         avatar=user.get("Avatar Icon", "avatar1.png") if user else "avatar1.png",
         background=user.get("Trainer Card Background", "default.png") if user else "default.png",
         campfire_username=campfire_username,
-        account_type=user.get("Account Type", "Standard") if user else "Standard",
-        last_login=user.get("Last Login", ""),
-        latest_stamp=latest_stamp,
+        most_recent_meetup=most_recent_meetup,
         show_back=False
     )
 

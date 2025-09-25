@@ -16,17 +16,12 @@
           <p><strong>Campfire Username:</strong> {{ campfire_username }}</p>
         {% endif %}
 
-        {% if latest_stamp %}
-          <div class="recent-stamp">
-            <img src="{{ latest_stamp.icon }}" alt="Latest Stamp" class="recent-stamp-icon">
-            <div class="recent-stamp-text">
-              <p class="recent-stamp-title">Most recent meet-up:</p>
-              <p class="recent-stamp-detail">
-                {{ latest_stamp.name }}<br>
-                <small>{{ latest_stamp.date }}</small>
-              </p>
-            </div>
-          </div>
+        {% if most_recent_meetup %}
+          <p style="margin-top:8px; text-shadow:0 1px 3px rgba(0,0,0,0.6);">
+            <strong>Most Recent Meetup:</strong><br>
+            <img src="{{ most_recent_meetup.icon }}" alt="Meetup Icon" style="width:20px; height:20px; vertical-align:middle; margin-right:6px; border-radius:50%; border:2px solid #fff;">
+            {{ most_recent_meetup.title }} ({{ most_recent_meetup.date }})
+          </p>
         {% endif %}
       </div>
     </div>
