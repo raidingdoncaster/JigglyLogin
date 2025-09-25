@@ -3,7 +3,7 @@ import json
 import hashlib
 import gspread
 import requests
-from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
+from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify, g
 from google.oauth2.service_account import Credentials
 from werkzeug.utils import secure_filename
 from PIL import Image
@@ -14,7 +14,7 @@ import io, base64, time
 # ====== Feature toggle ======
 USE_SUPABASE = True  # ✅ Supabase for stamps/meetups (Sheets fallback). Flip to False to force Sheets only.
 
-# Try to import Supabase client (won't crash app if missing and USE_SUPABASE=False or env not set)
+# Try to import Supabase client
 try:
     from supabase import create_client, Client  # type: ignore
 except Exception:
@@ -24,7 +24,6 @@ except Exception:
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
 
-# Uploads folder setup (temporary screenshots for OCR)
 UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
@@ -38,11 +37,10 @@ creds = Credentials.from_service_account_info(
     json.loads(os.environ["GOOGLE_APPLICATION_CREDENTIALS_JSON"]),
     scopes=SCOPES
 )
-
 gclient = gspread.authorize(creds)
 sheet = gclient.open("POGO Passport Sign-Ins").worksheet("Sheet1")
 
-# ====== Supabase setup (keys must be in environment) ======
+# ====== Supabase setup ======
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
 
@@ -54,26 +52,27 @@ if USE_SUPABASE and create_client and SUPABASE_URL and SUPABASE_KEY:
         print("⚠️ Could not init Supabase client:", e)
         supabase = None
 
-
 # ====== Helpers ======
 def hash_value(value: str) -> str:
     return hashlib.sha256(value.encode()).hexdigest()
 
+def get_all_users():
+    """Cache Sheet1 records per-request so we only fetch once."""
+    if not hasattr(g, "user_records"):
+        g.user_records = sheet.get_all_records()
+    return g.user_records
 
 def find_user(username):
     """Find a trainer in Sheet1 (case-insensitive) and return (row_index, record)."""
-    records = sheet.get_all_records()
+    records = get_all_users()
     for i, record in enumerate(records, start=2):  # header row = 1
         if record.get("Trainer Username", "").lower() == str(username).lower():
-            # ensure defaults present
             record.setdefault("Avatar Icon", "avatar1.png")
             record.setdefault("Trainer Card Background", "default.png")
             return i, record
     return None, None
 
-
 def extract_trainer_name(image_path):
-    """OCR — crop the top band and read the name."""
     try:
         img = Image.open(image_path)
         w, h = img.size
@@ -87,27 +86,17 @@ def extract_trainer_name(image_path):
         print("❌ OCR failed:", e)
         return None
 
-
 def trigger_lugia_refresh():
-    """Pings Apps Script to refresh Lugia sheets after signup."""
     url = "https://script.google.com/macros/s/AKfycbwx33Twu9HGwW4bsSJb7vwHoaBS56gCldNlqiNjxGBJEhckVDAnv520MN4ZQWxI1U9D/exec"
     try:
         requests.get(url, params={"action": "lugiaRefresh"}, timeout=10)
     except Exception as e:
         print("⚠️ Lugia refresh error:", e)
 
-
-# ====== Data: stamps & meetups (Supabase first, Sheets fallback) ======
+# ====== Data: stamps & meetups ======
 def get_passport_stamps(username: str, campfire_username: str | None = None):
-    """
-    Returns (total_count, stamps_list, most_recent_stamp)
-    stamp = {name, count, icon}
-    """
-    # ---------- Supabase path ----------
     if USE_SUPABASE and supabase:
         try:
-            # Ledger (trainer or campfire)
-            # Prefer exact Trainer match; if none, try campfire
             q = supabase.table("lugia_ledger").select("*").eq("trainer", username)
             resp = q.execute()
             records = resp.data or []
@@ -115,7 +104,6 @@ def get_passport_stamps(username: str, campfire_username: str | None = None):
                 resp = supabase.table("lugia_ledger").select("*").eq("campfire", campfire_username).execute()
                 records = resp.data or []
 
-            # Events map
             ev_rows = supabase.table("events").select("event_id, cover_photo_url").execute().data or []
             event_map = {str(e.get("event_id", "")).strip().lower(): (e.get("cover_photo_url") or "") for e in ev_rows}
 
@@ -126,7 +114,6 @@ def get_passport_stamps(username: str, campfire_username: str | None = None):
                 total_count += count
                 event_id = str(r.get("eventid") or "").strip().lower()
 
-                # Icon decision
                 rl = reason.lower()
                 if rl == "signup bonus":
                     icon = url_for("static", filename="icons/signup.png")
@@ -135,7 +122,7 @@ def get_passport_stamps(username: str, campfire_username: str | None = None):
                 elif "win" in rl:
                     icon = url_for("static", filename="icons/win.png")
                 elif event_id and event_id in event_map and event_map[event_id]:
-                    icon = event_map[event_id]  # raw cover_photo_url
+                    icon = event_map[event_id]
                 else:
                     icon = url_for("static", filename="icons/tickstamp.png")
 
@@ -146,7 +133,7 @@ def get_passport_stamps(username: str, campfire_username: str | None = None):
         except Exception as e:
             print("⚠️ Supabase get_passport_stamps failed:", e)
 
-    # ---------- Sheets fallback ----------
+    # Sheets fallback
     ledger_ws = gclient.open("POGO Passport Sign-Ins").worksheet("Lugia_Ledger")
     events_ws = gclient.open("POGO Passport Sign-Ins").worksheet("events")
     ledger_records = ledger_ws.get_all_records()
@@ -190,16 +177,9 @@ def get_passport_stamps(username: str, campfire_username: str | None = None):
 
     return total_count, stamps, most_recent
 
-
 def get_most_recent_meetup(username: str, campfire_username: str | None = None):
-    """
-    Returns {title, date, icon, event_id} for the user's most recent meetup
-    (from Lugia_Summary + events for cover_photo_url).
-    """
-    # ---------- Supabase path ----------
     if USE_SUPABASE and supabase:
         try:
-            # Try Trainer Username first, then Campfire Username
             rec = None
             r1 = supabase.table("lugia_summary").select("*").eq("trainer_username", username).limit(1).execute().data
             if r1:
@@ -212,7 +192,6 @@ def get_most_recent_meetup(username: str, campfire_username: str | None = None):
             if rec:
                 title = rec.get("most_recent_event", "") or rec.get("Most Recent Event", "")
                 date = rec.get("most_recent_event_date", "") or rec.get("Most Recent Event Date", "")
-                # Prefer explicit event id if present; else try last in Event IDs
                 eid = (rec.get("most_recent_event_id") or "").strip()
                 if not eid:
                     ev_ids = str(rec.get("event_ids", "")).strip()
@@ -226,7 +205,7 @@ def get_most_recent_meetup(username: str, campfire_username: str | None = None):
         except Exception as e:
             print("⚠️ Supabase get_most_recent_meetup failed:", e)
 
-    # ---------- Sheets fallback ----------
+    # Sheets fallback
     summary_ws = gclient.open("POGO Passport Sign-Ins").worksheet("Lugia_Summary")
     events_ws = gclient.open("POGO Passport Sign-Ins").worksheet("events")
     s_rows = summary_ws.get_all_records()
@@ -246,7 +225,6 @@ def get_most_recent_meetup(username: str, campfire_username: str | None = None):
         return {"title": title, "date": date, "icon": e_map.get(eid, ""), "event_id": eid}
 
     return {"title": "", "date": "", "icon": "", "event_id": ""}
-
 
 # ====== Routes ======
 @app.route("/")
