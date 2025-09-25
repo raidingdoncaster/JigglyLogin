@@ -361,17 +361,14 @@ def dashboard():
     row, user = find_user(trainer)
     campfire_username = user.get("Campfire Username", "") if user else ""
 
-    # Get stamps info
-    total_stamps, stamps = get_passport_stamps(trainer, campfire_username)
+    # Get stamps info (now returns 3 values)
+    total_stamps, stamps, latest_stamp = get_passport_stamps(trainer, campfire_username)
 
     # Current stamps from Sheet1 (col F)
     try:
         current_stamps = int(user.get("Stamps", 0) or 0)
     except Exception:
         current_stamps = 0
-
-    # Most recent stamp (last in list if exists)
-    latest_stamp = stamps[-1] if stamps else None
 
     return render_template(
         "dashboard.html",
@@ -382,9 +379,7 @@ def dashboard():
         avatar=user.get("Avatar Icon", "avatar1.png") if user else "avatar1.png",
         background=user.get("Trainer Card Background", "default.png") if user else "default.png",
         campfire_username=campfire_username,
-        last_login=user.get("Last Login", "Unknown"),
-        account_type=user.get("Account Type", "Standard Account"),
-        latest_stamp=latest_stamp,
+        latest_stamp=latest_stamp,   # 🟢 pass into template
         show_back=False
     )
 
