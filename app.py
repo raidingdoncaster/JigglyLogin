@@ -445,16 +445,29 @@ def dashboard():
     summary_records = summary_ws.get_all_records()
 
     most_recent_meetup = None
+    recent_event_id = None
     for record in summary_records:
         if str(record.get("Trainer Username", "")).lower() == trainer.lower():
             title = record.get("Most Recent Event", "")
             date = record.get("Most Recent Event Date", "")
+            recent_event_id = str(record.get("Most Recent Event ID", "")).strip().lower()
             most_recent_meetup = {
                 "title": title,
                 "date": date,
-                "icon": url_for("static", filename="icons/tickstamp.png")
+                "icon": url_for("static", filename="icons/tickstamp.png")  # fallback
             }
             break
+
+    # === Map event_id → cover_photo_url from events sheet ===
+    if recent_event_id:
+        events_ws = client.open("POGO Passport Sign-Ins").worksheet("events")
+        event_records = events_ws.get_all_records()
+        for e in event_records:
+            if str(e.get("event_id", "")).strip().lower() == recent_event_id:
+                cover = e.get("cover_photo_url", "").strip()
+                if cover:
+                    most_recent_meetup["icon"] = cover
+                break
 
     return render_template(
         "dashboard.html",
