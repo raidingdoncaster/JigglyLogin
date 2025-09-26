@@ -153,67 +153,44 @@ def get_passport_stamps(username: str, campfire_username: str | None = None):
 
 def get_most_recent_meetup(username: str, campfire_username: str | None = None):
     """
-    Returns {title, date, icon, event_id} for the user's most recent meetup,
-    ensuring the correct event cover photo is fetched.
+    Returns {title, date, icon, event_id} for the user's most recent meetup.
+    - Icon is resolved by event_id if present; otherwise by matching events.name to the title.
     """
     try:
         rec = None
-        # Try lookup by trainer_username first
-        r1 = supabase.table("lugia_summary").select("*") \
-            .eq("trainer_username", username).limit(1).execute().data
+        r1 = supabase.table("lugia_summary").select("*").eq("trainer_username", username).limit(1).execute().data
         if r1:
             rec = r1[0]
         elif campfire_username:
-            r2 = supabase.table("lugia_summary").select("*") \
-                .eq("campfire_username", campfire_username).limit(1).execute().data
+            r2 = supabase.table("lugia_summary").select("*").eq("campfire_username", campfire_username).limit(1).execute().data
             if r2:
                 rec = r2[0]
 
-        if rec:
-            title = rec.get("most_recent_event", "")
-            date = rec.get("most_recent_event_date", "")
-            eid = (rec.get("most_recent_event_id") or "").strip()
+        if not rec:
+            # return default but truthy so template shows "no data" gracefully if needed
+            return {"title": "", "date": "", "icon": url_for("static", filename="icons/tickstamp.png"), "event_id": ""}
 
-            # fallback: last in event_ids
-            if not eid:
-                ev_ids = str(rec.get("event_ids", "")).strip()
-                if ev_ids:
-                    eid = ev_ids.split(",")[-1].strip()
+        title = (rec.get("most_recent_event") or "").strip()
+        date  = (rec.get("most_recent_event_date") or "").strip()
+        eid   = (rec.get("most_recent_event_id") or "").strip().lower()
 
-            eid_l = eid.lower()
+        icon = url_for("static", filename="icons/tickstamp.png")
 
-            # 🔑 pull *title + cover_photo_url + date* directly from events
-            ev = None
-            if eid_l:
-                ev_rows = supabase.table("events") \
-                    .select("event_id, title, cover_photo_url, date") \
-                    .eq("event_id", eid_l).limit(1).execute().data
-                if ev_rows:
-                    ev = ev_rows[0]
+        # 1) Try by event_id
+        if eid:
+            ev = supabase.table("events").select("event_id, cover_photo_url").eq("event_id", eid).limit(1).execute().data or []
+            if ev and (ev[0].get("cover_photo_url") or ""):
+                icon = ev[0]["cover_photo_url"]
+        # 2) Fallback: resolve by name
+        if not icon or icon.endswith("tickstamp.png"):
+            by_name = cover_from_event_name(title)
+            if by_name:
+                icon = by_name
 
-            icon = url_for("static", filename="icons/tickstamp.png")
-            if ev and ev.get("cover_photo_url"):
-                icon = ev["cover_photo_url"]
-                # Overwrite title/date with authoritative event info
-                title = ev.get("title", title)
-                date = ev.get("date", date)
-
-            return {
-                "title": title,
-                "date": date,
-                "icon": icon,
-                "event_id": eid_l
-            }
-
+        return {"title": title, "date": date, "icon": icon, "event_id": eid}
     except Exception as e:
         print("⚠️ Supabase get_most_recent_meetup failed:", e)
-
-    return {
-        "title": "",
-        "date": "",
-        "icon": url_for("static", filename="icons/tickstamp.png"),
-        "event_id": ""
-    }
+        return {"title": "", "date": "", "icon": url_for("static", filename="icons/tickstamp.png"), "event_id": ""}
 
 def get_meetup_history(username: str, campfire_username: str | None = None):
     """Build full meet-up history from attendance + events."""
@@ -254,6 +231,34 @@ def get_meetup_history(username: str, campfire_username: str | None = None):
             print("⚠️ Supabase get_meetup_history failed:", e)
 
     return [], 0
+
+def cover_from_event_name(event_name: str) -> str:
+    """
+    Find an event cover photo by matching the events.name field to event_name.
+    Tries exact (case-insensitive) first, then a wildcard match.
+    Returns cover_photo_url or "".
+    """
+    if not (supabase and event_name):
+        return ""
+    try:
+        # exact (case-insensitive)
+        exact = supabase.table("events") \
+            .select("name, cover_photo_url") \
+            .ilike("name", event_name) \
+            .limit(1).execute().data or []
+        if exact:
+            return exact[0].get("cover_photo_url") or ""
+
+        # wildcard
+        like = supabase.table("events") \
+            .select("name, cover_photo_url") \
+            .ilike("name", f"%{event_name}%") \
+            .limit(1).execute().data or []
+        if like:
+            return like[0].get("cover_photo_url") or ""
+    except Exception as e:
+        print("⚠️ cover_from_event_name failed:", e)
+    return ""
 
 # ====== Routes ======
 @app.route("/")
@@ -475,7 +480,6 @@ def recover():
 
     return render_template("recover.html")
 
-
 # ====== Dashboard ======
 @app.route("/dashboard")
 def dashboard():
@@ -634,7 +638,6 @@ def delete_account():
     return redirect(url_for("home"))
 
 # ====== Passport ======
-# ====== Passport ======
 @app.route("/passport")
 def passport():
     if "trainer" not in session:
@@ -680,19 +683,20 @@ def passport():
             lugia_summary["most_recent_event"] = r.get("most_recent_event", "")
             lugia_summary["most_recent_event_date"] = r.get("most_recent_event_date", "")
 
-            # ✅ Always pull event cover photos from events table
             ev_rows = supabase.table("events").select("event_id, cover_photo_url").execute().data or []
             ev_map = {str(e.get("event_id", "")).strip().lower(): e.get("cover_photo_url") for e in ev_rows}
 
-            # First event icon
             feid = (r.get("first_event_id") or "").strip().lower()
-            if feid and feid in ev_map:
-                lugia_summary["first_event_icon"] = ev_map[feid]
+            ficon = ev_map.get(feid) if feid else None
+            if not ficon:
+                ficon = cover_from_event_name(r.get("first_attended_event", ""))
+            lugia_summary["first_event_icon"] = ficon or lugia_summary["first_event_icon"]
 
-            # Most recent event icon
             meid = (r.get("most_recent_event_id") or "").strip().lower()
-            if meid and meid in ev_map:
-                lugia_summary["most_recent_icon"] = ev_map[meid]
+            micon = ev_map.get(meid) if meid else None
+            if not micon:
+                micon = cover_from_event_name(r.get("most_recent_event", ""))
+            lugia_summary["most_recent_icon"] = micon or lugia_summary["most_recent_icon"]
 
     except Exception as e:
         print("⚠️ Error loading Lugia Summary:", e)
