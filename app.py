@@ -231,6 +231,26 @@ def get_most_recent_meetup(username: str, campfire_username: str | None = None):
 def home():
     return render_template("login.html")
 
+# ==== Login ====
+@app.route("/login", methods=["POST"])
+def login():
+    username = request.form["username"]
+    pin = request.form["pin"]
+
+    row, user = find_user(username)
+    if not user:
+        flash("No trainer found!", "error")
+        return redirect(url_for("home"))
+
+    if user.get("PIN Hash") == hash_value(pin):
+        session["trainer"] = user.get("Trainer Username")  # preserve case
+        sheet.update_cell(row, 4, datetime.utcnow().isoformat())
+        flash(f"Welcome back, {user.get('Trainer Username')}!", "success")
+        return redirect(url_for("dashboard"))
+    else:
+        flash("Incorrect PIN!", "error")
+        return redirect(url_for("home"))
+
 # ====== Sign Up ======
 @app.route("/signup", methods=["GET", "POST"])
 def signup():
