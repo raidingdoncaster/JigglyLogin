@@ -1,93 +1,97 @@
-{% extends "base.html" %}
-{% block content %}
+<!-- Passport Header -->
+<div class="passport-header" style="background-image: url('{{ url_for('static', filename='passport/passport-bg.png') }}');">
+  <div class="passport-header-overlay"></div>
+  <div class="passport-header-content">
+    <h2>🎟️ Passport Progress</h2>
+    <p>Your digital passport tracks your stamps and meet-ups.</p>
+  </div>
+</div>
 
-<div class="stats-summary">
+<!-- Stats Section -->
+<div class="passport-stats">
   <div class="stat-box">
-    <h3>📖 Total Passport Stamps</h3>
+    <h4>📖 Total Passport Stamps</h4>
     <p>{{ total_stamps }}</p>
   </div>
   <div class="stat-box">
-    <h3>✅ Total Check-ins</h3>
-    <p>{{ summary_info.total_attended }}</p>
+    <h4>✅ Total Check-ins</h4>
+    <p>{{ lugia_summary.total_attended }}</p>
   </div>
   <div class="stat-box">
-    <h3>🎉 First Meet</h3>
-    {% if summary_info.first_event %}
-      <img src="{{ summary_info.first_event_icon }}" alt="First Event" class="stat-icon">
-      <p><strong>{{ summary_info.first_event }}</strong></p>
-      <p class="date">{{ summary_info.first_event_date }}</p>
-    {% else %}
-      <p>No data</p>
-    {% endif %}
+    <h4>🎉 First Meet</h4>
+    <img src="{{ lugia_summary.first_event_icon or url_for('static', filename='icons/tickstamp.png') }}" alt="First Meet Icon" class="stat-icon">
+    <p>{{ lugia_summary.first_attended_event }}<br><small>{{ lugia_summary.first_event_date }}</small></p>
   </div>
   <div class="stat-box">
-    <h3>🕒 Most Recent</h3>
-    {% if summary_info.most_recent_event %}
-      <img src="{{ summary_info.most_recent_event_icon }}" alt="Most Recent Event" class="stat-icon">
-      <p><strong>{{ summary_info.most_recent_event }}</strong></p>
-      <p class="date">{{ summary_info.most_recent_event_date }}</p>
-    {% else %}
-      <p>No data</p>
-    {% endif %}
+    <h4>📅 Most Recent</h4>
+    <img src="{{ lugia_summary.most_recent_icon or url_for('static', filename='icons/tickstamp.png') }}" alt="Recent Meet Icon" class="stat-icon">
+    <p>{{ lugia_summary.most_recent_event }}<br><small>{{ lugia_summary.most_recent_event_date }}</small></p>
   </div>
 </div>
 
-<div style="text-align:center; margin-bottom:20px;">
-  <a href="{{ url_for('meetup_history') }}" class="btn-history">📜 View Meet-up History</a>
-</div>
+<a href="{{ url_for('meetup_history') }}" class="btn btn-history">📜 View Meet-up History</a>
 
 <style>
-.btn-history {
-  display:inline-block;
-  padding:8px 14px;
-  background:#3a8dde;
-  color:#fff;
-  font-weight:600;
-  border-radius:8px;
-  text-decoration:none;
-  transition:background 0.2s ease;
+.passport-header {
+  background-size: cover;
+  background-position: center;
+  padding: 30px 15px;
+  color: white;
+  text-align: center;
+  border-radius: 10px;
+  margin-bottom: 20px;
+  position: relative;
 }
-.btn-history:hover {
-  background:#2e73bd;
+.passport-header-overlay {
+  position: absolute; top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(0,0,0,0.35);
+  border-radius: 10px;
 }
-</style>
-
-<style>
-.stats-summary {
+.passport-header-content {
+  position: relative;
+  z-index: 1;
+}
+.passport-stats {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 15px;
-  margin-bottom: 25px;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin: 15px 0;
 }
 .stat-box {
-  background: rgba(255,255,255,0.95);
-  border-radius: 12px;
-  padding: 12px 14px;
-  box-shadow: 0 3px 8px rgba(0,0,0,0.15);
+  background: #fff;
+  border-radius: 10px;
+  padding: 10px;
   text-align: center;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
 }
-.stat-box h3 {
+.stat-box h4 {
+  font-size: 0.95em;
   margin: 0 0 6px;
-  font-size: 0.9em;
   color: #3a8dde;
 }
 .stat-box p {
-  margin: 4px 0;
-  font-size: 1em;
-  font-weight: 500;
-  color: #222;
+  margin: 0;
+  font-size: 0.9em;
 }
-.stat-box p.date {
-  font-size: 0.8em;
-  color: #555;
+.stat-box small {
+  color: #777;
 }
 .stat-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 8px;
-  margin-bottom: 5px;
-  object-fit: cover;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  width: 30px; height: 30px;
+  margin-bottom: 4px;
+}
+.btn-history {
+  display: block;
+  margin: 10px auto 20px;
+  text-align: center;
+  padding: 8px 12px;
+  background: #3a8dde;
+  color: #fff;
+  border-radius: 6px;
+  font-weight: bold;
+  text-decoration: none;
+  width: fit-content;
 }
 </style>
 
