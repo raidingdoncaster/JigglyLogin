@@ -231,7 +231,6 @@ def get_most_recent_meetup(username: str, campfire_username: str | None = None):
 def home():
     return render_template("login.html")
 
-
 # ====== Sign Up ======
 @app.route("/signup", methods=["GET", "POST"])
 def signup():
@@ -253,7 +252,11 @@ def signup():
             flash("Could not detect trainer name from screenshot. Please try again.", "error")
             return redirect(url_for("signup"))
 
-        session["signup_details"] = {"trainer_name": trainer_name, "pin": pin, "memorable": memorable}
+        session["signup_details"] = {
+            "trainer_name": trainer_name,
+            "pin": pin,
+            "memorable": memorable,
+        }
         return redirect(url_for("detectname"))
 
     return render_template("signup.html")
@@ -270,7 +273,7 @@ def detectname():
     if request.method == "POST":
         choice = request.form.get("choice")
         if choice == "yes":
-            # Prevent duplicates
+            # ✅ Prevent duplicate usernames
             all_users = sheet.get_all_records()
             for record in all_users:
                 if record.get("Trainer Username", "").lower() == details["trainer_name"].lower():
@@ -285,6 +288,7 @@ def detectname():
 
     return render_template("detectname.html", trainer_name=details["trainer_name"])
 
+
 # ====== Age Selection ======
 @app.route("/age", methods=["GET", "POST"])
 def age():
@@ -295,34 +299,17 @@ def age():
 
     if request.method == "POST":
         choice = request.form.get("age_choice")
-        trainer_name = details["trainer_name"].strip()
 
         if choice == "13plus":
             flash("✅ Great! You’re signing up as 13 or older.", "success")
             return redirect(url_for("campfire"))
 
         elif choice == "under13":
-            exists = False
-            if supabase:
-                resp = supabase.table("sheet1").select("trainer_username").ilike("trainer_username", trainer_name).execute()
-                if resp.data:
-                    exists = True
-
-            records = sheet.get_all_records()
-            for record in records:
-                if record.get("Trainer Username", "").lower() == trainer_name.lower():
-                    exists = True
-                    break
-
-            if exists:
-                flash("This trainer name is already registered. Please log in instead.", "error")
-                session.pop("signup_details", None)
-                return redirect(url_for("home"))
-
-            try:
-                if supabase:
+            # --- Supabase insert ---
+            if USE_SUPABASE and supabase:
+                try:
                     supabase.table("sheet1").insert({
-                        "trainer_username": trainer_name,
+                        "trainer_username": details["trainer_name"],
                         "pin_hash": hash_value(details["pin"]),
                         "memorable_password": details["memorable"],
                         "last_login": datetime.utcnow().isoformat(),
@@ -330,27 +317,28 @@ def age():
                         "stamps": 0,
                         "avatar_icon": "avatar1.png",
                         "trainer_card_background": "default.png",
-                        "account_type": "Kids Account",
+                        "account_type": "Kids Account"
                     }).execute()
-            except Exception as e:
-                print("⚠️ Supabase insert failed:", e)
+                except Exception as e:
+                    print("⚠️ Supabase kids signup failed:", e)
 
+            # --- Google Sheets mirror ---
             try:
                 sheet.append_row([
-                    trainer_name,
+                    details["trainer_name"],
                     hash_value(details["pin"]),
                     details["memorable"],
                     datetime.utcnow().isoformat(),
-                    "Kids Account",   # Column E
-                    "0",              # Column F
-                    "avatar1.png",    # Column G
-                    "default.png",    # Column H
-                    "Kids Account"    # Column I
+                    "Kids Account",   # Campfire Username
+                    "0",              # Stamps
+                    "avatar1.png",    # Avatar
+                    "default.png",    # Background
+                    "Kids Account"    # Account Type
                 ])
+                trigger_lugia_refresh()
             except Exception as e:
-                print("⚠️ Sheets insert failed:", e)
+                print("⚠️ Google Sheets kids signup failed:", e)
 
-            trigger_lugia_refresh()
             session.pop("signup_details", None)
             flash("👶 Kids Account created successfully!", "success")
             return redirect(url_for("home"))
@@ -361,7 +349,7 @@ def age():
     return render_template("age.html")
 
 
-# ====== Campfire Username Step ======
+# ====== Campfire Username Step (13+) ======
 @app.route("/campfire", methods=["GET", "POST"])
 def campfire():
     details = session.get("signup_details")
@@ -370,34 +358,16 @@ def campfire():
         return redirect(url_for("signup"))
 
     if request.method == "POST":
-        campfire_username = request.form.get("campfire_username", "").strip()
+        campfire_username = request.form.get("campfire_username")
         if not campfire_username:
             flash("Campfire username is required.", "warning")
             return redirect(url_for("campfire"))
 
-        trainer_name = details["trainer_name"].strip()
-
-        exists = False
-        if supabase:
-            resp = supabase.table("sheet1").select("trainer_username").ilike("trainer_username", trainer_name).execute()
-            if resp.data:
-                exists = True
-
-        records = sheet.get_all_records()
-        for record in records:
-            if record.get("Trainer Username", "").lower() == trainer_name.lower():
-                exists = True
-                break
-
-        if exists:
-            flash("This trainer name is already registered. Please log in instead.", "error")
-            session.pop("signup_details", None)
-            return redirect(url_for("home"))
-
-        try:
-            if supabase:
+        # --- Supabase insert ---
+        if USE_SUPABASE and supabase:
+            try:
                 supabase.table("sheet1").insert({
-                    "trainer_username": trainer_name,
+                    "trainer_username": details["trainer_name"],
                     "pin_hash": hash_value(details["pin"]),
                     "memorable_password": details["memorable"],
                     "last_login": datetime.utcnow().isoformat(),
@@ -405,72 +375,33 @@ def campfire():
                     "stamps": 0,
                     "avatar_icon": "avatar1.png",
                     "trainer_card_background": "default.png",
-                    "account_type": "Standard",
+                    "account_type": "Standard"
                 }).execute()
-        except Exception as e:
-            print("⚠️ Supabase insert failed:", e)
+            except Exception as e:
+                print("⚠️ Supabase signup failed:", e)
 
+        # --- Google Sheets mirror ---
         try:
             sheet.append_row([
-                trainer_name,
+                details["trainer_name"],
                 hash_value(details["pin"]),
                 details["memorable"],
                 datetime.utcnow().isoformat(),
-                campfire_username,  # Column E
-                "",                 # Column F
-                "avatar1.png",      # Column G
-                "default.png",      # Column H
-                "Standard"          # Column I
+                campfire_username,  # Campfire
+                "0",                # Stamps
+                "avatar1.png",      # Avatar
+                "default.png",      # Background
+                "Standard"          # Account Type
             ])
+            trigger_lugia_refresh()
         except Exception as e:
-            print("⚠️ Sheets insert failed:", e)
+            print("⚠️ Google Sheets signup failed:", e)
 
-        trigger_lugia_refresh()
         session.pop("signup_details", None)
         flash("Signup successful! Please log in.", "success")
         return redirect(url_for("home"))
 
     return render_template("campfire.html")
-
-# ====== Login ======
-@app.route("/login", methods=["POST"])
-def login():
-    username = request.form["username"].strip()
-    pin = request.form["pin"].strip()
-
-    if not supabase:
-        flash("⚠️ Supabase not available. Please try again later.", "error")
-        return redirect(url_for("home"))
-
-    try:
-        # Fetch user from Supabase (case-insensitive match)
-        resp = supabase.table("sheet1").select("*").ilike("trainer_username", username).limit(1).execute()
-        if not resp.data:
-            flash("No trainer found!", "error")
-            return redirect(url_for("home"))
-
-        user = resp.data[0]
-
-        # Verify PIN
-        if user.get("pin_hash") != hash_value(pin):
-            flash("Incorrect PIN!", "error")
-            return redirect(url_for("home"))
-
-        # ✅ Success: log them in
-        session["trainer"] = user.get("trainer_username")
-
-        # Update last_login
-        supabase.table("sheet1").update({"last_login": datetime.utcnow().isoformat()}) \
-            .eq("trainer_username", user.get("trainer_username")).execute()
-
-        flash(f"Welcome back, {user.get('trainer_username')}!", "success")
-        return redirect(url_for("dashboard"))
-
-    except Exception as e:
-        print("⚠️ Supabase login error:", e)
-        flash("Login failed. Please try again.", "error")
-        return redirect(url_for("home"))
-
 
 # ====== Recover (reset PIN by memorable) ======
 @app.route("/recover", methods=["GET", "POST"])
