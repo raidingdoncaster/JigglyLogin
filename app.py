@@ -249,31 +249,37 @@ def get_meetup_history(username: str, campfire_username: str | None = None):
     """Build full meet-up history using attendance with CHECKED_IN filter."""
     if USE_SUPABASE and supabase:
         try:
-            # Step 1: Get attendance rows for trainer
-            records = supabase.table("attendance") \
-                .select("event_id, rsvp_status") \
-                .eq("campfire_username", campfire_username) \
-                .execute().data or []
+            # Step 1: Get attendance rows by campfire or display_name
+            records = []
+            if campfire_username:
+                records = supabase.table("attendance") \
+                    .select("event_id, rsvp_status") \
+                    .ilike("campfire_username", campfire_username) \
+                    .execute().data or []
 
-            # Fallback: also check display_name if no campfire match
             if not records:
                 records = supabase.table("attendance") \
                     .select("event_id, rsvp_status") \
-                    .eq("display_name", username) \
+                    .ilike("display_name", username) \
                     .execute().data or []
 
             if not records:
                 return [], 0
 
-            # Step 2: Only keep CHECKED_IN events
-            checked_in_ids = [str(r.get("event_id", "")).strip().lower()
-                              for r in records if r.get("rsvp_status") == "CHECKED_IN"]
+            # Step 2: Only keep CHECKED_IN events (case-insensitive)
+            checked_in_ids = [
+                str(r.get("event_id", "")).strip().lower()
+                for r in records if str(r.get("rsvp_status", "")).upper() == "CHECKED_IN"
+            ]
 
             if not checked_in_ids:
                 return [], 0
 
             # Step 3: Fetch events table
-            ev_rows = supabase.table("events").select("event_id, name, start_time, cover_photo_url").execute().data or []
+            ev_rows = supabase.table("events") \
+                .select("event_id, name, start_time, cover_photo_url") \
+                .execute().data or []
+
             ev_map = {str(e.get("event_id", "")).strip().lower(): e for e in ev_rows}
 
             # Step 4: Build meetups list
