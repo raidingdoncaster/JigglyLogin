@@ -201,43 +201,55 @@ def get_most_recent_meetup(username: str, campfire_username: str | None = None):
         return {"title": "", "date": "", "icon": url_for("static", filename="icons/tickstamp.png"), "event_id": ""}
 
 def get_meetup_history(username: str, campfire_username: str | None = None):
-    """Build full meet-up history from attendance + events."""
+    """Build full meet-up history using lugia_summary.event_names + events lookup."""
     if USE_SUPABASE and supabase:
         try:
-            # 🔑 Attendance rows by trainer OR campfire
-            if campfire_username:
-                resp = supabase.table("attendance").select("*") \
-                    .or_(f"trainer.ilike.{username},campfire.ilike.{campfire_username}") \
-                    .execute()
-            else:
-                resp = supabase.table("attendance").select("*") \
-                    .ilike("trainer", username) \
-                    .execute()
+            # Step 1: Get summary row
+            row = supabase.table("lugia_summary").select("event_names") \
+                .eq("trainer_username", username).limit(1).execute().data
+            if not row and campfire_username:
+                row = supabase.table("lugia_summary").select("event_names") \
+                    .eq("campfire_username", campfire_username).limit(1).execute().data
 
-            records = resp.data or []
-            if not records:
+            if not row:
                 return [], 0
 
-            # Step 2: Collect event_ids
-            event_ids = [str(r.get("event_id", "")).strip().lower() for r in records if r.get("event_id")]
+            event_names_raw = row[0].get("event_names", "")
+            if not event_names_raw:
+                return [], 0
 
-            # Step 3: Fetch events
-            ev_rows = supabase.table("events").select("event_id, title, cover_photo_url, date").execute().data or []
-            ev_map = {str(e.get("event_id", "")).strip().lower(): e for e in ev_rows}
+            # Step 2: split into list of names
+            event_names = [n.strip() for n in event_names_raw.split(",") if n.strip()]
 
-            # Step 4: Build list
+            # Step 3: Fetch events table
+            ev_rows = supabase.table("events").select("event_id, name, title, cover_photo_url, date").execute().data or []
+
+            # map by lowercase name
+            ev_map = {}
+            for e in ev_rows:
+                nm = (e.get("name") or e.get("title") or "").strip().lower()
+                if nm:
+                    ev_map[nm] = e
+
+            # Step 4: Build meetups
             meetups = []
-            for eid in event_ids:
-                ev = ev_map.get(eid)
+            for name in event_names:
+                key = name.strip().lower()
+                ev = ev_map.get(key)
                 if ev:
                     meetups.append({
-                        "title": ev.get("title", "Unknown Event"),
+                        "title": ev.get("title", name),
                         "date": ev.get("date", ""),
                         "photo": ev.get("cover_photo_url", "")
                     })
+                else:
+                    # fallback if event not found
+                    meetups.append({
+                        "title": name,
+                        "date": "",
+                        "photo": ""
+                    })
 
-            # Step 5: Default sort newest first
-            meetups.sort(key=lambda m: m["date"], reverse=True)
             return meetups, len(meetups)
         except Exception as e:
             print("⚠️ Supabase get_meetup_history failed:", e)
