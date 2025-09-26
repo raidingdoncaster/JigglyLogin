@@ -1,38 +1,110 @@
 {% extends "base.html" %}
 {% block content %}
-<h2>📅 Meetup History</h2>
+<div class="meetup-history-container">
 
-<!-- Summary Counter -->
-<div style="display:flex;gap:15px;margin-bottom:20px;flex-wrap:wrap;">
-  <div style="flex:1;min-width:150px;background:#fff;padding:15px;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,0.15);text-align:center;">
-    <h3 style="margin:0;color:#333;">{{ total_attended }}</h3>
-    <p style="margin:0;color:#777;">Total Meet-ups</p>
+  <!-- Header -->
+  <h2 style="text-align:center;margin-bottom:15px;">📅 Meet-up History</h2>
+
+  <!-- Summary Counter -->
+  <div class="summary-box">
+    <h3>{{ total_attended }}</h3>
+    <p>Total Meet-ups</p>
+  </div>
+
+  <!-- Sort dropdown -->
+  <form method="get" class="sort-form">
+    <label for="sort">Sort by:</label>
+    <select name="sort" id="sort" onchange="this.form.submit()">
+      <option value="date_desc" {% if sort_by=='date_desc' %}selected{% endif %}>Newest First</option>
+      <option value="date_asc" {% if sort_by=='date_asc' %}selected{% endif %}>Oldest First</option>
+      <option value="title" {% if sort_by=='title' %}selected{% endif %}>Alphabetical</option>
+    </select>
+  </form>
+
+  <!-- Event Cards -->
+  <div class="meetup-grid">
+    {% for m in meetups %}
+      <div class="meetup-card">
+        {% if m.photo %}
+          <img src="{{ m.photo }}" alt="Event Photo" class="meetup-photo">
+        {% endif %}
+        <div class="meetup-info">
+          <h3>{{ m.title }}</h3>
+          <p>{{ m.date }}</p>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+
+  <div style="text-align:center;margin-top:20px;">
+    <a href="{{ url_for('passport') }}" class="btn">⬅ Back to Passport</a>
   </div>
 </div>
 
-<!-- Sort dropdown -->
-<form method="get" style="margin-bottom:15px;">
-  <label for="sort">Sort by:</label>
-  <select name="sort" id="sort" onchange="this.form.submit()">
-    <option value="date_desc" {% if sort_by=='date_desc' %}selected{% endif %}>Newest First</option>
-    <option value="date_asc" {% if sort_by=='date_asc' %}selected{% endif %}>Oldest First</option>
-    <option value="title" {% if sort_by=='title' %}selected{% endif %}>Alphabetical</option>
-  </select>
-</form>
-
-<!-- Event Cards -->
-<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:15px;">
-  {% for m in meetups %}
-    <div style="background:#fff;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,0.15);overflow:hidden;">
-      {% if m.photo %}
-        <img src="{{ m.photo }}" alt="Event Photo" style="width:100%;height:140px;object-fit:cover;">
-      {% endif %}
-      <div style="padding:10px;">
-        <h3 style="margin:0;font-size:1.1em;">{{ m.title }}</h3>
-        <p style="margin:4px 0;color:#555;">{{ m.date }}</p>
-      </div>
-    </div>
-  {% endfor %}
-</div>
-
+<style>
+.meetup-history-container {
+  margin: 0 auto;
+  max-width: 900px;
+}
+.summary-box {
+  background:#fff;
+  padding:15px;
+  border-radius:10px;
+  box-shadow:0 2px 6px rgba(0,0,0,0.15);
+  text-align:center;
+  margin:0 auto 20px;
+  width:200px;
+}
+.summary-box h3 {
+  margin:0;
+  color:#3a8dde;
+  font-size:1.6em;
+}
+.summary-box p {
+  margin:0;
+  color:#777;
+  font-size:0.9em;
+}
+.sort-form {
+  margin-bottom:15px;
+  text-align:center;
+}
+.sort-form label {
+  font-weight:bold;
+  margin-right:6px;
+}
+.meetup-grid {
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
+  gap:15px;
+}
+.meetup-card {
+  background:#fff;
+  border-radius:8px;
+  box-shadow:0 2px 6px rgba(0,0,0,0.15);
+  overflow:hidden;
+  transition:transform 0.2s ease;
+}
+.meetup-card:hover {
+  transform:translateY(-3px);
+}
+.meetup-photo {
+  width:100%;
+  height:140px;
+  object-fit:cover;
+}
+.meetup-info {
+  padding:10px;
+}
+.meetup-info h3 {
+  margin:0;
+  font-size:1.05em;
+  color:#333;
+}
+.meetup-info p {
+  margin:4px 0 0;
+  color:#555;
+  font-size:0.9em;
+}
+</style>
 {% endblock %}

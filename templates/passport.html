@@ -1,3 +1,6 @@
+{% extends "base.html" %}
+
+{% block content %}
 <!-- Passport Header -->
 <div class="passport-header" style="background-image: url('{{ url_for('static', filename='passport/passport-bg.png') }}');">
   <div class="passport-header-overlay"></div>
@@ -19,12 +22,16 @@
   </div>
   <div class="stat-box">
     <h4>🎉 First Meet</h4>
-    <img src="{{ lugia_summary.first_event_icon or url_for('static', filename='icons/tickstamp.png') }}" alt="First Meet Icon" class="stat-icon">
+    {% if lugia_summary.first_event_icon %}
+      <img src="{{ lugia_summary.first_event_icon }}" alt="First Meet Icon" class="stat-icon">
+    {% endif %}
     <p>{{ lugia_summary.first_attended_event }}<br><small>{{ lugia_summary.first_event_date }}</small></p>
   </div>
   <div class="stat-box">
     <h4>📅 Most Recent</h4>
-    <img src="{{ lugia_summary.most_recent_icon or url_for('static', filename='icons/tickstamp.png') }}" alt="Recent Meet Icon" class="stat-icon">
+    {% if lugia_summary.most_recent_icon %}
+      <img src="{{ lugia_summary.most_recent_icon }}" alt="Recent Meet Icon" class="stat-icon">
+    {% endif %}
     <p>{{ lugia_summary.most_recent_event }}<br><small>{{ lugia_summary.most_recent_event_date }}</small></p>
   </div>
 </div>
@@ -56,12 +63,12 @@
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 12px;
-  margin: 15px 0;
+  margin: 15px 0 25px 0;
 }
 .stat-box {
   background: #fff;
   border-radius: 10px;
-  padding: 10px;
+  padding: 12px;
   text-align: center;
   box-shadow: 0 2px 6px rgba(0,0,0,0.1);
 }
@@ -72,20 +79,23 @@
 }
 .stat-box p {
   margin: 0;
-  font-size: 0.9em;
+  font-size: 0.85em;
+  line-height: 1.3;
 }
 .stat-box small {
   color: #777;
 }
 .stat-icon {
-  width: 30px; height: 30px;
+  width: 40px; height: 40px;
+  object-fit: cover;
   margin-bottom: 4px;
+  border-radius: 6px;
 }
 .btn-history {
   display: block;
-  margin: 10px auto 20px;
+  margin: 10px auto 25px;
   text-align: center;
-  padding: 8px 12px;
+  padding: 8px 14px;
   background: #3a8dde;
   color: #fff;
   border-radius: 6px;
@@ -95,73 +105,50 @@
 }
 </style>
 
-  {% if passports and passports|length > 0 %}
-    <div class="passport-grid">
-      {% for passport in passports %}
-        <div class="passport-card">
-          <div class="passport-slots">
-            {% for i in range(12) %}
-              {% if i < passport|length %}
-                <div class="stamp-slot filled">
-                  <img src="{{ passport[i].icon }}" alt="{{ passport[i].name }}" class="stamp-image">
-                  <p class="stamp-label" title="{{ passport[i].name }}">
-                    {{ passport[i].name }}
-                  </p>
-                </div>
-              {% else %}
-                <div class="stamp-slot empty">
-                  <div class="pokeball-placeholder"></div>
-                </div>
-              {% endif %}
-            {% endfor %}
-          </div>
+{% if passports and passports|length > 0 %}
+  <div class="passport-grid">
+    {% for passport in passports %}
+      <div class="passport-card">
+        <div class="passport-slots">
+          {% for i in range(12) %}
+            {% if i < passport|length %}
+              <div class="stamp-slot filled">
+                <img src="{{ passport[i].icon }}" alt="{{ passport[i].name }}" class="stamp-image">
+                <p class="stamp-label" title="{{ passport[i].name }}">
+                  {{ passport[i].name }}
+                </p>
+              </div>
+            {% else %}
+              <div class="stamp-slot empty">
+                <div class="pokeball-placeholder"></div>
+              </div>
+            {% endif %}
+          {% endfor %}
         </div>
-      {% endfor %}
-    </div>
-  {% else %}
-    <p class="no-stamps">You don’t have any stamps yet. Check in at events to earn them!</p>
-  {% endif %}
-
-  <div style="margin-top:20px; text-align:center;">
-    <a href="{{ url_for('dashboard') }}" class="btn">⬅ Back to Dashboard</a>
+      </div>
+    {% endfor %}
   </div>
+{% else %}
+  <p class="no-stamps">You don’t have any stamps yet. Check in at events to earn them!</p>
+{% endif %}
+
+<div style="margin-top:20px; text-align:center;">
+  <a href="{{ url_for('dashboard') }}" class="btn">⬅ Back to Dashboard</a>
 </div>
 
 <style>
-/* Layout / existing styles */
-.passport-container {
-  background: url("{{ url_for('static', filename='passport/passport-bg.png') }}") no-repeat center center fixed;
-  background-size: cover;
-  padding: 20px;
-  border-radius: 12px;
-  min-height: 80vh;
-  text-align: center;
-}
-
-.stamp-counts {
-  margin-bottom: 20px;
-  font-size: 1em;
-  color: #333;
-  background: rgba(255,255,255,0.8);
-  display: inline-block;
-  padding: 10px 15px;
-  border-radius: 8px;
-}
-
 .passport-grid {
   display: flex;
   flex-wrap: wrap;
   gap: 20px;
   justify-content: center;
 }
-
 .passport-card {
   background: rgba(255,255,255,0.9);
   border-radius: 12px;
   padding: 15px;
   box-shadow: 0 4px 10px rgba(0,0,0,0.15);
 }
-
 .passport-slots {
   display: grid;
   grid-template-columns: repeat(4, 80px);
@@ -169,13 +156,11 @@
   gap: 12px;
   justify-content: center;
 }
-
 .stamp-slot {
   width: 80px;
   text-align: center;
   position: relative;
 }
-
 .stamp-slot.filled img {
   width: 64px;
   height: 64px;
@@ -184,7 +169,6 @@
   border: 2px solid #3a8dde;
   margin-bottom: 5px;
 }
-
 .stamp-label {
   font-size: 0.7em;
   color: #333;
@@ -192,12 +176,11 @@
   margin: 0;
   max-width: 80px;
   display: -webkit-box;
-  -webkit-line-clamp: 2;   /* allow up to two lines */
+  -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-
 .stamp-slot.empty {
   width: 64px;
   height: 64px;
@@ -209,7 +192,6 @@
   align-items: center;
   justify-content: center;
 }
-
 .pokeball-placeholder {
   width: 70%;
   height: 70%;
@@ -217,7 +199,6 @@
   border: 2px solid #bbb;
   position: relative;
 }
-
 .pokeball-placeholder::before {
   content: "";
   position: absolute;
@@ -228,5 +209,4 @@
   background: #bbb;
 }
 </style>
-
 {% endblock %}
