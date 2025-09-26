@@ -1,11 +1,95 @@
 {% extends "base.html" %}
 {% block content %}
 
-<div class="passport-container">
-  <h2>🎟️ Passport Progress</h2>
-  <p class="stamp-counts">
-    <strong>Your current stamps:</strong> {{ current_stamps }}
-  </p>
+<div class="stats-summary">
+  <div class="stat-box">
+    <h3>📖 Total Passport Stamps</h3>
+    <p>{{ total_stamps }}</p>
+  </div>
+  <div class="stat-box">
+    <h3>✅ Total Check-ins</h3>
+    <p>{{ summary_info.total_attended }}</p>
+  </div>
+  <div class="stat-box">
+    <h3>🎉 First Meet</h3>
+    {% if summary_info.first_event %}
+      <img src="{{ summary_info.first_event_icon }}" alt="First Event" class="stat-icon">
+      <p><strong>{{ summary_info.first_event }}</strong></p>
+      <p class="date">{{ summary_info.first_event_date }}</p>
+    {% else %}
+      <p>No data</p>
+    {% endif %}
+  </div>
+  <div class="stat-box">
+    <h3>🕒 Most Recent</h3>
+    {% if summary_info.most_recent_event %}
+      <img src="{{ summary_info.most_recent_event_icon }}" alt="Most Recent Event" class="stat-icon">
+      <p><strong>{{ summary_info.most_recent_event }}</strong></p>
+      <p class="date">{{ summary_info.most_recent_event_date }}</p>
+    {% else %}
+      <p>No data</p>
+    {% endif %}
+  </div>
+</div>
+
+<div style="text-align:center; margin-bottom:20px;">
+  <a href="{{ url_for('meetup_history') }}" class="btn-history">📜 View Meet-up History</a>
+</div>
+
+<style>
+.btn-history {
+  display:inline-block;
+  padding:8px 14px;
+  background:#3a8dde;
+  color:#fff;
+  font-weight:600;
+  border-radius:8px;
+  text-decoration:none;
+  transition:background 0.2s ease;
+}
+.btn-history:hover {
+  background:#2e73bd;
+}
+</style>
+
+<style>
+.stats-summary {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 15px;
+  margin-bottom: 25px;
+}
+.stat-box {
+  background: rgba(255,255,255,0.95);
+  border-radius: 12px;
+  padding: 12px 14px;
+  box-shadow: 0 3px 8px rgba(0,0,0,0.15);
+  text-align: center;
+}
+.stat-box h3 {
+  margin: 0 0 6px;
+  font-size: 0.9em;
+  color: #3a8dde;
+}
+.stat-box p {
+  margin: 4px 0;
+  font-size: 1em;
+  font-weight: 500;
+  color: #222;
+}
+.stat-box p.date {
+  font-size: 0.8em;
+  color: #555;
+}
+.stat-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  margin-bottom: 5px;
+  object-fit: cover;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+}
+</style>
 
   {% if passports and passports|length > 0 %}
     <div class="passport-grid">

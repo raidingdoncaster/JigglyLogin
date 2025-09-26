@@ -319,55 +319,49 @@ def age():
 
     if request.method == "POST":
         choice = request.form.get("age_choice")
-
         if choice == "13plus":
             flash("✅ Great! You’re signing up as 13 or older.", "success")
             return redirect(url_for("campfire"))
-
         elif choice == "under13":
-            # --- Supabase insert ---
-            if USE_SUPABASE and supabase:
-                try:
-                    supabase.table("sheet1").insert({
-                        "trainer_username": details["trainer_name"],
-                        "pin_hash": hash_value(details["pin"]),
-                        "memorable_password": details["memorable"],
-                        "last_login": datetime.utcnow().isoformat(),
-                        "campfire_username": "Kids Account",
-                        "stamps": 0,
-                        "avatar_icon": "avatar1.png",
-                        "trainer_card_background": "default.png",
-                        "account_type": "Kids Account"
-                    }).execute()
-                except Exception as e:
-                    print("⚠️ Supabase kids signup failed:", e)
+            # ✅ Backend guard to prevent duplicates
+            records = sheet.get_all_records()
+            for r in records:
+                if r.get("Trainer Username", "").lower() == details["trainer_name"].lower():
+                    flash("This trainer already exists. Please log in.", "error")
+                    session.pop("signup_details", None)
+                    return redirect(url_for("home"))
 
-            # --- Google Sheets mirror ---
-            try:
-                sheet.append_row([
-                    details["trainer_name"],
-                    hash_value(details["pin"]),
-                    details["memorable"],
-                    datetime.utcnow().isoformat(),
-                    "Kids Account",   # Campfire Username
-                    "0",              # Stamps
-                    "avatar1.png",    # Avatar
-                    "default.png",    # Background
-                    "Kids Account"    # Account Type
-                ])
-                trigger_lugia_refresh()
-            except Exception as e:
-                print("⚠️ Google Sheets kids signup failed:", e)
+            # Kids Account: store in Sheet1
+            sheet.append_row([
+                details["trainer_name"],
+                hash_value(details["pin"]),
+                details["memorable"],
+                datetime.utcnow().isoformat(),
+                "Kids Account",   # Column E
+                "0",              # Column F
+                "avatar1.png"     # Column G
+            ])
+            if supabase:
+                supabase.table("sheet1").insert({
+                    "trainer_username": details["trainer_name"],
+                    "pin_hash": hash_value(details["pin"]),
+                    "memorable_password": details["memorable"],
+                    "last_login": datetime.utcnow().isoformat(),
+                    "campfire_username": "Kids Account",
+                    "stamps": 0,
+                    "avatar_icon": "avatar1.png",
+                    "trainer_card_background": "default.png",
+                    "account_type": "Kids Account"
+                }).execute()
 
+            trigger_lugia_refresh()
             session.pop("signup_details", None)
             flash("👶 Kids Account created successfully!", "success")
             return redirect(url_for("home"))
-
         else:
             flash("Please select an option.", "warning")
 
     return render_template("age.html")
-
 
 # ====== Campfire Username Step (13+) ======
 @app.route("/campfire", methods=["GET", "POST"])
@@ -383,40 +377,38 @@ def campfire():
             flash("Campfire username is required.", "warning")
             return redirect(url_for("campfire"))
 
-        # --- Supabase insert ---
-        if USE_SUPABASE and supabase:
-            try:
-                supabase.table("sheet1").insert({
-                    "trainer_username": details["trainer_name"],
-                    "pin_hash": hash_value(details["pin"]),
-                    "memorable_password": details["memorable"],
-                    "last_login": datetime.utcnow().isoformat(),
-                    "campfire_username": campfire_username,
-                    "stamps": 0,
-                    "avatar_icon": "avatar1.png",
-                    "trainer_card_background": "default.png",
-                    "account_type": "Standard"
-                }).execute()
-            except Exception as e:
-                print("⚠️ Supabase signup failed:", e)
+        # ✅ Backend guard to prevent duplicates
+        records = sheet.get_all_records()
+        for r in records:
+            if r.get("Trainer Username", "").lower() == details["trainer_name"].lower():
+                flash("This trainer already exists. Please log in.", "error")
+                session.pop("signup_details", None)
+                return redirect(url_for("home"))
 
-        # --- Google Sheets mirror ---
-        try:
-            sheet.append_row([
-                details["trainer_name"],
-                hash_value(details["pin"]),
-                details["memorable"],
-                datetime.utcnow().isoformat(),
-                campfire_username,  # Campfire
-                "0",                # Stamps
-                "avatar1.png",      # Avatar
-                "default.png",      # Background
-                "Standard"          # Account Type
-            ])
-            trigger_lugia_refresh()
-        except Exception as e:
-            print("⚠️ Google Sheets signup failed:", e)
+        # Save to Sheets
+        sheet.append_row([
+            details["trainer_name"],
+            hash_value(details["pin"]),
+            details["memorable"],
+            datetime.utcnow().isoformat(),
+            campfire_username,  # Column E
+            "",                 # Column F
+            "avatar1.png"       # Column G
+        ])
+        if supabase:
+            supabase.table("sheet1").insert({
+                "trainer_username": details["trainer_name"],
+                "pin_hash": hash_value(details["pin"]),
+                "memorable_password": details["memorable"],
+                "last_login": datetime.utcnow().isoformat(),
+                "campfire_username": campfire_username,
+                "stamps": 0,
+                "avatar_icon": "avatar1.png",
+                "trainer_card_background": "default.png",
+                "account_type": "Standard"
+            }).execute()
 
+        trigger_lugia_refresh()
         session.pop("signup_details", None)
         flash("Signup successful! Please log in.", "success")
         return redirect(url_for("home"))
@@ -480,6 +472,7 @@ def dashboard():
         background=user.get("Trainer Card Background", "default.png"),
         campfire_username=campfire_username,
         most_recent_meetup=most_recent_meetup,
+        account_type=user.get("Account Type") or user.get("account_type") or "Standard",
         show_back=False,
     )
 
@@ -610,7 +603,44 @@ def passport():
 
     total_stamps, stamps, most_recent_stamp = get_passport_stamps(username, campfire_username)
     current_stamps = len(stamps)
-    passports = [stamps[i:i + 12] for i in range(0, len(stamps), 12)]
+    passports = [stamps[i:i+12] for i in range(0, len(stamps), 12)]
+
+    # === Lugia_Summary ===
+    summary_ws = gclient.open("POGO Passport Sign-Ins").worksheet("Lugia_Summary")
+    summary_records = summary_ws.get_all_records()
+    summary_info = {
+        "total_attended": 0,
+        "first_event": "",
+        "first_event_date": "",
+        "first_event_icon": "",
+        "most_recent_event": "",
+        "most_recent_event_date": "",
+        "most_recent_event_icon": ""
+    }
+    rec = None
+    for row in summary_records:
+        ru = str(row.get("Trainer Username", "")).strip().lower()
+        rc = str(row.get("Campfire Username", "")).strip().lower()
+        if ru == username.lower() or (campfire_username and rc == campfire_username.lower()):
+            rec = row
+            break
+
+    if rec:
+        summary_info["total_attended"] = rec.get("Total Attended", 0)
+        summary_info["first_event"] = rec.get("First Attended Event", "")
+        summary_info["first_event_date"] = rec.get("First Event Date", "")
+        summary_info["most_recent_event"] = rec.get("Most Recent Event", "")
+        summary_info["most_recent_event_date"] = rec.get("Most Recent Event Date", "")
+        first_id = str(rec.get("First Event ID", "")).strip().lower()
+        recent_id = str(rec.get("Most Recent Event ID", "")).strip().lower()
+
+        # Map event_id → cover_photo_url
+        events_ws = gclient.open("POGO Passport Sign-Ins").worksheet("events")
+        event_records = events_ws.get_all_records()
+        event_map = {str(e.get("event_id", "")).strip().lower(): e.get("cover_photo_url", "") for e in event_records}
+
+        summary_info["first_event_icon"] = event_map.get(first_id, "")
+        summary_info["most_recent_event_icon"] = event_map.get(recent_id, "")
 
     return render_template(
         "passport.html",
@@ -620,9 +650,85 @@ def passport():
         total_stamps=total_stamps,
         current_stamps=current_stamps,
         most_recent_stamp=most_recent_stamp,
+        summary_info=summary_info,
         show_back=True,
     )
 
+# ====== Meet-up History ======
+@app.route("/meetup_history")
+def meetup_history():
+    if "trainer" not in session:
+        flash("Please log in to view your meet-up history.", "warning")
+        return redirect(url_for("home"))
+
+    username = session["trainer"]
+
+    # Try to pull campfire username from Supabase sheet1
+    campfire_username = None
+    if USE_SUPABASE and supabase:
+        try:
+            resp = supabase.table("sheet1").select("campfire_username").eq("trainer_username", username).limit(1).execute()
+            if resp.data:
+                campfire_username = resp.data[0].get("campfire_username")
+        except Exception as e:
+            print("⚠️ Supabase sheet1 fetch failed:", e)
+
+    sort_by = request.args.get("sort", "date_desc")  # default newest first
+    meetups = []
+    total_attended = 0
+
+    if USE_SUPABASE and supabase:
+        try:
+            # Match Lugia Summary row
+            summary_rows = supabase.table("lugia_summary").select("*").eq("trainer_username", username).execute().data
+            if not summary_rows and campfire_username:
+                summary_rows = supabase.table("lugia_summary").select("*").eq("campfire_username", campfire_username).execute().data
+
+            if summary_rows:
+                summary = summary_rows[0]
+                total_attended = summary.get("total_attended", 0) or 0
+                event_ids = (summary.get("event_ids") or "").split(",")
+                event_names = (summary.get("event_names") or "").split(",")
+                event_dates = (summary.get("event_dates") or "").split(",") if summary.get("event_dates") else []
+
+                # pull event photos
+                ev_rows = supabase.table("events").select("event_id, cover_photo_url, start_time").execute().data or []
+                event_map = {str(e.get("event_id", "")).strip(): e for e in ev_rows}
+
+                for i, eid in enumerate(event_ids):
+                    eid = eid.strip()
+                    if not eid:
+                        continue
+                    name = event_names[i].strip() if i < len(event_names) else ""
+                    date = event_dates[i].strip() if i < len(event_dates) else ""
+                    ev = event_map.get(eid, {})
+                    meetups.append({
+                        "event_id": eid,
+                        "title": name,
+                        "date": date,
+                        "photo": ev.get("cover_photo_url", ""),
+                        "start_time": ev.get("start_time", "")
+                    })
+
+        except Exception as e:
+            print("⚠️ Supabase meetup history failed:", e)
+
+    # Sorting
+    if sort_by == "date_asc":
+        meetups.sort(key=lambda x: x["date"])
+    elif sort_by == "title":
+        meetups.sort(key=lambda x: x["title"].lower())
+    else:  # newest first
+        meetups.sort(key=lambda x: x["date"], reverse=True)
+
+    return render_template(
+        "meetup_history.html",
+        trainer=username,
+        meetups=meetups,
+        sort_by=sort_by,
+        total_attended=len(meetups),  # use actual count of rows
+        show_back=True
+    )
 
 # ====== Check-ins (placeholder) ======
 @app.route("/checkins")
