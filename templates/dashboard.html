@@ -11,8 +11,6 @@
       <div style="margin-left:15px;">
         <h2 style="margin:0;">Welcome, {{ trainer }}!</h2>
         <p style="font-size:0.9em;">Last login: {{ last_login }}</p>
-        <p><strong>Account Type:</strong> {{ account_type }}</p>
-        {% if account_type != "Kids Account" %}
           <p><strong>Campfire Username:</strong> {{ campfire_username }}</p>
         {% endif %}
 

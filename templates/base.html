@@ -67,6 +67,82 @@
             text-decoration: underline;
         }
 
+        .nav-icons {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+        .nav-icon {
+            width: 32px;
+            height: 32px;
+            display: block;
+        }
+        .icon-link {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            padding: 0;
+        }
+        .badge {
+            position: absolute;
+            top: -6px;
+            right: -8px;
+            background: #ff4757;
+            color: #fff;
+            border-radius: 999px;
+            font-size: 0.7em;
+            line-height: 1;
+            padding: 2px 6px;
+            min-width: 16px;
+            text-align: center;
+            border: 2px solid #ffffffaa; /* helps on light backgrounds */
+        }
+        .inbox-wrapper { position: relative; }
+        .inbox-dropdown {
+            position: absolute;
+            display: none;
+            right: 0;
+            top: 42px;
+            width: 240px;
+            background: #fff;
+            color: #333;
+            border-radius: 8px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+            padding: 8px;
+            z-index: 2000;
+        }
+        .inbox-dropdown ul { list-style: none; margin: 0; padding: 0; }
+        .inbox-dropdown li {
+            font-size: 0.9em;
+            padding: 6px 2px;
+            border-bottom: 1px solid #eee;
+        }
+        .inbox-dropdown li:last-child { border-bottom: none; }
+        .inbox-dropdown .view-all {
+            display: block;
+            margin-top: 8px;
+            text-align: center;
+            text-decoration: none;
+            background: #3a8dde;
+            color: #fff;
+            padding: 6px 8px;
+            border-radius: 6px;
+            font-weight: 600;
+        }
+        .back-link { margin-left: auto; font-weight: 600; color: #fff; text-decoration: none; }
+        .back-link:hover { text-decoration: underline; }
+
+        /* Mobile tweaks */
+        @media (max-width: 480px) {
+            .nav-icons { gap: 10px; }
+            .nav-icon { width: 28px; height: 28px; }
+            .badge { top: -5px; right: -7px; font-size: 0.65em; }
+        }
+
         /* Main content container */
         .container {
             max-width: 420px;
@@ -171,6 +247,21 @@
                 });
             }, 4000);
         });
+
+        // Inbox dropdown toggle
+        document.addEventListener("DOMContentLoaded", () => {
+        const btn = document.getElementById("inboxToggle");
+        const dd  = document.getElementById("inboxDropdown");
+        if (!btn || !dd) return;
+
+        btn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            dd.style.display = dd.style.display === "block" ? "none" : "block";
+        });
+        document.addEventListener("click", (e) => {
+            if (!dd.contains(e.target)) dd.style.display = "none";
+        });
+        });
     </script>
 </head>
 <body>
@@ -183,13 +274,45 @@
     <!-- Header -->
     <header>
         <div class="logo"></div>
-        <nav>
-            <a href="{{ url_for('dashboard') }}">Home</a>
-            <a href="https://pogoprizes.my.canva.site" target="_blank">Back to Website</a>
+        <nav class="nav-icons">
             {% if session.get('trainer') %}
-                <a href="{{ url_for('logout') }}">Logout</a>
+                <!-- Dashboard (Pikachu card) -->
+                <a href="{{ url_for('dashboard') }}" class="icon-link" title="Home / Dashboard">
+                <img src="{{ url_for('static', filename='nav/pikachu-card.png') }}" alt="Home" class="nav-icon">
+                </a>
+
+                <!-- Passport (Stamp icon + badge) -->
+                <a href="{{ url_for('passport') }}" class="icon-link stamp-link" title="Passport">
+                <img src="{{ url_for('static', filename='nav/stamp-icon.png') }}" alt="Passport" class="nav-icon">
+                <span class="badge">{{ current_stamps or 0 }}</span>
+                </a>
+
+                <!-- Inbox (dropdown preview) -->
+                <div class="inbox-wrapper">
+                <button type="button" class="icon-link" id="inboxToggle" title="Inbox">
+                    <img src="{{ url_for('static', filename='nav/mail-icon.png') }}" alt="Inbox" class="nav-icon">
+                </button>
+                <div id="inboxDropdown" class="inbox-dropdown">
+                    {% if inbox_preview and inbox_preview|length > 0 %}
+                    <ul>
+                        {% for msg in inbox_preview %}
+                        <li>{{ msg.subject }}</li>
+                        {% endfor %}
+                    </ul>
+                    {% else %}
+                    <p style="margin:6px 0;">No messages</p>
+                    {% endif %}
+                    <a href="{{ url_for('inbox') }}" class="view-all">📨 View Inbox</a>
+                </div>
+                </div>
+
+                <!-- Logout (emoji) -->
+                <a href="{{ url_for('logout') }}" class="icon-link" title="Log out">🚪</a>
             {% endif %}
-        </nav>
+
+            <!-- Keep your external website link on the far right -->
+            <a href="https://pogoprizes.my.canva.site" target="_blank" class="back-link">Back to Website</a>
+            </nav>
     </header>
 
     <!-- Page content -->

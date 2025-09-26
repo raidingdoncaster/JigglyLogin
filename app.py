@@ -52,6 +52,35 @@ if USE_SUPABASE and create_client and SUPABASE_URL and SUPABASE_KEY:
         print("⚠️ Could not init Supabase client:", e)
         supabase = None
 
+# ===== Header =====
+@app.context_processor
+def inject_header_data():
+    """Inject stamp count and inbox preview into every template automatically."""
+    trainer = session.get("trainer")
+    current_stamps = 0
+    inbox_preview = []
+
+    if trainer and supabase:
+        # Stamp count from Supabase.sheet1
+        try:
+            r = (supabase.table("sheet1")
+                 .select("stamps")
+                 .eq("trainer_username", trainer)
+                 .limit(1)
+                 .execute())
+            if r.data:
+                current_stamps = int(r.data[0].get("stamps") or 0)
+        except Exception as e:
+            print("⚠️ header stamps fetch failed:", e)
+
+        # Latest inbox messages (subject + created_at)
+        try:
+            inbox_preview = get_inbox_preview(trainer, 3)
+        except Exception as e:
+            print("⚠️ header inbox preview failed:", e)
+
+    return dict(current_stamps=current_stamps, inbox_preview=inbox_preview)
+
 # ====== Helpers ======
 def hash_value(value: str) -> str:
     return hashlib.sha256(value.encode()).hexdigest()
@@ -106,6 +135,22 @@ def trigger_lugia_refresh():
         requests.get(url, params={"action": "lugiaRefresh"}, timeout=10)
     except Exception as e:
         print("⚠️ Lugia refresh error:", e)
+
+def get_inbox_preview(trainer: str, limit: int = 3):
+    """Return the most recent messages for the floating inbox dropdown."""
+    messages = []
+    if USE_SUPABASE and supabase and trainer:
+        try:
+            resp = (supabase.table("notifications")
+                    .select("subject, created_at")
+                    .eq("trainer_username", trainer)
+                    .order("created_at", desc=True)
+                    .limit(limit)
+                    .execute())
+            messages = resp.data or []
+        except Exception as e:
+            print("⚠️ Supabase inbox preview failed:", e)
+    return messages
 
 # ====== Data: stamps & meetups ======
 def get_passport_stamps(username: str, campfire_username: str | None = None):
@@ -278,6 +323,7 @@ def cover_from_event_name(event_name: str) -> str:
     except Exception as e:
         print("⚠️ cover_from_event_name failed:", e)
     return ""
+
 
 # ====== Routes ======
 @app.route("/")
