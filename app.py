@@ -746,7 +746,7 @@ def meetup_history():
 
     trainer = session["trainer"]
     row, user = find_user(trainer)
-    campfire_username = user.get("Campfire Username", "")
+    campfire_username = user.get("campfire_username", "")
 
     sort_by = request.args.get("sort", "date_desc")
 
