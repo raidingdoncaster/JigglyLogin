@@ -110,25 +110,33 @@ def trigger_lugia_refresh():
 # ====== Data: stamps & meetups ======
 def get_passport_stamps(username: str, campfire_username: str | None = None):
     try:
-        # 🔑 Fetch ledger rows by trainer or campfire username
-        q = supabase.table("lugia_ledger").select("*").eq("trainer", username)
-        resp = q.execute()
-        records = resp.data or []
+        # 🔑 Pull all ledger rows where trainer OR campfire matches
+        if campfire_username:
+            resp = supabase.table("lugia_ledger").select("*") \
+                .or_(f"trainer.ilike.{username},campfire.ilike.{campfire_username}") \
+                .execute()
+        else:
+            resp = supabase.table("lugia_ledger").select("*") \
+                .ilike("trainer", username) \
+                .execute()
 
-        if not records and campfire_username:
-            resp = supabase.table("lugia_ledger").select("*").eq("campfire", campfire_username).execute()
-            records = resp.data or []
+        records = resp.data or []
 
         # Fetch event cover photos
         ev_rows = supabase.table("events").select("event_id, cover_photo_url").execute().data or []
-        event_map = {str(e.get("event_id", "")).strip().lower(): (e.get("cover_photo_url") or "") for e in ev_rows}
+        event_map = {
+            str(e.get("event_id", "")).strip().lower(): (e.get("cover_photo_url") or "")
+            for e in ev_rows
+        }
 
         stamps, total_count = [], 0
         for r in records:
             reason = (r.get("reason") or "").strip()
             count = int(r.get("count") or 1)
             total_count += count
-            event_id = str(r.get("eventid") or "").strip().lower()
+
+            # Handle both eventid and event_id
+            event_id = str(r.get("eventid") or r.get("event_id") or "").strip().lower()
 
             rl = reason.lower()
             if rl == "signup bonus":
@@ -196,13 +204,17 @@ def get_meetup_history(username: str, campfire_username: str | None = None):
     """Build full meet-up history from attendance + events."""
     if USE_SUPABASE and supabase:
         try:
-            # Step 1: Attendance rows
-            resp = supabase.table("attendance").select("*").eq("trainer", username).execute()
-            records = resp.data or []
-            if not records and campfire_username:
-                resp = supabase.table("attendance").select("*").eq("campfire", campfire_username).execute()
-                records = resp.data or []
+            # 🔑 Attendance rows by trainer OR campfire
+            if campfire_username:
+                resp = supabase.table("attendance").select("*") \
+                    .or_(f"trainer.ilike.{username},campfire.ilike.{campfire_username}") \
+                    .execute()
+            else:
+                resp = supabase.table("attendance").select("*") \
+                    .ilike("trainer", username) \
+                    .execute()
 
+            records = resp.data or []
             if not records:
                 return [], 0
 
