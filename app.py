@@ -234,6 +234,49 @@ def get_most_recent_meetup(username: str, campfire_username: str | None = None):
 
     return {"title": "", "date": "", "icon": "", "event_id": ""}
 
+def get_meetup_history(username: str, campfire_username: str | None = None):
+    if USE_SUPABASE and supabase:
+        try:
+            # Step 1: Pull attendance rows
+            q = supabase.table("attendance").select("*").eq("trainer", username)
+            resp = q.execute()
+            records = resp.data or []
+            if (not records) and campfire_username:
+                resp = supabase.table("attendance").select("*").eq("campfire", campfire_username).execute()
+                records = resp.data or []
+
+            if not records:
+                return [], 0
+
+            # Step 2: Collect all event_ids
+            event_ids = list({str(r.get("event_id")).strip().lower() for r in records if r.get("event_id")})
+
+            # Step 3: Fetch event details
+            ev_rows = supabase.table("events").select("event_id, title, cover_photo_url, date").execute().data or []
+            ev_map = {
+                str(e.get("event_id", "")).strip().lower(): e
+                for e in ev_rows
+            }
+
+            # Step 4: Build structured list
+            meetups = []
+            for eid in event_ids:
+                ev = ev_map.get(eid)
+                if ev:
+                    meetups.append({
+                        "title": ev.get("title", "Unknown Event"),
+                        "date": ev.get("date", ""),
+                        "photo": ev.get("cover_photo_url", "")
+                    })
+
+            # Step 5: Sort newest first by default
+            meetups.sort(key=lambda m: m["date"], reverse=True)
+            return meetups, len(meetups)
+        except Exception as e:
+            print("⚠️ Supabase get_meetup_history failed:", e)
+
+    return [], 0
+
 # ====== Routes ======
 @app.route("/")
 def home():
@@ -695,115 +738,70 @@ def meetup_history():
         flash("Please log in to view your meet-up history.", "warning")
         return redirect(url_for("home"))
 
-    username = session["trainer"]
-
-    # Pull Campfire Username from Sheet1
-    user_rows = sheet.get_all_records()
-    campfire_username = None
-    for r in user_rows:
-        if str(r.get("Trainer Username", "")).lower() == username.lower():
-            campfire_username = r.get("Campfire Username", "")
-            break
+    trainer = session["trainer"]
+    row, user = find_user(trainer)
+    campfire_username = user.get("Campfire Username", "")
 
     sort_by = request.args.get("sort", "date_desc")
-    meetups = []
 
-    try:
-        if USE_SUPABASE and supabase:
-            # 1. Grab all ledger entries for the player
-            resp = supabase.table("lugia_ledger").select("eventid, trainer, campfire").eq("trainer", username).execute()
+    meetups, total_attended = [], 0
+    if USE_SUPABASE and supabase:
+        try:
+            # Step 1: Pull attendance records for trainer or campfire username
+            resp = supabase.table("attendance").select("*").eq("user_id", trainer).execute()
             records = resp.data or []
-            if not records and campfire_username:
-                resp = supabase.table("lugia_ledger").select("eventid, trainer, campfire").eq("campfire", campfire_username).execute()
+            if (not records) and campfire_username:
+                resp = supabase.table("attendance").select("*").eq("campfire_username", campfire_username).execute()
                 records = resp.data or []
 
-            # 2. Get all events (for names, cover photos, dates)
-            ev_rows = supabase.table("events").select("event_id, name, start_time, cover_photo_url").execute().data or []
-            ev_map = {
-                str(e.get("event_id", "")).strip().lower(): {
-                    "title": e.get("name", ""),
-                    "date": e.get("start_time", ""),
-                    "photo": e.get("cover_photo_url", "")
-                }
-                for e in ev_rows
-            }
+            if records:
+                # Step 2: Collect event IDs
+                event_ids = list({str(r.get("event_id")).strip().lower() for r in records if r.get("event_id")})
 
-            # 3. Build meetup list
-            for r in records:
-                eid = str(r.get("eventid", "")).strip().lower()
-                if eid and eid in ev_map:
-                    meetups.append(ev_map[eid])
+                # Step 3: Fetch event details
+                ev_rows = supabase.table("events").select("event_id, name, cover_photo_url, start_time").execute().data or []
+                ev_map = {str(e.get("event_id", "")).strip().lower(): e for e in ev_rows}
 
-        else:
-            # === Sheets fallback ===
-            ledger_ws = gclient.open("POGO Passport Sign-Ins").worksheet("Lugia_Ledger")
-            events_ws = gclient.open("POGO Passport Sign-Ins").worksheet("events")
-            ledger_records = ledger_ws.get_all_records()
-            event_records = events_ws.get_all_records()
-            ev_map = {
-                str(e.get("event_id", "")).strip().lower(): {
-                    "title": e.get("name", ""),
-                    "date": e.get("start_time", ""),
-                    "photo": e.get("cover_photo_url", "")
-                }
-                for e in event_records
-            }
+                # Step 4: Build structured meetups list
+                for eid in event_ids:
+                    ev = ev_map.get(eid)
+                    if ev:
+                        meetups.append({
+                            "title": ev.get("name", "Unknown Event"),
+                            "date": ev.get("start_time", ""),
+                            "photo": ev.get("cover_photo_url", "")
+                        })
 
-            for r in ledger_records:
-                trainer = str(r.get("Trainer", "")).strip().lower()
-                campfire = str(r.get("Campfire", "")).strip().lower()
-                if trainer == username.lower() or (campfire_username and campfire == campfire_username.lower()):
-                    eid = str(r.get("EventID", "")).strip().lower()
-                    if eid and eid in ev_map:
-                        meetups.append(ev_map[eid])
+                total_attended = len(meetups)
 
-    except Exception as e:
-        print("⚠️ Error loading meetup history:", e)
+        except Exception as e:
+            print("⚠️ Supabase meetup_history failed:", e)
 
-    # === Sorting ===
-    if sort_by == "date_desc":
-        meetups.sort(key=lambda m: m.get("date") or "", reverse=True)
-    elif sort_by == "date_asc":
-        meetups.sort(key=lambda m: m.get("date") or "")
+    # Sorting logic
+    if sort_by == "date_asc":
+        meetups.sort(key=lambda m: m["date"])
     elif sort_by == "title":
-        meetups.sort(key=lambda m: m.get("title") or "")
-
-    total_attended = len(meetups)
+        meetups.sort(key=lambda m: m["title"].lower())
+    else:  # newest first
+        meetups.sort(key=lambda m: m["date"], reverse=True)
 
     return render_template(
         "meetup_history.html",
         meetups=meetups,
         total_attended=total_attended,
-        sort_by=sort_by,
+        sort_by=sort_by
     )
 
-# ====== Check-ins (placeholder) ======
-@app.route("/checkins")
-def checkins():
-    if "trainer" not in session:
-        flash("Please log in to view your check-ins.", "warning")
-        return redirect(url_for("home"))
-
-    events = [
-        {"name": "Max Finale: Eternatus", "date": "2025-07-23"},
-        {"name": "Wild Area Community Day", "date": "2025-08-15"},
-    ]
-    return render_template("checkins.html", trainer=session["trainer"], events=events, show_back=True)
-
-
-# ====== Prizes (placeholder) ======
-@app.route("/prizes")
-def prizes():
-    if "trainer" not in session:
-        flash("Please log in to view your prizes.", "warning")
-        return redirect(url_for("home"))
-
-    prizes = [
-        {"item": "GO Fest T-shirt", "date": "2025-07-23"},
-        {"item": "Festival Wristband", "date": "2025-08-15"},
-    ]
-    return render_template("prizes.html", trainer=session["trainer"], prizes=prizes, show_back=True)
-
+# ====== Date Filtering ======
+from datetime import datetime
+@app.template_filter("to_date")
+def to_date_filter(value):
+    """Format ISO date/time strings like '2025-09-23T17:00:00+00:00' into '23 Sep 2025'."""
+    try:
+        dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        return dt.strftime("%d %b %Y")
+    except Exception:
+        return value  # fallback: show raw if parsing fails
 
 # ====== OCR test (debug) ======
 @app.route("/ocr_test", methods=["GET", "POST"])
