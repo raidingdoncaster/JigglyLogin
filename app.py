@@ -153,15 +153,19 @@ def get_passport_stamps(username: str, campfire_username: str | None = None):
 
 def get_most_recent_meetup(username: str, campfire_username: str | None = None):
     """
-    Returns {title, date, icon, event_id} for the user's most recent meetup.
+    Returns {title, date, icon, event_id} for the user's most recent meetup,
+    ensuring the correct event cover photo is fetched.
     """
     try:
         rec = None
-        r1 = supabase.table("lugia_summary").select("*").eq("trainer_username", username).limit(1).execute().data
+        # Try lookup by trainer_username first
+        r1 = supabase.table("lugia_summary").select("*") \
+            .eq("trainer_username", username).limit(1).execute().data
         if r1:
             rec = r1[0]
         elif campfire_username:
-            r2 = supabase.table("lugia_summary").select("*").eq("campfire_username", campfire_username).limit(1).execute().data
+            r2 = supabase.table("lugia_summary").select("*") \
+                .eq("campfire_username", campfire_username).limit(1).execute().data
             if r2:
                 rec = r2[0]
 
@@ -169,24 +173,47 @@ def get_most_recent_meetup(username: str, campfire_username: str | None = None):
             title = rec.get("most_recent_event", "")
             date = rec.get("most_recent_event_date", "")
             eid = (rec.get("most_recent_event_id") or "").strip()
+
+            # fallback: last in event_ids
             if not eid:
                 ev_ids = str(rec.get("event_ids", "")).strip()
                 if ev_ids:
                     eid = ev_ids.split(",")[-1].strip()
+
             eid_l = eid.lower()
 
-            # 🔑 Get cover photo from events
-            ev_rows = supabase.table("events").select("event_id, cover_photo_url").execute().data or []
-            event_map = {str(e.get("event_id", "")).lower(): (e.get("cover_photo_url") or "") for e in ev_rows}
-            icon = event_map.get(eid_l, url_for("static", filename="icons/tickstamp.png"))
+            # 🔑 pull *title + cover_photo_url + date* directly from events
+            ev = None
+            if eid_l:
+                ev_rows = supabase.table("events") \
+                    .select("event_id, title, cover_photo_url, date") \
+                    .eq("event_id", eid_l).limit(1).execute().data
+                if ev_rows:
+                    ev = ev_rows[0]
 
-            return {"title": title, "date": date, "icon": icon, "event_id": eid_l}
+            icon = url_for("static", filename="icons/tickstamp.png")
+            if ev and ev.get("cover_photo_url"):
+                icon = ev["cover_photo_url"]
+                # Overwrite title/date with authoritative event info
+                title = ev.get("title", title)
+                date = ev.get("date", date)
+
+            return {
+                "title": title,
+                "date": date,
+                "icon": icon,
+                "event_id": eid_l
+            }
 
     except Exception as e:
         print("⚠️ Supabase get_most_recent_meetup failed:", e)
 
-    return {"title": "", "date": "", "icon": url_for("static", filename="icons/tickstamp.png"), "event_id": ""}
-
+    return {
+        "title": "",
+        "date": "",
+        "icon": url_for("static", filename="icons/tickstamp.png"),
+        "event_id": ""
+    }
 
 def get_meetup_history(username: str, campfire_username: str | None = None):
     """Build full meet-up history from attendance + events."""
@@ -607,6 +634,7 @@ def delete_account():
     return redirect(url_for("home"))
 
 # ====== Passport ======
+# ====== Passport ======
 @app.route("/passport")
 def passport():
     if "trainer" not in session:
@@ -628,7 +656,7 @@ def passport():
     current_stamps = len(stamps)
     passports = [stamps[i:i + 12] for i in range(0, len(stamps), 12)]
 
-    # === Lugia Summary (Supabase only) ===
+    # === Lugia Summary (Supabase only, fetch event cover photos properly) ===
     lugia_summary = {
         "total_attended": 0,
         "first_attended_event": "",
@@ -652,7 +680,7 @@ def passport():
             lugia_summary["most_recent_event"] = r.get("most_recent_event", "")
             lugia_summary["most_recent_event_date"] = r.get("most_recent_event_date", "")
 
-            # Pull event icons
+            # ✅ Always pull event cover photos from events table
             ev_rows = supabase.table("events").select("event_id, cover_photo_url").execute().data or []
             ev_map = {str(e.get("event_id", "")).strip().lower(): e.get("cover_photo_url") for e in ev_rows}
 
@@ -678,7 +706,7 @@ def passport():
         current_stamps=current_stamps,
         most_recent_stamp=most_recent_stamp,
         lugia_summary=lugia_summary,
-        show_back=True,
+        show_back=False,
     )
 
 # ====== Meet-up History ======
@@ -764,7 +792,6 @@ def ocr_test():
         </form>
     """
 
-
 # ====== Change Avatar / Background ======
 @app.route("/change_avatar", methods=["GET", "POST"])
 def change_avatar():
@@ -839,7 +866,6 @@ def change_avatar():
         current_avatar=current_avatar,
         current_background=current_background,
     )
-
 
 # ====== Entrypoint ======
 if __name__ == "__main__":

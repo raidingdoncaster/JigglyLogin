@@ -26,16 +26,16 @@
     <div class="stat-box">
       <h4>🎉 First Meet</h4>
       <img src="{{ lugia_summary.first_event_icon or url_for('static', filename='icons/tickstamp.png') }}" 
-           alt="First Meet Icon" class="stat-icon">
+          alt="First Meet Icon" class="stat-icon">
       <p>{{ lugia_summary.first_attended_event }}<br>
-        <small>{{ lugia_summary.first_event_date }}</small></p>
+        <small>{{ lugia_summary.first_event_date|to_date }}</small></p>
     </div>
     <div class="stat-box">
       <h4>📅 Most Recent</h4>
       <img src="{{ lugia_summary.most_recent_icon or url_for('static', filename='icons/tickstamp.png') }}" 
-           alt="Recent Meet Icon" class="stat-icon">
+          alt="Recent Meet Icon" class="stat-icon">
       <p>{{ lugia_summary.most_recent_event }}<br>
-        <small>{{ lugia_summary.most_recent_event_date }}</small></p>
+        <small>{{ lugia_summary.most_recent_event_date|to_date }}</small></p>
     </div>
   </div>
 
