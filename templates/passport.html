@@ -1,44 +1,94 @@
 {% extends "base.html" %}
-
 {% block content %}
-<!-- Passport Header -->
-<div class="passport-header" style="background-image: url('{{ url_for('static', filename='passport/passport-bg.png') }}');">
-  <div class="passport-header-overlay"></div>
-  <div class="passport-header-content">
-    <h2>🎟️ Passport Progress</h2>
-    <p>Your digital passport tracks your stamps and meet-ups.</p>
+
+<!-- Passport Container -->
+<div class="passport-container">
+  
+  <!-- Passport Header -->
+  <div class="passport-header" style="background-image: url('{{ url_for('static', filename='passport/passport-bg.png') }}');">
+    <div class="passport-header-overlay"></div>
+    <div class="passport-header-content">
+      <h2>🎟️ Passport Progress</h2>
+      <p>Your digital passport tracks your stamps and meet-ups.</p>
+    </div>
+  </div>
+
+  <!-- Stats Section -->
+  <div class="passport-stats">
+    <div class="stat-box">
+      <h4>📖 Total Passport Stamps</h4>
+      <p>{{ total_stamps }}</p>
+    </div>
+    <div class="stat-box">
+      <h4>✅ Total Check-ins</h4>
+      <p>{{ lugia_summary.total_attended }}</p>
+    </div>
+    <div class="stat-box">
+      <h4>🎉 First Meet</h4>
+      <img src="{{ lugia_summary.first_event_icon or url_for('static', filename='icons/tickstamp.png') }}" 
+           alt="First Meet Icon" class="stat-icon">
+      <p>{{ lugia_summary.first_attended_event }}<br>
+        <small>{{ lugia_summary.first_event_date }}</small></p>
+    </div>
+    <div class="stat-box">
+      <h4>📅 Most Recent</h4>
+      <img src="{{ lugia_summary.most_recent_icon or url_for('static', filename='icons/tickstamp.png') }}" 
+           alt="Recent Meet Icon" class="stat-icon">
+      <p>{{ lugia_summary.most_recent_event }}<br>
+        <small>{{ lugia_summary.most_recent_event_date }}</small></p>
+    </div>
+  </div>
+
+  <!-- History Button -->
+  <a href="{{ url_for('meetup_history') }}" class="btn btn-history">📜 View Meet-up History</a>
+
+  <!-- Passport Grid -->
+  {% if passports and passports|length > 0 %}
+    <div class="passport-grid">
+      {% for passport in passports %}
+        <div class="passport-card">
+          <div class="passport-slots">
+            {% for i in range(12) %}
+              {% if i < passport|length %}
+                <div class="stamp-slot filled">
+                  <img src="{{ passport[i].icon }}" alt="{{ passport[i].name }}" class="stamp-image">
+                  <p class="stamp-label" title="{{ passport[i].name }}">
+                    {{ passport[i].name }}
+                  </p>
+                </div>
+              {% else %}
+                <div class="stamp-slot empty">
+                  <div class="pokeball-placeholder"></div>
+                </div>
+              {% endif %}
+            {% endfor %}
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="no-stamps">You don’t have any stamps yet. Check in at events to earn them!</p>
+  {% endif %}
+
+  <!-- Back to Dashboard -->
+  <div style="margin-top:20px; text-align:center;">
+    <a href="{{ url_for('dashboard') }}" class="btn">⬅ Back to Dashboard</a>
   </div>
 </div>
 
-<!-- Stats Section -->
-<div class="passport-stats">
-  <div class="stat-box">
-    <h4>📖 Total Passport Stamps</h4>
-    <p>{{ total_stamps }}</p>
-  </div>
-  <div class="stat-box">
-    <h4>✅ Total Check-ins</h4>
-    <p>{{ lugia_summary.total_attended }}</p>
-  </div>
-  <div class="stat-box">
-    <h4>🎉 First Meet</h4>
-    {% if lugia_summary.first_event_icon %}
-      <img src="{{ lugia_summary.first_event_icon }}" alt="First Meet Icon" class="stat-icon">
-    {% endif %}
-    <p>{{ lugia_summary.first_attended_event }}<br><small>{{ lugia_summary.first_event_date }}</small></p>
-  </div>
-  <div class="stat-box">
-    <h4>📅 Most Recent</h4>
-    {% if lugia_summary.most_recent_icon %}
-      <img src="{{ lugia_summary.most_recent_icon }}" alt="Recent Meet Icon" class="stat-icon">
-    {% endif %}
-    <p>{{ lugia_summary.most_recent_event }}<br><small>{{ lugia_summary.most_recent_event_date }}</small></p>
-  </div>
-</div>
-
-<a href="{{ url_for('meetup_history') }}" class="btn btn-history">📜 View Meet-up History</a>
-
+<!-- ===== Styles ===== -->
 <style>
+/* Page Container */
+.passport-container {
+  background: url("{{ url_for('static', filename='passport/passport-bg.png') }}") no-repeat center top;
+  background-size: cover;
+  min-height: 100vh;
+  padding: 20px;
+  border-radius: 12px;
+  text-align: center;
+}
+
+/* Header */
 .passport-header {
   background-size: cover;
   background-position: center;
@@ -50,7 +100,8 @@
   position: relative;
 }
 .passport-header-overlay {
-  position: absolute; top: 0; left: 0;
+  position: absolute; 
+  top: 0; left: 0;
   width: 100%; height: 100%;
   background: rgba(0,0,0,0.35);
   border-radius: 10px;
@@ -59,43 +110,53 @@
   position: relative;
   z-index: 1;
 }
+.passport-header-content h2 {
+  margin: 0;
+  font-size: 1.6em;
+}
+.passport-header-content p {
+  margin: 5px 0 0;
+  font-size: 0.95em;
+}
+
+/* Stats Section */
 .passport-stats {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 12px;
-  margin: 15px 0 25px 0;
+  margin: 15px 0;
 }
 .stat-box {
   background: #fff;
   border-radius: 10px;
-  padding: 12px;
+  padding: 10px;
   text-align: center;
   box-shadow: 0 2px 6px rgba(0,0,0,0.1);
 }
 .stat-box h4 {
-  font-size: 0.95em;
+  font-size: 0.9em;
   margin: 0 0 6px;
   color: #3a8dde;
 }
 .stat-box p {
   margin: 0;
-  font-size: 0.85em;
-  line-height: 1.3;
+  font-size: 0.9em;
 }
 .stat-box small {
   color: #777;
 }
 .stat-icon {
-  width: 40px; height: 40px;
-  object-fit: cover;
+  width: 26px; 
+  height: 26px;
   margin-bottom: 4px;
-  border-radius: 6px;
 }
+
+/* History Button */
 .btn-history {
   display: block;
-  margin: 10px auto 25px;
+  margin: 10px auto 20px;
   text-align: center;
-  padding: 8px 14px;
+  padding: 8px 12px;
   background: #3a8dde;
   color: #fff;
   border-radius: 6px;
@@ -103,40 +164,8 @@
   text-decoration: none;
   width: fit-content;
 }
-</style>
 
-{% if passports and passports|length > 0 %}
-  <div class="passport-grid">
-    {% for passport in passports %}
-      <div class="passport-card">
-        <div class="passport-slots">
-          {% for i in range(12) %}
-            {% if i < passport|length %}
-              <div class="stamp-slot filled">
-                <img src="{{ passport[i].icon }}" alt="{{ passport[i].name }}" class="stamp-image">
-                <p class="stamp-label" title="{{ passport[i].name }}">
-                  {{ passport[i].name }}
-                </p>
-              </div>
-            {% else %}
-              <div class="stamp-slot empty">
-                <div class="pokeball-placeholder"></div>
-              </div>
-            {% endif %}
-          {% endfor %}
-        </div>
-      </div>
-    {% endfor %}
-  </div>
-{% else %}
-  <p class="no-stamps">You don’t have any stamps yet. Check in at events to earn them!</p>
-{% endif %}
-
-<div style="margin-top:20px; text-align:center;">
-  <a href="{{ url_for('dashboard') }}" class="btn">⬅ Back to Dashboard</a>
-</div>
-
-<style>
+/* Passport Grid */
 .passport-grid {
   display: flex;
   flex-wrap: wrap;
@@ -156,6 +185,8 @@
   gap: 12px;
   justify-content: center;
 }
+
+/* Stamps */
 .stamp-slot {
   width: 80px;
   text-align: center;
@@ -176,7 +207,7 @@
   margin: 0;
   max-width: 80px;
   display: -webkit-box;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 2;   
   -webkit-box-orient: vertical;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -209,4 +240,5 @@
   background: #bbb;
 }
 </style>
+
 {% endblock %}

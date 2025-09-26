@@ -596,7 +596,7 @@ def passport():
 
     username = session["trainer"]
 
-    # Pull Campfire Username from Sheet1 (always from Sheets for consistency)
+    # Pull Campfire Username from Sheet1
     user_rows = sheet.get_all_records()
     campfire_username = None
     for r in user_rows:
@@ -604,12 +604,13 @@ def passport():
             campfire_username = r.get("Campfire Username", "")
             break
 
-    # --- Passport stamps ---
+    # === Passport Stamps ===
     total_stamps, stamps, most_recent_stamp = get_passport_stamps(username, campfire_username)
+    current_stamps = len(stamps)
     passports = [stamps[i:i + 12] for i in range(0, len(stamps), 12)]
 
-    # --- Lugia Summary info ---
-    lugia_summary_data = {
+    # === Lugia Summary (Supabase first) ===
+    lugia_summary = {
         "total_attended": 0,
         "first_attended_event": "",
         "first_event_date": "",
@@ -619,31 +620,61 @@ def passport():
         "most_recent_icon": url_for("static", filename="icons/tickstamp.png"),
     }
 
-    if USE_SUPABASE and supabase:
-        try:
-            recs = supabase.table("lugia_summary").select("*").eq("trainer_username", username).limit(1).execute().data
-            if not recs and campfire_username:
-                recs = supabase.table("lugia_summary").select("*").eq("campfire_username", campfire_username).limit(1).execute().data
-            if recs:
-                rec = recs[0]
-                first_event_id = str(rec.get("first_attended_event_id") or "").strip().lower()
-                recent_event_id = str(rec.get("most_recent_event_id") or "").strip().lower()
+    try:
+        if USE_SUPABASE and supabase:
+            row = supabase.table("lugia_summary").select("*").eq("trainer_username", username).limit(1).execute().data
+            if not row and campfire_username:
+                row = supabase.table("lugia_summary").select("*").eq("campfire_username", campfire_username).limit(1).execute().data
+            if row:
+                r = row[0]
+                lugia_summary["total_attended"] = r.get("total_attended", 0)
+                lugia_summary["first_attended_event"] = r.get("first_attended_event", "")
+                lugia_summary["first_event_date"] = r.get("first_event_date", "")
+                lugia_summary["most_recent_event"] = r.get("most_recent_event", "")
+                lugia_summary["most_recent_event_date"] = r.get("most_recent_event_date", "")
 
-                # Pull cover photos from events
+                # Icons from events table
                 ev_rows = supabase.table("events").select("event_id, cover_photo_url").execute().data or []
-                event_map = {str(e.get("event_id", "")).lower(): (e.get("cover_photo_url") or "") for e in ev_rows}
+                ev_map = {str(e.get("event_id", "")).strip().lower(): e.get("cover_photo_url") for e in ev_rows}
 
-                lugia_summary_data = {
-                    "total_attended": rec.get("total_attended", 0),
-                    "first_attended_event": rec.get("first_attended_event", ""),
-                    "first_event_date": rec.get("first_event_date", ""),
-                    "first_event_icon": event_map.get(first_event_id, url_for("static", filename="icons/tickstamp.png")),
-                    "most_recent_event": rec.get("most_recent_event", ""),
-                    "most_recent_event_date": rec.get("most_recent_event_date", ""),
-                    "most_recent_icon": event_map.get(recent_event_id, url_for("static", filename="icons/tickstamp.png")),
-                }
-        except Exception as e:
-            print("⚠️ Supabase lugia_summary_data failed:", e)
+                # First event icon
+                feid = (r.get("first_event_id") or "").strip().lower()
+                if feid and feid in ev_map:
+                    lugia_summary["first_event_icon"] = ev_map[feid]
+
+                # Most recent event icon
+                meid = (r.get("most_recent_event_id") or "").strip().lower()
+                if meid and meid in ev_map:
+                    lugia_summary["most_recent_icon"] = ev_map[meid]
+
+        else:
+            # === Fallback to Sheets ===
+            summary_ws = gclient.open("POGO Passport Sign-Ins").worksheet("Lugia_Summary")
+            ev_ws = gclient.open("POGO Passport Sign-Ins").worksheet("events")
+            summary_rows = summary_ws.get_all_records()
+            ev_rows = ev_ws.get_all_records()
+            ev_map = {str(e.get("event_id", "")).strip().lower(): e.get("cover_photo_url", "") for e in ev_rows}
+
+            for row in summary_rows:
+                ru = str(row.get("Trainer Username", "")).lower()
+                rc = str(row.get("Campfire Username", "")).lower()
+                if ru == username.lower() or (campfire_username and rc == campfire_username.lower()):
+                    lugia_summary["total_attended"] = row.get("Total Attended", 0)
+                    lugia_summary["first_attended_event"] = row.get("First Attended Event", "")
+                    lugia_summary["first_event_date"] = row.get("First Event Date", "")
+                    lugia_summary["most_recent_event"] = row.get("Most Recent Event", "")
+                    lugia_summary["most_recent_event_date"] = row.get("Most Recent Event Date", "")
+
+                    feid = str(row.get("First Event ID", "")).strip().lower()
+                    if feid and feid in ev_map:
+                        lugia_summary["first_event_icon"] = ev_map[feid]
+                    meid = str(row.get("Most Recent Event ID", "")).strip().lower()
+                    if meid and meid in ev_map:
+                        lugia_summary["most_recent_icon"] = ev_map[meid]
+                    break
+
+    except Exception as e:
+        print("⚠️ Error loading Lugia Summary:", e)
 
     return render_template(
         "passport.html",
@@ -651,8 +682,9 @@ def passport():
         stamps=stamps,
         passports=passports,
         total_stamps=total_stamps,
+        current_stamps=current_stamps,
         most_recent_stamp=most_recent_stamp,
-        lugia_summary=lugia_summary_data,
+        lugia_summary=lugia_summary,
         show_back=True,
     )
 
@@ -665,63 +697,84 @@ def meetup_history():
 
     username = session["trainer"]
 
-    # Grab user’s Campfire Username (from Sheet1 just for safety)
-    _, user = find_user(username)
-    campfire_username = user.get("Campfire Username", "") if user else ""
+    # Pull Campfire Username from Sheet1
+    user_rows = sheet.get_all_records()
+    campfire_username = None
+    for r in user_rows:
+        if str(r.get("Trainer Username", "")).lower() == username.lower():
+            campfire_username = r.get("Campfire Username", "")
+            break
 
-    meetups, total_attended = [], 0
-
-    # ---------- Supabase preferred ----------
-    if USE_SUPABASE and supabase:
-        try:
-            # Find this trainer’s Lugia_Summary row
-            row = supabase.table("lugia_summary").select("*") \
-                .eq("trainer_username", username).limit(1).execute().data
-            if not row and campfire_username:
-                row = supabase.table("lugia_summary").select("*") \
-                    .eq("campfire_username", campfire_username).limit(1).execute().data
-
-            if row:
-                summary = row[0]
-                total_attended = int(summary.get("total_attended") or 0)
-
-                # Build meetups list from Event IDs + Names + Dates
-                event_ids = (summary.get("event_ids") or "").split(",")
-                event_names = (summary.get("event_names") or "").split(",")
-                event_dates = (summary.get("event_dates") or "").split(",")
-
-                # Map event_id → cover photo
-                ev_rows = supabase.table("events").select("event_id, cover_photo_url").execute().data or []
-                event_map = {str(e.get("event_id", "")).lower(): (e.get("cover_photo_url") or "") for e in ev_rows}
-
-                for i, eid in enumerate(event_ids):
-                    eid = eid.strip().lower()
-                    meetups.append({
-                        "title": event_names[i].strip() if i < len(event_names) else "",
-                        "date": event_dates[i].strip() if i < len(event_dates) else "",
-                        "photo": event_map.get(eid, ""),
-                        "event_id": eid
-                    })
-        except Exception as e:
-            print("⚠️ Supabase meetup_history failed:", e)
-
-    # ---------- Sort logic ----------
     sort_by = request.args.get("sort", "date_desc")
-    if meetups:
-        if sort_by == "date_asc":
-            meetups.sort(key=lambda m: m["date"])
-        elif sort_by == "title":
-            meetups.sort(key=lambda m: m["title"].lower())
-        else:  # default newest first
-            meetups.sort(key=lambda m: m["date"], reverse=True)
+    meetups = []
+
+    try:
+        if USE_SUPABASE and supabase:
+            # 1. Grab all ledger entries for the player
+            resp = supabase.table("lugia_ledger").select("eventid, trainer, campfire").eq("trainer", username).execute()
+            records = resp.data or []
+            if not records and campfire_username:
+                resp = supabase.table("lugia_ledger").select("eventid, trainer, campfire").eq("campfire", campfire_username).execute()
+                records = resp.data or []
+
+            # 2. Get all events (for names, cover photos, dates)
+            ev_rows = supabase.table("events").select("event_id, name, start_time, cover_photo_url").execute().data or []
+            ev_map = {
+                str(e.get("event_id", "")).strip().lower(): {
+                    "title": e.get("name", ""),
+                    "date": e.get("start_time", ""),
+                    "photo": e.get("cover_photo_url", "")
+                }
+                for e in ev_rows
+            }
+
+            # 3. Build meetup list
+            for r in records:
+                eid = str(r.get("eventid", "")).strip().lower()
+                if eid and eid in ev_map:
+                    meetups.append(ev_map[eid])
+
+        else:
+            # === Sheets fallback ===
+            ledger_ws = gclient.open("POGO Passport Sign-Ins").worksheet("Lugia_Ledger")
+            events_ws = gclient.open("POGO Passport Sign-Ins").worksheet("events")
+            ledger_records = ledger_ws.get_all_records()
+            event_records = events_ws.get_all_records()
+            ev_map = {
+                str(e.get("event_id", "")).strip().lower(): {
+                    "title": e.get("name", ""),
+                    "date": e.get("start_time", ""),
+                    "photo": e.get("cover_photo_url", "")
+                }
+                for e in event_records
+            }
+
+            for r in ledger_records:
+                trainer = str(r.get("Trainer", "")).strip().lower()
+                campfire = str(r.get("Campfire", "")).strip().lower()
+                if trainer == username.lower() or (campfire_username and campfire == campfire_username.lower()):
+                    eid = str(r.get("EventID", "")).strip().lower()
+                    if eid and eid in ev_map:
+                        meetups.append(ev_map[eid])
+
+    except Exception as e:
+        print("⚠️ Error loading meetup history:", e)
+
+    # === Sorting ===
+    if sort_by == "date_desc":
+        meetups.sort(key=lambda m: m.get("date") or "", reverse=True)
+    elif sort_by == "date_asc":
+        meetups.sort(key=lambda m: m.get("date") or "")
+    elif sort_by == "title":
+        meetups.sort(key=lambda m: m.get("title") or "")
+
+    total_attended = len(meetups)
 
     return render_template(
         "meetup_history.html",
-        trainer=username,
         meetups=meetups,
         total_attended=total_attended,
         sort_by=sort_by,
-        show_back=True
     )
 
 # ====== Check-ins (placeholder) ======

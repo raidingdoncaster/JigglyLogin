@@ -21,23 +21,27 @@
     </select>
   </form>
 
-  <!-- Event Cards -->
-  <div class="meetup-grid">
-    {% for m in meetups %}
-      <div class="meetup-card">
-        {% if m.photo %}
-          <img src="{{ m.photo }}" alt="Event Photo" class="meetup-photo">
-        {% endif %}
-        <div class="meetup-info">
-          <h3>{{ m.title }}</h3>
-          <p>{{ m.date }}</p>
-        </div>
-      </div>
-    {% endfor %}
-  </div>
-
-  <div style="text-align:center;margin-top:20px;">
-    <a href="{{ url_for('passport') }}" class="btn">⬅ Back to Passport</a>
+  <!-- Event Rows -->
+  <div style="margin-top:20px;">
+    {% if meetups %}
+      <ul style="list-style:none;padding:0;margin:0;">
+        {% for m in meetups %}
+          <li style="display:flex;align-items:center;gap:12px;background:#fff;padding:10px 15px;margin-bottom:10px;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,0.1);">
+            {% if m.photo %}
+              <img src="{{ m.photo }}" alt="Event Photo" style="width:50px;height:50px;object-fit:cover;border-radius:6px;">
+            {% else %}
+              <div style="width:50px;height:50px;background:#eee;border-radius:6px;"></div>
+            {% endif %}
+            <div style="flex:1;">
+              <strong>{{ m.title }}</strong><br>
+              <small style="color:#666;">{{ m.date }}</small>
+            </div>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p style="text-align:center;color:#777;">No meet-ups found yet.</p>
+    {% endif %}
   </div>
 </div>
 
