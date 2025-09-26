@@ -528,20 +528,42 @@ def dashboard():
     )
 
 
-# ====== Inbox (placeholder) ======
+# ====== Inbox ======
+# ==== Inbox ====
 @app.route("/inbox")
 def inbox():
     if "trainer" not in session:
         flash("Please log in to view your inbox.", "warning")
         return redirect(url_for("home"))
 
-    inbox_messages = [
-        {"subject": "🎉 You earned a new stamp!", "date": "2025-09-20", "content": "Congrats on your check-in!"},
-        {"subject": "📅 New meetup near you", "date": "2025-09-19", "content": "Join us this weekend."},
-        {"subject": "🎁 Claim your reward", "date": "2025-09-18", "content": "You unlocked a reward!"},
-    ]
-    return render_template("inbox.html", trainer=session["trainer"], inbox=inbox_messages, show_back=True)
+    trainer = session["trainer"]
+    messages = []
 
+    if USE_SUPABASE and supabase:
+        try:
+            resp = supabase.table("notifications") \
+                .select("*") \
+                .eq("trainer_username", trainer) \
+                .order("created_at", desc=True) \
+                .execute()
+            messages = resp.data or []
+        except Exception as e:
+            print("⚠️ Supabase inbox fetch failed:", e)
+
+    # fallback: no messages
+    if not messages:
+        messages = [{
+            "subject": "📭 No messages yet",
+            "content": "Your inbox is empty. You’ll see updates, receipts, and announcements here.",
+            "created_at": datetime.utcnow().isoformat()
+        }]
+
+    return render_template(
+        "inbox.html",
+        trainer=trainer,
+        inbox=messages,
+        show_back=True
+    )
 
 # ====== Logout ======
 @app.route("/logout")

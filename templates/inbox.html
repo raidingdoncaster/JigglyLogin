@@ -2,17 +2,42 @@
 {% block content %}
 <h2>📨 Inbox</h2>
 
-{% if inbox and inbox|length > 0 %}
-    <div style="margin-top: 15px;">
-        {% for msg in inbox %}
-            <div style="background: #f4f7fa; padding: 12px; margin: 10px 0; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
-                <h3 style="margin: 0 0 5px 0; font-size: 1em; color:#3a8dde;">{{ msg.subject }}</h3>
-                <p style="margin: 0; font-size: 0.8em; color:#555;"><em>{{ msg.date }}</em></p>
-                <p style="margin-top: 8px; font-size: 0.9em; color:#333;">{{ msg.content }}</p>
-            </div>
-        {% endfor %}
+<div class="inbox-container">
+  {% for msg in inbox %}
+    <div class="inbox-card">
+      <h3>{{ msg.subject }}</h3>
+      <p class="inbox-date">{{ msg.created_at }}</p>
+      <p>{{ msg.content }}</p>
     </div>
-{% else %}
-    <p style="color: #666; font-style: italic;">No messages in your inbox.</p>
-{% endif %}
+  {% endfor %}
+</div>
+
+<div style="margin-top:20px; text-align:center;">
+  <a href="{{ url_for('dashboard') }}" class="btn">⬅ Back to Dashboard</a>
+</div>
+
+<style>
+.inbox-container {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin-top: 20px;
+}
+.inbox-card {
+  background: #fff;
+  border-radius: 10px;
+  padding: 15px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+}
+.inbox-card h3 {
+  margin: 0;
+  font-size: 1.1em;
+  color: #3a8dde;
+}
+.inbox-date {
+  font-size: 0.8em;
+  color: #777;
+  margin: 5px 0;
+}
+</style>
 {% endblock %}
