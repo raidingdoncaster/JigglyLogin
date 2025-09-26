@@ -235,30 +235,27 @@ def get_most_recent_meetup(username: str, campfire_username: str | None = None):
     return {"title": "", "date": "", "icon": "", "event_id": ""}
 
 def get_meetup_history(username: str, campfire_username: str | None = None):
+    """Build full meet-up history from attendance + events."""
     if USE_SUPABASE and supabase:
         try:
-            # Step 1: Pull attendance rows
-            q = supabase.table("attendance").select("*").eq("trainer", username)
-            resp = q.execute()
+            # Step 1: Attendance rows
+            resp = supabase.table("attendance").select("*").eq("trainer", username).execute()
             records = resp.data or []
-            if (not records) and campfire_username:
+            if not records and campfire_username:
                 resp = supabase.table("attendance").select("*").eq("campfire", campfire_username).execute()
                 records = resp.data or []
 
             if not records:
                 return [], 0
 
-            # Step 2: Collect all event_ids
-            event_ids = list({str(r.get("event_id")).strip().lower() for r in records if r.get("event_id")})
+            # Step 2: Collect event_ids
+            event_ids = [str(r.get("event_id", "")).strip().lower() for r in records if r.get("event_id")]
 
-            # Step 3: Fetch event details
+            # Step 3: Fetch events
             ev_rows = supabase.table("events").select("event_id, title, cover_photo_url, date").execute().data or []
-            ev_map = {
-                str(e.get("event_id", "")).strip().lower(): e
-                for e in ev_rows
-            }
+            ev_map = {str(e.get("event_id", "")).strip().lower(): e for e in ev_rows}
 
-            # Step 4: Build structured list
+            # Step 4: Build list
             meetups = []
             for eid in event_ids:
                 ev = ev_map.get(eid)
@@ -269,7 +266,7 @@ def get_meetup_history(username: str, campfire_username: str | None = None):
                         "photo": ev.get("cover_photo_url", "")
                     })
 
-            # Step 5: Sort newest first by default
+            # Step 5: Default sort newest first
             meetups.sort(key=lambda m: m["date"], reverse=True)
             return meetups, len(meetups)
         except Exception as e:
@@ -529,7 +526,6 @@ def dashboard():
 
 
 # ====== Inbox ======
-# ==== Inbox ====
 @app.route("/inbox")
 def inbox():
     if "trainer" not in session:
@@ -766,40 +762,9 @@ def meetup_history():
 
     sort_by = request.args.get("sort", "date_desc")
 
-    meetups, total_attended = [], 0
-    if USE_SUPABASE and supabase:
-        try:
-            # Step 1: Pull attendance records for trainer or campfire username
-            resp = supabase.table("attendance").select("*").eq("user_id", trainer).execute()
-            records = resp.data or []
-            if (not records) and campfire_username:
-                resp = supabase.table("attendance").select("*").eq("campfire_username", campfire_username).execute()
-                records = resp.data or []
+    meetups, total_attended = get_meetup_history(trainer, campfire_username)
 
-            if records:
-                # Step 2: Collect event IDs
-                event_ids = list({str(r.get("event_id")).strip().lower() for r in records if r.get("event_id")})
-
-                # Step 3: Fetch event details
-                ev_rows = supabase.table("events").select("event_id, name, cover_photo_url, start_time").execute().data or []
-                ev_map = {str(e.get("event_id", "")).strip().lower(): e for e in ev_rows}
-
-                # Step 4: Build structured meetups list
-                for eid in event_ids:
-                    ev = ev_map.get(eid)
-                    if ev:
-                        meetups.append({
-                            "title": ev.get("name", "Unknown Event"),
-                            "date": ev.get("start_time", ""),
-                            "photo": ev.get("cover_photo_url", "")
-                        })
-
-                total_attended = len(meetups)
-
-        except Exception as e:
-            print("⚠️ Supabase meetup_history failed:", e)
-
-    # Sorting logic
+    # Sorting options
     if sort_by == "date_asc":
         meetups.sort(key=lambda m: m["date"])
     elif sort_by == "title":

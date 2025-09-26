@@ -34,7 +34,7 @@
             {% endif %}
             <div style="flex:1;">
               <strong>{{ m.title }}</strong><br>
-              <small style="color:#666;">{{ m.date | to_date }}</small>
+              <small style="color:#666;">{{ m.date|to_date }}</small>
             </div>
           </li>
         {% endfor %}
@@ -48,6 +48,7 @@
   <div style="margin-top:20px;text-align:center;">
     <a href="{{ url_for('passport') }}" class="btn">⬅ Back to Passport</a>
   </div>
+
 </div>
 
 <style>
