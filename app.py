@@ -771,7 +771,7 @@ def change_avatar():
     if "trainer" not in session:
         return redirect(url_for("home"))
 
-    row, user = find_user(session["trainer"])
+    _, user = find_user(session["trainer"])
     if not user:
         flash("User not found.", "error")
         return redirect(url_for("dashboard"))
@@ -792,9 +792,32 @@ def change_avatar():
             flash("Invalid background choice.", "error")
             return redirect(url_for("change_avatar"))
 
-        # Update in Sheet1
-        sheet.update_cell(row, 7, avatar_choice)       # G = Avatar Icon
-        sheet.update_cell(row, 8, background_choice)   # H = Trainer Card Background
+        # === Update in Google Sheets ===
+        try:
+            # Find row in Sheet1
+            all_users = sheet.get_all_records()
+            row_index = None
+            for i, record in enumerate(all_users, start=2):  # header row is 1
+                if record.get("Trainer Username", "").lower() == session["trainer"].lower():
+                    row_index = i
+                    break
+            if row_index:
+                sheet.update_cell(row_index, 7, avatar_choice)       # G = Avatar Icon
+                sheet.update_cell(row_index, 8, background_choice)   # H = Trainer Card Background
+        except Exception as e:
+            print("⚠️ Failed updating Google Sheets avatar/background:", e)
+
+        # === Update in Supabase ===
+        try:
+            supabase.table("sheet1") \
+                .update({
+                    "avatar_icon": avatar_choice,
+                    "trainer_card_background": background_choice
+                }) \
+                .eq("trainer_username", session["trainer"]) \
+                .execute()
+        except Exception as e:
+            print("⚠️ Failed updating Supabase avatar/background:", e)
 
         if request.headers.get("X-Requested-With") == "XMLHttpRequest":
             return jsonify({"success": True, "avatar": avatar_choice, "background": background_choice})
@@ -806,8 +829,8 @@ def change_avatar():
     backgrounds_folder = os.path.join(app.root_path, "static", "backgrounds")
     backgrounds = os.listdir(backgrounds_folder)
 
-    current_avatar = user.get("Avatar Icon", "avatar1.png")
-    current_background = user.get("Trainer Card Background") or "default.png"
+    current_avatar = user.get("avatar_icon", "avatar1.png")
+    current_background = user.get("trainer_card_background") or "default.png"
 
     return render_template(
         "change_avatar.html",
