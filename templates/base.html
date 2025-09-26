@@ -70,7 +70,7 @@
         .nav-icons {
             display: flex;
             align-items: center;
-            gap: 14px;
+            gap: 20px;
         }
         .nav-icon {
             width: 32px;
@@ -88,18 +88,23 @@
             padding: 0;
         }
         .badge {
-            position: absolute;
-            top: -6px;
-            right: -8px;
+            position: relative;
+            top: 0;
+            left: 6px;
             background: #ff4757;
             color: #fff;
             border-radius: 999px;
-            font-size: 0.7em;
+            font-size: 0.75em;
             line-height: 1;
             padding: 2px 6px;
             min-width: 16px;
             text-align: center;
-            border: 2px solid #ffffffaa; /* helps on light backgrounds */
+            border: 2px solid #ffffffaa;
+        }
+        .stamp-link {
+            display: flex;
+            align-items: center;
+            gap: 6px;
         }
         .inbox-wrapper { position: relative; }
         .inbox-dropdown {
@@ -283,8 +288,8 @@
 
                 <!-- Passport (Stamp icon + badge) -->
                 <a href="{{ url_for('passport') }}" class="icon-link stamp-link" title="Passport">
-                <img src="{{ url_for('static', filename='nav/stamp-icon.png') }}" alt="Passport" class="nav-icon">
-                <span class="badge">{{ current_stamps or 0 }}</span>
+                    <img src="{{ url_for('static', filename='nav/stamp-icon.png') }}" alt="Passport" class="nav-icon">
+                    <span class="badge">{{ current_stamps or 0 }}</span>
                 </a>
 
                 <!-- Inbox (dropdown preview) -->
@@ -307,11 +312,15 @@
                 </div>
 
                 <!-- Logout (emoji) -->
-                <a href="{{ url_for('logout') }}" class="icon-link" title="Log out">🚪</a>
+                <a href="{{ url_for('logout') }}" class="icon-link" title="Log out">
+                    <img src="{{ url_for('static', 'filename=nav/logout.png') }}" alt="Logout" class="nav-icon">
+                </a>
             {% endif %}
 
             <!-- Keep your external website link on the far right -->
-            <a href="https://pogoprizes.my.canva.site" target="_blank" class="back-link">Back to Website</a>
+            {% if not session.get('trainer') %}
+                <a href="https://pogoprizes.my.canva.site" target="_blank" class="back-link">Back to Website</a>
+            {% endif %}
             </nav>
     </header>
 
