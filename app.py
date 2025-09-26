@@ -63,24 +63,28 @@ def get_all_users():
     return g.user_records
 
 def find_user(username):
-    """Find a trainer in Supabase (sheet1 table) and return (record)."""
-    if USE_SUPABASE and supabase:
-        try:
-            resp = supabase.table("sheet1") \
-                .select("*") \
-                .eq("trainer_username", username) \
-                .limit(1) \
-                .execute()
-            records = resp.data or []
-            if records:
-                user = records[0]
-                # Ensure defaults
-                user.setdefault("avatar_icon", "avatar1.png")
-                user.setdefault("trainer_card_background", "default.png")
-                return user
-        except Exception as e:
-            print("⚠️ Supabase find_user failed:", e)
-    return None
+    """Find a trainer in Supabase.sheet1 (case-insensitive)."""
+    if not supabase:
+        return None, None
+
+    try:
+        resp = supabase.table("sheet1") \
+            .select("*") \
+            .ilike("trainer_username", username) \
+            .limit(1) \
+            .execute()
+        records = resp.data or []
+        if not records:
+            return None, None
+
+        record = records[0]
+        record.setdefault("avatar_icon", "avatar1.png")
+        record.setdefault("trainer_card_background", "default.png")
+        record.setdefault("account_type", "Standard")
+        return None, record
+    except Exception as e:
+        print("⚠️ Supabase find_user failed:", e)
+        return None, None
 
 def extract_trainer_name(image_path):
     try:
@@ -295,42 +299,26 @@ def login():
     username = request.form["username"]
     pin = request.form["pin"]
 
-    if not username or not pin:
-        flash("Please enter both username and PIN.", "warning")
+    _, user = find_user(username)
+    if not user:
+        flash("No trainer found!", "error")
         return redirect(url_for("home"))
 
-    try:
-        if USE_SUPABASE and supabase:
-            resp = supabase.table("sheet1") \
-                .select("*") \
-                .eq("trainer_username", username) \
-                .limit(1) \
+    if user.get("pin_hash") == hash_value(pin):
+        session["trainer"] = user.get("trainer_username")
+        # update last_login in Supabase
+        try:
+            supabase.table("sheet1") \
+                .update({"last_login": datetime.utcnow().isoformat()}) \
+                .eq("trainer_username", user.get("trainer_username")) \
                 .execute()
-            records = resp.data or []
-            if not records:
-                flash("❌ No trainer found!", "error")
-                return redirect(url_for("home"))
+        except Exception as e:
+            print("⚠️ Supabase last_login update failed:", e)
 
-            user = records[0]
-            if user.get("pin_hash") == hash_value(pin):
-                session["trainer"] = user.get("trainer_username")
-                # ✅ Update last_login in Supabase
-                supabase.table("sheet1").update({
-                    "last_login": datetime.utcnow().isoformat()
-                }).eq("trainer_username", username).execute()
-
-                flash(f"Welcome back, {user.get('trainer_username')}!", "success")
-                return redirect(url_for("dashboard"))
-            else:
-                flash("⚠️ Incorrect PIN!", "error")
-                return redirect(url_for("home"))
-        else:
-            flash("⚠️ Supabase unavailable, try again later.", "error")
-            return redirect(url_for("home"))
-
-    except Exception as e:
-        print("⚠️ Supabase login failed:", e)
-        flash("Something went wrong logging in. Try again.", "error")
+        flash(f"Welcome back, {user.get('trainer_username')}!", "success")
+        return redirect(url_for("dashboard"))
+    else:
+        flash("Incorrect PIN!", "error")
         return redirect(url_for("home"))
 
 # ====== Sign Up ======
@@ -529,7 +517,7 @@ def dashboard():
         return redirect(url_for("home"))
 
     trainer = session["trainer"]
-    user = find_user(trainer)
+    _, user = find_user(trainer)
     if not user:
         flash("User not found.", "error")
         return redirect(url_for("home"))
@@ -686,9 +674,11 @@ def passport():
         return redirect(url_for("home"))
 
     username = session["trainer"]
-    user = find_user(username)
+
+    # === Get user from Supabase ===
+    _, user = find_user(username)
     if not user:
-        flash("User not found.", "error")
+        flash("User not found!", "error")
         return redirect(url_for("home"))
 
     campfire_username = user.get("campfire_username", "")
@@ -713,6 +703,7 @@ def passport():
         row = supabase.table("lugia_summary").select("*").eq("trainer_username", username).limit(1).execute().data
         if not row and campfire_username:
             row = supabase.table("lugia_summary").select("*").eq("campfire_username", campfire_username).limit(1).execute().data
+
         if row:
             r = row[0]
             lugia_summary["total_attended"] = r.get("total_attended", 0)
@@ -721,14 +712,16 @@ def passport():
             lugia_summary["most_recent_event"] = r.get("most_recent_event", "")
             lugia_summary["most_recent_event_date"] = r.get("most_recent_event_date", "")
 
-            # Icons from events table
+            # Pull event icons
             ev_rows = supabase.table("events").select("event_id, cover_photo_url").execute().data or []
             ev_map = {str(e.get("event_id", "")).strip().lower(): e.get("cover_photo_url") for e in ev_rows}
 
+            # First event icon
             feid = (r.get("first_event_id") or "").strip().lower()
             if feid and feid in ev_map:
                 lugia_summary["first_event_icon"] = ev_map[feid]
 
+            # Most recent event icon
             meid = (r.get("most_recent_event_id") or "").strip().lower()
             if meid and meid in ev_map:
                 lugia_summary["most_recent_icon"] = ev_map[meid]
