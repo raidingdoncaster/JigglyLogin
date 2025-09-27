@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% block content %}
+
+<!-- Header -->
+<div class="admin-header">
+  <h1>👤 Manage Trainer</h1>
+  <p>Update details and stamps for <strong>{{ trainer.trainer_username }}</strong></p>
+</div>
+
+<!-- Trainer Card -->
+<div class="trainer-detail-card">
+  <img src="{{ url_for('static', filename='avatars/' ~ trainer.avatar_icon) }}" 
+       alt="Avatar" class="avatar-lg">
+  <h2>{{ trainer.trainer_username }}</h2>
+  <p><strong>Account Type:</strong> {{ trainer.account_type }}</p>
+  <p><strong>Campfire Username:</strong> {{ trainer.campfire_username or 'N/A' }}</p>
+  <p><strong>Current Stamps:</strong> {{ trainer.stamps }}</p>
+</div>
+
+<!-- Management Actions -->
+<div class="management-actions">
+
+  <!-- Add / Remove Stamps -->
+  <div class="action-box">
+    <h3>🎟️ Adjust Stamps</h3>
+    <form action="{{ url_for('admin_adjust_stamps', username=trainer.trainer_username) }}" method="post">
+      <input type="number" name="amount" placeholder="Amount (+/-)" required>
+      <button type="submit">Update Stamps</button>
+    </form>
+  </div>
+
+  <!-- Change Account Type -->
+  <div class="action-box">
+    <h3>👑 Change Account Type</h3>
+    <form action="{{ url_for('admin_change_account_type', username=trainer.trainer_username) }}" method="post">
+      <select name="account_type" required>
+        <option value="Standard" {% if trainer.account_type == "Standard" %}selected{% endif %}>Standard</option>
+        <option value="Kids Account" {% if trainer.account_type == "Kids Account" %}selected{% endif %}>Kids Account</option>
+        <option value="Admin" {% if trainer.account_type == "Admin" %}selected{% endif %}>Admin</option>
+      </select>
+      <button type="submit">Update Type</button>
+    </form>
+  </div>
+
+  <!-- Reset PIN -->
+  <div class="action-box">
+    <h3>🔑 Reset PIN</h3>
+    <form action="{{ url_for('admin_reset_pin', username=trainer.trainer_username) }}" method="post">
+      <input type="password" name="new_pin" maxlength="4" pattern="\d{4}" placeholder="New 4-digit PIN" required>
+      <button type="submit">Reset PIN</button>
+    </form>
+  </div>
+
+</div>
+
+<div style="margin-top:20px; text-align:center;">
+  <a href="{{ url_for('admin_trainers') }}" class="btn">⬅ Back to Trainer Manager</a>
+</div>
+
+<style>
+.admin-header { text-align:center; margin-bottom:20px; }
+.admin-header h1 { margin:0; }
+.admin-header p { color:#666; font-size:0.95em; }
+
+.trainer-detail-card {
+  background:#fff;
+  border-radius:12px;
+  padding:20px;
+  text-align:center;
+  margin-bottom:20px;
+  box-shadow:0 2px 6px rgba(0,0,0,0.1);
+}
+.avatar-lg {
+  width:100px;
+  height:100px;
+  border-radius:50%;
+  border:3px solid #3a8dde;
+  margin-bottom:10px;
+}
+
+.management-actions {
+  display:grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap:15px;
+}
+
+.action-box {
+  background:#fff;
+  padding:15px;
+  border-radius:10px;
+  box-shadow:0 2px 6px rgba(0,0,0,0.1);
+}
+.action-box h3 {
+  margin-top:0;
+  font-size:1.1em;
+  color:#3a8dde;
+}
+.action-box form {
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+.action-box input, .action-box select {
+  padding:8px;
+  border-radius:6px;
+  border:1px solid #ccc;
+}
+.action-box button {
+  padding:8px;
+  border:none;
+  background:#3a8dde;
+  color:white;
+  font-weight:600;
+  border-radius:6px;
+  cursor:pointer;
+}
+.action-box button:hover {
+  background:#2c6fb3;
+}
+
+.btn {
+  display:inline-block;
+  padding:8px 16px;
+  background:#3a8dde;
+  color:#fff;
+  border-radius:6px;
+  text-decoration:none;
+  font-weight:600;
+}
+</style>
+
+{% endblock %}

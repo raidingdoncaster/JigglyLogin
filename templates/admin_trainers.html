@@ -1,36 +1,90 @@
 {% extends "base.html" %}
 {% block content %}
 
-<h2>👑 Trainer Manager</h2>
-<p>Search and manage trainers synced via Google Sheets.</p>
+<!-- Header -->
+<div class="admin-header">
+  <h1>👥 Trainer Manager</h1>
+  <p>View and manage all registered trainers.</p>
+</div>
 
-<!-- Search Form -->
-<form method="POST" style="margin-bottom:20px; text-align:center;">
-  <input type="text" name="search_name" placeholder="Enter trainer username" required>
-  <button type="submit">Search</button>
-</form>
+<!-- All Trainers -->
+<div class="trainer-grid">
+  {% for t in all_trainers %}
+    <a href="{{ url_for('admin_trainer_detail', username=t.trainer_username) }}" class="trainer-card">
+      <img src="{{ url_for('static', filename='avatars/' ~ t.avatar_icon) }}"
+           alt="Avatar" class="avatar">
+      <h4>{{ t.trainer_username }}</h4>
+      <p>{{ t.account_type }}</p>
+      <p>Stamps: {{ t.stamps }}</p>
+    </a>
+  {% endfor %}
+</div>
 
-<!-- Trainer Card -->
-{% if trainer_data %}
-  <div class="trainer-card">
-    <h3>{{ trainer_data.trainer_username }}</h3>
-    <p><strong>Campfire:</strong> {{ trainer_data.campfire_username }}</p>
-    <p><strong>Account Type:</strong> {{ trainer_data.account_type }}</p>
-    <p><strong>Stamps:</strong> {{ trainer_data.stamps }}</p>
-  </div>
-{% endif %}
+<div style="margin-top:20px; text-align:center;">
+  <a href="{{ url_for('admin_dashboard') }}" class="btn">⬅ Back to Admin Dashboard</a>
+</div>
 
 <style>
+.admin-header {
+  text-align:center;
+  margin-bottom:20px;
+}
+.admin-header h1 {
+  margin:0;
+}
+.admin-header p {
+  color:#666;
+  font-size:0.95em;
+}
+
+/* Trainer Grid */
+.trainer-grid {
+  display:grid;
+  grid-template-columns:repeat(auto-fill, minmax(160px, 1fr));
+  gap:15px;
+  margin-top:20px;
+}
 .trainer-card {
   background:#fff;
   border-radius:10px;
   padding:15px;
   box-shadow:0 2px 6px rgba(0,0,0,0.1);
-  margin:0 auto;
-  max-width:350px;
   text-align:center;
+  text-decoration:none;
+  color:inherit;
+  transition:transform 0.2s, box-shadow 0.2s;
 }
-.trainer-card h3 { margin-top:0; color:#3a8dde; }
+.trainer-card:hover {
+  transform: translateY(-3px);
+  box-shadow:0 4px 10px rgba(0,0,0,0.15);
+}
+.trainer-card img.avatar {
+  width:64px;
+  height:64px;
+  border-radius:50%;
+  border:2px solid #3a8dde;
+  margin-bottom:10px;
+}
+.trainer-card h4 {
+  margin:0;
+  font-size:1.1em;
+  color:#3a8dde;
+}
+.trainer-card p {
+  margin:4px 0;
+  font-size:0.85em;
+  color:#444;
+}
+
+.btn {
+  display:inline-block;
+  padding:8px 16px;
+  background:#3a8dde;
+  color:#fff;
+  border-radius:6px;
+  text-decoration:none;
+  font-weight:600;
+}
 </style>
 
 {% endblock %}

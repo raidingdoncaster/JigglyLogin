@@ -136,6 +136,22 @@ def trigger_lugia_refresh():
     except Exception as e:
         print("⚠️ Lugia refresh error:", e)
 
+import os, requests
+LUGIA_URL = os.getenv("LUGIA_WEBAPP_URL")
+def adjust_stamps(trainer, count, reason, action):
+    """Call the Lugia Google Apps Script to award/remove stamps."""
+    payload = {
+        "action": action,  # "award" or "remove"
+        "trainer": trainer,
+        "count": count,
+        "reason": reason
+    }
+    resp = requests.post(LUGIA_URL, json=payload)
+    if resp.status_code == 200:
+        return resp.text
+    else:
+        return f"❌ Error {resp.status_code}: {resp.text}"
+
 # ====== Data: stamps, inbox & meetups ======
 def get_passport_stamps(username: str, campfire_username: str | None = None):
     try:
@@ -427,6 +443,9 @@ def admin_trainers():
         return redirect(url_for("dashboard"))
 
     trainer_data = None
+    all_trainers = []
+
+    # 🔎 Search
     if request.method == "POST":
         search_name = request.form.get("search_name", "").strip()
         if search_name:
@@ -434,10 +453,57 @@ def admin_trainers():
             if not trainer_data:
                 flash(f"No trainer found with username '{search_name}'", "warning")
 
+    # 📋 Fetch all accounts from Supabase.sheet1
+    try:
+        resp = supabase.table("sheet1").select(
+            "trainer_username, campfire_username, account_type, stamps, avatar_icon"
+        ).execute()
+        all_trainers = resp.data or []
+    except Exception as e:
+        print("⚠️ Failed fetching all trainers:", e)
+
     return render_template(
         "admin_trainers.html",
-        trainer_data=trainer_data
+        trainer_data=trainer_data,
+        all_trainers=all_trainers
     )
+
+@app.route("/admin/trainers/<username>")
+def admin_trainer_detail(username):
+    if "trainer" not in session:
+        flash("Please log in.", "warning")
+        return redirect(url_for("home"))
+
+    # ✅ Require Admin account_type
+    _, user = find_user(session["trainer"])
+    if not user or user.get("account_type") != "Admin":
+        flash("Access denied. Admins only.", "error")
+        return redirect(url_for("dashboard"))
+
+    # 🔎 Find trainer
+    _, trainer_data = find_user(username)
+    if not trainer_data:
+        flash(f"No trainer found with username '{username}'", "warning")
+        return redirect(url_for("admin_trainers"))
+
+    return render_template(
+        "admin_trainer_detail.html",
+        trainer=trainer_data
+    )
+
+@app.route("/admin/trainers/<username>/adjust_stamps", methods=["POST"])
+def admin_adjust_stamps(username):
+    if "trainer" not in session or session.get("account_type") != "Admin":
+        flash("Unauthorized access.", "error")
+        return redirect(url_for("dashboard"))
+
+    action = request.form.get("action")  # "award" or "remove"
+    count = int(request.form.get("count", 0))
+    reason = request.form.get("reason", "Admin Adjustment")
+
+    result = adjust_stamps(username, count, reason, action)
+    flash(result, "success" if "✅" in result else "error")
+    return redirect(url_for("admin_trainers"))
 
 @app.route("/admin/stats")
 def admin_stats():
