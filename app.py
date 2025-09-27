@@ -136,23 +136,7 @@ def trigger_lugia_refresh():
     except Exception as e:
         print("⚠️ Lugia refresh error:", e)
 
-def get_inbox_preview(trainer: str, limit: int = 3):
-    """Return the most recent messages for the floating inbox dropdown."""
-    messages = []
-    if USE_SUPABASE and supabase and trainer:
-        try:
-            resp = (supabase.table("notifications")
-                    .select("subject, created_at")
-                    .eq("trainer_username", trainer)
-                    .order("created_at", desc=True)
-                    .limit(limit)
-                    .execute())
-            messages = resp.data or []
-        except Exception as e:
-            print("⚠️ Supabase inbox preview failed:", e)
-    return messages
-
-# ====== Data: stamps & meetups ======
+# ====== Data: stamps, inbox & meetups ======
 def get_passport_stamps(username: str, campfire_username: str | None = None):
     try:
         # 🔑 Pull all ledger rows where trainer OR campfire matches
@@ -330,6 +314,20 @@ def cover_from_event_name(event_name: str) -> str:
         print("⚠️ cover_from_event_name failed:", e)
     return ""
 
+def get_inbox_preview(trainer):
+    if not supabase:
+        return []
+    try:
+        resp = supabase.table("notifications") \
+            .select("subject, message, sent_at") \
+            .eq("audience", trainer) \
+            .order("sent_at", desc=True) \
+            .limit(3) \
+            .execute()
+        return resp.data or []
+    except Exception as e:
+        print("⚠️ Inbox preview fetch failed:", e)
+        return []
 
 # ====== Routes ======
 @app.route("/")
@@ -584,6 +582,7 @@ def dashboard():
         most_recent_meetup=most_recent_meetup,
         account_type=user.get("account_type", "Standard"),
         last_login=user.get("last_login", ""),
+        inbox_preview=inbox_preview,
         show_back=False,
     )
 
@@ -595,32 +594,77 @@ def inbox():
         return redirect(url_for("home"))
 
     trainer = session["trainer"]
+    sort_by = request.args.get("sort", "newest")
     messages = []
 
     if USE_SUPABASE and supabase:
         try:
-            resp = supabase.table("notifications") \
+            query = supabase.table("notifications") \
                 .select("*") \
-                .or_(f"audience.eq.ALL,audience.eq.{trainer}") \
-                .order("sent_at", desc=True) \
-                .execute()
+                .eq("audience", trainer)
+
+            # Apply filters
+            if sort_by == "unread":
+                query = query.not_.contains("read_by", [trainer])
+            elif sort_by == "read":
+                query = query.contains("read_by", [trainer])
+            elif sort_by == "type":
+                query = query.order("type", desc=False)
+
+            # Default sort order
+            if sort_by == "newest":
+                query = query.order("sent_at", desc=True)
+            elif sort_by == "oldest":
+                query = query.order("sent_at", desc=False)
+
+            resp = query.execute()
             messages = resp.data or []
         except Exception as e:
             print("⚠️ Supabase inbox fetch failed:", e)
 
+    # fallback: no messages
     if not messages:
         messages = [{
             "subject": "📭 No messages yet",
             "message": "Your inbox is empty. You’ll see updates, receipts, and announcements here.",
-            "sent_at": datetime.utcnow().isoformat()
+            "sent_at": datetime.utcnow().isoformat(),
+            "type": "info",
+            "read_by": []
         }]
 
     return render_template(
         "inbox.html",
         trainer=trainer,
         inbox=messages,
+        sort_by=sort_by,
         show_back=True
     )
+
+# ====== Mark message as read ======
+@app.route("/inbox/read/<message_id>")
+def read_message(message_id):
+    if "trainer" not in session:
+        flash("Please log in to view your inbox.", "warning")
+        return redirect(url_for("home"))
+
+    trainer = session["trainer"]
+
+    try:
+        # Fetch the current message
+        resp = supabase.table("notifications").select("*").eq("id", message_id).limit(1).execute()
+        if resp.data:
+            msg = resp.data[0]
+            read_by = msg.get("read_by") or []
+
+            # If trainer not already marked as read, append
+            if trainer not in read_by:
+                read_by.append(trainer)
+                supabase.table("notifications").update({"read_by": read_by}).eq("id", message_id).execute()
+    except Exception as e:
+        print("⚠️ Failed to mark message read:", e)
+
+    # Redirect back to inbox
+    return redirect(url_for("inbox"))
 
 # ====== Logout ======
 @app.route("/logout")

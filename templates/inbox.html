@@ -2,32 +2,72 @@
 {% block content %}
 <h2>📨 Inbox</h2>
 
+<!-- Sorting / Filtering -->
+<div class="inbox-filters">
+  <form method="get" action="{{ url_for('inbox') }}">
+    <label for="sort">Sort by:</label>
+    <select name="sort" id="sort" onchange="this.form.submit()">
+      <option value="newest" {% if sort_by == 'newest' %}selected{% endif %}>Newest First</option>
+      <option value="oldest" {% if sort_by == 'oldest' %}selected{% endif %}>Oldest First</option>
+      <option value="unread" {% if sort_by == 'unread' %}selected{% endif %}>Unread Only</option>
+      <option value="read" {% if sort_by == 'read' %}selected{% endif %}>Read Only</option>
+      <option value="type" {% if sort_by == 'type' %}selected{% endif %}>By Type</option>
+    </select>
+  </form>
+</div>
+
 <div class="inbox-container">
   {% for msg in inbox %}
-    <div class="inbox-card">
-      <h3>{{ msg.subject }}</h3>
-      <p class="inbox-date">{{ msg.created_at }}</p>
-      <p>{{ msg.content }}</p>
-    </div>
+    <a href="{{ url_for('read_message', message_id=msg.id) }}" style="text-decoration:none; color:inherit;">
+      <div class="inbox-card {% if trainer in msg.read_by %}read{% else %}unread{% endif %}">
+        <h3>{{ msg.subject }}</h3>
+        <p class="inbox-date">{{ msg.sent_at|to_date }}</p>
+        <p>{{ msg.message }}</p>
+      </div>
+    </a>
   {% endfor %}
 </div>
+
+<style>
+.inbox-card.unread { border-left: 4px solid #3a8dde; }
+.inbox-card.read { border-left: 4px solid #aaa; opacity: 0.8; }
+</style>
 
 <div style="margin-top:20px; text-align:center;">
   <a href="{{ url_for('dashboard') }}" class="btn">⬅ Back to Dashboard</a>
 </div>
 
 <style>
+.inbox-filters {
+  margin-top: 10px;
+  margin-bottom: 15px;
+  text-align: right;
+}
+.inbox-filters select {
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  font-size: 0.9em;
+}
 .inbox-container {
   display: flex;
   flex-direction: column;
   gap: 15px;
-  margin-top: 20px;
+  margin-top: 10px;
 }
 .inbox-card {
   background: #fff;
   border-radius: 10px;
   padding: 15px;
   box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+  transition: background 0.3s ease;
+}
+.inbox-card.unread {
+  border-left: 5px solid #3a8dde;
+  background: #f0f8ff;
+}
+.inbox-card.read {
+  opacity: 0.85;
 }
 .inbox-card h3 {
   margin: 0;

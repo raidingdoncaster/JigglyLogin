@@ -177,21 +177,30 @@
 
         <!-- Inbox (dropdown preview) -->
         <div class="inbox-wrapper">
-          <button type="button" class="nav-item" id="inboxToggle" title="Inbox">
-            <img src="{{ url_for('static', filename='nav/mail-icon.png') }}" alt="Inbox" class="nav-icon">
-          </button>
-          <div id="inboxDropdown" class="inbox-dropdown">
-            {% if inbox_preview and inbox_preview|length > 0 %}
-              <ul>
-                {% for msg in inbox_preview %}
-                  <li>{{ msg.subject }}</li>
-                {% endfor %}
-              </ul>
-            {% else %}
-              <p style="margin:6px 0;">No messages</p>
-            {% endif %}
-            <a href="{{ url_for('inbox') }}" class="view-all">📨 View Inbox</a>
-          </div>
+            <button type="button" class="icon-link" id="inboxToggle" title="Inbox">
+                <img src="{{ url_for('static', filename='nav/mail-icon.png') }}" alt="Inbox" class="nav-icon">
+            </button>
+            <div id="inboxDropdown" class="inbox-dropdown">
+                {% if inbox_preview and inbox_preview|length > 0 %}
+                <ul>
+                    {% for msg in inbox_preview %}
+                    <li>
+                        <strong>{{ msg.subject }}</strong><br>
+                        <span style="font-size:0.8em; color:#555;">
+                        {{ msg.message[:40] }}{% if msg.message|length > 40 %}…{% endif %}
+                        </span>
+                        <br>
+                        <span style="font-size:0.7em; color:#888;">
+                        {{ msg.sent_at|to_date }}
+                        </span>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p style="margin:6px 0;">No messages</p>
+                {% endif %}
+                <a href="{{ url_for('inbox') }}" class="view-all">📨 View Inbox</a>
+            </div>
         </div>
 
         <!-- Logout -->
