@@ -506,7 +506,8 @@ def campfire():
             datetime.utcnow().isoformat(),
             campfire_username,  # Column E
             "",                 # Column F
-            "avatar1.png"       # Column G
+            "avatar1.png",       # Column G
+            "Standard"          # Column H
         ])
         if supabase:
             supabase.table("sheet1").insert({
@@ -582,6 +583,7 @@ def dashboard():
         campfire_username=campfire_username,
         most_recent_meetup=most_recent_meetup,
         account_type=user.get("account_type", "Standard"),
+        last_login=user.get("last_login", ""),
         show_back=False,
     )
 
