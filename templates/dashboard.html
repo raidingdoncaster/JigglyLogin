@@ -10,8 +10,6 @@
            alt="Avatar" class="avatar" id="dashboard-avatar">
       <div style="margin-left:15px;">
         <h2 style="margin:0;">Welcome, {{ trainer }}!</h2>
-        <p style="font-size:0.9em;">Last login: {{ last_login }}</p>
-        <p><strong>Account Type:</strong> {{ account_type }}</p>
         {% if account_type != "Kids Account" %}
           <p><strong>Campfire Username:</strong> {{ campfire_username }}</p>
         {% endif %}
@@ -66,33 +64,14 @@
   width:64px; height:64px; border-radius:50%; border:3px solid #fff;
   box-shadow: 0 2px 6px rgba(0,0,0,0.4);
 }
-.recent-stamp {
-  display:flex; align-items:center; margin-top:6px;
-}
-.recent-stamp-icon {
-  width:28px; height:28px; border-radius:50%; margin-right:8px;
-  border:2px solid #3a8dde; object-fit:cover;
-}
-.recent-stamp-text {
-  font-size:0.85em; line-height:1.2;
-  text-shadow: 0 2px 4px rgba(0,0,0,0.7);
-}
-.recent-stamp-title {
-  font-weight:600; margin:0; color:#ffdd57;
-}
-.recent-stamp-detail {
-  margin:0;
-}
 </style>
 
 <!-- Widgets -->
 <div class="widgets">
+  <!-- Passport Progress -->
   <div class="widget">
     <h3>🎟️ Passport Progress</h3>
-    <p>
-      Your stamps: {{ current_stamps }}
-    </p>
-
+    <p>Your stamps: {{ current_stamps }}</p>
     <div class="stamp-preview">
       {% if stamps and stamps|length > 0 %}
         {% for s in stamps[-3:]|reverse %}
@@ -102,50 +81,67 @@
         <p style="font-size:0.85em; color:#777;">No stamps yet</p>
       {% endif %}
     </div>
-
     <a href="{{ url_for('passport') }}" class="btn">View Passport</a>
   </div>
 
-  <style>
-  .stamp-preview {
-    display:flex;
-    justify-content:center;
-    gap:6px;
-    margin:8px 0;
-  }
-  .stamp-icon {
-    width:28px; height:28px;
-    border-radius:50%;
-    border:2px solid #3a8dde;
-    object-fit:cover;
-  }
-  </style>
-
+  <!-- Upcoming Meet-ups -->
   <div class="widget">
-    <h3>📨 Inbox</h3>
-    {% if inbox and inbox|length > 0 %}
-      <ul class="inbox-list">
-        {% for message in inbox[:2] %}
-          <li>{{ message.subject }}</li>
-        {% endfor %}
-      </ul>
-    {% else %}
-      <p>No messages yet</p>
-    {% endif %}
-    <a href="{{ url_for('inbox') }}" class="btn">View Inbox</a>
+    <h3>📅 Upcoming Meet-ups</h3>
+    <p style="font-size:0.85em; color:#777;">No upcoming meet-ups yet</p>
   </div>
 </div>
+
+<style>
+.stamp-preview {
+  display:flex;
+  justify-content:center;
+  gap:6px;
+  margin:8px 0;
+}
+.stamp-icon {
+  width:28px; height:28px;
+  border-radius:50%;
+  border:2px solid #3a8dde;
+  object-fit:cover;
+}
+.widgets { display:flex; gap:12px; margin-bottom:20px; }
+.widget {
+  flex:1; background:#fff; padding:12px; border-radius:10px;
+  box-shadow:0 2px 6px rgba(0,0,0,0.1);
+  display:flex; flex-direction:column; justify-content:space-between;
+  text-align:center; min-height:120px;
+}
+.widget h3 { margin-top:0; font-size:1em; color:#3a8dde; }
+.btn { padding:6px 12px; background:#3a8dde; color:#fff;
+       border-radius:6px; text-decoration:none; font-size:0.9em; margin-top:auto; }
+</style>
 
 <!-- Explore -->
 <div class="explore">
   <h3>🔍 Explore</h3>
   <div class="explore-grid">
-    <div class="explore-card">📖 Catalog</div>
-    <div class="explore-card">🎁 Perks</div>
-    <div class="explore-card">🌆 City Guides</div>
-    <div class="explore-card">⚔️ Leagues</div>
+    <div class="explore-app">
+      <img src="{{ url_for('static', filename='icons/catalog-app.png') }}" alt="Catalog" onclick="alert('Gyms are Under Construction')">
+    </div>
+    <div class="explore-app">
+      <img src="{{ url_for('static', filename='icons/perks-app.png') }}" alt="Perks" onclick="alert('Gyms are Under Construction')">
+    </div>
+    <div class="explore-app">
+      <img src="{{ url_for('static', filename='icons/guides-app.png') }}" alt="Guides" onclick="alert('Gyms are Under Construction')">
+    </div>
+    <div class="explore-app">
+      <img src="{{ url_for('static', filename='icons/leagues-app.png') }}" alt="Leagues" onclick="alert('Gyms are Under Construction')">
+    </div>
   </div>
 </div>
+
+<style>
+.explore-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
+.explore-app img {
+  width:100%; max-width:80px; height:auto; margin:0 auto; cursor:pointer;
+  display:block;
+}
+</style>
 
 <!-- Manage Account -->
 <div class="manage-account">
@@ -177,6 +173,7 @@
   <button class="accordion-toggle">🔒 Security</button>
   <div class="accordion-content">
     <p class="meta">Last login: {{ last_login }}</p>
+    <p class="meta">Account Type: {{ account_type }}</p>
     <form action="{{ url_for('logout_everywhere') }}" method="post">
       <button type="submit">Log Out Everywhere</button>
     </form>
@@ -196,27 +193,6 @@
 </div>
 
 <style>
-/* Widgets */
-.widgets { display:flex; gap:12px; margin-bottom:20px; }
-.widget {
-  flex:1; background:#fff; padding:12px; border-radius:10px;
-  box-shadow:0 2px 6px rgba(0,0,0,0.1);
-  display:flex; flex-direction:column; justify-content:space-between;
-  text-align:center; min-height:120px;
-}
-.widget h3 { margin-top:0; font-size:1em; color:#3a8dde; }
-.btn { padding:6px 12px; background:#3a8dde; color:#fff;
-       border-radius:6px; text-decoration:none; font-size:0.9em; margin-top:auto; }
-.inbox-list { list-style:none; padding:0; margin:0; font-size:0.85em; text-align:left; }
-
-/* Explore */
-.explore-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
-.explore-card {
-  background:#ff7675; height:100px; display:flex; align-items:center; justify-content:center;
-  border-radius:8px; color:white; font-weight:600; font-size:0.95em;
-}
-
-/* Manage Account */
 .manage-account { background:#fff; border:1px solid #ccc; border-radius:12px; padding:15px; }
 .manage-account h3 { text-align:center; margin-top:0; }
 .accordion-toggle {

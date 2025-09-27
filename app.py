@@ -727,7 +727,9 @@ def passport():
 
     # === Passport Stamps ===
     total_stamps, stamps, most_recent_stamp = get_passport_stamps(username, campfire_username)
-    current_stamps = len(stamps)
+    # nav bar: live balance
+    current_stamps = int(user.get("stamps", 0) or 0)
+    # page display: show all stamps from ledger
     passports = [stamps[i:i + 12] for i in range(0, len(stamps), 12)]
 
     # === Lugia Summary (Supabase only, fetch event cover photos properly) ===
