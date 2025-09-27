@@ -601,19 +601,18 @@ def inbox():
         try:
             resp = supabase.table("notifications") \
                 .select("*") \
-                .eq("trainer_username", trainer) \
-                .order("created_at", desc=True) \
+                .or_(f"audience.eq.ALL,audience.eq.{trainer}") \
+                .order("sent_at", desc=True) \
                 .execute()
             messages = resp.data or []
         except Exception as e:
             print("⚠️ Supabase inbox fetch failed:", e)
 
-    # fallback: no messages
     if not messages:
         messages = [{
             "subject": "📭 No messages yet",
-            "content": "Your inbox is empty. You’ll see updates, receipts, and announcements here.",
-            "created_at": datetime.utcnow().isoformat()
+            "message": "Your inbox is empty. You’ll see updates, receipts, and announcements here.",
+            "sent_at": datetime.utcnow().isoformat()
         }]
 
     return render_template(
