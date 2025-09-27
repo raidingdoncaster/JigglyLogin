@@ -314,19 +314,20 @@ def cover_from_event_name(event_name: str) -> str:
         print("⚠️ cover_from_event_name failed:", e)
     return ""
 
-def get_inbox_preview(trainer):
+def get_inbox_preview(trainer: str):
+    """Fetch up to 3 most recent notifications for nav bar preview."""
     if not supabase:
         return []
     try:
         resp = supabase.table("notifications") \
             .select("subject, message, sent_at") \
-            .eq("audience", trainer) \
+            .eq("trainer_username", trainer) \
             .order("sent_at", desc=True) \
             .limit(3) \
             .execute()
         return resp.data or []
     except Exception as e:
-        print("⚠️ Inbox preview fetch failed:", e)
+        print("⚠️ Supabase inbox preview fetch failed:", e)
         return []
 
 # ====== Routes ======
@@ -581,8 +582,6 @@ def dashboard():
         campfire_username=campfire_username,
         most_recent_meetup=most_recent_meetup,
         account_type=user.get("account_type", "Standard"),
-        last_login=user.get("last_login", ""),
-        inbox_preview=inbox_preview,
         show_back=False,
     )
 
@@ -997,6 +996,14 @@ def inject_nav_data():
         if user:
             return {"current_stamps": user.get("stamps", 0)}
     return {"current_stamps": 0}
+
+# ====== Global Inbox Preview =====
+@app.context_processor
+def inject_inbox_preview():
+    trainer = session.get("trainer")
+    if trainer:
+        return {"inbox_preview": get_inbox_preview(trainer)}
+    return {"inbox_preview": []}
 
 # ====== Entrypoint ======
 if __name__ == "__main__":

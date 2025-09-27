@@ -30,7 +30,7 @@
     header{
       position:sticky; top:0; z-index:1000;
       background:linear-gradient(135deg,#3a8dde,#5eb8ff);
-      padding:6px 12px;            /* tighter margins */
+      padding:6px 12px;
       display:flex; align-items:center; justify-content:space-between;
       color:#fff;
     }
@@ -43,27 +43,26 @@
     /* --- NAV BAR --- */
     .nav-icons{
       display:flex; align-items:center;
-      gap:12px;                      /* tighter, even spacing */
+      gap:12px;
     }
-    /* Uniform clickable box for each icon */
     .nav-item{
-      width:44px; height:44px;       /* normalized height for all icons */
+      width:44px; height:44px;
       display:flex; align-items:center; justify-content:center;
       padding:0; border:0; background:transparent; cursor:pointer;
       flex:0 0 auto;
     }
     .nav-item img.nav-icon{
-      max-width:40px; max-height:40px;  /* consistent visual size */
+      max-width:40px; max-height:40px;
       width:auto; height:auto; display:block;
     }
 
-    /* Stamp container (image with count inside) */
+    /* Stamp container */
     .stamp-container{
       position:relative;
-      height:44px;                    /* matches nav height */
-      width:auto;                     /* let the PNG scale naturally */
-      display:block;                  /* keep inline with flex gap */
-      margin:0 2px 0 2px;             /* tiny buffer so it sits neatly */
+      height:44px;
+      width:auto;
+      display:block;
+      margin:0 2px;
     }
     .stamp-container img{ height:100%; width:auto; display:block; }
     .stamp-container .stamp-count{
@@ -76,6 +75,15 @@
 
     /* Inbox dropdown */
     .inbox-wrapper{ position:relative; }
+    .inbox-wrapper button.nav-item{
+      all:unset;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      width:44px;
+      height:44px;
+      cursor:pointer;
+    }
     .inbox-dropdown{
       position:absolute; right:0; top:50px;
       display:none; width:240px; background:#fff; color:#333;
@@ -143,7 +151,6 @@
       }
     });
 
-    // PIN show/hide (kept for forms)
     function togglePin(id,btn){
       const input=document.getElementById(id);
       if(!input) return;
@@ -169,38 +176,37 @@
           <img src="{{ url_for('static', filename='nav/pikachu-card.png') }}" alt="Home" class="nav-icon">
         </a>
 
-        <!-- Passport (stamp image with inline count) -->
+        <!-- Passport -->
         <a href="{{ url_for('passport') }}" class="stamp-container" title="Passport">
           <img src="{{ url_for('static', filename='nav/stamp-icon.png') }}" alt="Passport">
           <span class="stamp-count">{{ current_stamps or 0 }}</span>
         </a>
 
-        <!-- Inbox (dropdown preview) -->
+        <!-- Inbox -->
         <div class="inbox-wrapper">
-            <button type="button" class="icon-link" id="inboxToggle" title="Inbox">
-                <img src="{{ url_for('static', filename='nav/mail-icon.png') }}" alt="Inbox" class="nav-icon">
-            </button>
-            <div id="inboxDropdown" class="inbox-dropdown">
-                {% if inbox_preview and inbox_preview|length > 0 %}
-                <ul>
-                    {% for msg in inbox_preview %}
-                    <li>
-                        <strong>{{ msg.subject }}</strong><br>
-                        <span style="font-size:0.8em; color:#555;">
-                        {{ msg.message[:40] }}{% if msg.message|length > 40 %}…{% endif %}
-                        </span>
-                        <br>
-                        <span style="font-size:0.7em; color:#888;">
-                        {{ msg.sent_at|to_date }}
-                        </span>
-                    </li>
-                    {% endfor %}
-                </ul>
-                {% else %}
-                <p style="margin:6px 0;">No messages</p>
-                {% endif %}
-                <a href="{{ url_for('inbox') }}" class="view-all">📨 View Inbox</a>
-            </div>
+          <button type="button" class="nav-item" id="inboxToggle" title="Inbox">
+            <img src="{{ url_for('static', filename='nav/mail-icon.png') }}" alt="Inbox" class="nav-icon">
+          </button>
+          <div id="inboxDropdown" class="inbox-dropdown">
+            {% if inbox_preview and inbox_preview|length > 0 %}
+            <ul>
+              {% for msg in inbox_preview %}
+              <li>
+                <strong>{{ msg.subject }}</strong><br>
+                <span style="font-size:0.8em; color:#555;">
+                  {{ msg.message[:40] }}{% if msg.message|length > 40 %}…{% endif %}
+                </span><br>
+                <span style="font-size:0.7em; color:#888;">
+                  {{ msg.sent_at|to_date }}
+                </span>
+              </li>
+              {% endfor %}
+            </ul>
+            {% else %}
+            <p style="margin:6px 0;">No messages</p>
+            {% endif %}
+            <a href="{{ url_for('inbox') }}" class="view-all">📨 View Inbox</a>
+          </div>
         </div>
 
         <!-- Logout -->
