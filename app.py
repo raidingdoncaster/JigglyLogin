@@ -413,9 +413,31 @@ def admin_meetups():
 def admin_redemptions():
     return render_template("admin_placeholder.html", title="Redemptions Manager")
 
-@app.route("/admin/trainers")
+# ====== Admin: Trainer Manager ======
+@app.route("/admin/trainers", methods=["GET", "POST"])
 def admin_trainers():
-    return render_template("admin_placeholder.html", title="Trainer Manager")
+    if "trainer" not in session:
+        flash("Please log in.", "warning")
+        return redirect(url_for("home"))
+
+    # ✅ Require Admin account_type
+    _, user = find_user(session["trainer"])
+    if not user or user.get("account_type") != "Admin":
+        flash("Access denied. Admins only.", "error")
+        return redirect(url_for("dashboard"))
+
+    trainer_data = None
+    if request.method == "POST":
+        search_name = request.form.get("search_name", "").strip()
+        if search_name:
+            _, trainer_data = find_user(search_name)
+            if not trainer_data:
+                flash(f"No trainer found with username '{search_name}'", "warning")
+
+    return render_template(
+        "admin_trainers.html",
+        trainer_data=trainer_data
+    )
 
 @app.route("/admin/stats")
 def admin_stats():
