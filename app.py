@@ -493,7 +493,13 @@ def admin_trainer_detail(username):
 
 @app.route("/admin/trainers/<username>/adjust_stamps", methods=["POST"])
 def admin_adjust_stamps(username):
-    if "trainer" not in session or session.get("account_type") != "Admin":
+    if "trainer" not in session:
+        flash("Please log in.", "error")
+        return redirect(url_for("home"))
+
+    # Check admin status from Supabase
+    _, current_user = find_user(session["trainer"])
+    if not current_user or current_user.get("account_type") != "Admin":
         flash("Unauthorized access.", "error")
         return redirect(url_for("dashboard"))
 
@@ -503,7 +509,7 @@ def admin_adjust_stamps(username):
 
     result = adjust_stamps(username, count, reason, action)
     flash(result, "success" if "✅" in result else "error")
-    return redirect(url_for("admin_trainers"))
+    return redirect(url_for("admin_trainer_detail", username=username))
 
 # ===== Admin: Change Account Type =====
 @app.route("/admin/trainers/<username>/change_account_type", methods=["POST"])
