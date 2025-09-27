@@ -190,6 +190,8 @@ def get_passport_stamps(username: str, campfire_username: str | None = None):
                 icon = url_for("static", filename="icons/cdl.png")
             elif "win" in rl:
                 icon = url_for("static", filename="icons/win.png")
+            elif "just being normal" in rl:
+                icon = url_for("static", filename="icons/normal.png")
             elif event_id and event_id in event_map and event_map[event_id]:
                 icon = event_map[event_id]
             else:
