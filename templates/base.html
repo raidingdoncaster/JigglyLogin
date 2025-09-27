@@ -1,353 +1,229 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ title if title else "JigglyLogin" }}</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{{ title if title else "JigglyLogin" }}</title>
 
-    <!-- Google Font -->
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
+  <!-- Google Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
 
-    <style>
-        body {
-            margin: 0;
-            font-family: 'Montserrat', sans-serif;
-            background: #f4f7fa url('/static/hex-bg.png') repeat;
-            background-size: 200px;
-            color: #333;
-        }
+  <style>
+    body{
+      margin:0;
+      font-family:'Montserrat',sans-serif;
+      background:#f4f7fa url('/static/hex-bg.png') repeat;
+      background-size:200px; color:#333;
+    }
 
-        /* Loading screen */
-        #loading-screen {
-            position: fixed;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            background: linear-gradient(135deg, #3a8dde, #5eb8ff);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            flex-direction: column;
-            z-index: 9999;
-            color: white;
-            font-size: 1.2em;
-        }
-        #loading-screen img {
-            width: 120px;
-            margin-bottom: 1em;
-        }
-        .hidden {
-            opacity: 0;
-            visibility: hidden;
-            transition: opacity 0.8s ease, visibility 0.8s ease;
-        }
+    /* Loading screen */
+    #loading-screen{
+      position:fixed; inset:0;
+      background:linear-gradient(135deg,#3a8dde,#5eb8ff);
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      z-index:9999; color:#fff; font-size:1.2em;
+    }
+    #loading-screen img{ width:120px; margin-bottom:1em; }
+    .hidden{ opacity:0; visibility:hidden; transition:opacity .8s, visibility .8s; }
 
-        /* Header (floating) */
-        header {
-            position: sticky;
-            top: 0;
-            z-index: 1000;
-            background: linear-gradient(135deg, #3a8dde, #5eb8ff);
-            padding: 10px 15px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            color: white;
-        }
-        header img {
-            height: 36px;
-        }
-        nav a {
-            color: white;
-            text-decoration: none;
-            margin-left: 12px;
-            font-weight: 600;
-            font-size: 0.9em;
-        }
-        nav a:hover {
-            text-decoration: underline;
-        }
+    /* Header */
+    header{
+      position:sticky; top:0; z-index:1000;
+      background:linear-gradient(135deg,#3a8dde,#5eb8ff);
+      padding:6px 12px;            /* tighter margins */
+      display:flex; align-items:center; justify-content:space-between;
+      color:#fff;
+    }
+    .logo{
+      width:80px; height:36px;
+      background:url('/static/logo.png') center/cover no-repeat;
+      flex:0 0 auto;
+    }
 
-        .nav-icons {
-            display: flex;
-            align-items: center;
-            gap: 20px;
-        }
-        .nav-icon {
-            width: 32px;
-            height: 32px;
-            display: block;
-        }
-        .icon-link {
-            position: relative;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            background: transparent;
-            border: none;
-            cursor: pointer;
-            padding: 0;
-        }
-        .badge {
-            position: relative;
-            top: 0;
-            left: 6px;
-            background: #ff4757;
-            color: #fff;
-            border-radius: 999px;
-            font-size: 0.75em;
-            line-height: 1;
-            padding: 2px 6px;
-            min-width: 16px;
-            text-align: center;
-            border: 2px solid #ffffffaa;
-        }
-        .stamp-link {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-        .inbox-wrapper { position: relative; }
-        .inbox-dropdown {
-            position: absolute;
-            display: none;
-            right: 0;
-            top: 42px;
-            width: 240px;
-            background: #fff;
-            color: #333;
-            border-radius: 8px;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.2);
-            padding: 8px;
-            z-index: 2000;
-        }
-        .inbox-dropdown ul { list-style: none; margin: 0; padding: 0; }
-        .inbox-dropdown li {
-            font-size: 0.9em;
-            padding: 6px 2px;
-            border-bottom: 1px solid #eee;
-        }
-        .inbox-dropdown li:last-child { border-bottom: none; }
-        .inbox-dropdown .view-all {
-            display: block;
-            margin-top: 8px;
-            text-align: center;
-            text-decoration: none;
-            background: #3a8dde;
-            color: #fff;
-            padding: 6px 8px;
-            border-radius: 6px;
-            font-weight: 600;
-        }
-        .back-link { margin-left: auto; font-weight: 600; color: #fff; text-decoration: none; }
-        .back-link:hover { text-decoration: underline; }
+    /* --- NAV BAR --- */
+    .nav-icons{
+      display:flex; align-items:center;
+      gap:12px;                      /* tighter, even spacing */
+    }
+    /* Uniform clickable box for each icon */
+    .nav-item{
+      width:44px; height:44px;       /* normalized height for all icons */
+      display:flex; align-items:center; justify-content:center;
+      padding:0; border:0; background:transparent; cursor:pointer;
+      flex:0 0 auto;
+    }
+    .nav-item img.nav-icon{
+      max-width:40px; max-height:40px;  /* consistent visual size */
+      width:auto; height:auto; display:block;
+    }
 
-        /* Mobile tweaks */
-        @media (max-width: 480px) {
-            .nav-icons { gap: 10px; }
-            .nav-icon { width: 28px; height: 28px; }
-            .badge { top: -5px; right: -7px; font-size: 0.65em; }
-        }
+    /* Stamp container (image with count inside) */
+    .stamp-container{
+      position:relative;
+      height:44px;                    /* matches nav height */
+      width:auto;                     /* let the PNG scale naturally */
+      display:block;                  /* keep inline with flex gap */
+      margin:0 2px 0 2px;             /* tiny buffer so it sits neatly */
+    }
+    .stamp-container img{ height:100%; width:auto; display:block; }
+    .stamp-container .stamp-count{
+      position:absolute;
+      top:50%; right:12px; transform:translateY(-50%);
+      font-weight:700; font-size:1.05em; color:#333;
+      line-height:1;
+      user-select:none;
+    }
 
-        /* Main content container */
-        .container {
-            max-width: 420px;
-            margin: 60px auto;
-            padding: 20px;
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-        }
+    /* Inbox dropdown */
+    .inbox-wrapper{ position:relative; }
+    .inbox-dropdown{
+      position:absolute; right:0; top:50px;
+      display:none; width:240px; background:#fff; color:#333;
+      border-radius:8px; box-shadow:0 8px 20px rgba(0,0,0,.2);
+      padding:8px; z-index:2000;
+    }
+    .inbox-dropdown ul{ list-style:none; margin:0; padding:0; }
+    .inbox-dropdown li{ font-size:.9em; padding:6px 2px; border-bottom:1px solid #eee; }
+    .inbox-dropdown li:last-child{ border-bottom:none; }
+    .inbox-dropdown .view-all{
+      display:block; margin-top:8px; text-align:center; text-decoration:none;
+      background:#3a8dde; color:#fff; padding:6px 8px; border-radius:6px; font-weight:600;
+    }
 
-        /* Flash messages */
-        .flash {
-            padding: 10px;
-            margin-bottom: 10px;
-            border-radius: 6px;
-            font-weight: 600;
-            text-align: center;
-            transition: opacity 0.5s ease, transform 0.5s ease;
-        }
-        .flash-success {
-            background: #d4edda;
-            border: 1px solid #155724;
-            color: #155724;
-        }
-        .flash-error {
-            background: #f8d7da;
-            border: 1px solid #721c24;
-            color: #721c24;
-        }
-        .flash-warning {
-            background: #fff3cd;
-            border: 1px solid #856404;
-            color: #856404;
-        }
+    /* Main content container */
+    .container{
+      max-width:420px; margin:60px auto; padding:20px; background:#fff;
+      border-radius:12px; box-shadow:0 4px 10px rgba(0,0,0,.1);
+    }
 
-        /* Input + button grouping for PIN toggle */
-        .pin-group {
-            display: flex;
-            width: 100%;
-        }
-        .pin-group input {
-            flex: 1;
-            border-top-right-radius: 0;
-            border-bottom-right-radius: 0;
-        }
-        .pin-group button {
-            border-top-left-radius: 0;
-            border-bottom-left-radius: 0;
-            background: #ddd;
-            border: 1px solid #ccc;
-            cursor: pointer;
-            padding: 0 10px;
-            font-size: 0.85em;
-        }
+    /* Flash messages */
+    .flash{ padding:10px; margin-bottom:10px; border-radius:6px; font-weight:600; text-align:center;
+      transition:opacity .5s, transform .5s; }
+    .flash-success{ background:#d4edda; border:1px solid #155724; color:#155724; }
+    .flash-error{ background:#f8d7da; border:1px solid #721c24; color:#721c24; }
+    .flash-warning{ background:#fff3cd; border:1px solid #856404; color:#856404; }
 
-        @media (max-width: 480px) {
-            .container {
-                margin: 20px auto;
-                border-radius: 8px;
-            }
-            nav a {
-                margin-left: 8px;
-                font-size: 0.8em;
-            }
-        }
+    /* Mobile */
+    @media(max-width:480px){
+      .nav-icons{ gap:10px; }
+      .nav-item{ width:40px; height:40px; }
+      .nav-item img.nav-icon{ max-width:36px; max-height:36px; }
+      .stamp-container{ height:40px; }
+      .stamp-container .stamp-count{ right:10px; font-size:.95em; }
+      .container{ margin:20px auto; border-radius:8px; }
+    }
+  </style>
 
-        .logo {
-            width: 80px;
-            height: 36px;
-            background: url('/static/logo.png') no-repeat center center;
-            background-size: cover;
-        }
+  <script>
+    window.addEventListener("load",()=>{
+      const ls=document.getElementById("loading-screen");
+      if(ls) ls.classList.add("hidden");
+    });
 
-    </style>
-
-    <script>
-        window.addEventListener("load", () => {
-            const loadingScreen = document.getElementById("loading-screen");
-            loadingScreen.classList.add("hidden");
+    window.addEventListener("DOMContentLoaded",()=>{
+      // Auto-hide flashes
+      setTimeout(()=>{
+        document.querySelectorAll(".flash").forEach(el=>{
+          el.style.opacity=0; el.style.transform="translateY(-10px)";
+          setTimeout(()=>el.remove(),500);
         });
+      },4000);
 
-        // Show/Hide PIN toggle logic
-        function togglePin(id, btn) {
-            const input = document.getElementById(id);
-            if (!input) return;
-            if (input.type === "password") {
-                input.type = "text";
-                btn.textContent = "Hide";
-            } else {
-                input.type = "password";
-                btn.textContent = "Show";
-            }
-        }
+      // Inbox dropdown
+      const btn=document.getElementById("inboxToggle");
+      const dd=document.getElementById("inboxDropdown");
+      if(btn && dd){
+        btn.addEventListener("click",(e)=>{
+          e.stopPropagation();
+          dd.style.display = dd.style.display==="block" ? "none" : "block";
+        });
+        document.addEventListener("click",(e)=>{
+          if(!dd.contains(e.target)) dd.style.display="none";
+        });
+      }
+    });
 
-        // Auto-hide flash messages after 4 seconds
-        window.addEventListener("DOMContentLoaded", () => {
-            setTimeout(() => {
-                document.querySelectorAll(".flash").forEach(el => {
-                    el.style.opacity = 0;
-                    el.style.transform = "translateY(-10px)";
-                    setTimeout(() => el.remove(), 500); // remove after fade
-                });
-            }, 4000);
-        });
-
-        // Inbox dropdown toggle
-        document.addEventListener("DOMContentLoaded", () => {
-        const btn = document.getElementById("inboxToggle");
-        const dd  = document.getElementById("inboxDropdown");
-        if (!btn || !dd) return;
-
-        btn.addEventListener("click", (e) => {
-            e.stopPropagation();
-            dd.style.display = dd.style.display === "block" ? "none" : "block";
-        });
-        document.addEventListener("click", (e) => {
-            if (!dd.contains(e.target)) dd.style.display = "none";
-        });
-        });
-    </script>
+    // PIN show/hide (kept for forms)
+    function togglePin(id,btn){
+      const input=document.getElementById(id);
+      if(!input) return;
+      if(input.type==="password"){ input.type="text"; btn.textContent="Hide"; }
+      else{ input.type="password"; btn.textContent="Show"; }
+    }
+  </script>
 </head>
 <body>
-    <!-- Loading Splash -->
-    <div id="loading-screen">
-        <img src="/static/logo.png" alt="Logo">
-        Loading JigglyLogin…
-    </div>
+  <!-- Loading Splash -->
+  <div id="loading-screen">
+    <img src="/static/logo.png" alt="Logo"> Loading JigglyLogin…
+  </div>
 
-    <!-- Header -->
-    <header>
-        <div class="logo"></div>
-        <nav class="nav-icons">
-            {% if session.get('trainer') %}
-                <!-- Dashboard (Pikachu card) -->
-                <a href="{{ url_for('dashboard') }}" class="icon-link" title="Home / Dashboard">
-                <img src="{{ url_for('static', filename='nav/pikachu-card.png') }}" alt="Home" class="nav-icon">
-                </a>
+  <!-- Header -->
+  <header>
+    <div class="logo"></div>
 
-                <!-- Passport (Stamp icon + badge) -->
-                <a href="{{ url_for('passport') }}" class="icon-link stamp-link" title="Passport">
-                    <img src="{{ url_for('static', filename='nav/stamp-icon.png') }}" alt="Passport" class="nav-icon">
-                    <span class="badge">{{ current_stamps or 0 }}</span>
-                </a>
+    <nav class="nav-icons">
+      {% if session.get('trainer') %}
+        <!-- Dashboard -->
+        <a href="{{ url_for('dashboard') }}" class="nav-item" title="Home / Dashboard">
+          <img src="{{ url_for('static', filename='nav/pikachu-card.png') }}" alt="Home" class="nav-icon">
+        </a>
 
-                <!-- Inbox (dropdown preview) -->
-                <div class="inbox-wrapper">
-                <button type="button" class="icon-link" id="inboxToggle" title="Inbox">
-                    <img src="{{ url_for('static', filename='nav/mail-icon.png') }}" alt="Inbox" class="nav-icon">
-                </button>
-                <div id="inboxDropdown" class="inbox-dropdown">
-                    {% if inbox_preview and inbox_preview|length > 0 %}
-                    <ul>
-                        {% for msg in inbox_preview %}
-                        <li>{{ msg.subject }}</li>
-                        {% endfor %}
-                    </ul>
-                    {% else %}
-                    <p style="margin:6px 0;">No messages</p>
-                    {% endif %}
-                    <a href="{{ url_for('inbox') }}" class="view-all">📨 View Inbox</a>
-                </div>
-                </div>
+        <!-- Passport (stamp image with inline count) -->
+        <a href="{{ url_for('passport') }}" class="stamp-container" title="Passport">
+          <img src="{{ url_for('static', filename='nav/stamp-icon.png') }}" alt="Passport">
+          <span class="stamp-count">{{ current_stamps or 0 }}</span>
+        </a>
 
-                <!-- Logout (emoji) -->
-                <a href="{{ url_for('logout') }}" class="icon-link" title="Log out">
-                    <img src="{{ url_for('static', filename='nav/logout.png') }}" alt="Logout" class="nav-icon">
-                </a>
+        <!-- Inbox (dropdown preview) -->
+        <div class="inbox-wrapper">
+          <button type="button" class="nav-item" id="inboxToggle" title="Inbox">
+            <img src="{{ url_for('static', filename='nav/mail-icon.png') }}" alt="Inbox" class="nav-icon">
+          </button>
+          <div id="inboxDropdown" class="inbox-dropdown">
+            {% if inbox_preview and inbox_preview|length > 0 %}
+              <ul>
+                {% for msg in inbox_preview %}
+                  <li>{{ msg.subject }}</li>
+                {% endfor %}
+              </ul>
+            {% else %}
+              <p style="margin:6px 0;">No messages</p>
             {% endif %}
+            <a href="{{ url_for('inbox') }}" class="view-all">📨 View Inbox</a>
+          </div>
+        </div>
 
-            <!-- Keep your external website link on the far right -->
-            {% if not session.get('trainer') %}
-                <a href="https://pogoprizes.my.canva.site" target="_blank" class="back-link">Back to Website</a>
-            {% endif %}
-            </nav>
-    </header>
+        <!-- Logout -->
+        <a href="{{ url_for('logout') }}" class="nav-item" title="Log out">
+          <img src="{{ url_for('static', filename='nav/logout.png') }}" alt="Logout" class="nav-icon">
+        </a>
+      {% else %}
+        <a href="https://pogoprizes.my.canva.site" target="_blank" style="color:#fff; font-weight:600; text-decoration:none;">Back to Website</a>
+      {% endif %}
+    </nav>
+  </header>
 
-    <!-- Page content -->
-    <div class="container">
+  <!-- Page content -->
+  <div class="container">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="flash flash-{{ category }}">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
 
-        <!-- Flash messages -->
-        {% with messages = get_flashed_messages(with_categories=true) %}
-          {% if messages %}
-            {% for category, message in messages %}
-              <div class="flash flash-{{ category }}">
-                {{ message }}
-              </div>
-            {% endfor %}
-          {% endif %}
-        {% endwith %}
+    {% block content %}{% endblock %}
 
-        {% block content %}{% endblock %}
-
-        {% if show_back %}
-            <div style="margin-top: 20px; text-align: center;">
-                <a href="{{ url_for('dashboard') }}" 
-                   style="display: inline-block; padding: 10px 18px; background: #3a8dde; color: white; border-radius: 6px; text-decoration: none; font-weight: 600;">
-                    ⬅ Back to Dashboard
-                </a>
-            </div>
-        {% endif %}
-    </div>
+    {% if show_back %}
+      <div style="margin-top:20px; text-align:center;">
+        <a href="{{ url_for('dashboard') }}"
+           style="display:inline-block; padding:10px 18px; background:#3a8dde; color:#fff; border-radius:6px; text-decoration:none; font-weight:600;">
+          ⬅ Back to Dashboard
+        </a>
+      </div>
+    {% endif %}
+  </div>
 </body>
 </html>

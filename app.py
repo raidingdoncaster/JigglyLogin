@@ -942,6 +942,15 @@ def change_avatar():
         current_background=current_background,
     )
 
+# ====== Stamp Processor ======
+@app.context_processor
+def inject_nav_data():
+    if "trainer" in session:
+        _, user = find_user(session["trainer"])
+        if user:
+            return {"current_stamps": user.get("stamps", 0)}
+    return {"current_stamps": 0}
+
 # ====== Entrypoint ======
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)), debug=True)
