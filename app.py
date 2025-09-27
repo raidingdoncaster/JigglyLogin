@@ -511,25 +511,46 @@ def admin_adjust_stamps(username):
     flash(result, "success" if "✅" in result else "error")
     return redirect(url_for("admin_trainer_detail", username=username))
 
-# ===== Admin: Change Account Type =====
 @app.route("/admin/trainers/<username>/change_account_type", methods=["POST"])
 def admin_change_account_type(username):
     if "trainer" not in session:
         flash("Please log in.", "warning")
         return redirect(url_for("home"))
 
-    _, user = find_user(session["trainer"])
-    if not user or user.get("account_type") != "Admin":
-        flash("Access denied. Admins only.", "error")
+    # ✅ Check admin rights via find_user
+    _, admin_user = find_user(session["trainer"])
+    if not admin_user or admin_user.get("account_type") != "Admin":
+        flash("Unauthorized access.", "error")
         return redirect(url_for("dashboard"))
 
     new_type = request.form.get("account_type")
-    if not new_type:
-        flash("No account type provided.", "warning")
+    if new_type not in ["Standard", "Kids Account", "Admin"]:
+        flash("Invalid account type.", "error")
         return redirect(url_for("admin_trainer_detail", username=username))
 
-    # ⚠️ For now: stub only — not writing to Sheets yet
-    flash(f"Would set {username}'s account_type to {new_type} (not yet implemented)", "info")
+    try:
+        # Update Google Sheet (Sheet1)
+        all_users = sheet.get_all_records()
+        row_index = None
+        for i, record in enumerate(all_users, start=2):
+            if record.get("Trainer Username", "").lower() == username.lower():
+                row_index = i
+                break
+        if row_index:
+            sheet.update_cell(row_index, 8, new_type)  # H = Account Type col
+
+        # Update Supabase mirror if available
+        if supabase:
+            supabase.table("sheet1") \
+                .update({"account_type": new_type}) \
+                .ilike("trainer_username", username) \
+                .execute()
+
+        flash(f"✅ {username}'s account type updated to {new_type}", "success")
+    except Exception as e:
+        print("⚠️ Error updating account type:", e)
+        flash("Failed to update account type.", "error")
+
     return redirect(url_for("admin_trainer_detail", username=username))
 
 @app.route("/admin/trainers/<username>/reset_pin", methods=["POST"])
@@ -538,18 +559,42 @@ def admin_reset_pin(username):
         flash("Please log in.", "warning")
         return redirect(url_for("home"))
 
-    _, user = find_user(session["trainer"])
-    if not user or user.get("account_type") != "Admin":
-        flash("Access denied. Admins only.", "error")
+    # ✅ Check admin rights via find_user
+    _, admin_user = find_user(session["trainer"])
+    if not admin_user or admin_user.get("account_type") != "Admin":
+        flash("Unauthorized access.", "error")
         return redirect(url_for("dashboard"))
 
     new_pin = request.form.get("new_pin")
-    if not new_pin or len(new_pin) != 4:
-        flash("Invalid PIN provided.", "warning")
+    if not new_pin or len(new_pin) != 4 or not new_pin.isdigit():
+        flash("PIN must be exactly 4 digits.", "error")
         return redirect(url_for("admin_trainer_detail", username=username))
 
-    # ⚠️ For now: stub only — not writing to Sheets yet
-    flash(f"Would reset {username}'s PIN to {new_pin} (not yet implemented)", "info")
+    try:
+        hashed = hash_value(new_pin)
+
+        # Update Google Sheet (Sheet1)
+        all_users = sheet.get_all_records()
+        row_index = None
+        for i, record in enumerate(all_users, start=2):
+            if record.get("Trainer Username", "").lower() == username.lower():
+                row_index = i
+                break
+        if row_index:
+            sheet.update_cell(row_index, 2, hashed)  # B = PIN Hash col
+
+        # Update Supabase mirror if available
+        if supabase:
+            supabase.table("sheet1") \
+                .update({"pin_hash": hashed}) \
+                .ilike("trainer_username", username) \
+                .execute()
+
+        flash(f"✅ PIN for {username} has been reset.", "success")
+    except Exception as e:
+        print("⚠️ Error resetting PIN:", e)
+        flash("Failed to reset PIN.", "error")
+
     return redirect(url_for("admin_trainer_detail", username=username))
 
 # ====== Admin: RDAB Stats ======
