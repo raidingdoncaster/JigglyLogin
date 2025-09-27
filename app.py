@@ -505,6 +505,48 @@ def admin_adjust_stamps(username):
     flash(result, "success" if "✅" in result else "error")
     return redirect(url_for("admin_trainers"))
 
+# ===== Admin: Change Account Type =====
+@app.route("/admin/trainers/<username>/change_account_type", methods=["POST"])
+def admin_change_account_type(username):
+    if "trainer" not in session:
+        flash("Please log in.", "warning")
+        return redirect(url_for("home"))
+
+    _, user = find_user(session["trainer"])
+    if not user or user.get("account_type") != "Admin":
+        flash("Access denied. Admins only.", "error")
+        return redirect(url_for("dashboard"))
+
+    new_type = request.form.get("account_type")
+    if not new_type:
+        flash("No account type provided.", "warning")
+        return redirect(url_for("admin_trainer_detail", username=username))
+
+    # ⚠️ For now: stub only — not writing to Sheets yet
+    flash(f"Would set {username}'s account_type to {new_type} (not yet implemented)", "info")
+    return redirect(url_for("admin_trainer_detail", username=username))
+
+@app.route("/admin/trainers/<username>/reset_pin", methods=["POST"])
+def admin_reset_pin(username):
+    if "trainer" not in session:
+        flash("Please log in.", "warning")
+        return redirect(url_for("home"))
+
+    _, user = find_user(session["trainer"])
+    if not user or user.get("account_type") != "Admin":
+        flash("Access denied. Admins only.", "error")
+        return redirect(url_for("dashboard"))
+
+    new_pin = request.form.get("new_pin")
+    if not new_pin or len(new_pin) != 4:
+        flash("Invalid PIN provided.", "warning")
+        return redirect(url_for("admin_trainer_detail", username=username))
+
+    # ⚠️ For now: stub only — not writing to Sheets yet
+    flash(f"Would reset {username}'s PIN to {new_pin} (not yet implemented)", "info")
+    return redirect(url_for("admin_trainer_detail", username=username))
+
+# ====== Admin: RDAB Stats ======
 @app.route("/admin/stats")
 def admin_stats():
     return render_template("admin_placeholder.html", title="RDAB Stats")
