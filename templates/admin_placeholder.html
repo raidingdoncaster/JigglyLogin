@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block content %}
+<div style="text-align:center; padding:30px;">
+  <h2>{{ title }}</h2>
+  <p style="margin-top:10px; font-size:1.1em; color:#777;">
+    🚧 Gyms are under construction 🚧
+  </p>
+  <div style="margin-top:20px;">
+    <a href="{{ url_for('admin_dashboard') }}" class="btn">⬅ Back to Admin Dashboard</a>
+  </div>
+</div>
+{% endblock %}

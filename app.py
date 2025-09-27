@@ -330,6 +330,101 @@ def get_inbox_preview(trainer: str):
         print("⚠️ Supabase inbox preview fetch failed:", e)
         return []
 
+# ====== Admin Panel ======
+from functools import wraps
+from flask import session, redirect, url_for, flash
+
+def admin_required(f):
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        if "trainer" not in session:
+            flash("Please log in first.", "warning")
+            return redirect(url_for("home"))
+
+        # Load user from Sheet1 (or Supabase if you’ve switched)
+        _, user = find_user(session["trainer"])
+        account_type = user.get("account_type", "")
+
+        if account_type != "Admin":
+            flash("Admins only!", "error")
+            return redirect(url_for("dashboard"))
+
+        return f(*args, **kwargs)
+    return wrapper
+
+# ===== Admin Dashboard =====
+@app.route("/admin/dashboard")
+def admin_dashboard():
+    if "trainer" not in session:
+        flash("Please log in to access admin dashboard.", "warning")
+        return redirect(url_for("home"))
+
+    _, user = find_user(session["trainer"])
+    if not user or user.get("account_type") != "Admin":
+        flash("⛔ Access denied. Admins only.", "error")
+        return redirect(url_for("dashboard"))
+
+    active_catalog_items = 0
+    pending_redemptions = 0
+    registered_trainers = 0
+
+    try:
+        # 📦 Active Catalog Items (where stock > 0 and active = true)
+        result = supabase.table("catalog_items") \
+            .select("id", count="exact") \
+            .gt("stock", 0) \
+            .eq("active", True) \
+            .execute()
+        active_catalog_items = result.count or 0
+
+        # 🎁 Pending Redemptions
+        result = supabase.table("redemptions") \
+            .select("id", count="exact") \
+            .eq("status", "PENDING") \
+            .execute()
+        pending_redemptions = result.count or 0
+
+        # 👥 Registered Trainers (all trainers in sheet1)
+        result = supabase.table("sheet1") \
+            .select("id", count="exact") \
+            .execute()
+        registered_trainers = result.count or 0
+
+    except Exception as e:
+        print("⚠️ Error fetching admin stats:", e)
+
+    return render_template(
+        "admin_dashboard.html",
+        active_catalog_items=active_catalog_items,
+        pending_redemptions=pending_redemptions,
+        registered_trainers=registered_trainers
+    )
+
+# ===== Placeholder Admin Pages =====
+@app.route("/admin/catalog")
+def admin_catalog():
+    return render_template("admin_placeholder.html", title="Catalog Manager")
+
+@app.route("/admin/meetups")
+def admin_meetups():
+    return render_template("admin_placeholder.html", title="Catalog Meetup Manager")
+
+@app.route("/admin/redemptions")
+def admin_redemptions():
+    return render_template("admin_placeholder.html", title="Redemptions Manager")
+
+@app.route("/admin/trainers")
+def admin_trainers():
+    return render_template("admin_placeholder.html", title="Trainer Manager")
+
+@app.route("/admin/stats")
+def admin_stats():
+    return render_template("admin_placeholder.html", title="RDAB Stats")
+
+@app.route("/admin/notifications")
+def admin_notifications():
+    return render_template("admin_placeholder.html", title="Notifications Center")
+
 # ====== Routes ======
 @app.route("/")
 def home():
