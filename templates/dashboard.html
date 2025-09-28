@@ -208,6 +208,12 @@ async function updateButtonState() {
 
 async function subscribeUser() {
   try {
+    const permission = await Notification.requestPermission();
+    if (permission !== "granted") {
+      alert("❌ Notifications permission not granted");
+      return;
+    }
+
     const reg = await navigator.serviceWorker.ready;
     const resp = await fetch("/vapid_public_key");
     const vapidKey = await resp.text();
