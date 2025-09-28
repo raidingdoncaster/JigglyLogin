@@ -80,6 +80,29 @@ def subscribe():
         print("⚠️ Failed saving subscription:", e)
         return jsonify({"error": str(e)}), 500
 
+@app.route("/unsubscribe", methods=["POST"])
+def unsubscribe():
+    if "trainer" not in session:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "Missing subscription data"}), 400
+
+    trainer = session["trainer"]
+
+    try:
+        # Delete subscription from DB for trainer
+        supabase.table("push_subscriptions") \
+            .delete() \
+            .eq("trainer_username", trainer) \
+            .eq("endpoint", data.get("endpoint")) \
+            .execute()
+
+        return jsonify({"success": True}), 200
+    except Exception as e:
+        print("❌ Unsubscribe error:", e)
+        return jsonify({"error": "Unsubscribe failed"}), 500
 
 # ===== Header =====
 @app.context_processor

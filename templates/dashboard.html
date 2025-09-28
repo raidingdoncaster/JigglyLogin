@@ -52,43 +52,14 @@
 .trainer-card-content {
   position: relative;
   z-index: 1;
-  padding: 20px; /* more padding inside */
+  padding: 20px;
 }
-.welcome-back {
-  margin: 0;
-  font-size: 0.9em;
-  font-weight: 400;
-  color: #eee;
-  text-shadow: 0 1px 3px rgba(0,0,0,0.7);
-}
-.trainer-name {
-  margin: 4px 0 10px 0;
-  font-size: 1.6em;
-  font-weight: 700;
-  text-shadow: 0 2px 4px rgba(0,0,0,0.7);
-}
-.trainer-card p {
-  margin: 6px 0;
-  font-size: 0.95em;
-  text-shadow: 0 1px 3px rgba(0,0,0,0.7);
-}
-.avatar {
-  width:64px; height:64px; border-radius:50%; border:3px solid #fff;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.4);
-}
-.meetup-icon {
-  width: 22px; height: 22px;
-  vertical-align: middle;
-  margin-right: 6px;
-  border-radius: 50%;
-  border: 2px solid #fff;
-}
-.customize-link {
-  font-size: 0.9em;
-  color: #ffdd57;
-  text-decoration: none;
-  font-weight: 600;
-}
+.welcome-back { margin: 0; font-size: 0.9em; font-weight: 400; color: #eee; text-shadow: 0 1px 3px rgba(0,0,0,0.7); }
+.trainer-name { margin: 4px 0 10px 0; font-size: 1.6em; font-weight: 700; text-shadow: 0 2px 4px rgba(0,0,0,0.7); }
+.trainer-card p { margin: 6px 0; font-size: 0.95em; text-shadow: 0 1px 3px rgba(0,0,0,0.7); }
+.avatar { width:64px; height:64px; border-radius:50%; border:3px solid #fff; box-shadow: 0 2px 6px rgba(0,0,0,0.4); }
+.meetup-icon { width:22px; height:22px; vertical-align:middle; margin-right:6px; border-radius:50%; border:2px solid #fff; }
+.customize-link { font-size:0.9em; color:#ffdd57; text-decoration:none; font-weight:600; }
 </style>
 
 <!-- Widgets -->
@@ -96,7 +67,6 @@
   <div class="widget">
     <h3>🎟️ Passport Progress</h3>
     <p>Your stamps: {{ current_stamps }}</p>
-
     <div class="stamp-preview">
       {% if stamps and stamps|length > 0 %}
         {% for s in stamps[-3:]|reverse %}
@@ -106,23 +76,12 @@
         <p style="font-size:0.85em; color:#777;">No stamps yet</p>
       {% endif %}
     </div>
-
     <a href="{{ url_for('passport') }}" class="btn">View Passport</a>
   </div>
 
   <style>
-  .stamp-preview {
-    display:flex;
-    justify-content:center;
-    gap:6px;
-    margin:8px 0;
-  }
-  .stamp-icon {
-    width:28px; height:28px;
-    border-radius:50%;
-    border:2px solid #3a8dde;
-    object-fit:cover;
-  }
+  .stamp-preview { display:flex; justify-content:center; gap:6px; margin:8px 0; }
+  .stamp-icon { width:28px; height:28px; border-radius:50%; border:2px solid #3a8dde; object-fit:cover; }
   </style>
 
   <div class="widget">
@@ -190,6 +149,12 @@
     </form>
   </div>
 
+  <button class="accordion-toggle">🔔 Notifications</button>
+  <div class="accordion-content">
+    <p>Manage push notifications for RDAB updates.</p>
+    <button type="button" id="subscribe-btn">Enable Notifications</button>
+  </div>
+
   <button class="accordion-toggle">🗑️ Delete Account</button>
   <div class="accordion-content">
     <p class="warning">
@@ -204,51 +169,22 @@
 </div>
 
 <style>
-/* Widgets */
 .widgets { display:flex; gap:12px; margin-bottom:20px; }
-.widget {
-  flex:1; background:#fff; padding:12px; border-radius:10px;
-  box-shadow:0 2px 6px rgba(0,0,0,0.1);
-  display:flex; flex-direction:column; justify-content:space-between;
-  text-align:center; min-height:120px;
-}
+.widget { flex:1; background:#fff; padding:12px; border-radius:10px; box-shadow:0 2px 6px rgba(0,0,0,0.1); text-align:center; min-height:120px; }
 .widget h3 { margin-top:0; font-size:1em; color:#3a8dde; }
-.btn { padding:6px 12px; background:#3a8dde; color:#fff;
-       border-radius:6px; text-decoration:none; font-size:0.9em; margin-top:auto; }
+.btn { padding:6px 12px; background:#3a8dde; color:#fff; border-radius:6px; text-decoration:none; font-size:0.9em; }
 
-/* Explore */
 .explore-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-bottom:20px; }
-.explore-card {
-  background:none;
-  height:130px;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  justify-content:center;
-  border-radius:8px;
-}
-.explore-card img {
-  width:90px; height:90px;
-}
-.explore-card span {
-  margin-top:6px;
-  font-size:0.9em;
-  font-weight:600;
-  color:#333;
-}
+.explore-card { background:none; height:130px; display:flex; flex-direction:column; align-items:center; justify-content:center; border-radius:8px; }
+.explore-card img { width:90px; height:90px; }
+.explore-card span { margin-top:6px; font-size:0.9em; font-weight:600; color:#333; }
 
-/* Manage Account */
 .manage-account { background:#fff; border:1px solid #ccc; border-radius:12px; padding:15px; }
 .manage-account h3 { text-align:center; margin-top:0; }
-.accordion-toggle {
-  width:100%; padding:10px; background:#f0f0f0; border:none;
-  border-radius:6px; font-weight:600; cursor:pointer; margin-top:8px;
-}
+.accordion-toggle { width:100%; padding:10px; background:#f0f0f0; border:none; border-radius:6px; font-weight:600; cursor:pointer; margin-top:8px; }
 .accordion-content { max-height:0; overflow:hidden; transition:max-height 0.3s ease; padding:0 5px; }
 .accordion-content form { margin-top:10px; }
-.accordion-content input, .accordion-content button {
-  width:100%; margin:5px 0; padding:8px; border-radius:6px; border:1px solid #ccc;
-}
+.accordion-content input, .accordion-content button { width:100%; margin:5px 0; padding:8px; border-radius:6px; border:1px solid #ccc; }
 .pin-group { display:flex; gap:6px; }
 .pin-group input { flex:1; }
 .pin-group button { width:70px; flex-shrink:0; }
@@ -264,34 +200,67 @@ document.querySelectorAll(".accordion-toggle").forEach(btn=>{
     content.style.maxHeight=content.style.maxHeight?null:content.scrollHeight+"px";
   });
 });
-</script>
 
-<button id="subscribe-btn">🔔 Enable Notifications</button>
-
-<script>
-async function subscribeUser() {
-  if (!("serviceWorker" in navigator)) return alert("SW not supported");
-  if (!("PushManager" in window)) return alert("Push not supported");
+async function updateButtonState() {
+  const btn = document.getElementById("subscribe-btn");
+  if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+    btn.textContent = "❌ Not Supported";
+    btn.disabled = true;
+    return;
+  }
 
   const reg = await navigator.serviceWorker.ready;
+  const sub = await reg.pushManager.getSubscription();
 
-  // VAPID public key from server
-  const resp = await fetch("/vapid-public-key");
-  const vapidKey = await resp.text();
+  if (sub) {
+    btn.textContent = "Disable Notifications";
+    btn.onclick = () => unsubscribeUser(sub);
+  } else {
+    btn.textContent = "Enable Notifications";
+    btn.onclick = subscribeUser;
+  }
+}
 
-  const sub = await reg.pushManager.subscribe({
-    userVisibleOnly: true,
-    applicationServerKey: urlBase64ToUint8Array(vapidKey)
-  });
+async function subscribeUser() {
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    const resp = await fetch("/vapid_public_key");
+    const vapidKey = await resp.text();
 
-  // Send subscription to backend
-  await fetch("/subscribe", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(sub)
-  });
+    const sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(vapidKey)
+    });
 
-  alert("✅ Subscribed!");
+    await fetch("/subscribe", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(sub)
+    });
+
+    alert("✅ Notifications enabled!");
+    updateButtonState();
+  } catch (err) {
+    console.error("❌ Subscribe failed:", err);
+    alert("Could not subscribe.");
+  }
+}
+
+async function unsubscribeUser(sub) {
+  try {
+    await sub.unsubscribe();
+    await fetch("/unsubscribe", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(sub)
+    });
+
+    alert("🔕 Notifications disabled!");
+    updateButtonState();
+  } catch (err) {
+    console.error("❌ Unsubscribe failed:", err);
+    alert("Could not unsubscribe.");
+  }
 }
 
 function urlBase64ToUint8Array(base64String) {
@@ -301,7 +270,7 @@ function urlBase64ToUint8Array(base64String) {
   return Uint8Array.from([...rawData].map((char) => char.charCodeAt(0)));
 }
 
-document.getElementById("subscribe-btn").addEventListener("click", subscribeUser);
+document.addEventListener("DOMContentLoaded", updateButtonState);
 </script>
 
 {% endblock %}
