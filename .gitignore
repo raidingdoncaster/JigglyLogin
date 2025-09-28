@@ -29,10 +29,13 @@ uploads/
 
 # --- Google Cloud / secrets ---
 pogo-passport-key.json
-*.json
 *.yaml
 *.yml
 *.ini
+
+# --- Allow manifest.json but ignore other JSON files ---
+*.json
+!static/manifest.json
 
 # --- Google SDK (don’t commit the whole SDK!) ---
 google-cloud-sdk/
