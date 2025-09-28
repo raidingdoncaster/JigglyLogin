@@ -1293,6 +1293,15 @@ def inject_inbox_preview():
         return {"inbox_preview": get_inbox_preview(trainer)}
     return {"inbox_preview": []}
 
+# ====== Expose account_type globally ======
+@app.context_processor
+def inject_account_type():
+    if "trainer" in session:
+        _, user = find_user(session["trainer"])
+        if user:
+            return {"account_type": user.get("account_type", "Standard")}
+    return {"account_type": "Guest"}
+
 # ====== Entrypoint ======
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)), debug=True)
