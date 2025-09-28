@@ -32,28 +32,11 @@
 </div>
 
 <style>
-.trainer-card {
-  position: relative;
-  background-size: cover;
-  background-position: center;
-  border-radius: 12px;
-  overflow: hidden;
-  margin-bottom: 20px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-  color: white;
-}
-.trainer-card-overlay {
-  position: absolute;
-  top: 0; left: 0;
-  width: 100%; height: 100%;
-  background: linear-gradient(to bottom, rgba(0,0,0,0.45), rgba(0,0,0,0.15));
-  z-index: 0;
-}
-.trainer-card-content {
-  position: relative;
-  z-index: 1;
-  padding: 20px;
-}
+.trainer-card { position: relative; background-size: cover; background-position: center;
+  border-radius: 12px; overflow: hidden; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); color: white; }
+.trainer-card-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+  background: linear-gradient(to bottom, rgba(0,0,0,0.45), rgba(0,0,0,0.15)); z-index: 0; }
+.trainer-card-content { position: relative; z-index: 1; padding: 20px; }
 .welcome-back { margin: 0; font-size: 0.9em; font-weight: 400; color: #eee; text-shadow: 0 1px 3px rgba(0,0,0,0.7); }
 .trainer-name { margin: 4px 0 10px 0; font-size: 1.6em; font-weight: 700; text-shadow: 0 2px 4px rgba(0,0,0,0.7); }
 .trainer-card p { margin: 6px 0; font-size: 0.95em; text-shadow: 0 1px 3px rgba(0,0,0,0.7); }
@@ -278,7 +261,35 @@ function urlBase64ToUint8Array(base64String) {
   return Uint8Array.from([...rawData].map((char) => char.charCodeAt(0)));
 }
 
-document.addEventListener("DOMContentLoaded", updateButtonState);
+// Detect standalone PWA
+function isStandalone() {
+  return (window.matchMedia('(display-mode: standalone)').matches) ||
+         (window.navigator.standalone === true);
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  updateButtonState();
+
+  // Auto-prompt only if installed app & first time
+  if (isStandalone() && !localStorage.getItem("notificationsPrompted")) {
+    localStorage.setItem("notificationsPrompted", "yes");
+
+    const notifBtn = [...document.querySelectorAll(".accordion-toggle")]
+      .find(b => b.textContent.includes("Notifications"));
+    if (notifBtn) {
+      notifBtn.classList.add("active");
+      const content = notifBtn.nextElementSibling;
+      content.style.maxHeight = content.scrollHeight + "px";
+    }
+
+    setTimeout(() => {
+      const subBtn = document.getElementById("subscribe-btn");
+      if (subBtn && !subBtn.disabled) {
+        subBtn.click();
+      }
+    }, 1000);
+  }
+});
 </script>
 
 {% endblock %}
