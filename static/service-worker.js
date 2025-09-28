@@ -1,38 +1,39 @@
 // static/service-worker.js
-self.addEventListener("install", (event) => {
+self.addEventListener('install', (evt) => {
   self.skipWaiting();
 });
-
-self.addEventListener("activate", (event) => {
-  event.waitUntil(self.clients.claim());
+self.addEventListener('activate', (evt) => {
+  evt.waitUntil(self.clients.claim());
 });
 
-// Show incoming push notifications
-self.addEventListener("push", (event) => {
+self.addEventListener('push', (event) => {
   let data = {};
-  try { data = event.data ? event.data.json() : {}; } catch (_) {}
+  try {
+    if (event.data) data = event.data.json();
+  } catch (e) {
+    data = { title: 'RDAB', body: event.data ? event.data.text() : 'You have a new message' };
+  }
 
-  const title = data.title || "RDAB";
+  const title = data.title || 'RDAB';
   const options = {
-    body: data.body || "You have a new notification.",
-    icon: "/static/icons/app-icon-192.png",
-    badge: "/static/icons/app-icon-192.png",
-    data: { url: data.url || "/" }
+    body: data.body || '',
+    icon: '/static/icons/app-icon-192.png',
+    badge: '/static/icons/app-icon-192.png',
+    data: data.url || '/inbox',
+    actions: [{ action: 'open', title: 'Open' }]
   };
 
   event.waitUntil(self.registration.showNotification(title, options));
 });
 
-self.addEventListener("notificationclick", (event) => {
+self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const target = (event.notification.data && event.notification.data.url) || "/";
+  const url = event.notification.data || '/';
   event.waitUntil(
-    self.clients.matchAll({ type: "window", includeUncontrolled: true })
-      .then((clientList) => {
-        for (const client of clientList) {
-          if ("focus" in client) return client.focus();
-        }
-        if (self.clients.openWindow) return self.clients.openWindow(target);
-      })
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((arr) => {
+      const existing = arr.find(c => c.url.includes(url));
+      if (existing) return existing.focus();
+      return clients.openWindow(url);
+    })
   );
 });

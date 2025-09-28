@@ -64,29 +64,33 @@ def service_worker():
 
 @app.route("/vapid_public_key")
 def vapid_public_key():
-    if not VAPID_PUBLIC_KEY:
-        return ("VAPID_PUBLIC_KEY is not set on the server", 400)
-    return VAPID_PUBLIC_KEY
+    key = (VAPID_PUBLIC_KEY or "").strip()
+    # Must be URL-safe base64 without padding and about 80–90 chars (65 bytes uncompressed EC point)
+    key = key.replace("\n", "").replace("\r", "")
+    if not key or any(ch in key for ch in [" ", "-----BEGIN", "PUBLIC KEY-----"]):
+        return ("Missing/invalid VAPID_PUBLIC_KEY", 400, {"Content-Type": "text/plain"})
+    return (key, 200, {"Content-Type": "text/plain; charset=utf-8"})
+
+def _to_b64url(s: str | None) -> str:
+    if not s: return ""
+    return s.replace("+", "-").replace("/", "_").rstrip("=")
 
 @app.route("/subscribe", methods=["POST"])
 def subscribe():
     if "trainer" not in session:
         return jsonify({"error": "Not logged in"}), 403
 
-    subscription = request.json
-    trainer = session["trainer"]
+    subscription = request.json or {}
+    endpoint = subscription.get("endpoint")
+    keys = subscription.get("keys", {})
+    p256dh = _to_b64url(keys.get("p256dh"))
+    auth   = _to_b64url(keys.get("auth"))
 
-    if not subscription or "endpoint" not in subscription:
+    if not endpoint or not p256dh or not auth:
         return jsonify({"error": "Invalid subscription data"}), 400
 
-    # Extract keys
-    endpoint = subscription["endpoint"]
-    keys = subscription.get("keys", {})
-    p256dh = keys.get("p256dh")
-    auth = keys.get("auth")
-
+    trainer = session["trainer"]
     try:
-        # Upsert to avoid duplicates
         supabase.table("push_subscriptions").upsert({
             "trainer_username": trainer,
             "endpoint": endpoint,
@@ -96,7 +100,7 @@ def subscribe():
         return jsonify({"success": True}), 200
     except Exception as e:
         print("⚠️ Failed saving subscription:", e)
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "DB error"}), 500
 
 @app.route("/unsubscribe", methods=["POST"])
 def unsubscribe():
@@ -125,43 +129,27 @@ def unsubscribe():
 @app.route("/push/test", methods=["POST"])
 def push_test():
     if "trainer" not in session:
-        return jsonify({"error": "Not logged in"}), 403
-
-    if not (VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY):
-        return jsonify({"error": "Server VAPID keys are not set"}), 500
-
+        return jsonify({"error":"Not logged in"}), 403
     trainer = session["trainer"]
     try:
-        # fetch all saved subs for this trainer
-        rows = supabase.table("push_subscriptions") \
-            .select("*").eq("trainer_username", trainer).execute().data or []
-
+        rows = supabase.table("push_subscriptions").select("*").eq("trainer_username", trainer).execute().data or []
         if not rows:
-            return jsonify({"error": "No subscriptions saved for this user"}), 404
-
-        sent = 0
-        for r in rows:
-            sub = {
-                "endpoint": r["endpoint"],
-                "keys": {"p256dh": r["p256dh"], "auth": r["auth"]},
-            }
+            return jsonify({"error":"No subscription"}), 404
+        payload = {"title":"RDAB", "body":"Test push from server 🎉", "url": "/inbox"}
+        for s in rows:
             try:
                 webpush(
-                    subscription_info=sub,
-                    data=json.dumps({"title": "RDAB", "body": "Test push ✅", "url": "/inbox"}),
+                    subscription_info={"endpoint": s["endpoint"], "keys": {"p256dh": s["p256dh"], "auth": s["auth"]}},
+                    data=json.dumps(payload),
                     vapid_private_key=VAPID_PRIVATE_KEY,
-                    vapid_claims=VAPID_CLAIMS,
+                    vapid_claims=VAPID_CLAIMS
                 )
-                sent += 1
             except WebPushException as e:
-                # Clean up expired/410 endpoints silently
-                if getattr(e.response, "status_code", None) in (404, 410):
-                    supabase.table("push_subscriptions") \
-                        .delete().eq("endpoint", r["endpoint"]).execute()
-        return jsonify({"ok": True, "sent": sent})
+                print("webpush failed:", e)
+        return jsonify({"sent": True})
     except Exception as e:
-        print("❌ push_test error:", e)
-        return jsonify({"error": "push_test failed"}), 500
+        print("push_test error:", e)
+        return jsonify({"error":"send failed"}), 500
 
 @app.route('/manifest.json')
 def manifest():
@@ -190,7 +178,7 @@ def inject_header_data():
 
         # Latest inbox messages (subject + created_at)
         try:
-            inbox_preview = get_inbox_preview(trainer, 3)
+            inbox_preview = get_inbox_preview(trainer)
         except Exception as e:
             print("⚠️ header inbox preview failed:", e)
 
