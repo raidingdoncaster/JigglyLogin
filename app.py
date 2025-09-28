@@ -7,12 +7,13 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 from google.oauth2.service_account import Credentials
 from werkzeug.utils import secure_filename
 from PIL import Image
+from pywebpush import webpush, WebPushException
 import pytesseract
 from datetime import datetime
 import io, base64, time
 
 # ====== Feature toggle ======
-USE_SUPABASE = True  # ✅ Supabase for stamps/meetups (Sheets fallback). Flip to False to force Sheets only.
+USE_SUPABASE = True  # ✅ Supabase for stamps/meetups
 
 # Try to import Supabase client
 try:
@@ -51,6 +52,34 @@ if USE_SUPABASE and create_client and SUPABASE_URL and SUPABASE_KEY:
     except Exception as e:
         print("⚠️ Could not init Supabase client:", e)
         supabase = None
+
+# ====== VAPID setup ======
+VAPID_PUBLIC_KEY = os.environ.get("VAPID_PUBLIC_KEY")
+VAPID_PRIVATE_KEY = os.environ.get("VAPID_PRIVATE_KEY")
+VAPID_CLAIMS = {"sub": "mailto:your-email@example.com"}
+
+@app.route("/vapid_public_key")
+def vapid_public_key():
+    return VAPID_PUBLIC_KEY or ""
+
+@app.route("/subscribe", methods=["POST"])
+def subscribe():
+    if "trainer" not in session:
+        return jsonify({"error": "Not logged in"}), 403
+
+    subscription = request.json
+    trainer = session["trainer"]
+
+    try:
+        supabase.table("push_subscriptions").insert({
+            "trainer_username": trainer,
+            "subscription": subscription
+        }).execute()
+        return jsonify({"success": True})
+    except Exception as e:
+        print("⚠️ Failed saving subscription:", e)
+        return jsonify({"error": str(e)}), 500
+
 
 # ===== Header =====
 @app.context_processor

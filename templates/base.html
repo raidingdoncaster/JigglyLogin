@@ -259,30 +259,90 @@
   </script>
 
   <script>
+  if ('serviceWorker' in navigator && 'PushManager' in window) {
+    navigator.serviceWorker.register('/static/sw.js')
+      .then(function(reg) {
+        console.log("✅ Service Worker registered:", reg);
+      })
+      .catch(function(err) {
+        console.error("❌ SW registration failed:", err);
+      });
+  }
+  </script>
+
+  <script>
+async function subscribeUser() {
+  try {
+    // 1. Get service worker
+    const reg = await navigator.serviceWorker.ready;
+
+    // 2. Get public VAPID key from backend
+    const response = await fetch("/vapid_public_key");
+    const vapidPublicKey = await response.text();
+
+    // Convert to Uint8Array
+    const convertedKey = urlBase64ToUint8Array(vapidPublicKey);
+
+    // 3. Subscribe
+    const subscription = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: convertedKey
+    });
+
+    console.log("✅ User subscribed:", subscription);
+
+    // 4. Send to backend
+    await fetch("/subscribe", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify(subscription)
+    });
+
+  } catch (err) {
+    console.error("❌ Subscription failed:", err);
+  }
+}
+
+// Helper to convert VAPID key
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
+  const rawData = atob(base64);
+  return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
+}
+
+// Run subscription once page loads
+if ('serviceWorker' in navigator && 'PushManager' in window) {
+  window.addEventListener('load', () => {
+    subscribeUser();
+  });
+}
+</script>
+
+  <script>
     let deferredPrompt;
 
     function isIos() {
       return /iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase());
     }
+
     function isInStandaloneMode() {
       return ('standalone' in window.navigator) && window.navigator.standalone;
     }
 
-    // Dismiss and remember choice
+    // Hide a banner manually
     function dismissBanner(id) {
       document.getElementById(id).style.display = 'none';
-      localStorage.setItem(id + "_dismissed", "true");
     }
 
-    // Android PWA prompt
+    // Android PWA install prompt
     window.addEventListener('beforeinstallprompt', (e) => {
       if (isIos()) return;
       e.preventDefault();
       deferredPrompt = e;
 
-      if (!localStorage.getItem("install-banner_dismissed")) {
-        document.getElementById('install-banner').style.display = 'flex';
-      }
+      // ✅ Always show banner
+      document.getElementById('install-banner').style.display = 'flex';
     });
 
     function installApp() {
@@ -297,7 +357,8 @@
 
     // iOS fallback
     window.addEventListener('DOMContentLoaded', () => {
-      if (isIos() && !isInStandaloneMode() && !localStorage.getItem("ios-install-banner_dismissed")) {
+      if (isIos() && !isInStandaloneMode()) {
+        // ✅ Always show banner
         document.getElementById('ios-install-banner').style.display = 'flex';
       }
     });
