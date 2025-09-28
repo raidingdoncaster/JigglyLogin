@@ -64,12 +64,7 @@ def service_worker():
 
 @app.route("/vapid_public_key")
 def vapid_public_key():
-    key = (VAPID_PUBLIC_KEY or "").strip()
-    # Must be URL-safe base64 without padding and about 80–90 chars (65 bytes uncompressed EC point)
-    key = key.replace("\n", "").replace("\r", "")
-    if not key or any(ch in key for ch in [" ", "-----BEGIN", "PUBLIC KEY-----"]):
-        return ("Missing/invalid VAPID_PUBLIC_KEY", 400, {"Content-Type": "text/plain"})
-    return (key, 200, {"Content-Type": "text/plain; charset=utf-8"})
+    return VAPID_PUBLIC_KEY
 
 def _to_b64url(s: str | None) -> str:
     if not s: return ""
