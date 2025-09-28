@@ -4,11 +4,10 @@
   <link rel="manifest" href="{{ url_for('manifest') }}">
   <meta name="theme-color" content="#3a8dde">
 
-  <!-- iOS special sauce -->
+  <!-- iOS PWA -->
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="RDAB">
-
   <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/app-icon-192.png') }}">
   <link rel="apple-touch-icon" sizes="512x512" href="{{ url_for('static', filename='icons/app-icon-512.png') }}">
 
@@ -52,54 +51,30 @@
     }
 
     /* --- NAV BAR --- */
-    .nav-icons{
-      display:flex; align-items:center;
-      gap:12px;
-    }
+    .nav-icons{ display:flex; align-items:center; gap:12px; }
     .nav-item{
-      width:44px; height:44px;
-      display:flex; align-items:center; justify-content:center;
-      padding:0; border:0; background:transparent; cursor:pointer;
-      flex:0 0 auto;
+      width:44px; height:44px; display:flex; align-items:center; justify-content:center;
+      padding:0; border:0; background:transparent; cursor:pointer; flex:0 0 auto;
     }
-    .nav-item img.nav-icon{
-      max-width:40px; max-height:40px;
-      width:auto; height:auto; display:block;
-    }
+    .nav-item img.nav-icon{ max-width:40px; max-height:40px; width:auto; height:auto; display:block; }
 
     /* Stamp container */
-    .stamp-container{
-      position:relative;
-      height:44px;
-      width:auto;
-      display:block;
-      margin:0 2px;
-    }
+    .stamp-container{ position:relative; height:44px; width:auto; display:block; margin:0 2px; }
     .stamp-container img{ height:100%; width:auto; display:block; }
     .stamp-container .stamp-count{
-      position:absolute;
-      top:50%; right:12px; transform:translateY(-50%);
-      font-weight:700; font-size:1.05em; color:#333;
-      line-height:1;
-      user-select:none;
+      position:absolute; top:50%; right:12px; transform:translateY(-50%);
+      font-weight:700; font-size:1.05em; color:#333; line-height:1; user-select:none;
     }
 
     /* Inbox dropdown */
     .inbox-wrapper{ position:relative; }
     .inbox-wrapper button.nav-item{
-      all:unset;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      width:44px;
-      height:44px;
-      cursor:pointer;
+      all:unset; display:flex; align-items:center; justify-content:center;
+      width:44px; height:44px; cursor:pointer;
     }
     .inbox-dropdown{
-      position:absolute; right:0; top:50px;
-      display:none; width:240px; background:#fff; color:#333;
-      border-radius:8px; box-shadow:0 8px 20px rgba(0,0,0,.2);
-      padding:8px; z-index:2000;
+      position:absolute; right:0; top:50px; display:none; width:240px; background:#fff; color:#333;
+      border-radius:8px; box-shadow:0 8px 20px rgba(0,0,0,.2); padding:8px; z-index:2000;
     }
     .inbox-dropdown ul{ list-style:none; margin:0; padding:0; }
     .inbox-dropdown li{ font-size:.9em; padding:6px 2px; border-bottom:1px solid #eee; }
@@ -252,23 +227,23 @@
     {% endif %}
   </div>
 
-  <!-- Register Service Worker -->
+  <!-- Register Service Worker (single canonical URL) -->
   <script>
-  if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("/static/service-worker.js")
-      .then(reg => console.log("✅ SW registered:", reg))
-      .catch(err => console.error("❌ SW failed:", err));
-  }
-  </script>
+  (function () {
+    if (!('serviceWorker' in navigator)) return;
 
-  <!-- Push Subscription -->
-  <script>
-  function urlBase64ToUint8Array(base64String) {
-    const padding = '='.repeat((4 - base64String.length % 4) % 4);
-    const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
-    const rawData = atob(base64);
-    return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
-  }
+    // Keep one URL everywhere; cache-bust with ?v=x when you update the worker.
+    const SW_URL = '/service-worker.js?v=7';
+
+    navigator.serviceWorker.register(SW_URL, { scope: '/' })
+      .then(reg => reg.update())        // pull the latest worker
+      .then(() => navigator.serviceWorker.ready)
+      .then(() => {
+        console.log('✅ Service Worker ready');
+        document.dispatchEvent(new CustomEvent('rdab-sw-ready'));
+      })
+      .catch(err => console.error('❌ SW failed:', err));
+  })();
   </script>
 
   <!-- Install Banners -->
@@ -278,26 +253,26 @@
     function isIos() {
       return /iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase());
     }
-
     function isInStandaloneMode() {
       return ('standalone' in window.navigator) && window.navigator.standalone;
     }
-
     function dismissBanner(id) {
-      document.getElementById(id).style.display = 'none';
+      const el = document.getElementById(id);
+      if (el) el.style.display = 'none';
     }
 
     window.addEventListener('beforeinstallprompt', (e) => {
       if (isIos()) return;
       e.preventDefault();
       deferredPrompt = e;
-      document.getElementById('install-banner').style.display = 'flex';
+      const el = document.getElementById('install-banner');
+      if (el) el.style.display = 'flex';
     });
 
     function installApp() {
       if (deferredPrompt) {
         deferredPrompt.prompt();
-        deferredPrompt.userChoice.then(() => {
+        deferredPrompt.userChoice.finally(() => {
           deferredPrompt = null;
           dismissBanner('install-banner');
         });
@@ -306,7 +281,8 @@
 
     window.addEventListener('DOMContentLoaded', () => {
       if (isIos() && !isInStandaloneMode()) {
-        document.getElementById('ios-install-banner').style.display = 'flex';
+        const el = document.getElementById('ios-install-banner');
+        if (el) el.style.display = 'flex';
       }
     });
   </script>
