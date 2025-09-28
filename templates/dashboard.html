@@ -203,6 +203,8 @@ document.querySelectorAll(".accordion-toggle").forEach(btn=>{
 
 async function updateButtonState() {
   const btn = document.getElementById("subscribe-btn");
+  if (!btn) return;
+
   if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
     btn.textContent = "❌ Not Supported";
     btn.disabled = true;
@@ -232,10 +234,16 @@ async function subscribeUser() {
       applicationServerKey: urlBase64ToUint8Array(vapidKey)
     });
 
+    const key = btoa(String.fromCharCode.apply(null, new Uint8Array(sub.getKey("p256dh"))));
+    const auth = btoa(String.fromCharCode.apply(null, new Uint8Array(sub.getKey("auth"))));
+
     await fetch("/subscribe", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(sub)
+      body: JSON.stringify({
+        endpoint: sub.endpoint,
+        keys: { p256dh: key, auth: auth }
+      })
     });
 
     alert("✅ Notifications enabled!");
@@ -248,10 +256,7 @@ async function subscribeUser() {
 
 async function unsubscribeUser(sub) {
   try {
-    // 1. Tell browser to drop the push subscription
     await sub.unsubscribe();
-
-    // 2. Tell backend to remove it (just endpoint is needed)
     await fetch("/unsubscribe", {
       method: "POST",
       headers: { "Content-Type": "application/json" },

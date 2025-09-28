@@ -7,7 +7,7 @@
   <!-- iOS special sauce -->
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <meta name="apple-mobile-web-app-title" content="Raiding Doncaster and Beyond">
+  <meta name="apple-mobile-web-app-title" content="RDAB">
 
   <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/app-icon-192.png') }}">
   <link rel="apple-touch-icon" sizes="512x512" href="{{ url_for('static', filename='icons/app-icon-512.png') }}">
@@ -252,10 +252,12 @@
     {% endif %}
   </div>
 
-  <!-- Register Service Workers -->
+  <!-- Register Service Worker -->
   <script>
   if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("/static/service-worker.js");
+    navigator.serviceWorker.register("/static/service-worker.js")
+      .then(reg => console.log("✅ SW registered:", reg))
+      .catch(err => console.error("❌ SW failed:", err));
   }
   </script>
 
@@ -266,41 +268,6 @@
     const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
     const rawData = atob(base64);
     return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
-  }
-
-  async function subscribeUser() {
-    try {
-      const reg = await navigator.serviceWorker.ready;
-
-      const response = await fetch("/vapid_public_key");
-      const vapidPublicKey = await response.text();
-      const convertedKey = urlBase64ToUint8Array(vapidPublicKey);
-
-      const subscription = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: convertedKey
-      });
-
-      console.log("✅ User subscribed:", subscription);
-
-      await fetch("/subscribe", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify(subscription)
-      });
-    } catch (err) {
-      console.error("❌ Subscription failed:", err);
-    }
-  }
-
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      if (!("PushManager" in window)) {
-        alert("❌ Push not supported here. Install app to Home Screen to enable notifications on iOS.");
-      } else {
-        subscribeUser();
-      }
-    });
   }
   </script>
 
