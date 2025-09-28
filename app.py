@@ -58,94 +58,6 @@ VAPID_PUBLIC_KEY = os.environ.get("MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEAbWEvTQ7p
 VAPID_PRIVATE_KEY = os.environ.get("MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgDJL244WZuoVzLqj3NvdTZ_fY-DtZqDQUakJdKV73myihRANCAAQBtYS9NDukM9rRD47x2sJWceZ-fNWmftbtSRyUpR3UD7IYh5796GpSNGAyn8fFIE8zKU38fzd99oTZ4MjJutNU")
 VAPID_CLAIMS = {"sub": "mailto:raidingdoncaster@gmail.com"}
 
-@app.route("/service-worker.js")
-def service_worker():
-    return send_from_directory('static', 'service-worker.js', mimetype="application/javascript")
-
-@app.route("/vapid_public_key")
-def vapid_public_key():
-    return VAPID_PUBLIC_KEY
-
-def _to_b64url(s: str | None) -> str:
-    if not s: return ""
-    return s.replace("+", "-").replace("/", "_").rstrip("=")
-
-@app.route("/subscribe", methods=["POST"])
-def subscribe():
-    if "trainer" not in session:
-        return jsonify({"error": "Not logged in"}), 403
-
-    subscription = request.json or {}
-    endpoint = subscription.get("endpoint")
-    keys = subscription.get("keys", {})
-    p256dh = _to_b64url(keys.get("p256dh"))
-    auth   = _to_b64url(keys.get("auth"))
-
-    if not endpoint or not p256dh or not auth:
-        return jsonify({"error": "Invalid subscription data"}), 400
-
-    trainer = session["trainer"]
-    try:
-        supabase.table("push_subscriptions").upsert({
-            "trainer_username": trainer,
-            "endpoint": endpoint,
-            "p256dh": p256dh,
-            "auth": auth,
-        }).execute()
-        return jsonify({"success": True}), 200
-    except Exception as e:
-        print("⚠️ Failed saving subscription:", e)
-        return jsonify({"error": "DB error"}), 500
-
-@app.route("/unsubscribe", methods=["POST"])
-def unsubscribe():
-    if "trainer" not in session:
-        return jsonify({"error": "Unauthorized"}), 401
-
-    data = request.get_json()
-    if not data or "endpoint" not in data:
-        return jsonify({"error": "Missing endpoint"}), 400
-
-    trainer = session["trainer"]
-    endpoint = data["endpoint"]
-
-    try:
-        supabase.table("push_subscriptions") \
-            .delete() \
-            .eq("trainer_username", trainer) \
-            .eq("endpoint", endpoint) \
-            .execute()
-
-        return jsonify({"success": True}), 200
-    except Exception as e:
-        print("❌ Unsubscribe error:", e)
-        return jsonify({"error": "Unsubscribe failed"}), 500
-
-@app.route("/push/test", methods=["POST"])
-def push_test():
-    if "trainer" not in session:
-        return jsonify({"error":"Not logged in"}), 403
-    trainer = session["trainer"]
-    try:
-        rows = supabase.table("push_subscriptions").select("*").eq("trainer_username", trainer).execute().data or []
-        if not rows:
-            return jsonify({"error":"No subscription"}), 404
-        payload = {"title":"RDAB", "body":"Test push from server 🎉", "url": "/inbox"}
-        for s in rows:
-            try:
-                webpush(
-                    subscription_info={"endpoint": s["endpoint"], "keys": {"p256dh": s["p256dh"], "auth": s["auth"]}},
-                    data=json.dumps(payload),
-                    vapid_private_key=VAPID_PRIVATE_KEY,
-                    vapid_claims=VAPID_CLAIMS
-                )
-            except WebPushException as e:
-                print("webpush failed:", e)
-        return jsonify({"sent": True})
-    except Exception as e:
-        print("push_test error:", e)
-        return jsonify({"error":"send failed"}), 500
-
 @app.route('/manifest.json')
 def manifest():
     return send_from_directory('static', 'manifest.json')
@@ -1349,7 +1261,7 @@ def change_avatar():
         flash("✅ Appearance updated successfully!", "success")
         return redirect(url_for("dashboard"))
 
-    avatars = [f"avatar{i}.png" for i in range(1, 13)]
+    avatars = [f"avatar{i}.png" for i in range(1, 20)]
     backgrounds_folder = os.path.join(app.root_path, "static", "backgrounds")
     backgrounds = os.listdir(backgrounds_folder)
 
