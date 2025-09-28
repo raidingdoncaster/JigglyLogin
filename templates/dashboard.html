@@ -248,11 +248,14 @@ async function subscribeUser() {
 
 async function unsubscribeUser(sub) {
   try {
+    // 1. Tell browser to drop the push subscription
     await sub.unsubscribe();
+
+    // 2. Tell backend to remove it (just endpoint is needed)
     await fetch("/unsubscribe", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(sub)
+      body: JSON.stringify({ endpoint: sub.endpoint })
     });
 
     alert("🔕 Notifications disabled!");

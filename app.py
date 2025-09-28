@@ -70,15 +70,28 @@ def subscribe():
     subscription = request.json
     trainer = session["trainer"]
 
+    if not subscription or "endpoint" not in subscription:
+        return jsonify({"error": "Invalid subscription data"}), 400
+
+    # Extract keys
+    endpoint = subscription["endpoint"]
+    keys = subscription.get("keys", {})
+    p256dh = keys.get("p256dh")
+    auth = keys.get("auth")
+
     try:
-        supabase.table("push_subscriptions").insert({
+        # Upsert to avoid duplicates
+        supabase.table("push_subscriptions").upsert({
             "trainer_username": trainer,
-            "subscription": subscription
+            "endpoint": endpoint,
+            "p256dh": p256dh,
+            "auth": auth,
         }).execute()
-        return jsonify({"success": True})
+        return jsonify({"success": True}), 200
     except Exception as e:
         print("⚠️ Failed saving subscription:", e)
         return jsonify({"error": str(e)}), 500
+
 
 @app.route("/unsubscribe", methods=["POST"])
 def unsubscribe():
@@ -86,17 +99,17 @@ def unsubscribe():
         return jsonify({"error": "Unauthorized"}), 401
 
     data = request.get_json()
-    if not data:
-        return jsonify({"error": "Missing subscription data"}), 400
+    if not data or "endpoint" not in data:
+        return jsonify({"error": "Missing endpoint"}), 400
 
     trainer = session["trainer"]
+    endpoint = data["endpoint"]
 
     try:
-        # Delete subscription from DB for trainer
         supabase.table("push_subscriptions") \
             .delete() \
             .eq("trainer_username", trainer) \
-            .eq("endpoint", data.get("endpoint")) \
+            .eq("endpoint", endpoint) \
             .execute()
 
         return jsonify({"success": True}), 200
