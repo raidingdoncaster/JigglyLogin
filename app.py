@@ -116,9 +116,65 @@ def unsubscribe():
         print("❌ Unsubscribe error:", e)
         return jsonify({"error": "Unsubscribe failed"}), 500
 
+@app.route("/push_test", methods=["POST"])
+def push_test():
+    if "trainer" not in session:
+        return redirect(url_for("home"))
+
+    if not (VAPID_PRIVATE_KEY and VAPID_PUBLIC_KEY):
+        flash("VAPID keys not configured on the server.", "error")
+        return redirect(url_for("dashboard"))
+
+    trainer = session["trainer"]
+    try:
+        # get this trainer's subscriptions
+        rows = (supabase.table("push_subscriptions")
+                .select("endpoint,p256dh,auth")
+                .eq("trainer_username", trainer)
+                .execute()).data or []
+
+        if not rows:
+            flash("No active push subscription found. Enable notifications first.", "warning")
+            return redirect(url_for("dashboard"))
+
+        sent = 0
+        for r in rows:
+            sub_info = {
+                "endpoint": r["endpoint"],
+                "keys": {"p256dh": r["p256dh"], "auth": r["auth"]}
+            }
+            payload = json.dumps({
+                "title": "RDAB ✅",
+                "body": "Test push delivered!",
+                "icon": "/static/icons/app-icon-192.png",
+                "url": url_for("inbox")
+            })
+            try:
+                webpush(
+                    subscription_info=sub_info,
+                    data=payload,
+                    vapid_private_key=VAPID_PRIVATE_KEY,
+                    vapid_claims=VAPID_CLAIMS
+                )
+                sent += 1
+            except WebPushException as e:
+                print("❌ webpush failed:", e)
+
+        flash(f"Sent {sent} test notification(s).", "success" if sent else "error")
+    except Exception as e:
+        print("❌ push_test error:", e)
+        flash("Could not send test notification.", "error")
+
+    return redirect(url_for("dashboard"))
+
 @app.route('/manifest.json')
 def manifest():
     return send_from_directory('static', 'manifest.json')
+
+@app.route('/service-worker.js')
+def service_worker():
+    # Serve from /static but at the root path so scope is "/"
+    return send_from_directory('static', 'service-worker.js', mimetype='application/javascript')
 
 # ===== Header =====
 @app.context_processor
@@ -400,17 +456,17 @@ def cover_from_event_name(event_name: str) -> str:
         print("⚠️ cover_from_event_name failed:", e)
     return ""
 
-def get_inbox_preview(trainer: str):
-    """Fetch up to 3 most recent notifications for nav bar preview."""
+def get_inbox_preview(trainer: str, limit: int = 3):
+    """Fetch up to N most recent notifications for nav bar preview."""
     if not supabase:
         return []
     try:
-        resp = supabase.table("notifications") \
-            .select("subject, message, sent_at") \
-            .eq("trainer_username", trainer) \
-            .order("sent_at", desc=True) \
-            .limit(3) \
-            .execute()
+        resp = (supabase.table("notifications")
+                .select("subject, message, sent_at, read_by")
+                .eq("audience", trainer)               # align with your /inbox() query
+                .order("sent_at", desc=True)
+                .limit(limit)
+                .execute())
         return resp.data or []
     except Exception as e:
         print("⚠️ Supabase inbox preview fetch failed:", e)

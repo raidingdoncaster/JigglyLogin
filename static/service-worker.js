@@ -1,47 +1,51 @@
-// --- Caching logic ---
-self.addEventListener("install", e => {
-  e.waitUntil(
-    caches.open("rdab-cache").then(cache => {
-      return cache.addAll(["/"]);
-    })
-  );
+/* RDAB Service Worker */
+
+self.addEventListener("install", (event) => {
+  self.skipWaiting();
 });
 
-self.addEventListener("fetch", e => {
-  e.respondWith(
-    caches.match(e.request).then(response => response || fetch(e.request))
-  );
+self.addEventListener("activate", (event) => {
+  event.waitUntil(self.clients.claim());
 });
 
-// --- Push notification logic ---
-self.addEventListener("push", function(event) {
-  console.log("[Service Worker] Push Received:", event);
-
+// Handle incoming push messages
+self.addEventListener("push", (event) => {
   let data = {};
-  if (event.data) {
-    try {
-      data = event.data.json();
-    } catch (err) {
-      console.error("❌ Failed to parse push data:", err);
-    }
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch (e) {
+    data = { title: "RDAB", body: event.data ? event.data.text() : "New notification" };
   }
 
-  const title = data.title || "📢 New Notification";
+  const title = data.title || "RDAB";
+  const body = data.body || "You have a new notification.";
+  const icon = data.icon || "/static/icons/app-icon-192.png";
+  const url  = data.url  || "/inbox";
+
   const options = {
-    body: data.body || "You have a new message.",
-    icon: "/static/icons/app-icon-192.png",   // app icon
-    badge: "/static/icons/app-icon-192.png",  // smaller badge icon
-    data: data.url || "/"                     // link to open when tapped
+    body,
+    icon,
+    badge: icon,
+    data: { url }
   };
 
   event.waitUntil(self.registration.showNotification(title, options));
 });
 
-self.addEventListener("notificationclick", function(event) {
-  console.log("[Service Worker] Notification click:", event);
+// Open the app when the user taps the notification
+self.addEventListener("notificationclick", (event) => {
   event.notification.close();
+  const url = (event.notification && event.notification.data && event.notification.data.url) || "/";
 
   event.waitUntil(
-    clients.openWindow(event.notification.data)  // open URL from payload
+    (async () => {
+      const allClients = await self.clients.matchAll({ includeUncontrolled: true, type: "window" });
+      const existing = allClients.find(c => c.url.includes("/") && "focus" in c);
+      if (existing) {
+        existing.navigate(url);
+        return existing.focus();
+      }
+      return self.clients.openWindow(url);
+    })()
   );
 });
