@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h1>📢 Notifications Center</h1>
+<p>Send announcements to trainers’ in-app inbox. Telegram integration coming soon.</p>
+
+<!-- Send Notification Form -->
+<div class="notif-form">
+  <form method="post">
+    <label>Type:</label>
+    <select name="type">
+      <option value="announcement">Announcement</option>
+      <option value="system">System</option>
+      <option value="prize">Prize</option>
+    </select>
+
+    <label>Audience:</label>
+    <input type="text" name="audience" placeholder="ALL or trainer_username">
+
+    <label>Subject:</label>
+    <input type="text" name="subject" required>
+
+    <label>Message:</label>
+    <textarea name="message" rows="4" required></textarea>
+
+    <button type="submit">Send Notification</button>
+  </form>
+</div>
+
+<!-- Recent Notifications -->
+<h2>🗂️ Recent Notifications</h2>
+<table class="stats-table">
+  <thead>
+    <tr>
+      <th>Sent</th>
+      <th>Audience</th>
+      <th>Subject</th>
+      <th>Message</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for n in notifications %}
+    <tr>
+      <td>{{ n.sent_at|to_date }}</td>
+      <td>{{ n.audience }}</td>
+      <td>{{ n.subject }}</td>
+      <td>{{ n.message }}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="4">No notifications yet.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<style>
+.notif-form {
+  background:#fff; padding:15px; border-radius:10px; margin-bottom:20px;
+  box-shadow:0 2px 6px rgba(0,0,0,0.1);
+}
+.notif-form label { display:block; margin-top:10px; font-weight:600; }
+.notif-form input, .notif-form select, .notif-form textarea {
+  width:100%; padding:8px; margin-top:5px; border:1px solid #ccc; border-radius:6px;
+}
+.notif-form button {
+  margin-top:12px; padding:10px 15px; background:#3a8dde; color:#fff;
+  border:none; border-radius:6px; font-weight:600; cursor:pointer;
+}
+</style>
+
+{% endblock %}

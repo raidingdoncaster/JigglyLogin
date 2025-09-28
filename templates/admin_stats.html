@@ -1,0 +1,209 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h1>📊 RDAB Stats</h1>
+
+<!-- Summary Cards -->
+<div class="stats-summary">
+  <div class="stat-card">
+    <h3>{{ total_meetups }}</h3>
+    <p>Total Meet-ups</p>
+  </div>
+  <div class="stat-card">
+    <h3>{{ total_attendances }}</h3>
+    <p>Total Attendances</p>
+  </div>
+  <div class="stat-card">
+    <h3>{{ avg_attendance }}</h3>
+    <p>Avg Attendance</p>
+  </div>
+</div>
+
+<!-- Engagement Highlights -->
+<div class="engagement-highlights">
+  <h2>✨ Engagement Highlights</h2>
+  <ul>
+    <li><strong>Highest Attendance:</strong> {{ highest_meetup.name }} ({{ highest_meetup.count }} attendees)</li>
+    <li><strong>Lowest Attendance:</strong> {{ lowest_meetup.name }} ({{ lowest_meetup.count }} attendees)</li>
+    <li><strong>Most Active Trainer:</strong> {{ top_trainer.name }} ({{ top_trainer.attendance_count }} meet-ups)</li>
+  </ul>
+</div>
+
+<!-- Top Meetups -->
+<h2>🏆 Top Attended Meet-ups</h2>
+<canvas id="topMeetupsChart" height="200"></canvas>
+<table class="stats-table">
+  <thead>
+    <tr>
+      <th>Meet-up</th>
+      <th>Date</th>
+      <th>Attendances</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for m in top_meetups %}
+    <tr>
+      <td>{{ m.name }}</td>
+      <td>{{ m.date|to_date }}</td>
+      <td>{{ m.count }}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="3">No data available.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<!-- Top Trainers -->
+<h2>💪 Top Trainers by Attendance</h2>
+<table class="stats-table">
+  <thead>
+    <tr>
+      <th>Trainer</th>
+      <th>Attendance Count</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for t in top_trainers %}
+    <tr>
+      <td>{{ t.name }}</td>
+      <td>{{ t.attendance_count }}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="2">No trainer data available.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<!-- Charts -->
+<div class="charts-grid">
+  <div>
+    <h2>📈 Growth Trends</h2>
+    <canvas id="growthChart" height="200"></canvas>
+  </div>
+  <div>
+    <h2>🏅 Stamp Distribution</h2>
+    <canvas id="stampsPie" height="200"></canvas>
+  </div>
+  <div>
+    <h2>👥 Account Types</h2>
+    <canvas id="accountTypesPie" height="200"></canvas>
+  </div>
+</div>
+
+<style>
+.stats-summary {
+  display:flex;
+  gap:12px;
+  margin-bottom:20px;
+}
+.stat-card {
+  flex:1;
+  background:#fff;
+  border-radius:10px;
+  padding:15px;
+  text-align:center;
+  box-shadow:0 2px 6px rgba(0,0,0,0.1);
+}
+.stat-card h3 { margin:0; font-size:1.8em; color:#3a8dde; }
+.stat-card p { margin:6px 0 0; font-size:0.9em; color:#555; }
+
+.stats-table {
+  width:100%;
+  border-collapse:collapse;
+  margin-top:15px;
+}
+.stats-table th, .stats-table td {
+  padding:10px;
+  border:1px solid #ddd;
+  text-align:left;
+}
+.stats-table th {
+  background:#f4f7fa;
+  color:#333;
+}
+
+.engagement-highlights {
+  margin:20px 0;
+  background:#fff;
+  border-radius:10px;
+  padding:15px;
+  box-shadow:0 2px 6px rgba(0,0,0,0.1);
+}
+.engagement-highlights ul {
+  list-style:none;
+  padding:0;
+  margin:0;
+}
+.engagement-highlights li { margin:6px 0; }
+
+.charts-grid {
+  display:grid;
+  grid-template-columns:repeat(auto-fit, minmax(250px,1fr));
+  gap:20px;
+  margin-top:25px;
+}
+</style>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  // Top Meetups
+  const meetupsCtx = document.getElementById("topMeetupsChart").getContext("2d");
+  new Chart(meetupsCtx, {
+    type: "bar",
+    data: {
+      labels: {{ top_meetups | map(attribute="name") | list | tojson }},
+      datasets: [{
+        label: "Attendances",
+        data: {{ top_meetups | map(attribute="count") | list | tojson }},
+        backgroundColor: "#3a8dde"
+      }]
+    },
+    options: { responsive:true, plugins:{ legend:{ display:false }}, scales:{ y:{ beginAtZero:true } } }
+  });
+
+  // Growth Trends
+  const growthCtx = document.getElementById("growthChart").getContext("2d");
+  new Chart(growthCtx, {
+    type: "line",
+    data: {
+      labels: {{ growth_trends | map(attribute="month") | list | tojson }},
+      datasets: [{
+        label: "Registrations",
+        data: {{ growth_trends | map(attribute="count") | list | tojson }},
+        borderColor: "#3a8dde",
+        fill: false
+      }]
+    }
+  });
+
+  // Stamps Pie
+  const stampsCtx = document.getElementById("stampsPie").getContext("2d");
+  new Chart(stampsCtx, {
+    type: "pie",
+    data: {
+      labels: {{ stamp_distribution | map(attribute="range") | list | tojson }},
+      datasets: [{
+        data: {{ stamp_distribution | map(attribute="count") | list | tojson }},
+        backgroundColor: ["#3a8dde","#5eb8ff","#ffdd57","#ff6b6b"]
+      }]
+    }
+  });
+
+  // Account Types Pie
+  const accountsCtx = document.getElementById("accountTypesPie").getContext("2d");
+  new Chart(accountsCtx, {
+    type: "pie",
+    data: {
+      labels: {{ account_types | map(attribute="type") | list | tojson }},
+      datasets: [{
+        data: {{ account_types | map(attribute="count") | list | tojson }},
+        backgroundColor: ["#3a8dde","#ffdd57","#ff6b6b"]
+      }]
+    }
+  });
+});
+</script>
+
+{% endblock %}

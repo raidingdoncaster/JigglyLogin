@@ -343,20 +343,30 @@ def cover_from_event_name(event_name: str) -> str:
     return ""
 
 def get_inbox_preview(trainer: str, limit: int = 3):
-    """Fetch up to N most recent notifications for nav bar preview."""
+    """Fetch recent notifications + unread count."""
     if not supabase:
         return []
     try:
+        # Fetch ALL + user-targeted
         resp = (supabase.table("notifications")
-                .select("subject, message, sent_at, read_by")
-                .eq("audience", trainer)               # align with your /inbox() query
+                .select("id, subject, message, sent_at, read_by")
+                .or_(f"audience.eq.{trainer},audience.eq.ALL")
                 .order("sent_at", desc=True)
                 .limit(limit)
                 .execute())
-        return resp.data or []
+        preview = resp.data or []
+
+        # Unread count
+        unread_resp = (supabase.table("notifications")
+                       .select("id, read_by")
+                       .or_(f"audience.eq.{trainer},audience.eq.ALL")
+                       .execute())
+        unread_count = sum(1 for n in unread_resp.data or [] if trainer not in (n.get("read_by") or []))
+
+        return {"preview": preview, "unread_count": unread_count}
     except Exception as e:
         print("⚠️ Supabase inbox preview fetch failed:", e)
-        return []
+        return {"preview": [], "unread_count": 0}
 
 # ====== Admin Panel ======
 from functools import wraps
@@ -612,11 +622,191 @@ def admin_reset_pin(username):
 # ====== Admin: RDAB Stats ======
 @app.route("/admin/stats")
 def admin_stats():
-    return render_template("admin_placeholder.html", title="RDAB Stats")
+    if "trainer" not in session:
+        flash("Please log in first.", "warning")
+        return redirect(url_for("home"))
 
-@app.route("/admin/notifications")
+    _, user = find_user(session["trainer"])
+    if not user or user.get("account_type") != "Admin":
+        flash("⛔ Access denied. Admins only.", "error")
+        return redirect(url_for("dashboard"))
+
+    # Defaults
+    total_meetups = total_attendances = avg_attendance = 0
+    top_meetups = []
+    highest_meetup = lowest_meetup = {"name": "N/A", "count": 0}
+    top_trainers = []
+    growth_trends = []
+    stamp_distribution = []
+    account_types = []
+    top_trainer = {"name": "N/A", "attendance_count": 0}
+
+    try:
+        # === Meetups + Attendance ===
+        ev_rows = supabase.table("events") \
+            .select("event_id, name, start_time") \
+            .execute().data or []
+
+        att_rows = supabase.table("attendance") \
+            .select("event_id, display_name, rsvp_status") \
+            .execute().data or []
+
+        # Filter checked-in
+        checked = [a for a in att_rows if str(a.get("rsvp_status", "")).upper() == "CHECKED_IN"]
+
+        # Count totals
+        total_meetups = len(ev_rows)
+        total_attendances = len(checked)
+        avg_attendance = round(total_attendances / total_meetups, 1) if total_meetups else 0
+
+        # Count attendance per meetup
+        meetup_counts = {}
+        for a in checked:
+            eid = str(a.get("event_id", "")).lower()
+            meetup_counts[eid] = meetup_counts.get(eid, 0) + 1
+
+        # Map back to event names/dates
+        ev_map = {str(e["event_id"]).lower(): e for e in ev_rows}
+        top_meetups = sorted(
+            [
+                {"name": ev_map[eid]["name"], "date": ev_map[eid]["start_time"], "count": c}
+                for eid, c in meetup_counts.items() if eid in ev_map
+            ],
+            key=lambda x: x["count"],
+            reverse=True
+        )[:5]
+
+        if top_meetups:
+            highest_meetup = top_meetups[0]
+            lowest_meetup = min(top_meetups, key=lambda m: m["count"])
+
+        # === Top Trainers by Attendance ===
+        trainer_counts = {}
+        for a in checked:
+            name = a.get("display_name", "Unknown")
+            trainer_counts[name] = trainer_counts.get(name, 0) + 1
+
+        top_trainers = sorted(
+            [{"name": n, "attendance_count": c} for n, c in trainer_counts.items()],
+            key=lambda x: x["attendance_count"],
+            reverse=True
+        )[:5]
+
+        if top_trainers:
+            top_trainer = top_trainers[0]
+
+        # === Growth Trends (registrations by month) ===
+        users = supabase.table("sheet1").select("trainer_username, last_login").execute().data or []
+        month_counts = {}
+        for u in users:
+            date_str = u.get("last_login")
+            if not date_str:
+                continue
+            try:
+                dt = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
+                key = dt.strftime("%Y-%m")
+                month_counts[key] = month_counts.get(key, 0) + 1
+            except Exception:
+                continue
+        growth_trends = [{"month": k, "count": v} for k, v in sorted(month_counts.items())]
+
+        # === Stamp Distribution (bucket by ranges) ===
+        stamps = [int(u.get("stamps") or 0) for u in users]
+        buckets = {"0": 0, "1-10": 0, "11-50": 0, "51+": 0}
+        for s in stamps:
+            if s == 0:
+                buckets["0"] += 1
+            elif s <= 10:
+                buckets["1-10"] += 1
+            elif s <= 50:
+                buckets["11-50"] += 1
+            else:
+                buckets["51+"] += 1
+        stamp_distribution = [{"range": k, "count": v} for k, v in buckets.items()]
+
+        # === Account Types ===
+        type_counts = {}
+        for u in users:
+            t = u.get("account_type", "Unknown")
+            type_counts[t] = type_counts.get(t, 0) + 1
+        account_types = [{"type": t, "count": c} for t, c in type_counts.items()]
+
+    except Exception as e:
+        print("⚠️ Error building RDAB stats:", e)
+
+    return render_template(
+        "admin_stats.html",
+        total_meetups=total_meetups,
+        total_attendances=total_attendances,
+        avg_attendance=avg_attendance,
+        top_meetups=top_meetups,
+        highest_meetup=highest_meetup,
+        lowest_meetup=lowest_meetup,
+        top_trainers=top_trainers,
+        top_trainer=top_trainer,
+        growth_trends=growth_trends,
+        stamp_distribution=stamp_distribution,
+        account_types=account_types,
+    )
+
+# ====== Admin: Notification Center ======
+@app.route("/admin/notifications", methods=["GET", "POST"])
 def admin_notifications():
-    return render_template("admin_placeholder.html", title="Notifications Center")
+    if "trainer" not in session:
+        flash("Please log in first.", "warning")
+        return redirect(url_for("home"))
+
+    _, user = find_user(session["trainer"])
+    if not user or user.get("account_type") != "Admin":
+        flash("⛔ Access denied. Admins only.", "error")
+        return redirect(url_for("dashboard"))
+
+    if request.method == "POST":
+        notif_type = request.form.get("type", "announcement")
+        audience   = request.form.get("audience", "ALL").strip()
+        subject    = request.form.get("subject", "").strip()
+        message    = request.form.get("message", "").strip()
+
+        if not subject or not message:
+            flash("Subject and message are required.", "warning")
+            return redirect(url_for("admin_notifications"))
+
+        try:
+            # Insert into Supabase notifications
+            supabase.table("notifications").insert({
+                "type": notif_type,
+                "audience": audience,   # could be "ALL" or a specific trainer_username
+                "subject": subject,
+                "message": message,
+                "metadata": {},         # JSONB for future (attachments, deep links, etc.)
+                "sent_at": datetime.utcnow().isoformat(),
+                "read_by": []
+            }).execute()
+
+            # 📡 Future: send to Telegram here
+            # if audience == "ALL":
+            #     send_to_telegram(subject, message)
+
+            flash("✅ Notification sent!", "success")
+        except Exception as e:
+            print("⚠️ Failed sending notification:", e)
+            flash("❌ Failed to send notification.", "error")
+
+        return redirect(url_for("admin_notifications"))
+
+    # Show recent notifications
+    notifications = []
+    try:
+        resp = supabase.table("notifications") \
+            .select("*") \
+            .order("sent_at", desc=True) \
+            .limit(20) \
+            .execute()
+        notifications = resp.data or []
+    except Exception as e:
+        print("⚠️ Failed loading notifications:", e)
+
+    return render_template("admin_notifications.html", notifications=notifications)
 
 # ====== Routes ======
 @app.route("/")
@@ -888,7 +1078,7 @@ def inbox():
         try:
             query = supabase.table("notifications") \
                 .select("*") \
-                .eq("audience", trainer)
+                .or_(f"audience.eq.{trainer},audience.eq.ALL")
 
             # Apply filters
             if sort_by == "unread":
@@ -1290,8 +1480,12 @@ def inject_nav_data():
 def inject_inbox_preview():
     trainer = session.get("trainer")
     if trainer:
-        return {"inbox_preview": get_inbox_preview(trainer)}
-    return {"inbox_preview": []}
+        data = get_inbox_preview(trainer)
+        return {
+            "inbox_preview": data["preview"],
+            "inbox_unread": data["unread_count"]
+        }
+    return {"inbox_preview": [], "inbox_unread": 0}
 
 # ====== Expose account_type globally ======
 @app.context_processor
