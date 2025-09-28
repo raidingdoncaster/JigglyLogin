@@ -1,19 +1,29 @@
-// --- Install & Cache ---
-self.addEventListener("install", (e) => {
-  e.waitUntil(
+// ===============================
+// RDAB Service Worker
+// - Handles caching (offline support)
+// - Handles push notifications
+// ===============================
+
+// ----- Install & Cache -----
+self.addEventListener("install", (event) => {
+  event.waitUntil(
     caches.open("rdab-cache").then((cache) => {
-      return cache.addAll(["/"]);
+      return cache.addAll(["/"]); // cache root page at install
+    })
+  );
+  self.skipWaiting(); // activate worker immediately
+});
+
+// ----- Fetch (Cache-first strategy) -----
+self.addEventListener("fetch", (event) => {
+  event.respondWith(
+    caches.match(event.request).then((response) => {
+      return response || fetch(event.request);
     })
   );
 });
 
-self.addEventListener("fetch", (e) => {
-  e.respondWith(
-    caches.match(e.request).then((response) => response || fetch(e.request))
-  );
-});
-
-// --- Push Notifications ---
+// ----- Push Notifications -----
 self.addEventListener("push", (event) => {
   console.log("[Service Worker] Push Received:", event);
 
@@ -21,9 +31,9 @@ self.addEventListener("push", (event) => {
   if (event.data) {
     try {
       data = event.data.json();
-    } catch (err) {
-      console.error("Push event data not JSON", err);
-      data = { body: event.data.text() };
+    } catch (e) {
+      console.warn("⚠️ Push data not JSON:", e);
+      data = { title: "📢 New Notification", body: event.data.text() };
     }
   }
 
@@ -32,18 +42,18 @@ self.addEventListener("push", (event) => {
     body: data.body || "You have a new message.",
     icon: "/static/icons/app-icon-192.png",
     badge: "/static/icons/app-icon-192.png",
-    data: data.url || "/",
+    data: data.url || "/", // default open root if no URL
   };
 
   event.waitUntil(self.registration.showNotification(title, options));
 });
 
-// --- Notification Click ---
+// ----- Handle Notification Click -----
 self.addEventListener("notificationclick", (event) => {
   console.log("[Service Worker] Notification click:", event);
   event.notification.close();
 
   event.waitUntil(
-    clients.openWindow(event.notification.data || "/")
+    clients.openWindow(event.notification.data) // go to URL
   );
 });
