@@ -179,7 +179,6 @@
 </style>
 
 <script>
-// Accordion
 document.querySelectorAll(".accordion-toggle").forEach(btn=>{
   btn.addEventListener("click",()=>{
     btn.classList.toggle("active");
@@ -188,97 +187,102 @@ document.querySelectorAll(".accordion-toggle").forEach(btn=>{
   });
 });
 
-// PWA detection
-function isStandalone() {
-  return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
-}
-
-function uiSet(btn, text, disabled, handler) {
-  btn.textContent = text;
-  btn.disabled = !!disabled;
-  btn.onclick = handler || null;
+// --- SW helpers ---
+async function ensureSW() {
+  if (!("serviceWorker" in navigator)) return null;
+  let reg = await navigator.serviceWorker.getRegistration();
+  if (!reg) {
+    try {
+      reg = await navigator.serviceWorker.register("/service-worker.js", { scope: "/" });
+    } catch (e) {
+      console.error("SW register failed:", e);
+      throw new Error("Service worker registration failed");
+    }
+  }
+  // wait until active
+  await navigator.serviceWorker.ready;
+  return reg;
 }
 
 async function updateButtonState() {
   const btn = document.getElementById("subscribe-btn");
-  const testBtn = document.getElementById("test-push-btn");
-  const msg = document.getElementById("notif-installed-msg");
   if (!btn) return;
 
-  // Must be installed
-  if (!isStandalone()) {
-    msg.style.display = "block";
-    uiSet(btn, "Install app to enable", true, null);
-    if (testBtn) testBtn.disabled = true;
-    return;
-  } else {
-    msg.style.display = "none";
-  }
-
-  // API support
-  if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) {
-    uiSet(btn, "❌ Not supported on this device", true, null);
-    if (testBtn) testBtn.disabled = true;
+  if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+    btn.textContent = "❌ Not Supported";
+    btn.disabled = true;
     return;
   }
 
-  const reg = await navigator.serviceWorker.ready;
-  const sub = await reg.pushManager.getSubscription();
-
-  if (Notification.permission === "denied") {
-    uiSet(btn, "Notifications blocked in Settings", true, null);
-    if (testBtn) testBtn.disabled = true;
-    return;
-  }
-
-  if (sub) {
-    uiSet(btn, "Disable Notifications", false, () => unsubscribeUser(sub));
-    if (testBtn) testBtn.disabled = false;
-  } else {
-    uiSet(btn, "Enable Notifications", false, askPermissionThenSubscribe);
-    if (testBtn) testBtn.disabled = true;
-  }
-}
-
-async function askPermissionThenSubscribe() {
   try {
-    // 👇 MUST be triggered by this click handler for iOS to show sheet
-    const permission = await Notification.requestPermission();
-    if (permission !== "granted") {
-      alert("Notifications permission not granted.");
-      return;
+    const reg = await ensureSW();
+    const sub = await reg.pushManager.getSubscription();
+    if (sub) {
+      btn.textContent = "Disable Notifications";
+      btn.onclick = () => unsubscribeUser(sub);
+    } else {
+      btn.textContent = "Enable Notifications";
+      btn.onclick = subscribeUser;
     }
-    await subscribeUser();
   } catch (e) {
-    console.error("Permission/subscription error:", e);
-    alert("Could not enable notifications.");
+    btn.textContent = "❌ Not Supported";
+    btn.disabled = true;
+    console.error(e);
   }
 }
 
 async function subscribeUser() {
-  const reg = await navigator.serviceWorker.ready;
-  const resp = await fetch("/vapid_public_key");
-  const vapidKey = await resp.text();
+  const btn = document.getElementById("subscribe-btn");
+  try {
+    const permission = await Notification.requestPermission();
+    if (permission !== "granted") {
+      alert("❌ Notifications permission not granted.");
+      return;
+    }
 
-  const sub = await reg.pushManager.subscribe({
-    userVisibleOnly: true,
-    applicationServerKey: urlBase64ToUint8Array(vapidKey)
-  });
+    const reg = await ensureSW();
 
-  const key = btoa(String.fromCharCode.apply(null, new Uint8Array(sub.getKey("p256dh"))));
-  const auth = btoa(String.fromCharCode.apply(null, new Uint8Array(sub.getKey("auth"))));
+    // Fetch VAPID key
+    const resp = await fetch("/vapid_public_key", { cache: "no-store" });
+    const vapidKey = await resp.text();
+    if (!resp.ok || !vapidKey) {
+      throw new Error("Server VAPID key missing. (Ask backend to set VAPID_PUBLIC_KEY)");
+    }
 
-  await fetch("/subscribe", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      endpoint: sub.endpoint,
-      keys: { p256dh: key, auth: auth }
-    })
-  });
+    const sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(vapidKey)
+    });
 
-  alert("✅ Notifications enabled!");
-  updateButtonState();
+    const key = btoa(String.fromCharCode.apply(null, new Uint8Array(sub.getKey("p256dh"))));
+    const auth = btoa(String.fromCharCode.apply(null, new Uint8Array(sub.getKey("auth"))));
+
+    const save = await fetch("/subscribe", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        endpoint: sub.endpoint,
+        keys: { p256dh: key, auth: auth }
+      })
+    });
+
+    if (!save.ok) {
+      const t = await save.text();
+      throw new Error("Save failed: " + t);
+    }
+
+    alert("✅ Notifications enabled!");
+    updateButtonState();
+  } catch (err) {
+    console.error("❌ Subscribe failed:", err);
+    alert("Could not enable notifications.\n\n" + (err && err.message ? err.message : err));
+    // Try to clean up half-created subscription to avoid weird states
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.getSubscription();
+      if (sub) await sub.unsubscribe();
+    } catch (_) {}
+  }
 }
 
 async function unsubscribeUser(sub) {
@@ -290,32 +294,34 @@ async function unsubscribeUser(sub) {
       body: JSON.stringify({ endpoint: sub.endpoint })
     });
     alert("🔕 Notifications disabled!");
-  } catch (e) {
-    console.error("Unsubscribe failed:", e);
-    alert("Could not unsubscribe.");
-  } finally {
     updateButtonState();
+  } catch (err) {
+    console.error("❌ Unsubscribe failed:", err);
+    alert("Could not unsubscribe.\n\n" + (err && err.message ? err.message : err));
   }
 }
 
 function urlBase64ToUint8Array(base64String) {
   const padding = "=".repeat((4 - base64String.length % 4) % 4);
-  const base64 = (base64String + padding).replace(/\-/g, "+").replace(/_/g, "/");
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
   const rawData = atob(base64);
   return Uint8Array.from([...rawData].map((c) => c.charCodeAt(0)));
 }
 
-// On load: register SW (if base.html doesn't do it)
-if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("/service-worker.js");
+// Detect standalone PWA (iOS & Android)
+function isStandalone() {
+  return (window.matchMedia('(display-mode: standalone)').matches) ||
+         (window.navigator.standalone === true);
 }
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
+  await ensureSW();              // <— guarantee SW is registered before anything
   updateButtonState();
 
-  // Optional nudge: if installed and never prompted, open the accordion once.
-  if (isStandalone() && !localStorage.getItem("notifNudged")) {
-    localStorage.setItem("notifNudged", "yes");
+  // Auto-prompt only if installed app & first time
+  if (isStandalone() && !localStorage.getItem("notificationsPrompted")) {
+    localStorage.setItem("notificationsPrompted", "yes");
+
     const notifBtn = [...document.querySelectorAll(".accordion-toggle")]
       .find(b => b.textContent.includes("Notifications"));
     if (notifBtn) {
@@ -323,6 +329,11 @@ document.addEventListener("DOMContentLoaded", () => {
       const content = notifBtn.nextElementSibling;
       content.style.maxHeight = content.scrollHeight + "px";
     }
+
+    setTimeout(() => {
+      const subBtn = document.getElementById("subscribe-btn");
+      if (subBtn && !subBtn.disabled) subBtn.click();
+    }, 800);
   }
 });
 </script>

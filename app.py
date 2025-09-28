@@ -58,9 +58,15 @@ VAPID_PUBLIC_KEY = os.environ.get("VAPID_PUBLIC_KEY")
 VAPID_PRIVATE_KEY = os.environ.get("VAPID_PRIVATE_KEY")
 VAPID_CLAIMS = {"sub": "mailto:your-email@example.com"}
 
+@app.route("/service-worker.js")
+def service_worker():
+    return send_from_directory('static', 'service-worker.js', mimetype="application/javascript")
+
 @app.route("/vapid_public_key")
 def vapid_public_key():
-    return VAPID_PUBLIC_KEY or ""
+    if not VAPID_PUBLIC_KEY:
+        return ("VAPID_PUBLIC_KEY is not set on the server", 400)
+    return VAPID_PUBLIC_KEY
 
 @app.route("/subscribe", methods=["POST"])
 def subscribe():
@@ -116,65 +122,50 @@ def unsubscribe():
         print("❌ Unsubscribe error:", e)
         return jsonify({"error": "Unsubscribe failed"}), 500
 
-@app.route("/push_test", methods=["POST"])
+@app.route("/push/test", methods=["POST"])
 def push_test():
     if "trainer" not in session:
-        return redirect(url_for("home"))
+        return jsonify({"error": "Not logged in"}), 403
 
-    if not (VAPID_PRIVATE_KEY and VAPID_PUBLIC_KEY):
-        flash("VAPID keys not configured on the server.", "error")
-        return redirect(url_for("dashboard"))
+    if not (VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY):
+        return jsonify({"error": "Server VAPID keys are not set"}), 500
 
     trainer = session["trainer"]
     try:
-        # get this trainer's subscriptions
-        rows = (supabase.table("push_subscriptions")
-                .select("endpoint,p256dh,auth")
-                .eq("trainer_username", trainer)
-                .execute()).data or []
+        # fetch all saved subs for this trainer
+        rows = supabase.table("push_subscriptions") \
+            .select("*").eq("trainer_username", trainer).execute().data or []
 
         if not rows:
-            flash("No active push subscription found. Enable notifications first.", "warning")
-            return redirect(url_for("dashboard"))
+            return jsonify({"error": "No subscriptions saved for this user"}), 404
 
         sent = 0
         for r in rows:
-            sub_info = {
+            sub = {
                 "endpoint": r["endpoint"],
-                "keys": {"p256dh": r["p256dh"], "auth": r["auth"]}
+                "keys": {"p256dh": r["p256dh"], "auth": r["auth"]},
             }
-            payload = json.dumps({
-                "title": "RDAB ✅",
-                "body": "Test push delivered!",
-                "icon": "/static/icons/app-icon-192.png",
-                "url": url_for("inbox")
-            })
             try:
                 webpush(
-                    subscription_info=sub_info,
-                    data=payload,
+                    subscription_info=sub,
+                    data=json.dumps({"title": "RDAB", "body": "Test push ✅", "url": "/inbox"}),
                     vapid_private_key=VAPID_PRIVATE_KEY,
-                    vapid_claims=VAPID_CLAIMS
+                    vapid_claims=VAPID_CLAIMS,
                 )
                 sent += 1
             except WebPushException as e:
-                print("❌ webpush failed:", e)
-
-        flash(f"Sent {sent} test notification(s).", "success" if sent else "error")
+                # Clean up expired/410 endpoints silently
+                if getattr(e.response, "status_code", None) in (404, 410):
+                    supabase.table("push_subscriptions") \
+                        .delete().eq("endpoint", r["endpoint"]).execute()
+        return jsonify({"ok": True, "sent": sent})
     except Exception as e:
         print("❌ push_test error:", e)
-        flash("Could not send test notification.", "error")
-
-    return redirect(url_for("dashboard"))
+        return jsonify({"error": "push_test failed"}), 500
 
 @app.route('/manifest.json')
 def manifest():
     return send_from_directory('static', 'manifest.json')
-
-@app.route('/service-worker.js')
-def service_worker():
-    # Serve from /static but at the root path so scope is "/"
-    return send_from_directory('static', 'service-worker.js', mimetype='application/javascript')
 
 # ===== Header =====
 @app.context_processor
