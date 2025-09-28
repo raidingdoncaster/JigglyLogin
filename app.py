@@ -1304,7 +1304,7 @@ def change_avatar():
         avatar_choice = request.form.get("avatar_choice")
         background_choice = request.form.get("background_choice")
 
-        valid_avatars = [f"avatar{i}.png" for i in range(1, 13)]
+        valid_avatars = [f"avatar{i}.png" for i in range(1, 20)]
         if avatar_choice not in valid_avatars:
             flash("Invalid avatar choice.", "error")
             return redirect(url_for("change_avatar"))
