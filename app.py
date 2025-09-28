@@ -3,7 +3,7 @@ import json
 import hashlib
 import gspread
 import requests
-from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify, g
+from flask import Flask, render_template, request, redirect, url_for, session, flash, send_from_directory, jsonify, g
 from google.oauth2.service_account import Credentials
 from werkzeug.utils import secure_filename
 from PIL import Image
@@ -92,7 +92,6 @@ def subscribe():
         print("⚠️ Failed saving subscription:", e)
         return jsonify({"error": str(e)}), 500
 
-
 @app.route("/unsubscribe", methods=["POST"])
 def unsubscribe():
     if "trainer" not in session:
@@ -116,6 +115,10 @@ def unsubscribe():
     except Exception as e:
         print("❌ Unsubscribe error:", e)
         return jsonify({"error": "Unsubscribe failed"}), 500
+
+@app.route('/manifest.json')
+def manifest():
+    return send_from_directory('static', 'manifest.json')
 
 # ===== Header =====
 @app.context_processor
