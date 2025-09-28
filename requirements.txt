@@ -7,3 +7,5 @@ pytesseract==0.3.13
 pillow==11.3.0
 gunicorn==23.0.0
 python-dateutil
+pywebpush
+cryptography
