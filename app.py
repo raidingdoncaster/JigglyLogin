@@ -438,11 +438,178 @@ def admin_dashboard():
         registered_trainers=registered_trainers
     )
 
-# ===== Placeholder Admin Pages =====
-@app.route("/admin/catalog")
-def admin_catalog():
-    return render_template("admin_placeholder.html", title="Catalog Manager")
+# ====== Catalog images folder ======
+from werkzeug.utils import secure_filename
+from datetime import datetime
+CATALOG_IMG_DIR = os.path.join(app.root_path, "static", "catalog")
+os.makedirs(CATALOG_IMG_DIR, exist_ok=True)
 
+def _is_admin():
+    if "trainer" not in session:
+        return False
+    _, u = find_user(session["trainer"])
+    return bool(u and u.get("account_type") == "Admin")
+
+def _tags_csv_to_array(csv: str | None):
+    if not csv:
+        return []
+    return [t.strip() for t in csv.split(",") if t.strip()]
+
+def _save_catalog_image(file_storage):
+    """Save uploaded image to /static/catalog and return its public URL path."""
+    if not file_storage or not getattr(file_storage, "filename", ""):
+        return None
+    fname = secure_filename(file_storage.filename)
+    # make unique
+    root, ext = os.path.splitext(fname)
+    stamp = datetime.utcnow().strftime("%Y%m%d%H%M%S")
+    fname = f"{root}_{stamp}{ext}"
+    path = os.path.join(CATALOG_IMG_DIR, fname)
+    file_storage.save(path)
+    return f"/static/catalog/{fname}"
+
+# ====== Admin: Catalog Manager ======
+@app.route("/admin/catalog", methods=["GET"])
+def admin_catalog():
+    if not _is_admin():
+        flash("Admins only.", "error")
+        return redirect(url_for("dashboard"))
+
+    items = []
+    try:
+        q = supabase.table("catalog_items") \
+            .select("*") \
+            .order("created_at", desc=True)
+        items = (q.execute().data) or []
+    except Exception as e:
+        print("⚠️ admin_catalog list failed:", e)
+        flash("Failed to load catalog items.", "error")
+
+    return render_template("admin_catalog.html", items=items)
+
+@app.route("/admin/catalog/create", methods=["POST"])
+def admin_catalog_create():
+    if not _is_admin():
+        flash("Admins only.", "error")
+        return redirect(url_for("dashboard"))
+
+    f = request.form
+    name        = f.get("name", "").strip()
+    description = f.get("description", "").strip()
+    cost        = int(f.get("cost_stamps") or 0)
+    stock       = int(f.get("stock") or 0)
+    active      = (f.get("active") == "on")
+    tags        = _tags_csv_to_array(f.get("tags"))
+    image_url   = f.get("image_url", "").strip()
+
+    # optional file upload
+    upload = request.files.get("image_file")
+    if upload and upload.filename:
+        saved_url = _save_catalog_image(upload)
+        if saved_url:
+            image_url = saved_url
+
+    if not name:
+        flash("Name is required.", "warning")
+        return redirect(url_for("admin_catalog"))
+
+    try:
+        supabase.table("catalog_items").insert({
+            "name": name,
+            "description": description,
+            "cost_stamps": cost,
+            "stock": stock,
+            "active": active,
+            "tags": tags,
+            "image_url": image_url or None,
+            "updated_at": datetime.utcnow().isoformat()
+        }).execute()
+        flash(f"✅ '{name}' created.", "success")
+    except Exception as e:
+        print("⚠️ admin_catalog_create failed:", e)
+        flash("Failed to create item.", "error")
+
+    return redirect(url_for("admin_catalog"))
+
+@app.route("/admin/catalog/<item_id>/update", methods=["POST"])
+def admin_catalog_update(item_id):
+    if not _is_admin():
+        flash("Admins only.", "error")
+        return redirect(url_for("dashboard"))
+
+    f = request.form
+    name        = f.get("name", "").strip()
+    description = f.get("description", "").strip()
+    cost        = int(f.get("cost_stamps") or 0)
+    stock       = int(f.get("stock") or 0)
+    active      = (f.get("active") == "on")
+    tags        = _tags_csv_to_array(f.get("tags"))
+    image_url   = f.get("image_url", "").strip()
+
+    upload = request.files.get("image_file")
+    if upload and upload.filename:
+        saved_url = _save_catalog_image(upload)
+        if saved_url:
+            image_url = saved_url
+
+    try:
+        payload = {
+            "name": name,
+            "description": description,
+            "cost_stamps": cost,
+            "stock": stock,
+            "active": active,
+            "tags": tags,
+            "updated_at": datetime.utcnow().isoformat()
+        }
+        # only set image_url if we have one (keeps current otherwise)
+        if image_url:
+            payload["image_url"] = image_url
+
+        supabase.table("catalog_items").update(payload).eq("id", item_id).execute()
+        flash("✅ Item updated.", "success")
+    except Exception as e:
+        print("⚠️ admin_catalog_update failed:", e)
+        flash("Failed to update item.", "error")
+
+    return redirect(url_for("admin_catalog"))
+
+@app.route("/admin/catalog/<item_id>/toggle", methods=["POST"])
+def admin_catalog_toggle(item_id):
+    if not _is_admin():
+        flash("Admins only.", "error")
+        return redirect(url_for("dashboard"))
+
+    try:
+        cur = supabase.table("catalog_items").select("active").eq("id", item_id).limit(1).execute().data
+        new_state = not bool(cur and cur[0].get("active"))
+        supabase.table("catalog_items").update({
+            "active": new_state,
+            "updated_at": datetime.utcnow().isoformat()
+        }).eq("id", item_id).execute()
+        flash(("🟢 Online" if new_state else "⚫ Offline"), "success")
+    except Exception as e:
+        print("⚠️ admin_catalog_toggle failed:", e)
+        flash("Failed to toggle active.", "error")
+
+    return redirect(url_for("admin_catalog"))
+
+@app.route("/admin/catalog/<item_id>/delete", methods=["POST"])
+def admin_catalog_delete(item_id):
+    if not _is_admin():
+        flash("Admins only.", "error")
+        return redirect(url_for("dashboard"))
+
+    try:
+        supabase.table("catalog_items").delete().eq("id", item_id).execute()
+        flash("🗑️ Item deleted.", "success")
+    except Exception as e:
+        print("⚠️ admin_catalog_delete failed:", e)
+        flash("Failed to delete item.", "error")
+
+    return redirect(url_for("admin_catalog"))
+
+# ===== Placeholder Admin Pages =====
 @app.route("/admin/meetups")
 def admin_meetups():
     return render_template("admin_placeholder.html", title="Catalog Meetup Manager")
@@ -450,6 +617,7 @@ def admin_meetups():
 @app.route("/admin/redemptions")
 def admin_redemptions():
     return render_template("admin_placeholder.html", title="Redemptions Manager")
+
 
 # ====== Admin: Trainer Manager ======
 @app.route("/admin/trainers", methods=["GET", "POST"])
@@ -620,133 +788,164 @@ def admin_reset_pin(username):
     return redirect(url_for("admin_trainer_detail", username=username))
 
 # ====== Admin: RDAB Stats ======
+from collections import Counter, defaultdict
+from datetime import datetime
 @app.route("/admin/stats")
+@admin_required
 def admin_stats():
-    if "trainer" not in session:
-        flash("Please log in first.", "warning")
-        return redirect(url_for("home"))
-
-    _, user = find_user(session["trainer"])
-    if not user or user.get("account_type") != "Admin":
-        flash("⛔ Access denied. Admins only.", "error")
-        return redirect(url_for("dashboard"))
-
-    # Defaults
-    total_meetups = total_attendances = avg_attendance = 0
-    top_meetups = []
-    highest_meetup = lowest_meetup = {"name": "N/A", "count": 0}
-    top_trainers = []
-    growth_trends = []
-    stamp_distribution = []
-    account_types = []
-    top_trainer = {"name": "N/A", "attendance_count": 0}
+    # --- Pull data ---
+    events = []
+    attendance = []
+    accounts = []
 
     try:
-        # === Meetups + Attendance ===
-        ev_rows = supabase.table("events") \
-            .select("event_id, name, start_time") \
-            .execute().data or []
-
-        att_rows = supabase.table("attendance") \
-            .select("event_id, display_name, rsvp_status") \
-            .execute().data or []
-
-        # Filter checked-in
-        checked = [a for a in att_rows if str(a.get("rsvp_status", "")).upper() == "CHECKED_IN"]
-
-        # Count totals
-        total_meetups = len(ev_rows)
-        total_attendances = len(checked)
-        avg_attendance = round(total_attendances / total_meetups, 1) if total_meetups else 0
-
-        # Count attendance per meetup
-        meetup_counts = {}
-        for a in checked:
-            eid = str(a.get("event_id", "")).lower()
-            meetup_counts[eid] = meetup_counts.get(eid, 0) + 1
-
-        # Map back to event names/dates
-        ev_map = {str(e["event_id"]).lower(): e for e in ev_rows}
-        top_meetups = sorted(
-            [
-                {"name": ev_map[eid]["name"], "date": ev_map[eid]["start_time"], "count": c}
-                for eid, c in meetup_counts.items() if eid in ev_map
-            ],
-            key=lambda x: x["count"],
-            reverse=True
-        )[:5]
-
-        if top_meetups:
-            highest_meetup = top_meetups[0]
-            lowest_meetup = min(top_meetups, key=lambda m: m["count"])
-
-        # === Top Trainers by Attendance ===
-        trainer_counts = {}
-        for a in checked:
-            name = a.get("display_name", "Unknown")
-            trainer_counts[name] = trainer_counts.get(name, 0) + 1
-
-        top_trainers = sorted(
-            [{"name": n, "attendance_count": c} for n, c in trainer_counts.items()],
-            key=lambda x: x["attendance_count"],
-            reverse=True
-        )[:5]
-
-        if top_trainers:
-            top_trainer = top_trainers[0]
-
-        # === Growth Trends (registrations by month) ===
-        users = supabase.table("sheet1").select("trainer_username, last_login").execute().data or []
-        month_counts = {}
-        for u in users:
-            date_str = u.get("last_login")
-            if not date_str:
-                continue
-            try:
-                dt = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
-                key = dt.strftime("%Y-%m")
-                month_counts[key] = month_counts.get(key, 0) + 1
-            except Exception:
-                continue
-        growth_trends = [{"month": k, "count": v} for k, v in sorted(month_counts.items())]
-
-        # === Stamp Distribution (bucket by ranges) ===
-        stamps = [int(u.get("stamps") or 0) for u in users]
-        buckets = {"0": 0, "1-10": 0, "11-50": 0, "51+": 0}
-        for s in stamps:
-            if s == 0:
-                buckets["0"] += 1
-            elif s <= 10:
-                buckets["1-10"] += 1
-            elif s <= 50:
-                buckets["11-50"] += 1
-            else:
-                buckets["51+"] += 1
-        stamp_distribution = [{"range": k, "count": v} for k, v in buckets.items()]
-
-        # === Account Types ===
-        type_counts = {}
-        for u in users:
-            t = u.get("account_type", "Unknown")
-            type_counts[t] = type_counts.get(t, 0) + 1
-        account_types = [{"type": t, "count": c} for t, c in type_counts.items()]
-
+        events = (supabase.table("events")
+                  .select("event_id,name,start_time,cover_photo_url")
+                  .execute().data) or []
     except Exception as e:
-        print("⚠️ Error building RDAB stats:", e)
+        print("⚠️ events fetch failed:", e)
+
+    try:
+        attendance = (supabase.table("attendance")
+                      .select("event_id,rsvp_status,campfire_username,display_name,checked_in_at")
+                      .execute().data) or []
+    except Exception as e:
+        print("⚠️ attendance fetch failed:", e)
+
+    try:
+        accounts = (supabase.table("sheet1")
+                    .select("trainer_username,account_type,stamps")
+                    .execute().data) or []
+    except Exception as e:
+        print("⚠️ accounts fetch failed:", e)
+
+    # --- Index events by id ---
+    ev_map = {}
+    month_of_event = {}
+    for e in events:
+        eid = str(e.get("event_id") or "").strip().lower()
+        ev_map[eid] = {
+            "name": e.get("name") or "Unknown",
+            "date": e.get("start_time") or "",
+            "cover": e.get("cover_photo_url") or ""
+        }
+        try:
+            dt = datetime.fromisoformat((e.get("start_time") or "").replace("Z", "+00:00"))
+            month_of_event[eid] = dt.strftime("%Y-%m")  # e.g. 2025-02
+        except Exception:
+            month_of_event[eid] = None
+
+    # --- Keep only unique CHECKED_IN entries (event_id + user) ---
+    def norm_status(s):
+        return (s or "").upper().replace("-", "_").strip()
+
+    def norm_user(row):
+        return (row.get("campfire_username") or row.get("display_name") or "").strip().lower()
+
+    unique_checkins = set()
+    for r in attendance:
+        if norm_status(r.get("rsvp_status")) != "CHECKED_IN":
+            continue
+        eid = str(r.get("event_id") or "").strip().lower()
+        user = norm_user(r)
+        if not eid or not user:
+            continue
+        unique_checkins.add((eid, user))
+
+    # --- Aggregations ---
+    total_attendances = len(unique_checkins)
+    counts_by_event = Counter(eid for eid, _ in unique_checkins)
+    counts_by_trainer = Counter(user for _, user in unique_checkins)
+
+    # Top meetups (join with event info)
+    top_meetups = []
+    for eid, cnt in counts_by_event.most_common(10):
+        meta = ev_map.get(eid, {})
+        top_meetups.append({
+            "event_id": eid,
+            "name": meta.get("name", "Unknown"),
+            "date": meta.get("date", ""),
+            "count": cnt
+        })
+
+    # Top trainers
+    top_trainers = [{"trainer": t or "unknown", "count": c}
+                    for t, c in counts_by_trainer.most_common(10)]
+
+    # Growth trends (per month)
+    events_per_month = Counter()
+    for eid, meta in ev_map.items():
+        m = month_of_event.get(eid)
+        if m: events_per_month[m] += 1
+
+    attend_per_month = Counter()
+    for eid, _ in unique_checkins:
+        m = month_of_event.get(eid)
+        if m: attend_per_month[m] += 1
+
+    # Build a unified month axis (sorted)
+    months = sorted(set(events_per_month.keys()) | set(attend_per_month.keys()))
+    growth_labels = months
+    growth_events = [events_per_month[m] for m in months]
+    growth_attend = [attend_per_month[m] for m in months]
+
+    # Stamp distribution
+    bins = {"0–4": 0, "5–9": 0, "10–19": 0, "20+": 0}
+    for a in accounts:
+        try:
+            s = int(a.get("stamps") or 0)
+        except Exception:
+            s = 0
+        if s <= 4: bins["0–4"] += 1
+        elif s <= 9: bins["5–9"] += 1
+        elif s <= 19: bins["10–19"] += 1
+        else: bins["20+"] += 1
+    stamp_labels = list(bins.keys())
+    stamp_counts = list(bins.values())
+
+    # Account types pie
+    acct_counter = Counter((a.get("account_type") or "Standard") for a in accounts)
+    account_labels = list(acct_counter.keys())
+    account_counts = list(acct_counter.values())
+
+    # Summary numbers
+    total_meetups = len(events)                 # all events in table
+    meetups_with_checkins = len(counts_by_event)  # events that had at least one check-in
+    unique_attendees = len(counts_by_trainer)
+    avg_attendance = round(total_attendances / max(meetups_with_checkins, 1), 1)
+
+    # Returning vs new attendees
+    new_only = sum(1 for _, c in counts_by_trainer.items() if c == 1)
+    returning_pct = round(100 * (1 - (new_only / max(unique_attendees, 1))), 1)
+
+    # Engagement highlights
+    highlights = {
+        "avg_attendance": avg_attendance,
+        "unique_attendees": unique_attendees,
+        "meetups_with_checkins": meetups_with_checkins,
+        "returning_pct": returning_pct
+    }
 
     return render_template(
         "admin_stats.html",
+        # summary cards
         total_meetups=total_meetups,
         total_attendances=total_attendances,
-        avg_attendance=avg_attendance,
-        top_meetups=top_meetups,
-        highest_meetup=highest_meetup,
-        lowest_meetup=lowest_meetup,
-        top_trainers=top_trainers,
-        top_trainer=top_trainer,
-        growth_trends=growth_trends,
-        stamp_distribution=stamp_distribution,
-        account_types=account_types,
+        # top meetups
+        top_meetups=top_meetups,  # [{name,date,count}]
+        # top trainers
+        top_trainers=top_trainers,  # [{trainer,count}]
+        # growth
+        growth_labels=growth_labels,
+        growth_events=growth_events,
+        growth_attend=growth_attend,
+        # distributions
+        stamp_labels=stamp_labels,
+        stamp_counts=stamp_counts,
+        account_labels=account_labels,
+        account_counts=account_counts,
+        # highlights
+        highlights=highlights
     )
 
 # ====== Admin: Notification Center ======

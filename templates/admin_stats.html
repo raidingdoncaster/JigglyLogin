@@ -14,19 +14,26 @@
     <p>Total Attendances</p>
   </div>
   <div class="stat-card">
-    <h3>{{ avg_attendance }}</h3>
-    <p>Avg Attendance</p>
+    <h3>{{ highlights.unique_attendees }}</h3>
+    <p>Unique Attendees</p>
+  </div>
+  <div class="stat-card">
+    <h3>{{ highlights.avg_attendance }}</h3>
+    <p>Avg Attendance / Meetup</p>
   </div>
 </div>
 
 <!-- Engagement Highlights -->
-<div class="engagement-highlights">
-  <h2>✨ Engagement Highlights</h2>
-  <ul>
-    <li><strong>Highest Attendance:</strong> {{ highest_meetup.name }} ({{ highest_meetup.count }} attendees)</li>
-    <li><strong>Lowest Attendance:</strong> {{ lowest_meetup.name }} ({{ lowest_meetup.count }} attendees)</li>
-    <li><strong>Most Active Trainer:</strong> {{ top_trainer.name }} ({{ top_trainer.attendance_count }} meet-ups)</li>
-  </ul>
+<h2>✨ Engagement Highlights</h2>
+<div class="highlight-grid">
+  <div class="highlight">
+    <strong>{{ highlights.meetups_with_checkins }}</strong>
+    <p>Meetups with Check-ins</p>
+  </div>
+  <div class="highlight">
+    <strong>{{ highlights.returning_pct }}%</strong>
+    <p>Returning Attendees</p>
+  </div>
 </div>
 
 <!-- Top Meetups -->
@@ -55,62 +62,60 @@
 
 <!-- Top Trainers -->
 <h2>💪 Top Trainers by Attendance</h2>
+<canvas id="topTrainersChart" height="200"></canvas>
 <table class="stats-table">
   <thead>
     <tr>
       <th>Trainer</th>
-      <th>Attendance Count</th>
+      <th>Attendances</th>
     </tr>
   </thead>
   <tbody>
     {% for t in top_trainers %}
     <tr>
-      <td>{{ t.name }}</td>
-      <td>{{ t.attendance_count }}</td>
+      <td>{{ t.trainer }}</td>
+      <td>{{ t.count }}</td>
     </tr>
     {% else %}
-    <tr><td colspan="2">No trainer data available.</td></tr>
+    <tr><td colspan="2">No data available.</td></tr>
     {% endfor %}
   </tbody>
 </table>
 
-<!-- Charts -->
-<div class="charts-grid">
-  <div>
-    <h2>📈 Growth Trends</h2>
-    <canvas id="growthChart" height="200"></canvas>
-  </div>
-  <div>
-    <h2>🏅 Stamp Distribution</h2>
-    <canvas id="stampsPie" height="200"></canvas>
-  </div>
-  <div>
-    <h2>👥 Account Types</h2>
-    <canvas id="accountTypesPie" height="200"></canvas>
-  </div>
-</div>
+<!-- Growth Trends -->
+<h2>📈 Growth Trends</h2>
+<canvas id="growthChart" height="200"></canvas>
+
+<!-- Distributions -->
+<h2>🧾 Stamp Distribution</h2>
+<canvas id="stampChart" height="200"></canvas>
+
+<h2>👤 Account Types</h2>
+<canvas id="accountChart" height="200"></canvas>
 
 <style>
 .stats-summary {
   display:flex;
+  flex-wrap:wrap;
   gap:12px;
   margin-bottom:20px;
 }
 .stat-card {
   flex:1;
+  min-width:120px;
   background:#fff;
   border-radius:10px;
   padding:15px;
   text-align:center;
   box-shadow:0 2px 6px rgba(0,0,0,0.1);
 }
-.stat-card h3 { margin:0; font-size:1.8em; color:#3a8dde; }
+.stat-card h3 { margin:0; font-size:1.6em; color:#3a8dde; }
 .stat-card p { margin:6px 0 0; font-size:0.9em; color:#555; }
 
 .stats-table {
   width:100%;
   border-collapse:collapse;
-  margin-top:15px;
+  margin:15px 0;
 }
 .stats-table th, .stats-table td {
   padding:10px;
@@ -121,26 +126,22 @@
   background:#f4f7fa;
   color:#333;
 }
-
-.engagement-highlights {
-  margin:20px 0;
+.highlight-grid {
+  display:flex;
+  gap:12px;
+  margin-bottom:20px;
+}
+.highlight {
+  flex:1;
   background:#fff;
-  border-radius:10px;
-  padding:15px;
+  padding:12px;
+  border-radius:8px;
+  text-align:center;
   box-shadow:0 2px 6px rgba(0,0,0,0.1);
 }
-.engagement-highlights ul {
-  list-style:none;
-  padding:0;
-  margin:0;
-}
-.engagement-highlights li { margin:6px 0; }
-
-.charts-grid {
-  display:grid;
-  grid-template-columns:repeat(auto-fit, minmax(250px,1fr));
-  gap:20px;
-  margin-top:25px;
+.highlight strong {
+  font-size:1.3em;
+  color:#3a8dde;
 }
 </style>
 
@@ -149,8 +150,7 @@
 <script>
 document.addEventListener("DOMContentLoaded", () => {
   // Top Meetups
-  const meetupsCtx = document.getElementById("topMeetupsChart").getContext("2d");
-  new Chart(meetupsCtx, {
+  new Chart(document.getElementById("topMeetupsChart"), {
     type: "bar",
     data: {
       labels: {{ top_meetups | map(attribute="name") | list | tojson }},
@@ -160,46 +160,56 @@ document.addEventListener("DOMContentLoaded", () => {
         backgroundColor: "#3a8dde"
       }]
     },
-    options: { responsive:true, plugins:{ legend:{ display:false }}, scales:{ y:{ beginAtZero:true } } }
+    options: { responsive: true, plugins: { legend: { display:false } } }
+  });
+
+  // Top Trainers
+  new Chart(document.getElementById("topTrainersChart"), {
+    type: "bar",
+    data: {
+      labels: {{ top_trainers | map(attribute="trainer") | list | tojson }},
+      datasets: [{
+        label: "Attendances",
+        data: {{ top_trainers | map(attribute="count") | list | tojson }},
+        backgroundColor: "#5eb8ff"
+      }]
+    },
+    options: { responsive: true, plugins: { legend: { display:false } } }
   });
 
   // Growth Trends
-  const growthCtx = document.getElementById("growthChart").getContext("2d");
-  new Chart(growthCtx, {
+  new Chart(document.getElementById("growthChart"), {
     type: "line",
     data: {
-      labels: {{ growth_trends | map(attribute="month") | list | tojson }},
+      labels: {{ growth_labels | tojson }},
+      datasets: [
+        { label: "Meet-ups", data: {{ growth_events | tojson }}, borderColor: "#3a8dde", fill:false },
+        { label: "Attendances", data: {{ growth_attend | tojson }}, borderColor: "#ff9900", fill:false }
+      ]
+    },
+    options: { responsive: true }
+  });
+
+  // Stamp Distribution
+  new Chart(document.getElementById("stampChart"), {
+    type: "pie",
+    data: {
+      labels: {{ stamp_labels | tojson }},
       datasets: [{
-        label: "Registrations",
-        data: {{ growth_trends | map(attribute="count") | list | tojson }},
-        borderColor: "#3a8dde",
-        fill: false
+        data: {{ stamp_counts | tojson }},
+        backgroundColor: ["#3a8dde","#5eb8ff","#87cefa","#b0e0e6"]
       }]
     }
   });
 
-  // Stamps Pie
-  const stampsCtx = document.getElementById("stampsPie").getContext("2d");
-  new Chart(stampsCtx, {
+  // Account Types
+  new Chart(document.getElementById("accountChart"), {
     type: "pie",
     data: {
-      labels: {{ stamp_distribution | map(attribute="range") | list | tojson }},
+      labels: {{ account_labels | tojson }},
       datasets: [{
-        data: {{ stamp_distribution | map(attribute="count") | list | tojson }},
-        backgroundColor: ["#3a8dde","#5eb8ff","#ffdd57","#ff6b6b"]
-      }]
-    }
-  });
-
-  // Account Types Pie
-  const accountsCtx = document.getElementById("accountTypesPie").getContext("2d");
-  new Chart(accountsCtx, {
-    type: "pie",
-    data: {
-      labels: {{ account_types | map(attribute="type") | list | tojson }},
-      datasets: [{
-        data: {{ account_types | map(attribute="count") | list | tojson }},
-        backgroundColor: ["#3a8dde","#ffdd57","#ff6b6b"]
+        data: {{ account_counts | tojson }},
+        backgroundColor: ["#3a8dde","#ff9900","#77dd77","#ff6961"]
       }]
     }
   });

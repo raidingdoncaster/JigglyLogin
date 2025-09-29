@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h1>🛒 Catalog Manager</h1>
+<p>Create, edit, toggle online/offline, and manage stock & tags.</p>
+
+<!-- Create New Item -->
+<div class="card">
+  <h3>➕ Create New Item</h3>
+  <form action="{{ url_for('admin_catalog_create') }}" method="post" enctype="multipart/form-data" class="grid two">
+    <label>
+      Name
+      <input type="text" name="name" required>
+    </label>
+    <label>
+      Cost (stamps)
+      <input type="number" name="cost_stamps" min="0" value="0">
+    </label>
+    <label class="colspan">
+      Description
+      <textarea name="description" rows="3" placeholder="What is it? Any limits, expiry, etc."></textarea>
+    </label>
+    <label>
+      Stock
+      <input type="number" name="stock" min="0" value="0">
+    </label>
+    <label>
+      Tags (comma-separated)
+      <input type="text" name="tags" placeholder="e.g. plush,shiny,limited">
+    </label>
+    <label>
+      Image URL (optional)
+      <input type="url" name="image_url" placeholder="https://…">
+    </label>
+    <label>
+      Or Upload Image
+      <input type="file" name="image_file" accept="image/*">
+    </label>
+    <label class="check">
+      <input type="checkbox" name="active" checked> Online (active)
+    </label>
+    <div class="actions colspan">
+      <button type="submit">Create Item</button>
+    </div>
+  </form>
+</div>
+
+<!-- Current Catalog -->
+<h2 style="margin-top:18px;">📦 Current Stock</h2>
+
+{% if items %}
+<div class="catalog-grid">
+  {% for it in items %}
+  <div class="item-card {{ 'offline' if not it.active }}">
+    <div class="thumb" style="background-image:url('{{ it.image_url or url_for('static', filename='icons/catalog-app.png') }}');"></div>
+
+    <div class="meta">
+      <div class="title-row">
+        <strong>{{ it.name }}</strong>
+        <span class="badge {{ 'on' if it.active else 'off' }}">{{ 'Online' if it.active else 'Offline' }}</span>
+      </div>
+      <div class="pill-row">
+        <span class="pill">🪙 {{ it.cost_stamps or 0 }}</span>
+        <span class="pill {{ 'low' if (it.stock or 0) <= 3 else '' }}">📦 {{ it.stock or 0 }}</span>
+      </div>
+      {% if it.tags and it.tags|length %}
+      <div class="tags">
+        {% for t in it.tags %}
+        <span class="tag">#{{ t }}</span>
+        {% endfor %}
+      </div>
+      {% endif %}
+      <p class="desc">{{ it.description or '' }}</p>
+    </div>
+
+    <!-- Edit form -->
+    <form action="{{ url_for('admin_catalog_update', item_id=it.id) }}" method="post" enctype="multipart/form-data" class="edit-form">
+      <input type="text" name="name" value="{{ it.name }}" placeholder="Name">
+      <input type="number" name="cost_stamps" min="0" value="{{ it.cost_stamps or 0 }}" placeholder="Cost">
+      <input type="number" name="stock" min="0" value="{{ it.stock or 0 }}" placeholder="Stock">
+      <input type="text" name="tags" value="{{ (it.tags or []) | join(', ') }}" placeholder="tag1, tag2">
+      <input type="url" name="image_url" value="{{ it.image_url or '' }}" placeholder="Image URL">
+      <input type="file" name="image_file" accept="image/*">
+      <label class="check small">
+        <input type="checkbox" name="active" {% if it.active %}checked{% endif %}> Online
+      </label>
+      <textarea name="description" rows="2" placeholder="Description">{{ it.description or '' }}</textarea>
+
+      <div class="row-actions">
+        <button type="submit">Save</button>
+      </div>
+    </form>
+
+    <!-- Row of quick actions -->
+    <div class="quick-actions">
+      <form action="{{ url_for('admin_catalog_toggle', item_id=it.id) }}" method="post">
+        <button type="submit" class="secondary">{{ 'Go Offline' if it.active else 'Go Online' }}</button>
+      </form>
+      <form action="{{ url_for('admin_catalog_delete', item_id=it.id) }}" method="post" onsubmit="return confirm('Delete {{ it.name }}? This cannot be undone.');">
+        <button type="submit" class="danger">Delete</button>
+      </form>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<p>No catalog items yet.</p>
+{% endif %}
+
+<style>
+.card {
+  background:#fff; border-radius:10px; padding:14px;
+  box-shadow:0 2px 6px rgba(0,0,0,0.08); margin-bottom:16px;
+}
+.grid.two { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.grid.two .colspan { grid-column:1 / -1; }
+.check { display:flex; align-items:center; gap:8px; }
+.actions { text-align:right; }
+.actions button { background:#3a8dde; color:#fff; border:none; padding:8px 12px; border-radius:6px; font-weight:600; cursor:pointer; }
+
+.catalog-grid {
+  display:grid;
+  grid-template-columns: 1fr;
+  gap:12px;
+}
+@media(min-width:560px){ .catalog-grid{ grid-template-columns:1fr 1fr; } }
+@media(min-width:860px){ .catalog-grid{ grid-template-columns:1fr 1fr 1fr; } }
+
+.item-card {
+  background:#fff; border-radius:12px; overflow:hidden;
+  box-shadow:0 2px 8px rgba(0,0,0,0.08); position:relative; display:flex; flex-direction:column;
+}
+.item-card.offline { opacity:0.88; }
+.thumb {
+  width:100%; height:150px; background:#eef3f8 center/cover no-repeat;
+}
+.meta { padding:10px 12px 0 12px; }
+.title-row { display:flex; align-items:center; justify-content:space-between; }
+.badge { font-size:0.75em; padding:2px 8px; border-radius:999px; }
+.badge.on { background:#e7f3ff; color:#2563eb; }
+.badge.off { background:#f3f4f6; color:#6b7280; }
+.pill-row { display:flex; gap:8px; margin-top:6px; }
+.pill { background:#f4f7fa; border-radius:999px; padding:3px 8px; font-size:0.8em; }
+.pill.low { background:#fff5f5; color:#b91c1c; }
+.tags { margin-top:6px; display:flex; gap:6px; flex-wrap:wrap; }
+.tag { font-size:0.75em; background:#f4f4f5; padding:3px 6px; border-radius:6px; }
+.desc { color:#555; margin:8px 0 10px 0; font-size:0.9em; }
+
+.edit-form { display:grid; grid-template-columns:1fr 1fr; gap:8px; padding:0 12px 10px 12px; }
+.edit-form input[type="text"],
+.edit-form input[type="number"],
+.edit-form input[type="url"],
+.edit-form textarea { width:100%; padding:7px 8px; border:1px solid #ddd; border-radius:6px; }
+.edit-form .check.small { align-items:center; margin-top:6px; }
+.row-actions { grid-column:1/-1; text-align:right; }
+.row-actions button { background:#3a8dde; color:#fff; border:none; padding:7px 12px; border-radius:6px; font-weight:600; }
+
+.quick-actions {
+  display:flex; gap:8px; padding:10px 12px 12px 12px; border-top:1px solid #f1f5f9;
+}
+.quick-actions form { display:inline; }
+.quick-actions .secondary {
+  background:#eef2ff; color:#3a8dde; border:none; padding:7px 10px; border-radius:6px; font-weight:600; cursor:pointer;
+}
+.quick-actions .danger {
+  background:#ef4444; color:#fff; border:none; padding:7px 10px; border-radius:6px; font-weight:600; cursor:pointer;
+}
+</style>
+
+{% endblock %}
