@@ -368,6 +368,20 @@ def get_inbox_preview(trainer: str, limit: int = 3):
         print("⚠️ Supabase inbox preview fetch failed:", e)
         return {"preview": [], "unread_count": 0}
 
+def send_notification(audience, subject, message, notif_type="system"):
+    try:
+        supabase.table("notifications").insert({
+            "type": notif_type,
+            "audience": audience,
+            "subject": subject,
+            "message": message,
+            "metadata": {},
+            "sent_at": datetime.utcnow().isoformat(),
+            "read_by": []
+        }).execute()
+    except Exception as e:
+        print("⚠️ Failed to send notification:", e)
+
 # ====== Admin Panel ======
 from functools import wraps
 from flask import session, redirect, url_for, flash
@@ -805,7 +819,6 @@ def admin_redemptions():
         total_pages=total_pages,
     )
 
-
 @app.route("/admin/redemptions/<rid>/update", methods=["POST"])
 def admin_redemptions_update(rid):
     if "trainer" not in session:
@@ -829,6 +842,49 @@ def admin_redemptions_update(rid):
         flash("❌ Could not update redemption.", "error")
 
     return redirect(url_for("admin_redemptions"))
+
+@app.route("/admin/redemptions/<uuid:redemption_id>/<action>", methods=["POST"])
+def update_redemption_ajax(redemption_id, action):
+    if "trainer" not in session:
+        return jsonify({"success": False, "error": "Not logged in"}), 403
+    _, user = find_user(session["trainer"])
+    if not user or user.get("account_type") != "Admin":
+        return jsonify({"success": False, "error": "Admins only"}), 403
+
+    if action not in ["fulfill", "cancel"]:
+        return jsonify({"success": False, "error": "Invalid action"}), 400
+
+    new_status = "FULFILLED" if action == "fulfill" else "CANCELLED"
+    try:
+        supabase.table("redemptions").update({"status": new_status}).eq("id", str(redemption_id)).execute()
+
+        # Send notification to trainer
+        redemption = supabase.table("redemptions").select("*").eq("id", str(redemption_id)).execute().data[0]
+        trainer = redemption["trainer_username"]
+        item_name = (redemption.get("item_snapshot") or {}).get("name", "a prize")
+
+        if new_status == "CANCELLED":
+            subject = "❌ Prize Redemption Cancelled"
+            message = f"Hey {trainer}, your order for {item_name} has been cancelled. "
+            message += "Our admin team has returned any stamps if necessary."
+        else:
+            subject = "✅ Prize Redemption Fulfilled"
+            message = f"Thanks for picking up your {item_name}! "
+            message += "We hope you like it — contact us if you have any issues."
+
+        supabase.table("notifications").insert({
+            "type": "system",
+            "audience": trainer,
+            "subject": subject,
+            "message": message,
+            "metadata": {},
+            "sent_at": datetime.utcnow().isoformat()
+        }).execute()
+
+        return jsonify({"success": True, "new_status": new_status})
+    except Exception as e:
+        print("⚠️ update_redemption_ajax failed:", e)
+        return jsonify({"success": False, "error": "DB error"}), 500
 
 # ====== Admin: Trainer Manager ======
 @app.route("/admin/trainers", methods=["GET", "POST"])
