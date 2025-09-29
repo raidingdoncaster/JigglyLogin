@@ -1,17 +1,17 @@
 {% extends "base.html" %}
 {% block content %}
 
-<h1 style="margin-bottom:10px;">🎰 Prize Arcade</h1>
-<p style="margin-top:0;color:#666;">Spin the machines, pick your prize, spend your stamps.</p>
+<h1 style="margin-bottom:10px;">🎰 Prizes Catalog</h1>
+<p style="margin-top:0;color:#666;">Pick your prize, spend your stamps.</p>
 
-<!-- JACKPOT SPOTLIGHT -->
+<!-- SPOTLIGHT -->
 {% if featured %}
 <div class="spotlight">
   <div class="spotlight-img" style="background-image:url('{{ featured.image_url or url_for('static', filename='icons/catalog-app.png') }}');"></div>
   <div class="spotlight-meta">
     <div class="chip">🔥 Featured</div>
     <h2>{{ featured.name }}</h2>
-    <p class="desc">{{ featured.description or 'A special pick from the Arcade!' }}</p>
+    <p class="desc">{{ featured.description or 'A special pick from the Catalog!' }}</p>
     <div class="row">
       <span class="pill">🪙 {{ featured.cost_stamps }} stamps</span>
       <span class="pill {{ 'low' if (featured.stock or 0) <= 3 else '' }}">📦 {{ featured.stock }} in stock</span>
@@ -21,8 +21,8 @@
 </div>
 {% endif %}
 
-<!-- ARCADE MACHINES (CATEGORIES) -->
-<h2 class="section-title">🎡 Machines</h2>
+<!-- (CATEGORIES) -->
+<h2 class="section-title">🛍️ Categories</h2>
 <div class="machines">
   {% for label in category_order %}
   <button class="machine" data-cat="{{ label }}">
@@ -68,7 +68,7 @@
 </div>
 
 <!-- RECENT WINS -->
-<h2 class="section-title">✨ Recent Wins</h2>
+<h2 class="section-title">✨ Recent Redemptions</h2>
 <ul class="wins">
   {% for w in recent_wins %}
   <li>
