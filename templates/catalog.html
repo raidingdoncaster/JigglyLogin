@@ -1,0 +1,188 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h1 style="margin-bottom:10px;">🎰 Prize Arcade</h1>
+<p style="margin-top:0;color:#666;">Spin the machines, pick your prize, spend your stamps.</p>
+
+<!-- JACKPOT SPOTLIGHT -->
+{% if featured %}
+<div class="spotlight">
+  <div class="spotlight-img" style="background-image:url('{{ featured.image_url or url_for('static', filename='icons/catalog-app.png') }}');"></div>
+  <div class="spotlight-meta">
+    <div class="chip">🔥 Featured</div>
+    <h2>{{ featured.name }}</h2>
+    <p class="desc">{{ featured.description or 'A special pick from the Arcade!' }}</p>
+    <div class="row">
+      <span class="pill">🪙 {{ featured.cost_stamps }} stamps</span>
+      <span class="pill {{ 'low' if (featured.stock or 0) <= 3 else '' }}">📦 {{ featured.stock }} in stock</span>
+    </div>
+    <a class="cta" href="{{ url_for('catalog_item', item_id=featured.id) }}">Redeem Now</a>
+  </div>
+</div>
+{% endif %}
+
+<!-- ARCADE MACHINES (CATEGORIES) -->
+<h2 class="section-title">🎡 Machines</h2>
+<div class="machines">
+  {% for label in category_order %}
+  <button class="machine" data-cat="{{ label }}">
+    <div class="machine-face">
+      <div class="machine-title">{{ label }}</div>
+      <div class="machine-lights">
+        <span></span><span></span><span></span><span></span>
+      </div>
+    </div>
+  </button>
+  {% endfor %}
+</div>
+
+<!-- ITEMS GRID -->
+<h2 class="section-title" id="items-title">🎁 Prizes <span id="items-filter-label">• All</span></h2>
+<div id="items-grid" class="items-grid">
+  {% for label in category_order %}
+    {% for it in categories[label] %}
+    <a class="item-card" href="{{ url_for('catalog_item', item_id=it.id) }}" data-tags="{{ (it.tags or []) | join(',') }}" data-cat="{{ label }}">
+      <div class="thumb" style="background-image:url('{{ it.image_url or url_for('static', filename='icons/catalog-app.png') }}');"></div>
+      <div class="meta">
+        <div class="title-row">
+          <strong class="name">{{ it.name }}</strong>
+        </div>
+        <div class="row">
+          <span class="pill">🪙 {{ it.cost_stamps }}</span>
+          <span class="pill {{ 'low' if (it.stock or 0) <= 3 else '' }}">📦 {{ it.stock }}</span>
+        </div>
+        {% if it.tags and it.tags|length %}
+        <div class="tags">
+          {% for t in it.tags %}
+          <span class="tag">#{{ t }}</span>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+    </a>
+    {% endfor %}
+  {% endfor %}
+  {% if not featured and not categories|selectattr(category_order[0]) %}
+  <p>No prizes online yet.</p>
+  {% endif %}
+</div>
+
+<!-- RECENT WINS -->
+<h2 class="section-title">✨ Recent Wins</h2>
+<ul class="wins">
+  {% for w in recent_wins %}
+  <li>
+    <span class="who">{{ w.who }}</span>
+    <span class="what">{{ w.what }}</span>
+    <span class="when">{{ w.when|to_date }}</span>
+    <span class="status {{ w.status|lower }}">{{ w.status }}</span>
+  </li>
+  {% else %}
+  <li>No recent wins yet.</li>
+  {% endfor %}
+</ul>
+
+<!-- FUN STATS -->
+<div class="fun-stats">
+  <div class="stat">
+    <div class="num">{{ month_total }}</div>
+    <div class="lbl">Prizes redeemed this month</div>
+  </div>
+  <div class="stat">
+    <div class="num">{{ popular_category }}</div>
+    <div class="lbl">Most popular category</div>
+  </div>
+</div>
+
+<style>
+/* Spotlight */
+.spotlight{
+  display:flex; gap:12px; background:#0b1220; color:#e9f2ff;
+  border-radius:14px; padding:12px; box-shadow:0 4px 16px rgba(0,0,0,.2);
+  background-image: radial-gradient(1200px 200px at -10% 120%, rgba(0,153,255,.25), transparent 60%),
+                    radial-gradient(800px 200px at 110% -20%, rgba(255,115,0,.25), transparent 60%);
+}
+.spotlight-img{ width:42%; min-height:140px; background:#0f1a33 center/cover no-repeat; border-radius:10px; }
+.spotlight-meta{ flex:1; display:flex; flex-direction:column; gap:8px; }
+.chip{ display:inline-block; background:#102a43; color:#7bc4ff; padding:3px 10px; border-radius:999px; font-size:.8em; }
+.spotlight .desc{ color:#b7c6da; margin:.2em 0 .6em; }
+.pill{ background:#13233d; color:#cfe8ff; border-radius:999px; padding:3px 8px; font-size:.85em; margin-right:6px; }
+.pill.low{ background:#3a0f10; color:#ffd7d9; }
+.cta{ display:inline-block; margin-top:4px; background:#3a8dde; color:#fff; padding:8px 12px; border-radius:8px; text-decoration:none; font-weight:700; }
+
+/* Machines */
+.section-title{ margin:16px 0 8px; }
+.machines{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+@media(min-width:560px){ .machines{ grid-template-columns:repeat(3,1fr); } }
+.machine{ border:none; background:transparent; cursor:pointer; padding:0; }
+.machine-face{
+  background:linear-gradient(180deg,#17233a,#0b1426);
+  border:1px solid #1e2d4d; border-radius:12px; padding:10px;
+  position:relative; box-shadow:0 6px 14px rgba(0,0,0,.25), inset 0 0 0 1px rgba(255,255,255,.03);
+}
+.machine-title{ color:#e9f2ff; text-align:center; font-weight:700; }
+.machine-lights{ display:flex; justify-content:center; gap:6px; margin-top:8px; }
+.machine-lights span{ width:6px; height:6px; border-radius:50%; background:#2c3f67; box-shadow:0 0 8px rgba(0,0,0,.2); }
+.machine:hover .machine-face{ transform:translateY(-1px); transition:transform .15s ease-out; }
+
+/* Items */
+.items-grid{ display:grid; grid-template-columns:1fr; gap:12px; }
+@media(min-width:560px){ .items-grid{ grid-template-columns:1fr 1fr; } }
+@media(min-width:860px){ .items-grid{ grid-template-columns:1fr 1fr 1fr; } }
+.item-card{
+  display:flex; flex-direction:column; background:#fff; border-radius:12px; overflow:hidden;
+  text-decoration:none; color:#1f2937; box-shadow:0 2px 10px rgba(0,0,0,.08);
+}
+.item-card .thumb{ width:100%; height:150px; background:#eef3f8 center/cover no-repeat; }
+.item-card .meta{ padding:10px 12px 12px; }
+.item-card .title-row{ display:flex; justify-content:space-between; align-items:center; }
+.item-card .name{ font-size:1em; }
+.item-card .row{ margin-top:6px; }
+.item-card .tags{ margin-top:6px; display:flex; flex-wrap:wrap; gap:6px; }
+.item-card .tag{ font-size:.75em; background:#f4f4f5; padding:3px 6px; border-radius:6px; }
+
+/* Wins */
+.wins{ list-style:none; padding:0; margin:8px 0 0; }
+.wins li{ display:grid; grid-template-columns:1.2fr 1fr .8fr .8fr; gap:8px; align-items:center;
+  background:#fff; border-radius:10px; padding:8px 10px; box-shadow:0 1px 6px rgba(0,0,0,.06); margin-bottom:8px; }
+.wins .who{ font-weight:700; }
+.wins .status{ justify-self:end; font-size:.75em; padding:2px 8px; border-radius:999px; background:#eef2ff; color:#334155; }
+.wins .status.fulfilled{ background:#e8f7ef; color:#065f46; }
+.wins .status.pending{ background:#fff7ed; color:#9a3412; }
+.wins .status.cancelled{ background:#fee2e2; color:#991b1b; }
+
+/* Fun stats */
+.fun-stats{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px; }
+.fun-stats .stat{ background:#fff; border-radius:10px; padding:12px; text-align:center; box-shadow:0 1px 6px rgba(0,0,0,.06); }
+.fun-stats .num{ font-size:1.3em; font-weight:800; color:#3a8dde; }
+.fun-stats .lbl{ color:#6b7280; font-size:.85em; }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const machines = document.querySelectorAll('.machine');
+  const grid = document.getElementById('items-grid');
+  const label = document.getElementById('items-filter-label');
+
+  function filterBy(cat) {
+    const cards = grid.querySelectorAll('.item-card');
+    let count = 0;
+    cards.forEach(c => {
+      const match = (cat === 'All') || c.dataset.cat === cat;
+      c.style.display = match ? '' : 'none';
+      if (match) count++;
+    });
+    label.textContent = cat === 'All' ? '• All' : `• ${cat} (${count})`;
+    window.scrollTo({ top: grid.offsetTop - 60, behavior: 'smooth' });
+  }
+
+  machines.forEach(btn => {
+    btn.addEventListener('click', () => filterBy(btn.dataset.cat));
+  });
+
+  // Default: show all
+  filterBy('All');
+});
+</script>
+
+{% endblock %}

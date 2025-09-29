@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h1>🧾 Order Receipt</h1>
+
+<div class="receipt">
+  <div class="row">
+    <div>
+      <div class="muted">Redemption ID</div>
+      <div class="mono">{{ rec.id }}</div>
+    </div>
+    <div class="status {{ rec.status|lower }}">{{ rec.status }}</div>
+  </div>
+
+  <div class="section">
+    <h3>🎁 Item</h3>
+    <div class="item">
+      <div class="thumb" style="background-image:url('{{ rec.item_snapshot.image_url or url_for('static', filename='icons/catalog-app.png') }}');"></div>
+      <div>
+        <strong>{{ rec.item_snapshot.name }}</strong><br>
+        <span class="muted">Cost:</span> {{ rec.stamps_spent }} stamps
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h3>🗓️ Pick-up</h3>
+    <div>
+      <div><span class="muted">Meet-up:</span> {{ rec.metadata.meetup.name }}</div>
+      <div><span class="muted">Location:</span> {{ rec.metadata.meetup.location }}</div>
+      <div><span class="muted">When:</span> {{ rec.metadata.meetup.date|to_date }} @ {{ rec.metadata.meetup.start_time }}</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h3>👤 Trainer</h3>
+    <div>
+      <div><span class="muted">Username:</span> {{ rec.trainer_username }}</div>
+      <div><span class="muted">Placed:</span> {{ rec.created_at|to_date }}</div>
+    </div>
+  </div>
+
+  <div class="footer-actions">
+    <a href="{{ url_for('catalog') }}" class="btn">⬅ Back to Arcade</a>
+  </div>
+</div>
+
+<style>
+.receipt{ background:#fff; border-radius:12px; padding:14px; box-shadow:0 1px 12px rgba(0,0,0,.08); }
+.row{ display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+.status{ font-size:.8em; padding:4px 10px; border-radius:999px; background:#eef2ff; color:#334155; }
+.status.pending{ background:#fff7ed; color:#9a3412; }
+.status.fulfilled{ background:#e8f7ef; color:#065f46; }
+.status.cancelled{ background:#fee2e2; color:#991b1b; }
+
+.section{ border-top:1px dashed #e5e7eb; padding-top:10px; margin-top:10px; }
+.muted{ color:#6b7280; font-size:.9em; }
+.mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.item{ display:flex; gap:10px; align-items:center; }
+.thumb{ width:72px; height:72px; border-radius:8px; background:#eef3f8 center/cover no-repeat; }
+
+.footer-actions{ margin-top:14px; text-align:center; }
+.footer-actions .btn{ text-decoration:none; background:#eef2ff; color:#3a8dde; padding:8px 12px; border-radius:8px; font-weight:700; }
+</style>
+
+{% endblock %}

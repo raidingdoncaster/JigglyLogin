@@ -3,14 +3,16 @@ import json
 import hashlib
 import gspread
 import requests
-from flask import Flask, render_template, request, redirect, url_for, session, flash, send_from_directory, jsonify, g
+import uuid
+from flask import Flask, render_template, abort, request, redirect, url_for, session, flash, send_from_directory, jsonify, g
 from google.oauth2.service_account import Credentials
 from werkzeug.utils import secure_filename
 from PIL import Image
 from pywebpush import webpush, WebPushException
 import pytesseract
-from datetime import datetime
+from datetime import datetime, date, timezone
 import io, base64, time
+from markupsafe import Markup, escape
 
 # ====== Feature toggle ======
 USE_SUPABASE = True  # ✅ Supabase for stamps/meetups
@@ -52,6 +54,19 @@ if USE_SUPABASE and create_client and SUPABASE_URL and SUPABASE_KEY:
     except Exception as e:
         print("⚠️ Could not init Supabase client:", e)
         supabase = None
+
+# ===== Catalog Receipt Helper =====
+def absolute_url(path: str) -> str:
+    root = request.url_root.rstrip('/')
+    if not path.startswith('/'):
+        path = '/' + path
+    return f"{root}{path}"
+
+@app.template_filter("nl2br")
+def nl2br(text):
+    if text is None:
+        return ""
+    return Markup(escape(text).replace("\n", "<br>"))
 
 # ====== VAPID setup ======
 VAPID_PUBLIC_KEY = os.environ.get("MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEAbWEvTQ7pDPa0Q-O8drCVnHmfnzVpn7W7UkclKUd1A-yGIee_ehqUjRgMp_HxSBPMylN_H83ffaE2eDIybrTVA")
@@ -1609,6 +1624,44 @@ def read_message(message_id):
     # Redirect back to inbox
     return redirect(url_for("inbox"))
 
+@app.route("/inbox/message/<message_id>")
+def inbox_message(message_id):
+    if "trainer" not in session:
+        flash("Please log in to view your inbox.", "warning")
+        return redirect(url_for("home"))
+
+    trainer = session["trainer"]
+
+    # Fetch the message
+    try:
+        resp = supabase.table("notifications").select("*").eq("id", message_id).limit(1).execute()
+        if not resp.data:
+            flash("Message not found.", "warning")
+            return redirect(url_for("inbox"))
+        msg = resp.data[0]
+    except Exception as e:
+        print("⚠️ Failed to fetch message:", e)
+        flash("Could not load message.", "error")
+        return redirect(url_for("inbox"))
+
+    # Basic audience guard (show if it was sent to this user or global 'ALL')
+    audience = (msg.get("audience") or "").strip()
+    if audience != trainer and audience.upper() != "ALL":
+        flash("You don’t have access to that message.", "error")
+        return redirect(url_for("inbox"))
+
+    # Mark as read
+    try:
+        read_by = msg.get("read_by") or []
+        if trainer not in read_by:
+            read_by.append(trainer)
+            supabase.table("notifications").update({"read_by": read_by}).eq("id", message_id).execute()
+            msg["read_by"] = read_by
+    except Exception as e:
+        print("⚠️ Failed to mark read in detail:", e)
+
+    return render_template("inbox_message.html", trainer=trainer, msg=msg, show_back=True)
+
 # ====== Logout ======
 @app.route("/logout")
 def logout():
@@ -1814,6 +1867,370 @@ def to_date_filter(value):
         return dt.strftime("%d %b %Y")
     except Exception:
         return value  # fallback: show raw if parsing fails
+
+# ====== Catalog (User) ======
+from datetime import datetime, timezone
+from flask import abort
+# CATEGORY_KEYS control what tags put what items in what categories, lol 
+CATEGORY_KEYS = {
+    "Pins": ["pins", "pin"],
+    "Plushies": ["plush", "plushie", "plushies"],
+    "TCG": ["tcg", "cards", "booster"],
+    "Keychains": ["keychain", "keychains", "keyring", "keyrings"],
+    "Accessories": ["accessory", "accessories", "sticker", "badge", "apparel", "cap", "hat"],
+    "Games": ["game", "games"],
+    "Master Bundles": ["bundle", "bundles", "master bundle"]
+}
+CATEGORY_ORDER = list(CATEGORY_KEYS.keys())
+
+def _item_matches_category(item_tags, category_label):
+    """Case-insensitive tag/category matching."""
+    tags = [t.lower() for t in (item_tags or [])]
+    keys = set([category_label.lower(), *CATEGORY_KEYS.get(category_label, [])])
+    return any(t in keys for t in tags)
+
+def _pick_featured_item(items):
+    """Prefer item with 'featured' tag; else highest stock; else newest."""
+    if not items:
+        return None
+    # 1) tag 'featured'
+    for it in items:
+        if any((t or "").lower() == "featured" for t in (it.get("tags") or [])):
+            return it
+    # 2) highest stock
+    items_sorted = sorted(items, key=lambda i: int(i.get("stock") or 0), reverse=True)
+    if items_sorted:
+        return items_sorted[0]
+    # 3) newest
+    return items[0]
+
+@app.route("/catalog")
+def catalog():
+    # Pull active catalog items
+    items = []
+    if supabase:
+        try:
+            resp = (supabase.table("catalog_items")
+                    .select("*")
+                    .eq("active", True)
+                    .order("created_at", desc=True)
+                    .execute())
+            items = resp.data or []
+        except Exception as e:
+            print("⚠️ catalog items fetch failed:", e)
+
+    # Build categories → items map
+    categories = {label: [] for label in CATEGORY_ORDER}
+    for it in items:
+        it["cost_stamps"] = int(it.get("cost_stamps") or 0)
+        it["stock"] = int(it.get("stock") or 0)
+        tagged_any = False
+        for label in CATEGORY_ORDER:
+            if _item_matches_category(it.get("tags"), label):
+                categories[label].append(it)
+                tagged_any = True
+        # If item had no recognizable tag, don't lose it—tack onto Accessories as misc
+        if not tagged_any and items:
+            categories["Accessories"].append(it)
+
+    featured = _pick_featured_item(items)
+
+    # Recent wins (latest fulfilled redemptions)
+    recent_wins = []
+    if supabase:
+        try:
+            r = (supabase.table("redemptions")
+                 .select("trainer_username, item_snapshot, created_at, status")
+                 .order("created_at", desc=True)
+                 .limit(8)
+                 .execute())
+            for row in (r.data or []):
+                snap = row.get("item_snapshot") or {}
+                recent_wins.append({
+                    "who": row.get("trainer_username") or "Someone",
+                    "what": snap.get("name") or "a prize",
+                    "when": row.get("created_at") or "",
+                    "status": row.get("status") or "PENDING"
+                })
+        except Exception as e:
+            print("⚠️ recent wins fetch failed:", e)
+
+    month_total = 0
+    popular_category = ""
+    if supabase:
+        try:
+            start = datetime.now(timezone.utc).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            r = (supabase.table("redemptions")
+                 .select("status, created_at, item_snapshot")
+                 .gte("created_at", start.isoformat())
+                 .eq("status", "FULFILLED")
+                 .execute())
+            rows = r.data or []
+            month_total = len(rows)
+            # Popular category from item_snapshot.tags
+            counts = {label: 0 for label in CATEGORY_ORDER}
+            for row in rows:
+                snap = row.get("item_snapshot") or {}
+                tags = [t.lower() for t in (snap.get("tags") or [])]
+                matched_any = False
+                for label, keys in CATEGORY_KEYS.items():
+                    if any(t in set([label.lower(), *keys]) for t in tags):
+                        counts[label] += 1
+                        matched_any = True
+                if not matched_any and tags:
+                    counts["Accessories"] += 1
+            if any(counts.values()):
+                popular_category = max(counts, key=lambda k: counts[k])
+        except Exception as e:
+            print("⚠️ stats fetch failed:", e)
+
+    return render_template(
+        "catalog.html",
+        featured=featured,
+        categories=categories,
+        category_order=CATEGORY_ORDER,
+        recent_wins=recent_wins,
+        month_total=month_total,
+        popular_category=popular_category or "—",
+        show_back=False
+    )
+
+@app.route("/catalog/item/<item_id>")
+def catalog_item(item_id):
+    if not supabase:
+        abort(404)
+    try:
+        r = supabase.table("catalog_items").select("*").eq("id", item_id).limit(1).execute()
+        if not r.data:
+            abort(404)
+        it = r.data[0]
+        it["cost_stamps"] = int(it.get("cost_stamps") or 0)
+        it["stock"] = int(it.get("stock") or 0)
+        return render_template("catalog_item.html", item=it, show_back=True)
+    except Exception as e:
+        print("⚠️ catalog_item failed:", e)
+        abort(500)
+
+@app.route("/catalog/redeem/<item_id>", methods=["GET", "POST"])
+def catalog_redeem(item_id):
+    if "trainer" not in session:
+        flash("Please log in to redeem.", "warning")
+        return redirect(url_for("home"))
+
+    trainer = session["trainer"]
+
+    # Load user + balance
+    _, user = find_user(trainer)
+    if not user:
+        flash("User not found.", "error")
+        return redirect(url_for("catalog"))
+    balance = int(user.get("stamps") or 0)
+
+    # Load item (must be active and in stock)
+    try:
+        r = (supabase.table("catalog_items")
+             .select("*")
+             .eq("id", item_id)
+             .limit(1)
+             .execute())
+        if not r.data:
+            flash("Item not found.", "error")
+            return redirect(url_for("catalog"))
+        item = r.data[0]
+        item["cost_stamps"] = int(item.get("cost_stamps") or 0)
+        item["stock"] = int(item.get("stock") or 0)
+    except Exception as e:
+        print("⚠️ redeem: fetch item failed:", e)
+        flash("Could not load item.", "error")
+        return redirect(url_for("catalog"))
+
+    if not item.get("active", False):
+        flash("This prize is offline right now.", "warning")
+        return redirect(url_for("catalog_item", item_id=item_id))
+    if item["stock"] <= 0:
+        flash("This prize is out of stock.", "warning")
+        return redirect(url_for("catalog_item", item_id=item_id))
+
+    # Meetups (active + upcoming)
+    meetups = []
+    try:
+        today_iso = date.today().isoformat()
+        m = (supabase.table("meetups")
+             .select("*")
+             .eq("active", True)
+             .gte("date", today_iso)
+             .order("date", desc=False)
+             .order("start_time", desc=False)
+             .execute())
+        meetups = m.data or []
+    except Exception as e:
+        print("⚠️ redeem: fetch meetups failed:", e)
+
+    if request.method == "GET":
+        return render_template(
+            "catalog_redeem.html",
+            item=item,
+            balance=balance,
+            meetups=meetups,
+            show_back=True
+        )
+
+    # POST — place order
+    meetup_id = request.form.get("meetup_id")
+    confirm = request.form.get("confirm") == "yes"
+
+    if not meetup_id:
+        flash("Please choose a meet-up.", "warning")
+        return redirect(url_for("catalog_redeem", item_id=item_id))
+    if not confirm:
+        flash("Please confirm your order.", "warning")
+        return redirect(url_for("catalog_redeem", item_id=item_id))
+    if balance < item["cost_stamps"]:
+        flash("You don't have enough stamps.", "error")
+        return redirect(url_for("catalog_item", item_id=item_id))
+
+    # Load meetup snapshot
+    try:
+        mr = (supabase.table("meetups")
+              .select("*")
+              .eq("id", meetup_id)
+              .limit(1)
+              .execute())
+        if not mr.data:
+            flash("Meet-up not found.", "error")
+            return redirect(url_for("catalog_redeem", item_id=item_id))
+        meetup = mr.data[0]
+    except Exception as e:
+        print("⚠️ redeem: fetch meetup failed:", e)
+        flash("Could not load meet-up.", "error")
+        return redirect(url_for("catalog_redeem", item_id=item_id))
+
+    # Double-check stock & activity just before we commit
+    try:
+        r2 = (supabase.table("catalog_items")
+              .select("stock, active")
+              .eq("id", item_id)
+              .limit(1)
+              .execute())
+        latest = r2.data[0]
+        if not latest.get("active", False) or int(latest.get("stock") or 0) <= 0:
+            flash("This prize just went out of stock or offline.", "warning")
+            return redirect(url_for("catalog"))
+    except Exception as e:
+        print("⚠️ redeem: recheck failed:", e)
+
+    # Deduct stamps via Lugia (ledger) — then mirror 'stamps' in sheet1
+    cost = item["cost_stamps"]
+    reason = f"Catalog Redemption: {item.get('name')}"
+    lugia_msg = adjust_stamps(trainer, cost, reason, "remove")
+    if "✅" not in lugia_msg:
+        flash("Could not deduct stamps. Try again in a moment.", "error")
+        return redirect(url_for("catalog_redeem", item_id=item_id))
+
+    # Update balance mirror (best effort)
+    try:
+        new_balance = max(0, balance - cost)
+        supabase.table("sheet1") \
+            .update({"stamps": new_balance}) \
+            .eq("trainer_username", trainer) \
+            .execute()
+    except Exception as e:
+        print("⚠️ redeem: mirror stamp update failed:", e)
+
+    # Decrement stock (best effort)
+    try:
+        supabase.table("catalog_items") \
+            .update({"stock": max(0, int(item["stock"]) - 1)}) \
+            .eq("id", item_id) \
+            .execute()
+    except Exception as e:
+        print("⚠️ redeem: stock update failed:", e)
+
+    # Create redemption row (PENDING)
+    red_id = str(uuid.uuid4())
+    item_snapshot = {
+        "name": item.get("name"),
+        "cost_stamps": item.get("cost_stamps"),
+        "image_url": item.get("image_url"),
+        "tags": item.get("tags") or [],
+        "description": item.get("description") or ""
+    }
+    metadata = {
+        "meetup": {
+            "id": meetup.get("id"),
+            "name": meetup.get("name"),
+            "location": meetup.get("location"),
+            "date": meetup.get("date"),
+            "start_time": meetup.get("start_time"),
+        }
+    }
+    try:
+        supabase.table("redemptions").insert({
+            "id": red_id,
+            "trainer_username": trainer,
+            "catalog_item_id": item_id,
+            "meetup_id": meetup_id,
+            "status": "PENDING",
+            "stamps_spent": cost,
+            "item_snapshot": item_snapshot,
+            "metadata": metadata,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }).execute()
+    except Exception as e:
+        print("⚠️ redeem: create redemption failed:", e)
+        flash("Your order couldn't be created. Stamps were deducted, contact admin.", "error")
+        return redirect(url_for("catalog"))
+
+    # Send inbox message with receipt link
+    try:
+        receipt_url = absolute_url(url_for("catalog_receipt", redemption_id=red_id))
+        subj = f"Order received: {item_snapshot['name']}"
+        msg = (
+            f"Hey {trainer},\n\n"
+            f"Thanks for your order! We’ve put aside **{item_snapshot['name']}**.\n"
+            f"Pick-up at: {metadata['meetup']['name']} — {metadata['meetup']['location']} "
+            f"on {metadata['meetup']['date']} at {metadata['meetup']['start_time']}.\n\n"
+            f"Receipt: {receipt_url}\n"
+            f"Status: PENDING"
+        )
+        supabase.table("notifications").insert({
+            "type": "prize",
+            "audience": trainer,
+            "subject": subj,
+            "message": msg,
+            "metadata": {"url": receipt_url, "redemption_id": red_id},
+            "sent_at": datetime.now(timezone.utc).isoformat(),
+            "read_by": []
+        }).execute()
+    except Exception as e:
+        print("⚠️ redeem: inbox notify failed:", e)
+
+    return redirect(url_for("catalog_receipt", redemption_id=red_id))
+
+@app.route("/catalog/receipt/<redemption_id>")
+def catalog_receipt(redemption_id):
+    if "trainer" not in session:
+        flash("Please log in.", "warning")
+        return redirect(url_for("home"))
+
+    trainer = session["trainer"]
+
+    try:
+        r = (supabase.table("redemptions")
+             .select("*")
+             .eq("id", redemption_id)
+             .limit(1)
+             .execute())
+        if not r.data:
+            abort(404)
+        rec = r.data[0]
+        if (rec.get("trainer_username") or "").lower() != trainer.lower():
+            abort(403)
+    except Exception as e:
+        print("⚠️ receipt: fetch failed:", e)
+        abort(500)
+
+    return render_template("catalog_receipt.html", rec=rec, show_back=True)
 
 # ====== OCR test (debug) ======
 @app.route("/ocr_test", methods=["GET", "POST"])

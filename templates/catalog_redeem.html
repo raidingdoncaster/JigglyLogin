@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h1>✅ Redeem: {{ item.name }}</h1>
+
+<div class="redeem-wrap">
+  <div class="summary">
+    <div class="thumb" style="background-image:url('{{ item.image_url or url_for('static', filename='icons/catalog-app.png') }}');"></div>
+    <div class="meta">
+      <p class="desc">{{ item.description or '' }}</p>
+      <div class="row">
+        <span class="pill">🪙 Cost: {{ item.cost_stamps }}</span>
+        <span class="pill {{ 'low' if (item.stock or 0) <= 3 else '' }}">📦 Stock: {{ item.stock }}</span>
+      </div>
+      <div class="row">
+        <span class="pill {{ 'bad' if (balance|int) < (item.cost_stamps|int) else 'good' }}">💰 Your balance: {{ balance }}</span>
+      </div>
+      {% if balance < item.cost_stamps %}
+      <p class="warn">You don't have enough stamps to redeem this prize.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <form method="post" class="card" onsubmit="return confirmSubmit();">
+    <h3>🗓️ Choose a Meet-up</h3>
+    {% if meetups and meetups|length %}
+      <div class="meetups">
+        {% for m in meetups %}
+        <label class="meetup">
+          <input type="radio" name="meetup_id" value="{{ m.id }}" required>
+          <div>
+            <div class="top"><strong>{{ m.name }}</strong></div>
+            <div class="sub">{{ m.location }} • {{ m.date|to_date }} @ {{ m.start_time }}</div>
+          </div>
+        </label>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p>No active meet-ups available right now.</p>
+    {% endif %}
+
+    <label class="confirm">
+      <input type="checkbox" name="confirm" value="yes" required>
+      I confirm I want to spend {{ item.cost_stamps }} stamps for <strong>{{ item.name }}</strong>.
+    </label>
+
+    <div class="actions">
+      <button type="submit" {% if balance < item.cost_stamps or not meetups %}disabled{% endif %}>
+        Place Order
+      </button>
+      <a href="{{ url_for('catalog_item', item_id=item.id) }}" class="secondary">Cancel</a>
+    </div>
+  </form>
+</div>
+
+<style>
+.redeem-wrap{ display:grid; grid-template-columns:1fr; gap:12px; }
+.summary{ display:flex; gap:12px; background:#fff; border-radius:12px; padding:12px; box-shadow:0 1px 8px rgba(0,0,0,.08); }
+.thumb{ width:40%; min-width:130px; height:150px; background:#eef3f8 center/cover no-repeat; border-radius:10px; }
+.meta .row{ margin-top:6px; }
+.pill{ background:#f4f7fa; border-radius:999px; padding:3px 8px; font-size:.85em; margin-right:6px; }
+.pill.bad{ background:#fff5f5; color:#b91c1c; }
+.pill.good{ background:#e8f7ef; color:#065f46; }
+.warn{ color:#b91c1c; font-weight:600; margin-top:6px; }
+
+.card{ background:#fff; border-radius:12px; padding:12px; box-shadow:0 1px 8px rgba(0,0,0,.08); }
+.meetups{ display:flex; flex-direction:column; gap:8px; margin:10px 0; }
+.meetup{ display:flex; gap:8px; align-items:center; border:1px solid #eee; border-radius:8px; padding:8px; }
+.meetup input{ margin-right:6px; }
+.meetup .sub{ color:#6b7280; font-size:.9em; }
+.confirm{ display:flex; align-items:center; gap:8px; margin-top:8px; }
+.actions{ display:flex; gap:8px; margin-top:10px; }
+.actions button{ background:#3a8dde; color:#fff; border:none; padding:8px 12px; border-radius:8px; font-weight:700; cursor:pointer; }
+.actions button[disabled]{ opacity:.6; cursor:not-allowed; }
+.actions .secondary{ text-decoration:none; background:#eef2ff; color:#3a8dde; padding:8px 12px; border-radius:8px; font-weight:700; }
+
+@media(min-width:640px){ .redeem-wrap{ grid-template-columns:1fr; } }
+</style>
+
+<script>
+function confirmSubmit(){
+  return true;
+}
+</script>
+
+{% endblock %}

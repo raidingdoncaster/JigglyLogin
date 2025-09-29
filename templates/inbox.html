@@ -16,22 +16,26 @@
   </form>
 </div>
 
+<!-- Inbox Items -->
 <div class="inbox-container">
   {% for msg in inbox %}
-    <a href="{{ url_for('read_message', message_id=msg.id) }}" style="text-decoration:none; color:inherit;">
-      <div class="inbox-card {% if trainer in msg.read_by %}read{% else %}unread{% endif %}">
-        <h3>{{ msg.subject }}</h3>
+    {% set read = trainer in (msg.read_by or []) %}
+    <a href="{{ url_for('inbox_message', message_id=msg.id) }}" class="inbox-card-link">
+      <div class="inbox-card {{ 'read' if read else 'unread' }}">
+        <div class="inbox-row1">
+          <h3>{{ msg.subject }}</h3>
+          {% if msg.type %}
+            <span class="type-pill">{{ msg.type }}</span>
+          {% endif %}
+        </div>
         <p class="inbox-date">{{ msg.sent_at|to_date }}</p>
-        <p>{{ msg.message }}</p>
+        <p class="snippet">{{ msg.message[:90] }}{% if msg.message|length > 90 %}…{% endif %}</p>
       </div>
     </a>
+  {% else %}
+    <p style="text-align:center; color:#666;">No messages yet.</p>
   {% endfor %}
 </div>
-
-<style>
-.inbox-card.unread { border-left: 4px solid #3a8dde; }
-.inbox-card.read { border-left: 4px solid #aaa; opacity: 0.8; }
-</style>
 
 <div style="margin-top:20px; text-align:center;">
   <a href="{{ url_for('dashboard') }}" class="btn">⬅ Back to Dashboard</a>
@@ -55,6 +59,10 @@
   gap: 15px;
   margin-top: 10px;
 }
+.inbox-card-link {
+  text-decoration: none;
+  color: inherit;
+}
 .inbox-card {
   background: #fff;
   border-radius: 10px;
@@ -67,17 +75,35 @@
   background: #f0f8ff;
 }
 .inbox-card.read {
+  border-left: 5px solid #aaa;
   opacity: 0.85;
+}
+.inbox-row1 {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
 }
 .inbox-card h3 {
   margin: 0;
   font-size: 1.1em;
   color: #3a8dde;
 }
+.type-pill {
+  font-size: 0.75em;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #334155;
+  text-transform: uppercase;
+}
 .inbox-date {
   font-size: 0.8em;
   color: #777;
   margin: 5px 0;
+}
+.snippet {
+  color: #555;
+  font-size: 0.9em;
 }
 </style>
 {% endblock %}
