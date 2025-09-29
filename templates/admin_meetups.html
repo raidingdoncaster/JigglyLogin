@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h1>📅 Catalog Meetup Manager</h1>
+<p>Create, edit, delete, and manage active meetups for prize redemptions.</p>
+
+<!-- Create Meetup -->
+<div class="card">
+  <h3>➕ Create Meetup</h3>
+  <form action="{{ url_for('admin_meetups_create') }}" method="post" class="grid two">
+    <label>Name <input type="text" name="name" required></label>
+    <label>Location <input type="text" name="location" required></label>
+    <label>Date <input type="date" name="date" required></label>
+    <label>Start Time <input type="time" name="start_time" required></label>
+    <div class="actions colspan">
+      <button type="submit">Create Meetup</button>
+    </div>
+  </form>
+</div>
+
+<!-- List of Meetups -->
+<h2>📋 Current Meetups</h2>
+{% if meetups %}
+<div class="meetup-list">
+  {% for m in meetups %}
+  <div class="meetup-card {{ 'inactive' if not m.active }}">
+    <div class="meta">
+      <strong>{{ m.name }}</strong>
+      <p>📍 {{ m.location }}</p>
+      <p>📅 {{ m.date|to_date }} at 🕒 {{ m.start_time }}</p>
+      <span class="badge {{ 'on' if m.active else 'off' }}">
+        {{ 'Active' if m.active else 'Inactive' }}
+      </span>
+    </div>
+    <form action="{{ url_for('admin_meetups_update', meetup_id=m.id) }}" method="post" class="inline-form">
+      <input type="hidden" name="name" value="{{ m.name }}">
+      <input type="hidden" name="location" value="{{ m.location }}">
+      <input type="hidden" name="date" value="{{ m.date }}">
+      <input type="hidden" name="start_time" value="{{ m.start_time }}">
+      <label class="check small">
+        <input type="checkbox" name="active" {% if m.active %}checked{% endif %} onchange="this.form.submit()"> Active
+      </label>
+    </form>
+    <form action="{{ url_for('admin_meetups_delete', meetup_id=m.id) }}" method="post" onsubmit="return confirm('Delete {{ m.name }}?');">
+      <button type="submit" class="danger">Delete</button>
+    </form>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<p>No meetups yet.</p>
+{% endif %}
+
+<style>
+.card { background:#fff; border-radius:10px; padding:14px; box-shadow:0 2px 6px rgba(0,0,0,0.08); margin-bottom:16px; }
+.grid.two { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.grid.two .colspan { grid-column:1/-1; }
+.actions { text-align:right; }
+.actions button { background:#3a8dde; color:#fff; border:none; padding:8px 12px; border-radius:6px; font-weight:600; cursor:pointer; }
+
+.meetup-list { display:flex; flex-direction:column; gap:10px; margin-top:15px; }
+.meetup-card { background:#fff; border-radius:8px; padding:10px 12px; box-shadow:0 2px 6px rgba(0,0,0,0.08); display:flex; flex-direction:column; gap:6px; }
+.meetup-card.inactive { opacity:0.7; }
+.meetup-card .meta p { margin:2px 0; font-size:0.85em; color:#555; }
+.badge { font-size:0.75em; padding:2px 8px; border-radius:999px; }
+.badge.on { background:#e7f3ff; color:#2563eb; }
+.badge.off { background:#f3f4f6; color:#6b7280; }
+.inline-form { margin-top:4px; }
+.inline-form .check.small { font-size:0.85em; }
+.danger { background:#ef4444; color:#fff; border:none; padding:5px 10px; border-radius:6px; font-weight:600; cursor:pointer; }
+</style>
+
+{% endblock %}

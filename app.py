@@ -468,24 +468,107 @@ def _save_catalog_image(file_storage):
     file_storage.save(path)
     return f"/static/catalog/{fname}"
 
-# ====== Admin: Catalog Manager ======
-@app.route("/admin/catalog", methods=["GET"])
+# ====== Admin Catalog Manager ======
+@app.route("/admin/catalog")
 def admin_catalog():
-    if not _is_admin():
-        flash("Admins only.", "error")
+    if "trainer" not in session:
+        flash("Please log in.", "warning")
+        return redirect(url_for("home"))
+
+    _, user = find_user(session["trainer"])
+    if not user or user.get("account_type") != "Admin":
+        flash("Access denied. Admins only.", "error")
         return redirect(url_for("dashboard"))
 
     items = []
     try:
-        q = supabase.table("catalog_items") \
-            .select("*") \
-            .order("created_at", desc=True)
-        items = (q.execute().data) or []
+        resp = supabase.table("catalog_items").select("*").order("created_at", desc=True).execute()
+        items = resp.data or []
     except Exception as e:
-        print("⚠️ admin_catalog list failed:", e)
-        flash("Failed to load catalog items.", "error")
+        print("⚠️ Failed fetching catalog items:", e)
 
     return render_template("admin_catalog.html", items=items)
+
+@app.route("/admin/catalog/<item_id>")
+def admin_catalog_detail(item_id):
+    if "trainer" not in session:
+        flash("Please log in.", "warning")
+        return redirect(url_for("home"))
+
+    _, user = find_user(session["trainer"])
+    if not user or user.get("account_type") != "Admin":
+        flash("Access denied. Admins only.", "error")
+        return redirect(url_for("dashboard"))
+
+    try:
+        resp = supabase.table("catalog_items").select("*").eq("id", item_id).limit(1).execute()
+        if not resp.data:
+            flash("Item not found.", "error")
+            return redirect(url_for("admin_catalog"))
+        item = resp.data[0]
+    except Exception as e:
+        print("⚠️ Failed fetching catalog detail:", e)
+        flash("Error loading item.", "error")
+        return redirect(url_for("admin_catalog"))
+
+    return render_template("admin_catalog_detail.html", item=item)
+
+@app.route("/admin/catalog/<item_id>/update", methods=["POST"])
+def admin_catalog_update(item_id):
+    if "trainer" not in session:
+        return redirect(url_for("home"))
+
+    _, user = find_user(session["trainer"])
+    if not user or user.get("account_type") != "Admin":
+        flash("Unauthorized", "error")
+        return redirect(url_for("dashboard"))
+
+    data = {
+        "name": request.form.get("name"),
+        "cost_stamps": int(request.form.get("cost_stamps") or 0),
+        "description": request.form.get("description"),
+        "stock": int(request.form.get("stock") or 0),
+        "tags": [t.strip() for t in request.form.get("tags", "").split(",") if t.strip()],
+        "image_url": request.form.get("image_url"),
+        "active": "active" in request.form,
+        "updated_at": datetime.utcnow().isoformat()
+    }
+
+    # Handle file upload if provided
+    file = request.files.get("image_file")
+    if file and file.filename:
+        filepath = os.path.join(app.config["UPLOAD_FOLDER"], secure_filename(file.filename))
+        file.save(filepath)
+        # You could upload to Supabase Storage or use local URL if needed
+        data["image_url"] = "/uploads/" + secure_filename(file.filename)
+
+    try:
+        supabase.table("catalog_items").update(data).eq("id", item_id).execute()
+        flash("✅ Item updated successfully!", "success")
+    except Exception as e:
+        print("⚠️ Catalog update failed:", e)
+        flash("❌ Failed to update item.", "error")
+
+    return redirect(url_for("admin_catalog_detail", item_id=item_id))
+
+@app.route("/admin/catalog/<item_id>/delete", methods=["POST"])
+def admin_catalog_delete(item_id):
+    if "trainer" not in session:
+        return redirect(url_for("home"))
+
+    _, user = find_user(session["trainer"])
+    if not user or user.get("account_type") != "Admin":
+        flash("Unauthorized", "error")
+        return redirect(url_for("dashboard"))
+
+    try:
+        supabase.table("catalog_items").delete().eq("id", item_id).execute()
+        flash("🗑️ Item deleted.", "success")
+    except Exception as e:
+        print("⚠️ Catalog delete failed:", e)
+        flash("❌ Failed to delete item.", "error")
+
+    return redirect(url_for("admin_catalog"))
 
 @app.route("/admin/catalog/create", methods=["POST"])
 def admin_catalog_create():
@@ -531,49 +614,6 @@ def admin_catalog_create():
 
     return redirect(url_for("admin_catalog"))
 
-@app.route("/admin/catalog/<item_id>/update", methods=["POST"])
-def admin_catalog_update(item_id):
-    if not _is_admin():
-        flash("Admins only.", "error")
-        return redirect(url_for("dashboard"))
-
-    f = request.form
-    name        = f.get("name", "").strip()
-    description = f.get("description", "").strip()
-    cost        = int(f.get("cost_stamps") or 0)
-    stock       = int(f.get("stock") or 0)
-    active      = (f.get("active") == "on")
-    tags        = _tags_csv_to_array(f.get("tags"))
-    image_url   = f.get("image_url", "").strip()
-
-    upload = request.files.get("image_file")
-    if upload and upload.filename:
-        saved_url = _save_catalog_image(upload)
-        if saved_url:
-            image_url = saved_url
-
-    try:
-        payload = {
-            "name": name,
-            "description": description,
-            "cost_stamps": cost,
-            "stock": stock,
-            "active": active,
-            "tags": tags,
-            "updated_at": datetime.utcnow().isoformat()
-        }
-        # only set image_url if we have one (keeps current otherwise)
-        if image_url:
-            payload["image_url"] = image_url
-
-        supabase.table("catalog_items").update(payload).eq("id", item_id).execute()
-        flash("✅ Item updated.", "success")
-    except Exception as e:
-        print("⚠️ admin_catalog_update failed:", e)
-        flash("Failed to update item.", "error")
-
-    return redirect(url_for("admin_catalog"))
-
 @app.route("/admin/catalog/<item_id>/toggle", methods=["POST"])
 def admin_catalog_toggle(item_id):
     if not _is_admin():
@@ -594,30 +634,201 @@ def admin_catalog_toggle(item_id):
 
     return redirect(url_for("admin_catalog"))
 
-@app.route("/admin/catalog/<item_id>/delete", methods=["POST"])
-def admin_catalog_delete(item_id):
-    if not _is_admin():
-        flash("Admins only.", "error")
+from datetime import date
+# ===== Admin Catalog Meetups =====
+@app.route("/admin/meetups", methods=["GET", "POST"])
+def admin_meetups():
+    if "trainer" not in session:
+        flash("Please log in.", "warning")
+        return redirect(url_for("home"))
+
+    _, user = find_user(session["trainer"])
+    if not user or user.get("account_type") != "Admin":
+        flash("Access denied. Admins only.", "error")
+        return redirect(url_for("dashboard"))
+
+    # 🔄 Auto-disable expired meetups
+    try:
+        today = date.today().isoformat()
+        supabase.table("meetups") \
+            .update({"active": False}) \
+            .lte("date", today) \
+            .eq("active", True) \
+            .execute()
+    except Exception as e:
+        print("⚠️ Failed auto-disable meetups:", e)
+
+    meetups = []
+    try:
+        resp = supabase.table("meetups").select("*").order("date", desc=False).execute()
+        meetups = resp.data or []
+    except Exception as e:
+        print("⚠️ Failed fetching meetups:", e)
+
+    return render_template("admin_meetups.html", meetups=meetups)
+
+@app.route("/admin/meetups/create", methods=["POST"])
+def admin_meetups_create():
+    if "trainer" not in session:
+        return redirect(url_for("home"))
+
+    _, user = find_user(session["trainer"])
+    if not user or user.get("account_type") != "Admin":
+        flash("Unauthorized", "error")
+        return redirect(url_for("dashboard"))
+
+    data = {
+        "name": request.form.get("name"),
+        "location": request.form.get("location"),
+        "date": request.form.get("date"),
+        "start_time": request.form.get("start_time"),
+        "active": True,
+        "created_at": datetime.utcnow().isoformat()
+    }
+    try:
+        supabase.table("meetups").insert(data).execute()
+        flash("✅ Meetup created!", "success")
+    except Exception as e:
+        print("⚠️ Failed creating meetup:", e)
+        flash("❌ Could not create meetup.", "error")
+
+    return redirect(url_for("admin_meetups"))
+
+@app.route("/admin/meetups/<meetup_id>/update", methods=["POST"])
+def admin_meetups_update(meetup_id):
+    if "trainer" not in session:
+        return redirect(url_for("home"))
+
+    _, user = find_user(session["trainer"])
+    if not user or user.get("account_type") != "Admin":
+        flash("Unauthorized", "error")
+        return redirect(url_for("dashboard"))
+
+    data = {
+        "name": request.form.get("name"),
+        "location": request.form.get("location"),
+        "date": request.form.get("date"),
+        "start_time": request.form.get("start_time"),
+        "active": "active" in request.form
+    }
+    try:
+        supabase.table("meetups").update(data).eq("id", meetup_id).execute()
+        flash("✅ Meetup updated!", "success")
+    except Exception as e:
+        print("⚠️ Failed updating meetup:", e)
+        flash("❌ Could not update meetup.", "error")
+
+    return redirect(url_for("admin_meetups"))
+
+@app.route("/admin/meetups/<meetup_id>/delete", methods=["POST"])
+def admin_meetups_delete(meetup_id):
+    if "trainer" not in session:
+        return redirect(url_for("home"))
+
+    _, user = find_user(session["trainer"])
+    if not user or user.get("account_type") != "Admin":
+        flash("Unauthorized", "error")
         return redirect(url_for("dashboard"))
 
     try:
-        supabase.table("catalog_items").delete().eq("id", item_id).execute()
-        flash("🗑️ Item deleted.", "success")
+        supabase.table("meetups").delete().eq("id", meetup_id).execute()
+        flash("🗑️ Meetup deleted.", "success")
     except Exception as e:
-        print("⚠️ admin_catalog_delete failed:", e)
-        flash("Failed to delete item.", "error")
+        print("⚠️ Failed deleting meetup:", e)
+        flash("❌ Could not delete meetup.", "error")
 
-    return redirect(url_for("admin_catalog"))
+    return redirect(url_for("admin_meetups"))
 
-# ===== Placeholder Admin Pages =====
-@app.route("/admin/meetups")
-def admin_meetups():
-    return render_template("admin_placeholder.html", title="Catalog Meetup Manager")
-
-@app.route("/admin/redemptions")
+# ===== Admin Redemptions =====
+@app.route("/admin/redemptions", methods=["GET"])
 def admin_redemptions():
-    return render_template("admin_placeholder.html", title="Redemptions Manager")
+    if "trainer" not in session:
+        flash("Please log in.", "warning")
+        return redirect(url_for("home"))
 
+    _, user = find_user(session["trainer"])
+    if not user or user.get("account_type") != "Admin":
+        flash("Admins only!", "error")
+        return redirect(url_for("dashboard"))
+
+    # Query params
+    status_filter = request.args.get("status", "ALL")
+    search_user = request.args.get("search", "").strip()
+    page = int(request.args.get("page", 1))
+    per_page = 20  # show 20 redemptions per page
+
+    redemptions = []
+    stats = {"total": 0, "pending": 0, "fulfilled": 0, "cancelled": 0}
+    total_filtered = 0
+
+    try:
+        # Build query with filters
+        query = supabase.table("redemptions").select("*").order("created_at", desc=True)
+
+        if status_filter != "ALL":
+            query = query.eq("status", status_filter)
+
+        if search_user:
+            query = query.ilike("trainer_username", f"%{search_user}%")
+
+        # Pagination: range = [from, to]
+        from_row = (page - 1) * per_page
+        to_row = from_row + per_page - 1
+        resp = query.range(from_row, to_row).execute()
+        redemptions = resp.data or []
+
+        # Count for pagination
+        total_filtered = len(
+            supabase.table("redemptions").select("id", count="exact").execute().data or []
+        )
+
+        # Global counts (ignores filters)
+        all_resp = supabase.table("redemptions").select("status").execute()
+        stats["total"] = len(all_resp.data or [])
+        stats["pending"] = sum(1 for r in all_resp.data if r["status"] == "PENDING")
+        stats["fulfilled"] = sum(1 for r in all_resp.data if r["status"] == "FULFILLED")
+        stats["cancelled"] = sum(1 for r in all_resp.data if r["status"] == "CANCELLED")
+
+    except Exception as e:
+        print("⚠️ Failed fetching redemptions:", e)
+
+    # total pages for pagination UI
+    total_pages = max(1, (total_filtered + per_page - 1) // per_page)
+
+    return render_template(
+        "admin_redemptions.html",
+        redemptions=redemptions,
+        stats=stats,
+        status_filter=status_filter,
+        search_user=search_user,
+        page=page,
+        total_pages=total_pages,
+    )
+
+
+@app.route("/admin/redemptions/<rid>/update", methods=["POST"])
+def admin_redemptions_update(rid):
+    if "trainer" not in session:
+        return redirect(url_for("home"))
+
+    _, user = find_user(session["trainer"])
+    if not user or user.get("account_type") != "Admin":
+        flash("Unauthorized", "error")
+        return redirect(url_for("dashboard"))
+
+    new_status = request.form.get("status")
+    if new_status not in ["FULFILLED", "CANCELLED"]:
+        flash("Invalid status.", "error")
+        return redirect(url_for("admin_redemptions"))
+
+    try:
+        supabase.table("redemptions").update({"status": new_status}).eq("id", rid).execute()
+        flash(f"✅ Redemption marked as {new_status}", "success")
+    except Exception as e:
+        print("⚠️ Failed updating redemption:", e)
+        flash("❌ Could not update redemption.", "error")
+
+    return redirect(url_for("admin_redemptions"))
 
 # ====== Admin: Trainer Manager ======
 @app.route("/admin/trainers", methods=["GET", "POST"])

@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block content %}
+
+<a href="{{ url_for('admin_catalog') }}" class="back-link">⬅ Back to Catalog Manager</a>
+
+<div class="card">
+  <h2>✏️ Edit {{ item.name }}</h2>
+  <form action="{{ url_for('admin_catalog_update', item_id=item.id) }}" method="post" enctype="multipart/form-data" class="grid two">
+    <label>Name <input type="text" name="name" value="{{ item.name }}" required></label>
+    <label>Cost <input type="number" name="cost_stamps" min="0" value="{{ item.cost_stamps }}"></label>
+    <label class="colspan">Description <textarea name="description" rows="3">{{ item.description }}</textarea></label>
+    <label>Stock <input type="number" name="stock" min="0" value="{{ item.stock }}"></label>
+    <label>Tags <input type="text" name="tags" value="{{ (item.tags or [])|join(',') }}"></label>
+    <label>Image URL <input type="url" name="image_url" value="{{ item.image_url }}"></label>
+    <label>Upload <input type="file" name="image_file" accept="image/*"></label>
+    <label class="check"><input type="checkbox" name="active" {% if item.active %}checked{% endif %}> Online</label>
+    <div class="actions colspan"><button type="submit">💾 Save Changes</button></div>
+  </form>
+</div>
+
+<form action="{{ url_for('admin_catalog_delete', item_id=item.id) }}" method="post" onsubmit="return confirm('Delete {{ item.name }}?');">
+  <button class="danger">🗑️ Delete Item</button>
+</form>
+
+<style>
+.back-link { display:inline-block; margin-bottom:12px; text-decoration:none; font-weight:600; color:#3a8dde; }
+.danger { background:#ef4444; color:#fff; border:none; padding:8px 12px; border-radius:6px; font-weight:600; margin-top:10px; cursor:pointer; }
+</style>
+
+{% endblock %}

@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h1>🎁 Redemptions Manager</h1>
+<p>View and manage prize redemptions.</p>
+
+<!-- Stat cards -->
+<div class="stats-summary">
+  <div class="stat-card"><h3>{{ stats.total }}</h3><p>Total</p></div>
+  <div class="stat-card"><h3>{{ stats.pending }}</h3><p>Pending</p></div>
+  <div class="stat-card"><h3>{{ stats.fulfilled }}</h3><p>Fulfilled</p></div>
+  <div class="stat-card"><h3>{{ stats.cancelled }}</h3><p>Cancelled</p></div>
+</div>
+
+<!-- Filters -->
+<form method="get" class="filters">
+  <input type="text" name="search" placeholder="Search by trainer…" value="{{ search_user }}">
+  <select name="status">
+    <option value="ALL" {% if status_filter == "ALL" %}selected{% endif %}>All</option>
+    <option value="PENDING" {% if status_filter == "PENDING" %}selected{% endif %}>Pending</option>
+    <option value="FULFILLED" {% if status_filter == "FULFILLED" %}selected{% endif %}>Fulfilled</option>
+    <option value="CANCELLED" {% if status_filter == "CANCELLED" %}selected{% endif %}>Cancelled</option>
+  </select>
+  <button type="submit">Apply</button>
+</form>
+
+<!-- Redemption list -->
+{% if redemptions %}
+<div class="redemptions-list">
+  {% for r in redemptions %}
+  <div class="redemption-card {{ r.status|lower }}">
+    <div class="thumb" style="background-image:url('{{ r.item_snapshot.image_url if r.item_snapshot and r.item_snapshot.image_url else url_for('static', filename='icons/catalog-app.png') }}')"></div>
+    <div class="meta">
+      <strong>{{ r.trainer_username }}</strong>
+      <p>📦 {{ r.item_snapshot.name if r.item_snapshot else "Unknown Item" }}</p>
+      <p>🪙 {{ r.stamps_spent }} | {{ r.status }}</p>
+      <p><small>{{ r.created_at|to_date }}</small></p>
+    </div>
+    <form action="{{ url_for('admin_redemptions_update', rid=r.id) }}" method="post" class="actions">
+      {% if r.status == "PENDING" %}
+        <button type="submit" name="status" value="FULFILLED" class="success">Fulfill</button>
+        <button type="submit" name="status" value="CANCELLED" class="danger">Cancel</button>
+      {% endif %}
+    </form>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Pagination -->
+<div class="pagination">
+  {% if page > 1 %}
+    <a href="?page={{ page - 1 }}&status={{ status_filter }}&search={{ search_user }}">⬅ Prev</a>
+  {% endif %}
+  <span>Page {{ page }} of {{ total_pages }}</span>
+  {% if page < total_pages %}
+    <a href="?page={{ page + 1 }}&status={{ status_filter }}&search={{ search_user }}">Next ➡</a>
+  {% endif %}
+</div>
+{% else %}
+<p>No redemptions found.</p>
+{% endif %}
+
+<style>
+.stats-summary { display:flex; gap:12px; margin-bottom:20px; }
+.stat-card {
+  flex:1; background:#fff; border-radius:10px; padding:15px; text-align:center;
+  box-shadow:0 2px 6px rgba(0,0,0,0.1);
+}
+.filters { display:flex; gap:10px; margin-bottom:16px; }
+
+.redemptions-list { display:flex; flex-direction:column; gap:10px; }
+.redemption-card {
+  background:#fff; border-radius:10px; padding:10px;
+  box-shadow:0 2px 6px rgba(0,0,0,0.08); display:flex; align-items:center; gap:12px;
+}
+.redemption-card.pending { border-left:4px solid #fbbf24; }
+.redemption-card.fulfilled { border-left:4px solid #22c55e; }
+.redemption-card.cancelled { border-left:4px solid #ef4444; }
+
+.redemption-card .thumb {
+  width:60px; height:60px; border-radius:8px;
+  background:#f4f4f4 center/cover no-repeat;
+}
+.redemption-card .meta { flex:1; }
+.redemption-card .meta p { margin:2px 0; font-size:0.85em; color:#555; }
+
+.actions button { margin-left:6px; padding:6px 10px; border:none; border-radius:6px; font-weight:600; cursor:pointer; }
+.actions .success { background:#22c55e; color:#fff; }
+.actions .danger { background:#ef4444; color:#fff; }
+
+.pagination { margin-top:15px; text-align:center; }
+.pagination a { margin:0 6px; text-decoration:none; font-weight:600; color:#3a8dde; }
+</style>
+
+{% endblock %}
