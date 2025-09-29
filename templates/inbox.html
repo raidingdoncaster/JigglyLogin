@@ -2,9 +2,17 @@
 {% block content %}
 <h2>📨 Inbox</h2>
 
+<!-- Tabs -->
+<div class="tabs">
+  <a class="tab {{ 'active' if tab == 'all' else '' }}" href="{{ url_for('inbox', tab='all', sort=sort_by) }}">All</a>
+  <a class="tab {{ 'active' if tab == 'notifications' else '' }}" href="{{ url_for('inbox', tab='notifications', sort=sort_by) }}">Notifications</a>
+  <a class="tab {{ 'active' if tab == 'receipts' else '' }}" href="{{ url_for('inbox', tab='receipts', sort=sort_by) }}">Receipts</a>
+</div>
+
 <!-- Sorting / Filtering -->
 <div class="inbox-filters">
   <form method="get" action="{{ url_for('inbox') }}">
+    <input type="hidden" name="tab" value="{{ tab }}">
     <label for="sort">Sort by:</label>
     <select name="sort" id="sort" onchange="this.form.submit()">
       <option value="newest" {% if sort_by == 'newest' %}selected{% endif %}>Newest First</option>
@@ -29,7 +37,7 @@
           {% endif %}
         </div>
         <p class="inbox-date">{{ msg.sent_at|to_date }}</p>
-        <p class="snippet">{{ msg.message[:90] }}{% if msg.message|length > 90 %}…{% endif %}</p>
+        <p class="snippet">{{ msg.message[:90] }}{% if msg.message and msg.message|length > 90 %}…{% endif %}</p>
       </div>
     </a>
   {% else %}
@@ -42,9 +50,18 @@
 </div>
 
 <style>
+.tabs {
+  display:flex; gap:8px; margin:8px 0 10px 0;
+}
+.tab {
+  text-decoration:none; padding:6px 10px; border-radius:999px;
+  background:#eef2ff; color:#334155; font-weight:700; font-size:.9em;
+}
+.tab.active { background:#3a8dde; color:#fff; }
+
 .inbox-filters {
-  margin-top: 10px;
-  margin-bottom: 15px;
+  margin-top: 6px;
+  margin-bottom: 12px;
   text-align: right;
 }
 .inbox-filters select {
@@ -85,7 +102,7 @@
 }
 .inbox-card h3 {
   margin: 0;
-  font-size: 1.1em;
+  font-size: 1.05em;
   color: #3a8dde;
 }
 .type-pill {

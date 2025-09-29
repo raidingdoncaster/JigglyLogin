@@ -1544,7 +1544,31 @@ def dashboard():
         show_back=False,
     )
 
-# ====== Inbox ======
+# ====== Inbox, Notifications, Receipts ======
+def _build_receipt_message(trainer: str, rec: dict) -> dict:
+    """Map a redemption row to a 'notification-like' dict for the inbox UI."""
+    item = rec.get("item_snapshot") or {}
+    meetup = ((rec.get("metadata") or {}).get("meetup")) or {}
+
+    return {
+        "id": f"rec:{rec.get('id')}",                 # <-- distinguish from notifications
+        "type": "receipt",
+        "audience": trainer,
+        "subject": f"🧾 Receipt: {item.get('name', 'Prize')}",
+        "message": (
+            f"Thanks for your order! You redeemed '{item.get('name','')}' "
+            f"for {rec.get('stamps_spent', 0)} stamps.\n\n"
+            f"Pick-up at {meetup.get('name','TBA')} — {meetup.get('location','TBA')} "
+            f"on {meetup.get('date','TBA')} @ {meetup.get('start_time','TBA')}."
+        ),
+        "metadata": {
+            "url": url_for("catalog_receipt", redemption_id=rec.get("id"))
+        },
+        "sent_at": rec.get("created_at"),
+        # show as 'read' by default so receipts don't permanently look unread
+        "read_by": [trainer],
+    }
+
 @app.route("/inbox")
 def inbox():
     if "trainer" not in session:
@@ -1552,35 +1576,72 @@ def inbox():
         return redirect(url_for("home"))
 
     trainer = session["trainer"]
-    sort_by = request.args.get("sort", "newest")
+    tab = request.args.get("tab", "all").lower()           # all | notifications | receipts
+    sort_by = request.args.get("sort", "newest")           # newest | oldest | unread | read | type
+
     messages = []
 
-    if USE_SUPABASE and supabase:
+    # --- Pull notifications (audience = trainer or ALL) ---
+    notif_rows = []
+    if USE_SUPABASE and supabase and tab in ("all", "notifications"):
         try:
-            query = supabase.table("notifications") \
-                .select("*") \
-                .or_(f"audience.eq.{trainer},audience.eq.ALL")
+            nq = (supabase.table("notifications")
+                  .select("*")
+                  .or_(f"audience.eq.{trainer},audience.eq.ALL"))
 
-            # Apply filters
             if sort_by == "unread":
-                query = query.not_.contains("read_by", [trainer])
+                nq = nq.not_.contains("read_by", [trainer])
             elif sort_by == "read":
-                query = query.contains("read_by", [trainer])
+                nq = nq.contains("read_by", [trainer])
             elif sort_by == "type":
-                query = query.order("type", desc=False)
+                # type sort will be handled after merge; still order secondarily by date
+                pass
 
-            # Default sort order
-            if sort_by == "newest":
-                query = query.order("sent_at", desc=True)
-            elif sort_by == "oldest":
-                query = query.order("sent_at", desc=False)
+            # default time ordering (we'll re-apply after merging with receipts)
+            nq = nq.order("sent_at", desc=(sort_by != "oldest"))
+            notif_rows = nq.execute().data or []
 
-            resp = query.execute()
-            messages = resp.data or []
+            # If tab == notifications, exclude any receipt-type notifs (to avoid dupes)
+            if tab == "notifications":
+                notif_rows = [n for n in notif_rows if (n.get("type") or "").lower() != "receipt"]
         except Exception as e:
-            print("⚠️ Supabase inbox fetch failed:", e)
+            print("⚠️ Supabase notifications fetch failed:", e)
 
-    # fallback: no messages
+    # --- Pull receipts from redemptions and map to message-like objects ---
+    receipt_rows = []
+    if USE_SUPABASE and supabase and tab in ("all", "receipts"):
+        try:
+            rq = (supabase.table("redemptions")
+                  .select("*")
+                  .eq("trainer_username", trainer)
+                  .order("created_at", desc=(sort_by != "oldest")))
+            raw = rq.execute().data or []
+            receipt_rows = [_build_receipt_message(trainer, r) for r in raw]
+        except Exception as e:
+            print("⚠️ Supabase receipts fetch failed:", e)
+
+    # --- Merge based on tab ---
+    if tab == "notifications":
+        messages = notif_rows
+    elif tab == "receipts":
+        messages = receipt_rows
+    else:  # all
+        messages = (notif_rows or []) + (receipt_rows or [])
+
+    # --- Post-merge sorting & filtering ---
+    def parse_dt(d):  # safe key for sorting
+        try:
+            return datetime.fromisoformat((d or "").replace("Z", "+00:00"))
+        except Exception:
+            return datetime.min
+
+    if sort_by == "type":
+        messages.sort(key=lambda m: ((m.get("type") or "").lower(), -parse_dt(m.get("sent_at")).timestamp()))
+    elif sort_by == "oldest":
+        messages.sort(key=lambda m: parse_dt(m.get("sent_at")))
+    else:  # newest (default)
+        messages.sort(key=lambda m: parse_dt(m.get("sent_at")), reverse=True)
+
     if not messages:
         messages = [{
             "subject": "📭 No messages yet",
@@ -1595,34 +1656,9 @@ def inbox():
         trainer=trainer,
         inbox=messages,
         sort_by=sort_by,
+        tab=tab,
         show_back=True
     )
-
-# ====== Mark message as read ======
-@app.route("/inbox/read/<message_id>")
-def read_message(message_id):
-    if "trainer" not in session:
-        flash("Please log in to view your inbox.", "warning")
-        return redirect(url_for("home"))
-
-    trainer = session["trainer"]
-
-    try:
-        # Fetch the current message
-        resp = supabase.table("notifications").select("*").eq("id", message_id).limit(1).execute()
-        if resp.data:
-            msg = resp.data[0]
-            read_by = msg.get("read_by") or []
-
-            # If trainer not already marked as read, append
-            if trainer not in read_by:
-                read_by.append(trainer)
-                supabase.table("notifications").update({"read_by": read_by}).eq("id", message_id).execute()
-    except Exception as e:
-        print("⚠️ Failed to mark message read:", e)
-
-    # Redirect back to inbox
-    return redirect(url_for("inbox"))
 
 @app.route("/inbox/message/<message_id>")
 def inbox_message(message_id):
@@ -1632,35 +1668,48 @@ def inbox_message(message_id):
 
     trainer = session["trainer"]
 
-    # Fetch the message
-    try:
-        resp = supabase.table("notifications").select("*").eq("id", message_id).limit(1).execute()
-        if not resp.data:
-            flash("Message not found.", "warning")
-            return redirect(url_for("inbox"))
-        msg = resp.data[0]
-    except Exception as e:
-        print("⚠️ Failed to fetch message:", e)
-        flash("Could not load message.", "error")
-        return redirect(url_for("inbox"))
+    # Receipt messages: message_id starts with "rec:"
+    if message_id.startswith("rec:"):
+        rec_id = message_id.split("rec:", 1)[1]
+        try:
+            r = (supabase.table("redemptions")
+                 .select("*")
+                 .eq("id", rec_id)
+                 .limit(1)
+                 .execute())
+            if not r.data:
+                abort(404)
+            rec = r.data[0]
+            if (rec.get("trainer_username") or "").lower() != trainer.lower():
+                abort(403)
+            msg = _build_receipt_message(trainer, rec)
+        except Exception as e:
+            print("⚠️ inbox_message (receipt) fetch failed:", e)
+            abort(500)
+        return render_template("inbox_message.html", msg=msg, show_back=True)
 
-    # Basic audience guard (show if it was sent to this user or global 'ALL')
-    audience = (msg.get("audience") or "").strip()
-    if audience != trainer and audience.upper() != "ALL":
-        flash("You don’t have access to that message.", "error")
-        return redirect(url_for("inbox"))
-
-    # Mark as read
+    # Regular notification
     try:
+        r = (supabase.table("notifications")
+             .select("*")
+             .eq("id", message_id)
+             .limit(1)
+             .execute())
+        if not r.data:
+            abort(404)
+        msg = r.data[0]
+
+        # Mark as read
         read_by = msg.get("read_by") or []
         if trainer not in read_by:
             read_by.append(trainer)
             supabase.table("notifications").update({"read_by": read_by}).eq("id", message_id).execute()
-            msg["read_by"] = read_by
+        msg["read_by"] = read_by
     except Exception as e:
-        print("⚠️ Failed to mark read in detail:", e)
+        print("⚠️ inbox_message (notification) failed:", e)
+        abort(500)
 
-    return render_template("inbox_message.html", trainer=trainer, msg=msg, show_back=True)
+    return render_template("inbox_message.html", msg=msg, show_back=True)
 
 # ====== Logout ======
 @app.route("/logout")
