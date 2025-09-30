@@ -61,13 +61,11 @@ if USE_SUPABASE and create_client and SUPABASE_URL and SUPABASE_KEY:
 def home():
     # detect if mobile
     ua = request.user_agent.string.lower()
-    is_mobile = bool(re.search("iphone|ipad|android|mobile", ua))
+    is_mobile = any(word in ua for word in ["iphone", "ipad", "android", "mobile"])
 
     if is_mobile:
-        # Show branded landing one-pager
         return render_template("landing.html", show_back=False)
     else:
-        # Desktop users get full app/dashboard
         if "trainer" in session:
             return redirect(url_for("dashboard"))
         else:
@@ -1306,11 +1304,6 @@ def admin_notifications():
         print("⚠️ Failed loading notifications:", e)
 
     return render_template("admin_notifications.html", notifications=notifications)
-
-# ====== Routes ======
-@app.route("/")
-def home():
-    return render_template("login.html")
 
 # ==== Login ====
 @app.route("/login", methods=["POST"])
