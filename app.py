@@ -4,6 +4,7 @@ import hashlib
 import gspread
 import requests
 import uuid
+import re
 from flask import Flask, render_template, abort, request, redirect, url_for, session, flash, send_from_directory, jsonify, g
 from google.oauth2.service_account import Credentials
 from werkzeug.utils import secure_filename
@@ -54,6 +55,23 @@ if USE_SUPABASE and create_client and SUPABASE_URL and SUPABASE_KEY:
     except Exception as e:
         print("⚠️ Could not init Supabase client:", e)
         supabase = None
+
+# ===== Detect mobile - force app =====
+@app.route("/")
+def home():
+    # detect if mobile
+    ua = request.user_agent.string.lower()
+    is_mobile = bool(re.search("iphone|ipad|android|mobile", ua))
+
+    if is_mobile:
+        # Show branded landing one-pager
+        return render_template("landing.html", show_back=False)
+    else:
+        # Desktop users get full app/dashboard
+        if "trainer" in session:
+            return redirect(url_for("dashboard"))
+        else:
+            return redirect(url_for("login"))
 
 # ===== Catalog Receipt Helper =====
 def absolute_url(path: str) -> str:

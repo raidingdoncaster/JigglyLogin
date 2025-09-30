@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block content %}
+
+<!-- Banner -->
+<div class="banner" style="background:url('{{ url_for('static', filename='banner.jpg') }}') center/cover no-repeat; height:220px; border-radius:12px;">
+</div>
+<h1 style="text-align:center; margin:20px 0; font-size:1.5em;">
+  Welcome to Doncaster’s Largest Pokémon GO Community!
+</h1>
+
+<!-- Carousel -->
+<div class="carousel">
+  <div class="carousel-track">
+    <div class="carousel-slide">📅 Track your Passport stamps</div>
+    <div class="carousel-slide">🎁 Redeem rewards & prizes</div>
+    <div class="carousel-slide">🤝 Connect with other Trainers</div>
+    <div class="carousel-slide">🏞️ Join local meet-ups</div>
+  </div>
+</div>
+
+<!-- Install App -->
+<div class="install-section">
+  <button onclick="showInstall()">⬇️ Install the App</button>
+  <div id="installBox" class="install-box">
+    <h3>How to install RDAB</h3>
+    <p><strong>iOS:</strong> Tap <span style="font-size:1.2em;">⤴️</span> then "Add to Home Screen"</p>
+    <p><strong>Android:</strong> Tap the 3 dots ⋮ and "Install App"</p>
+  </div>
+</div>
+
+<!-- About -->
+<div class="card">
+  <h2>We are Raiding Doncaster and Beyond!</h2>
+  <p>
+    We’re a Community Ambassador established community of Pokémon GO trainers in and around Doncaster who raid together, 
+    explore local parks, and help new and returning players feel at home. Safe, welcoming, and proudly local.
+  </p>
+  <a href="/about" target="_blank" class="btn">ℹ️ Learn More</a>
+</div>
+
+<!-- Campfire -->
+<div class="card campfire">
+  <h2>🔥 Join us on Campfire</h2>
+  <p>Check-in to real life meetups for in-game bonuses and rewards!</p>
+  <a href="https://campfire.onelink.me/12345" target="_blank" class="btn">Open Campfire Group</a>
+</div>
+
+<!-- Links Row -->
+<div class="links-row">
+  <div class="link-card">
+    <h3>📅 Calendar</h3>
+    <a href="/calendar" class="btn">View Events</a>
+  </div>
+  <div class="link-card">
+    <h3>📸 Instagram</h3>
+    <a href="https://instagram.com/rdab" target="_blank" class="btn">Follow Us</a>
+  </div>
+  <div class="link-card">
+    <h3>🗺️ City Guides</h3>
+    <p>Coming soon…</p>
+  </div>
+</div>
+
+<!-- Footer -->
+<footer>
+  <p>Raiding Doncaster and Beyond 2025 (c)</p>
+  <a href="/policies" target="_blank">Tap here to view our policies</a>
+  <p style="margin-top:10px; font-size:0.8em; color:#777;">
+    This is a programme run entirely by volunteers from the ‘Raiding Doncaster and Beyond’ Campfire group and 
+    is in no way affiliated with The Pokémon Company or Niantic. <br>
+    All competitions, giveaways, prize draws, passports and prize redemption are entirely free and there are no monetary gains.<br>
+    For support, please contact the RDAB admin team via the Niantic Campfire app.
+  </p>
+</footer>
+
+<style>
+.banner { margin:10px auto; max-width:800px; }
+.carousel { overflow:hidden; width:100%; margin:20px auto; }
+.carousel-track { display:flex; animation: scroll 16s linear infinite; }
+.carousel-slide { min-width:100%; text-align:center; font-weight:600; font-size:1.1em; padding:12px; }
+@keyframes scroll { 0%{transform:translateX(0);} 100%{transform:translateX(-400%);} }
+
+.install-section { text-align:center; margin:20px 0; }
+.install-section button { background:#3a8dde; color:#fff; padding:10px 18px; border:none; border-radius:8px; font-size:1em; font-weight:600; }
+.install-box { display:none; background:#fff; border:1px solid #ccc; padding:12px; margin-top:10px; border-radius:8px; text-align:left; }
+
+.card { background:#fff; border-radius:12px; padding:16px; margin:20px 0; box-shadow:0 2px 6px rgba(0,0,0,0.1); }
+.card h2 { margin-top:0; }
+
+.links-row { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin:20px 0; }
+.link-card { background:#fff; border-radius:12px; padding:14px; box-shadow:0 2px 6px rgba(0,0,0,0.08); text-align:center; }
+
+.btn { display:inline-block; background:#3a8dde; color:#fff; text-decoration:none; padding:8px 12px; border-radius:8px; margin-top:8px; }
+
+footer { text-align:center; padding:20px; margin-top:30px; font-size:0.9em; color:#555; }
+</style>
+
+<script>
+function showInstall(){
+  const box=document.getElementById("installBox");
+  box.style.display= box.style.display==="block" ? "none":"block";
+}
+</script>
+
+{% endblock %}
