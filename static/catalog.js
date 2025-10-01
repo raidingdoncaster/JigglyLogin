@@ -52,7 +52,6 @@ function toggleWatchFromModal(itemId) {
     .then(data => {
       if (data.success) {
         loadWatchlist();
-        // also update buttons on main catalog page
         const btn = document.querySelector(`.watch-btn[data-id="${itemId}"]`);
         if (btn) btn.innerText = data.watched ? "👀" : "➕";
       }
@@ -72,38 +71,35 @@ function toggleWatch(btn) {
     .catch(err => console.error("Toggle watch failed", err));
 }
 
-// === Carousel Auto-Rotate ===
-const track = document.querySelector(".carousel-track");
-const slides = document.querySelectorAll(".carousel-slide");
+// === Featured Carousel ===
+const track = document.querySelector(".carousel");
+const slides = document.querySelectorAll(".carousel-item");
 const dots = document.querySelectorAll(".carousel-dots .dot");
+const progressBar = document.querySelector(".carousel-progress .progress-bar");
+
 let currentIndex = 0;
 let interval = setInterval(nextSlide, 6000);
 
 function updateCarousel() {
+  // Move track
   track.style.transform = `translateX(-${currentIndex * 100}%)`;
+  // Update pokéball dots
   dots.forEach((d, i) => d.classList.toggle("active", i === currentIndex));
 }
 
 function nextSlide() {
   currentIndex = (currentIndex + 1) % slides.length;
   updateCarousel();
+  restartProgressBar();
 }
 
 function prevSlide() {
   currentIndex = (currentIndex - 1 + slides.length) % slides.length;
   updateCarousel();
+  restartProgressBar();
 }
 
-document.querySelector(".carousel-next")?.addEventListener("click", () => {
-  nextSlide();
-  resetInterval();
-});
-
-document.querySelector(".carousel-prev")?.addEventListener("click", () => {
-  prevSlide();
-  resetInterval();
-});
-
+// Dot click = jump
 dots.forEach((dot, i) => {
   dot.addEventListener("click", () => {
     currentIndex = i;
@@ -115,21 +111,7 @@ dots.forEach((dot, i) => {
 function resetInterval() {
   clearInterval(interval);
   interval = setInterval(nextSlide, 6000);
-}
-
-updateCarousel();
-
-const progressBar = document.querySelector(".carousel-progress .progress-bar");
-
-function nextSlide() {
-  currentIndex = (currentIndex + 1) % slides.length;
-  updateCarousel();
   restartProgressBar();
-}
-
-function updateCarousel() {
-  track.style.transform = `translateX(-${currentIndex * 100}%)`;
-  dots.forEach((d, i) => d.classList.toggle("active", i === currentIndex));
 }
 
 function restartProgressBar() {
@@ -141,10 +123,6 @@ function restartProgressBar() {
   }, 50);
 }
 
-function resetInterval() {
-  clearInterval(interval);
-  interval = setInterval(nextSlide, 6000);
-  restartProgressBar();
-}
-
+// Init
+updateCarousel();
 restartProgressBar();

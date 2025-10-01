@@ -10,11 +10,12 @@
   </div>
 </div>
 
-<!-- Featured Carousel -->
-<div class="featured-carousel">
-  <div class="carousel-track">
+<!-- Featured Section -->
+<section class="featured">
+  <h2>⭐ Featured</h2>
+  <div class="carousel">
     {% for f in featured_items %}
-    <div class="carousel-slide" style="background-image:url('{{ f.image_url }}');">
+    <div class="carousel-item" style="background-image:url('{{ f.image_url }}');">
       <div class="carousel-content">
         <h2>{{ f.name }}</h2>
         <p>{{ f.description or '' }}</p>
@@ -24,21 +25,16 @@
     {% endfor %}
   </div>
 
-  <!-- Controls -->
-  <div class="carousel-controls">
-    <button class="carousel-prev">‹</button>
-    <div class="carousel-dots">
-      {% for f in featured_items %}
-      <span class="dot {% if loop.first %}active{% endif %}"></span>
-      {% endfor %}
-    </div>
-    <button class="carousel-next">›</button>
+  <!-- Pokéball Dots -->
+  <div class="carousel-dots">
+    {% for f in featured_items %}
+    <span class="dot {% if loop.first %}active{% endif %}"></span>
+    {% endfor %}
   </div>
-</div>
-
-<div class="carousel-progress">
-  <div class="progress-bar"></div>
-</div>
+  <div class="carousel-progress">
+    <div class="progress-bar"></div>
+  </div>
+</section>
 
 <!-- Quick Links -->
 <div class="quick-links">
@@ -77,7 +73,7 @@
     <div class="item-thumb" style="background-image:url('{{ it.image_url }}')">
       <span class="cost">🪙 {{ it.cost_stamps }}</span>
       <button class="watch-btn" data-id="{{ it.id }}" onclick="toggleWatch(this)">
-        👀
+        {% if it.id in watch_ids %}👀{% else %}➕{% endif %}
       </button>
     </div>
     <div class="item-meta">
