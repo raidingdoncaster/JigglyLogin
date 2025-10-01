@@ -1,382 +1,117 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <title>Catalog</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <!-- Minimal, component-scoped styles for the wireframe look -->
-  <style>
-    :root{
-      --bg:#0e0f12; --card:#151821; --muted:#9aa3b2; --text:#e9edf2; --brand:#6dd3ff; --accent:#ffd76d;
-      --ok:#58d68d; --warn:#ffb366; --danger:#ff6d6d; --chip:#23283a; --ring:#2a3146;
-    }
-    *{box-sizing:border-box}
-    body{margin:0;background:var(--bg);color:var(--text);font:14px/1.4 system-ui,Segoe UI,Roboto,Helvetica,Arial}
-    a{color:inherit;text-decoration:none}
-    .container{max-width:1100px;margin:0 auto;padding:16px}
+{% extends "base.html" %}
+{% block content %}
 
-    /* HERO */
-    .hero{display:grid;gap:14px;grid-template-columns:1.4fr .6fr;align-items:stretch}
-    .hero-card{background:linear-gradient(135deg,#1a2030, #111522);border:1px solid #20263a;border-radius:14px; padding:16px; position:relative; overflow:hidden}
-    .hero h1{margin:0 0 6px;font-size:22px}
-    .hero p{margin:0;color:var(--muted)}
-    .hero-actions{margin-top:12px;display:flex;gap:8px;flex-wrap:wrap}
-    .btn{background:#1e2434;border:1px solid #2b3550;color:var(--text);padding:8px 12px;border-radius:10px;cursor:pointer}
-    .btn.brand{border-color:#3a85a3;background:#173244;color:#cdefff}
-    .btn.ghost{background:transparent;border:1px dashed #2a3146;color:#aac0ff}
-    .badge{display:inline-flex;align-items:center;gap:6px;background:#152035;border:1px solid #233150;color:#cfe6ff;padding:5px 8px;border-radius:999px;font-size:12px}
+<div class="catalog-hero">
+  <div class="catalog-icon"></div>
+  <div class="catalog-title">
+    <h1>catalog</h1>
+    <p>{{ catalog_description }}</p>
+    <a href="{{ url_for('dashboard') }}" class="back-link">&lt; back to dashboard</a>
+  </div>
+</div>
 
-    /* QUICK LINKS */
-    .panel{background:var(--card); border:1px solid #232739; border-radius:14px; padding:12px}
-    .quicklinks{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
-    .ql{display:flex;align-items:center;gap:10px;background:#121523;border:1px solid #232a3e;border-radius:12px;padding:10px;cursor:pointer}
-    .ql:hover{border-color:#3b476b}
-    .ql .icon{width:28px;height:28px;border-radius:8px;background:#0f1320;border:1px solid #273050;display:grid;place-items:center;font-size:16px}
-    .ql .label{font-weight:600}
-    .muted{color:var(--muted);font-size:12px}
-
-    /* FEATURED */
-    .featured{margin-top:14px}
-    .carousel{display:grid;grid-auto-flow:column;grid-auto-columns:calc(33.333% - 8px); gap:12px; overflow-x:auto; scroll-snap-type:x mandatory; padding-bottom:8px}
-    .carousel::-webkit-scrollbar{height:6px}
-    .carousel::-webkit-scrollbar-thumb{background:#2b3146;border-radius:999px}
-    .card{background:#141a28;border:1px solid #222b43;border-radius:14px;overflow:hidden;display:flex;flex-direction:column;min-height:240px;scroll-snap-align:start}
-    .card img{width:100%;aspect-ratio:16/9;object-fit:cover;background:#0c0f18}
-    .card .body{padding:10px;display:flex;gap:10px;align-items:center;justify-content:space-between}
-    .title{font-weight:600}
-    .price{font-size:13px;color:#cde6ff;background:#0f1628;border:1px solid #283659;padding:4px 8px;border-radius:999px}
-    .tags{display:flex;gap:6px;flex-wrap:wrap;padding:0 10px 12px}
-    .chip{background:var(--chip);border:1px solid var(--ring);padding:4px 8px;border-radius:999px;color:#c9d2ea;font-size:12px}
-
-    /* GRID */
-    .grid-head{display:flex;align-items:center;justify-content:space-between;margin-top:18px;margin-bottom:8px}
-    .tools{display:flex;gap:8px;align-items:center}
-    .search{display:flex;align-items:center;gap:8px;background:#121523;border:1px solid #232a3e;padding:7px 10px;border-radius:10px}
-    .search input{all:unset;width:180px;color:#cfe2ff}
-    .select{background:#121523;border:1px solid #232a3e;padding:7px 10px;border-radius:10px}
-
-    .category{margin-top:8px}
-    .category h3{margin:12px 4px;font-size:15px;color:#cfe2ff}
-    .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
-    .item{background:#121623;border:1px solid #232a3e;border-radius:12px;overflow:hidden;display:flex;flex-direction:column}
-    .item .pic{background:#0f1320;height:140px;display:grid;place-items:center}
-    .item .pic img{max-width:100%;max-height:100%}
-    .item .meta{padding:10px;display:grid;gap:6px}
-    .meta .line{display:flex;justify-content:space-between;align-items:center}
-    .stock{font-size:12px}
-    .actions{display:flex;gap:8px}
-    .iconbtn{border:1px solid #2a3146;background:#0f1320;border-radius:10px;padding:7px 9px;cursor:pointer}
-    .iconbtn[aria-pressed="true"]{background:#1b243d;border-color:#3b4a7a}
-    .redeem{background:#173244;border:1px solid #355a77;color:#cfefff;border-radius:10px;padding:7px 10px}
-
-    /* WATCHLIST MODAL */
-    .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,5,10,.6);backdrop-filter:saturate(150%) blur(4px);z-index:999}
-    .modal.open{display:flex}
-    .sheet{width:min(800px,92vw); background:#111522;border:1px solid #26304a;border-radius:16px;overflow:hidden}
-    .sheet header{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid #1f2740}
-    .sheet .list{padding:10px;max-height:58vh;overflow:auto;display:grid;gap:10px}
-    .wl{display:grid;grid-template-columns:60px 1fr auto;gap:10px;align-items:center;background:#121623;border:1px solid #242d45;border-radius:12px;padding:8px}
-    .wl img{width:60px;height:60px;object-fit:cover;border-radius:8px;background:#0f1320}
-    .empty{padding:18px;color:var(--muted)}
-
-    /* RESPONSIVE */
-    @media (max-width: 900px){
-      .hero{grid-template-columns:1fr}
-      .carousel{grid-auto-columns:calc(75% - 8px)}
-      .grid{grid-template-columns:repeat(2,1fr)}
-      .quicklinks{grid-template-columns:repeat(2,1fr)}
-    }
-  </style>
-</head>
-<body>
-  <div class="container">
-
-    <!-- HERO + QUICK LINKS (like your mock) -->
-    <div class="hero">
-      <div class="hero-card">
-        <div class="badge" title="Your balance">{{ current_stamps }}<span>🟊</span><span>Stamps</span></div>
-        <h1>Prize Catalog</h1>
-        <p class="muted">{{ catalog_description or "Pick a prize, redeem with your stamps, and collect at the next meet-up." }}</p>
-        <div class="hero-actions">
-          <button class="btn brand" id="btn-open-watchlist">👀 Watch List <span id="watch-count-badge" class="badge" style="margin-left:6px;display:none"></span></button>
-          <a class="btn" href="{{ url_for('orders') }}">🧾 Order History</a>
-          <a class="btn ghost" href="{{ url_for('passport') }}">📘 Passport</a>
-        </div>
-      </div>
-
-      <div class="panel">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-          <div style="font-weight:700">Info &amp; Quick Links</div>
-          <div class="muted">Shortcuts</div>
-        </div>
-        <div class="quicklinks">
-          <!-- All icons are placeholders as requested -->
-          <div class="ql" id="ql-watch">
-            <div class="icon" aria-hidden="true">🔭</div>
-            <div>
-              <div class="label">Watch List</div>
-              <div class="muted">Open your saved items</div>
-            </div>
-          </div>
-          <a class="ql" href="{{ url_for('orders') }}">
-            <div class="icon">⏱</div>
-            <div>
-              <div class="label">Order History</div>
-              <div class="muted">Track past redemptions</div>
-            </div>
-          </a>
-          <a class="ql" href="{{ url_for('inbox') }}">
-            <div class="icon">🔔</div>
-            <div>
-              <div class="label">Inbox</div>
-              <div class="muted">Receipts & announcements</div>
-            </div>
-          </a>
-          <a class="ql" href="{{ url_for('admin_catalog') if account_type == 'Admin' else url_for('catalog') }}">
-            <div class="icon">ℹ️</div>
-            <div>
-              <div class="label">About & FAQ</div>
-              <div class="muted">How redemptions work</div>
-            </div>
-          </a>
-        </div>
+<!-- Featured Carousel -->
+<div class="featured-carousel">
+  <div class="carousel-track">
+    {% for f in featured_items %}
+    <div class="carousel-slide" style="background-image:url('{{ f.image_url }}');">
+      <div class="carousel-content">
+        <h2>{{ f.name }}</h2>
+        <p>{{ f.description or '' }}</p>
+        <a href="{{ url_for('catalog_item', item_id=f.id) }}" class="btn-primary">View</a>
       </div>
     </div>
+    {% endfor %}
+  </div>
 
-    <!-- FEATURED CAROUSEL -->
-    {% if featured_items %}
-    <div class="featured">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-        <div style="font-weight:700">Featured</div>
-        <div class="muted">Swipe →</div>
-      </div>
-      <div class="carousel" id="featuredCarousel">
-        {% for f in featured_items %}
-        <a class="card" href="{{ url_for('catalog_item', item_id=f.id) }}">
-          <img src="{{ f.image_url }}" alt="Featured {{ f.name }}">
-          <div class="body">
-            <div class="title">{{ f.name }}</div>
-            <div class="price">{{ f.cost_stamps }} 🟊</div>
-          </div>
-          <div class="tags">
-            {% for t in (f.tags or [])[:3] %}
-              <div class="chip">#{{ t }}</div>
-            {% endfor %}
-            {% if not f.tags %}<div class="chip">#prize</div>{% endif %}
-          </div>
-        </a>
+  <!-- Controls -->
+  <div class="carousel-controls">
+    <button class="carousel-prev">‹</button>
+    <div class="carousel-dots">
+      {% for f in featured_items %}
+      <span class="dot {% if loop.first %}active{% endif %}"></span>
+      {% endfor %}
+    </div>
+    <button class="carousel-next">›</button>
+  </div>
+</div>
+
+<div class="carousel-progress">
+  <div class="progress-bar"></div>
+</div>
+
+<!-- Quick Links -->
+<div class="quick-links">
+  <a href="#" class="quick-link">New here? Tap here to learn how it works!</a>
+  <a href="{{ url_for('orders') }}" class="quick-link">Order history</a>
+  <button class="watchlist-btn" onclick="toggleWatchlist()">
+    <img src="{{ url_for('static', filename='icons/binoculars.png') }}" alt="Watchlist">
+  </button>
+</div>
+
+<!-- Categories -->
+<section class="categories">
+  <h2>Categories</h2>
+  <div class="category-grid">
+    {% for cat in category_order %}
+    <a href="#cat-{{ cat|lower }}" class="category-btn">{{ cat }}</a>
+    {% endfor %}
+  </div>
+</section>
+
+<!-- Search + Filter -->
+<div class="search-bar">
+  <input type="text" placeholder="🔍 Search" id="catalog-search">
+  <div class="filters">
+    <button>Filter</button>
+    <button>Sort</button>
+    <button>Grid</button>
+    <button>List</button>
+  </div>
+</div>
+
+<!-- Item Grid -->
+<section class="item-grid">
+  {% for it in items %}
+  <div class="item-card">
+    <div class="item-thumb" style="background-image:url('{{ it.image_url }}')">
+      <span class="cost">🪙 {{ it.cost_stamps }}</span>
+      <button class="watch-btn" data-id="{{ it.id }}" onclick="toggleWatch(this)">
+        👀
+      </button>
+    </div>
+    <div class="item-meta">
+      <h3>{{ it.name }}</h3>
+      <p class="desc">{{ it.description }}</p>
+      <div class="tags">
+        {% for t in it.tags %}
+        <span class="tag">#{{ t }}</span>
         {% endfor %}
       </div>
     </div>
-    {% endif %}
-
-    <!-- GRID CONTROLS -->
-    <div class="grid-head">
-      <div style="font-weight:700">All Items</div>
-      <div class="tools">
-        <label class="search">
-          <span>🔎</span>
-          <input id="searchInput" placeholder="Search items…">
-        </label>
-        <label>
-          <select id="sortSelect" class="select" title="Sort">
-            <option value="new">Newest</option>
-            <option value="cheap">Lowest cost</option>
-            <option value="exp">Highest cost</option>
-            <option value="stock">In stock first</option>
-          </select>
-        </label>
-      </div>
-    </div>
-
-    <!-- CATEGORY SECTIONS -->
-    {% for cat in category_order %}
-      {% set cat_items = categories.get(cat, []) %}
-      {% if cat_items %}
-      <section class="category" data-category="{{ cat }}">
-        <h3>• {{ cat }}</h3>
-        <div class="grid" data-grid="{{ cat }}">
-          {% for it in cat_items %}
-          <div class="item" data-name="{{ (it.name or '')|lower }}" data-cost="{{ it.cost_stamps }}" data-stock="{{ it.stock }}">
-            <a class="pic" href="{{ url_for('catalog_item', item_id=it.id) }}">
-              <img src="{{ it.image_url }}" alt="{{ it.name }}">
-            </a>
-            <div class="meta">
-              <div class="line">
-                <div class="title">{{ it.name }}</div>
-                <div class="price">{{ it.cost_stamps }} 🟊</div>
-              </div>
-              <div class="line">
-                <div class="stock {{ 'muted' if it.stock>0 else '' }}">
-                  {% if it.stock>0 %}In stock: {{ it.stock }}{% else %}<span style="color:var(--danger)">Out of stock</span>{% endif %}
-                </div>
-                <div class="actions">
-                  <!-- view -->
-                  <a class="iconbtn" title="View" href="{{ url_for('catalog_item', item_id=it.id) }}">👁</a>
-                  <!-- watch -->
-                  {% set watched = it.id|string in watch_ids %}
-                  <button class="iconbtn watch-btn"
-                          data-id="{{ it.id }}"
-                          aria-pressed="{{ 'true' if watched else 'false' }}"
-                          title="{{ 'Remove from watch list' if watched else 'Add to watch list' }}">🔭</button>
-                  <!-- redeem -->
-                  <a class="redeem" href="{{ url_for('catalog_redeem', item_id=it.id) }}">Redeem</a>
-                </div>
-              </div>
-            </div>
-          </div>
-          {% endfor %}
-        </div>
-      </section>
-      {% endif %}
-    {% endfor %}
-
-  </div>
-
-  <!-- WATCHLIST MODAL -->
-  <div class="modal" id="watchModal" aria-hidden="true" role="dialog" aria-label="Watch List">
-    <div class="sheet">
-      <header>
-        <div style="display:flex;align-items:center;gap:10px">
-          <div style="width:28px;height:28px;border-radius:8px;background:#0f1320;border:1px solid #273050;display:grid;place-items:center">🔭</div>
-          <strong>Watch List</strong>
-        </div>
-        <button class="btn" id="btn-close-watchlist">Close</button>
-      </header>
-      <div class="list" id="watchListBody">
-        <div class="empty">Loading your saved items…</div>
-      </div>
+    <div class="item-actions">
+      <a href="{{ url_for('catalog_item', item_id=it.id) }}" class="buy-btn">
+        Buy / View
+      </a>
     </div>
   </div>
+  {% endfor %}
+</section>
 
-  <script>
-    // ---- tiny helpers
-    const $ = sel => document.querySelector(sel);
-    const $$ = sel => Array.from(document.querySelectorAll(sel));
+<!-- Back to Top -->
+<div class="back-to-top">
+  <a href="#">Back to top</a>
+</div>
 
-    // ---- featured auto-scroll (gentle)
-    (function autoScroll(){
-      const el = document.getElementById('featuredCarousel');
-      if(!el) return;
-      let dir = 1;
-      setInterval(() => {
-        el.scrollBy({left: 320 * dir, behavior:'smooth'});
-        if (el.scrollLeft + el.clientWidth >= el.scrollWidth - 5) dir = -1;
-        if (el.scrollLeft <= 5) dir = 1;
-      }, 4500);
-    })();
+<!-- Watchlist Modal -->
+<div id="watchlist-modal" class="modal hidden">
+  <div class="modal-content">
+    <h2>👀 Your Watchlist</h2>
+    <div id="watchlist-items">Loading...</div>
+    <button onclick="toggleWatchlist()" class="close-btn">Close</button>
+  </div>
+</div>
 
-    // ---- WATCHLIST
-    const modal = $('#watchModal');
-    const openButtons = [$('#btn-open-watchlist'), $('#ql-watch')].filter(Boolean);
-    const closeBtn = $('#btn-close-watchlist');
-    const bodyList = $('#watchListBody');
-    const badge = $('#watch-count-badge');
+<script src="{{ url_for('static', filename='catalog.js') }}"></script>
 
-    function openWatch(){ modal.classList.add('open'); modal.setAttribute('aria-hidden','false'); loadWatch(); }
-    function closeWatch(){ modal.classList.remove('open'); modal.setAttribute('aria-hidden','true'); }
-
-    openButtons.forEach(b => b && b.addEventListener('click', openWatch));
-    closeBtn && closeBtn.addEventListener('click', closeWatch);
-    modal && modal.addEventListener('click', e => { if(e.target === modal) closeWatch(); });
-
-    async function loadWatch(){
-      try{
-        const r = await fetch('/watchlist');
-        if(!r.ok){ bodyList.innerHTML = '<div class="empty">Please log in to use Watch List.</div>'; return; }
-        const data = await r.json();
-        const items = data.items || [];
-        updateWatchBadge(items.length);
-        if(!items.length){
-          bodyList.innerHTML = '<div class="empty">Your watch list is empty. Tap 🔭 on any item to add it.</div>';
-          return;
-        }
-        bodyList.innerHTML = items.map(it => `
-          <div class="wl">
-            <img src="${it.image_url}" alt="">
-            <div>
-              <div style="font-weight:600">${it.name}</div>
-              <div class="muted">${it.cost_stamps} 🟊 • ${it.stock>0 ? 'In stock: '+it.stock : '<span style="color:var(--danger)">Out of stock</span>'}</div>
-            </div>
-            <div>
-              <a class="btn" href="/catalog/item/${it.id}">View</a>
-              <button class="btn" data-wl-remove="${it.id}">Remove</button>
-            </div>
-          </div>
-        `).join('');
-        // bind remove
-        bodyList.querySelectorAll('[data-wl-remove]').forEach(b=>{
-          b.addEventListener('click', async () => {
-            await toggleWatch(b.getAttribute('data-wl-remove'), true);
-            loadWatch();
-          });
-        });
-      }catch(e){
-        bodyList.innerHTML = '<div class="empty">Could not load watch list.</div>';
-      }
-    }
-
-    function updateWatchBadge(n){
-      if(!badge) return;
-      if(n>0){ badge.style.display='inline-flex'; badge.textContent = n; }
-      else { badge.style.display='none'; }
-    }
-
-    async function toggleWatch(id, removing=false){
-      const btns = $$(`.watch-btn[data-id="${id}"]`);
-      btns.forEach(b=> b.disabled = true);
-      try{
-        const r = await fetch(`/watchlist/toggle/${id}`, {method:'POST'});
-        if(!r.ok) return;
-        const data = await r.json();
-        btns.forEach(b=>{
-          const on = !!data.watched;
-          b.setAttribute('aria-pressed', on ? 'true':'false');
-          b.title = on ? 'Remove from watch list' : 'Add to watch list';
-        });
-        // refresh count quietly
-        try{
-          const rr = await fetch('/watchlist'); if(rr.ok){ const d = await rr.json(); updateWatchBadge(d.count||0); }
-        }catch(_) {}
-      }finally{
-        btns.forEach(b=> b.disabled = false);
-      }
-    }
-
-    $$('.watch-btn').forEach(b=>{
-      b.addEventListener('click', ()=> toggleWatch(b.dataset.id));
-    });
-
-    // ---- SEARCH + SORT (client-side)
-    const searchInput = $('#searchInput');
-    const sortSelect  = $('#sortSelect');
-
-    function applyFilters(){
-      const q = (searchInput.value||'').trim().toLowerCase();
-      // filter by text
-      $$('.item').forEach(card=>{
-        const name = card.getAttribute('data-name') || '';
-        card.style.display = name.includes(q) ? '' : 'none';
-      });
-      // sort inside each category grid
-      $$('[data-grid]').forEach(grid=>{
-        const kids = Array.from(grid.children);
-        const mode = sortSelect.value;
-        kids.sort((a,b)=>{
-          const ca = +a.getAttribute('data-cost'), cb=+b.getAttribute('data-cost');
-          const sa = +a.getAttribute('data-stock'), sb=+b.getAttribute('data-stock');
-          switch(mode){
-            case 'cheap': return ca - cb;
-            case 'exp': return cb - ca;
-            case 'stock': return (sb>0)-(sa>0) || sb - sa; // in-stock first, then more stock
-            default: return 0; // keep template order (newest already server-ish)
-          }
-        });
-        kids.forEach(k=>grid.appendChild(k));
-      });
-    }
-    searchInput && searchInput.addEventListener('input', applyFilters);
-    sortSelect  && sortSelect.addEventListener('change', applyFilters);
-  </script>
-</body>
-</html>
+{% endblock %}
