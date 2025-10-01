@@ -11,7 +11,7 @@ from werkzeug.utils import secure_filename
 from PIL import Image
 from pywebpush import webpush, WebPushException
 import pytesseract
-from datetime import datetime, date, timezone
+from datetime import datetime, date, timezone, timedelta
 import io, base64, time
 from markupsafe import Markup, escape
 
@@ -27,6 +27,7 @@ except Exception:
 # ====== Flask setup ======
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
+app.permanent_session_lifetime = timedelta(days=365)
 
 UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -57,19 +58,23 @@ if USE_SUPABASE and create_client and SUPABASE_URL and SUPABASE_KEY:
         supabase = None
 
 # ===== Detect mobile - force app =====
+@app.route("/pwa-flag", methods=["POST"])
+def pwa_flag():
+    session["is_pwa"] = True
+    return ("", 204)  # no content
+
 @app.route("/")
 def home():
-    # detect if mobile
     ua = request.user_agent.string.lower()
-    is_mobile = any(word in ua for word in ["iphone", "ipad", "android", "mobile"])
+    is_mobile = bool(re.search("iphone|ipad|android|mobile", ua))
 
-    if is_mobile:
+    if is_mobile and not session.get("is_pwa"):
         return render_template("landing.html", show_back=False)
-    else:
-        if "trainer" in session:
-            return redirect(url_for("dashboard"))
-        else:
-            return redirect(url_for("login"))
+
+    if "trainer" in session:
+        return redirect(url_for("dashboard"))
+
+    return redirect(url_for("login"))
 
 # ===== Catalog Receipt Helper =====
 def absolute_url(path: str) -> str:
@@ -1306,32 +1311,36 @@ def admin_notifications():
     return render_template("admin_notifications.html", notifications=notifications)
 
 # ==== Login ====
-@app.route("/login", methods=["POST"])
+@app.route("/login", methods=["GET", "POST"])
 def login():
-    username = request.form["username"]
-    pin = request.form["pin"]
+    if request.method == "POST":
+        username = request.form["username"]
+        pin = request.form["pin"]
 
-    _, user = find_user(username)
-    if not user:
-        flash("No trainer found!", "error")
-        return redirect(url_for("home"))
+        _, user = find_user(username)
+        if not user:
+            flash("No trainer found!", "error")
+            return redirect(url_for("home"))
 
-    if user.get("pin_hash") == hash_value(pin):
-        session["trainer"] = user.get("trainer_username")
-        # update last_login in Supabase
-        try:
-            supabase.table("sheet1") \
-                .update({"last_login": datetime.utcnow().isoformat()}) \
-                .eq("trainer_username", user.get("trainer_username")) \
-                .execute()
-        except Exception as e:
-            print("⚠️ Supabase last_login update failed:", e)
+        if user.get("pin_hash") == hash_value(pin):
+            session["trainer"] = user.get("trainer_username")
+            session.permanent = True
+            try:
+                supabase.table("sheet1") \
+                    .update({"last_login": datetime.utcnow().isoformat()}) \
+                    .eq("trainer_username", user.get("trainer_username")) \
+                    .execute()
+            except Exception as e:
+                print("⚠️ Supabase last_login update failed:", e)
 
-        flash(f"Welcome back, {user.get('trainer_username')}!", "success")
-        return redirect(url_for("dashboard"))
-    else:
-        flash("Incorrect PIN!", "error")
-        return redirect(url_for("home"))
+            flash(f"Welcome back, {user.get('trainer_username')}!", "success")
+            return redirect(url_for("dashboard"))
+        else:
+            flash("Incorrect PIN!", "error")
+            return redirect(url_for("home"))
+
+    # GET request — just show login form
+    return render_template("login.html")
 
 # ====== Sign Up ======
 @app.route("/signup", methods=["GET", "POST"])
