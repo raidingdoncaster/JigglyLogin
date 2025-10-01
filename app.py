@@ -1982,7 +1982,206 @@ def to_date_filter(value):
     except Exception:
         return value  # fallback: show raw if parsing fails
 
-# ====== Catalog (User) ======
+# ========= Catalog helpers & routes =========
+
+def _safe_list(v):
+    return v if isinstance(v, list) else []
+
+def _featured_slice(items, max_count=5):
+    """Prefer items tagged 'featured'; else take most recent."""
+    if not items:
+        return []
+    featured = [i for i in items if any((t or "").lower() == "featured" for t in _safe_list(i.get("tags")))]
+    pool = featured or items
+    return pool[:max_count]
+
+def _category_label_for(item):
+    """Return the first matching category label used in your page filters."""
+    tags = [t.lower() for t in _safe_list(item.get("tags"))]
+    for label, keys in CATEGORY_KEYS.items():
+        keys_lc = set([label.lower(), *keys])
+        if any(t in keys_lc for t in tags):
+            return label
+    return "Accessories"  # default bucket for 'misc'
+
+def _get_watchlist_ids(trainer: str) -> list[str]:
+    """Fetch watchlist item IDs for this trainer (Supabase table `watchlist`), falling back to session."""
+    ids: list[str] = []
+    if USE_SUPABASE and supabase:
+        try:
+            rows = supabase.table("watchlist") \
+                .select("catalog_item_id") \
+                .eq("trainer_username", trainer) \
+                .execute().data or []
+            ids = [str(r.get("catalog_item_id")) for r in rows if r.get("catalog_item_id")]
+        except Exception as e:
+            print("⚠️ watchlist fetch failed; falling back to session:", e)
+    if not ids:
+        ids = _safe_list(session.get("watchlist"))
+    return ids
+
+def _watchlist_add(trainer: str, item_id: str) -> None:
+    """Add to watchlist both in Supabase (best effort) and session."""
+    # Session mirror
+    existing = set(_safe_list(session.get("watchlist")))
+    existing.add(item_id)
+    session["watchlist"] = list(existing)
+
+    # Supabase
+    if USE_SUPABASE and supabase:
+        try:
+            supabase.table("watchlist").insert({
+                "trainer_username": trainer,
+                "catalog_item_id": item_id,
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }).execute()
+        except Exception as e:
+            # ignore "duplicate key" errors etc.
+            print("⚠️ watchlist add failed:", e)
+
+def _watchlist_remove(trainer: str, item_id: str) -> None:
+    """Remove from watchlist in Supabase (best effort) and session."""
+    # Session mirror
+    remaining = [i for i in _safe_list(session.get("watchlist")) if str(i) != str(item_id)]
+    session["watchlist"] = remaining
+
+    # Supabase
+    if USE_SUPABASE and supabase:
+        try:
+            supabase.table("watchlist") \
+                .delete() \
+                .eq("trainer_username", trainer) \
+                .eq("catalog_item_id", item_id) \
+                .execute()
+        except Exception as e:
+            print("⚠️ watchlist remove failed:", e)
+
+@app.route("/catalog")
+def catalog():
+    """Revamped catalog page matching the wireframe."""
+    # Pull active catalog items
+    items = []
+    if supabase:
+        try:
+            resp = (supabase.table("catalog_items")
+                    .select("*")
+                    .eq("active", True)
+                    .order("created_at", desc=True)
+                    .execute())
+            items = resp.data or []
+        except Exception as e:
+            print("⚠️ catalog items fetch failed:", e)
+
+    # Normalize fields used by the template
+    for it in items:
+        it["id"] = it.get("id")
+        it["name"] = it.get("name") or "Untitled"
+        it["description"] = it.get("description") or ""
+        it["image_url"] = it.get("image_url") or url_for("static", filename="icons/catalog-app.png")
+        it["cost_stamps"] = int(it.get("cost_stamps") or 0)
+        it["stock"] = int(it.get("stock") or 0)
+        it["tags"] = _safe_list(it.get("tags"))
+        it["_cat"] = _category_label_for(it)
+        it["_created"] = it.get("created_at") or it.get("updated_at") or datetime.utcnow().isoformat()
+
+    # Featured carousel (up to 5)
+    featured_items = _featured_slice(items, 5)
+
+    # Build categories → items map (reusing your constants)
+    categories = {label: [] for label in CATEGORY_ORDER}
+    for it in items:
+        categories.setdefault(it["_cat"], []).append(it)
+
+    # Watchlist state (badge + modal)
+    trainer = session.get("trainer")
+    watch_ids = _get_watchlist_ids(trainer) if trainer else []
+
+    # Simple page description for the hero
+    catalog_description = "Short description goes here"
+
+    return render_template(
+        "catalog.html",
+        featured_items=featured_items,
+        items=items,
+        categories=categories,
+        category_order=CATEGORY_ORDER,
+        watch_ids=watch_ids,
+        catalog_description=catalog_description,
+        show_back=False
+    )
+
+# ========= Watchlist & Orders API=========
+
+@app.post("/watchlist/toggle/<item_id>")
+def watchlist_toggle(item_id):
+    if "trainer" not in session:
+        return jsonify({"success": False, "error": "Not logged in"}), 403
+    trainer = session["trainer"]
+
+    current = set(_get_watchlist_ids(trainer))
+    if item_id in current:
+        _watchlist_remove(trainer, item_id)
+        return jsonify({"success": True, "watched": False})
+    else:
+        _watchlist_add(trainer, item_id)
+        return jsonify({"success": True, "watched": True})
+
+@app.get("/watchlist")
+def watchlist_data():
+    if "trainer" not in session:
+        return jsonify({"success": False, "error": "Not logged in"}), 403
+    trainer = session["trainer"]
+    ids = _get_watchlist_ids(trainer)
+    rows = []
+    if ids and supabase:
+        try:
+            # fetch items in one go
+            rows = supabase.table("catalog_items") \
+                .select("id,name,image_url,cost_stamps,stock,tags") \
+                .in_("id", ids) \
+                .execute().data or []
+        except Exception as e:
+            print("⚠️ watchlist items fetch failed:", e)
+
+    # Keep order by most recently added (session order as fallback)
+    id_pos = {i: p for p, i in enumerate(ids)}
+    rows.sort(key=lambda r: id_pos.get(r.get("id"), 10**9))
+
+    return jsonify({
+        "success": True,
+        "count": len(rows),
+        "items": [{
+            "id": r.get("id"),
+            "name": r.get("name"),
+            "image_url": r.get("image_url") or url_for("static", filename="icons/catalog-app.png"),
+            "cost_stamps": int(r.get("cost_stamps") or 0),
+            "stock": int(r.get("stock") or 0),
+            "tags": _safe_list(r.get("tags"))
+        } for r in rows]
+    })
+
+@app.route("/orders")
+def orders():
+    if "trainer" not in session:
+        flash("Please log in to view your order history.", "warning")
+        return redirect(url_for("home"))
+    trainer = session["trainer"]
+
+    redemptions = []
+    if supabase:
+        try:
+            r = (supabase.table("redemptions")
+                 .select("*")
+                 .eq("trainer_username", trainer)
+                 .order("created_at", desc=True)
+                 .execute())
+            redemptions = r.data or []
+        except Exception as e:
+            print("⚠️ orders: fetch failed:", e)
+
+    return render_template("orders.html", redemptions=redemptions, show_back=True)
+
+# ====== Catalog Items (User) ======
 from datetime import datetime, timezone
 from flask import abort
 # CATEGORY_KEYS control what tags put what items in what categories, lol 
@@ -2017,97 +2216,6 @@ def _pick_featured_item(items):
         return items_sorted[0]
     # 3) newest
     return items[0]
-
-@app.route("/catalog")
-def catalog():
-    # Pull active catalog items
-    items = []
-    if supabase:
-        try:
-            resp = (supabase.table("catalog_items")
-                    .select("*")
-                    .eq("active", True)
-                    .order("created_at", desc=True)
-                    .execute())
-            items = resp.data or []
-        except Exception as e:
-            print("⚠️ catalog items fetch failed:", e)
-
-    # Build categories → items map
-    categories = {label: [] for label in CATEGORY_ORDER}
-    for it in items:
-        it["cost_stamps"] = int(it.get("cost_stamps") or 0)
-        it["stock"] = int(it.get("stock") or 0)
-        tagged_any = False
-        for label in CATEGORY_ORDER:
-            if _item_matches_category(it.get("tags"), label):
-                categories[label].append(it)
-                tagged_any = True
-        # If item had no recognizable tag, don't lose it—tack onto Accessories as misc
-        if not tagged_any and items:
-            categories["Accessories"].append(it)
-
-    featured = _pick_featured_item(items)
-
-    # Recent wins (latest fulfilled redemptions)
-    recent_wins = []
-    if supabase:
-        try:
-            r = (supabase.table("redemptions")
-                 .select("trainer_username, item_snapshot, created_at, status")
-                 .order("created_at", desc=True)
-                 .limit(8)
-                 .execute())
-            for row in (r.data or []):
-                snap = row.get("item_snapshot") or {}
-                recent_wins.append({
-                    "who": row.get("trainer_username") or "Someone",
-                    "what": snap.get("name") or "a prize",
-                    "when": row.get("created_at") or "",
-                    "status": row.get("status") or "PENDING"
-                })
-        except Exception as e:
-            print("⚠️ recent wins fetch failed:", e)
-
-    month_total = 0
-    popular_category = ""
-    if supabase:
-        try:
-            start = datetime.now(timezone.utc).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-            r = (supabase.table("redemptions")
-                 .select("status, created_at, item_snapshot")
-                 .gte("created_at", start.isoformat())
-                 .eq("status", "FULFILLED")
-                 .execute())
-            rows = r.data or []
-            month_total = len(rows)
-            # Popular category from item_snapshot.tags
-            counts = {label: 0 for label in CATEGORY_ORDER}
-            for row in rows:
-                snap = row.get("item_snapshot") or {}
-                tags = [t.lower() for t in (snap.get("tags") or [])]
-                matched_any = False
-                for label, keys in CATEGORY_KEYS.items():
-                    if any(t in set([label.lower(), *keys]) for t in tags):
-                        counts[label] += 1
-                        matched_any = True
-                if not matched_any and tags:
-                    counts["Accessories"] += 1
-            if any(counts.values()):
-                popular_category = max(counts, key=lambda k: counts[k])
-        except Exception as e:
-            print("⚠️ stats fetch failed:", e)
-
-    return render_template(
-        "catalog.html",
-        featured=featured,
-        categories=categories,
-        category_order=CATEGORY_ORDER,
-        recent_wins=recent_wins,
-        month_total=month_total,
-        popular_category=popular_category or "—",
-        show_back=False
-    )
 
 @app.route("/catalog/item/<item_id>")
 def catalog_item(item_id):
