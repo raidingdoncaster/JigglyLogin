@@ -90,6 +90,24 @@ def home():
     return redirect(url_for("login"))
 
 # ===== Catalog Receipt Helper =====
+def _upload_to_supabase(file_storage, folder="catalog"):
+    """Upload a file to Supabase Storage and return its public URL."""
+    if not file_storage or not getattr(file_storage, "filename", ""):
+        return None
+    fname = secure_filename(file_storage.filename)
+    root, ext = os.path.splitext(fname)
+    stamp = datetime.utcnow().strftime("%Y%m%d%H%M%S")
+    fname = f"{root}_{stamp}{ext}"
+    path = f"{folder}/{fname}"
+
+    try:
+        supabase.storage.from_("Catalog").upload(path, file_storage.stream.read())
+        url = supabase.storage.from_("Catalog").get_public_url(path)
+        return url
+    except Exception as e:
+        print("⚠️ Supabase upload failed:", e)
+        return None
+
 def absolute_url(path: str) -> str:
     root = request.url_root.rstrip('/')
     if not path.startswith('/'):
@@ -591,19 +609,18 @@ def admin_catalog_update(item_id):
         "cost_stamps": int(request.form.get("cost_stamps") or 0),
         "description": request.form.get("description"),
         "stock": int(request.form.get("stock") or 0),
-        "tags": [t.strip() for t in request.form.get("tags", "").split(",") if t.strip()],
+        "tags": _tags_csv_to_array(request.form.get("tags")),
         "image_url": request.form.get("image_url"),
         "active": "active" in request.form,
         "updated_at": datetime.utcnow().isoformat()
     }
 
-    # Handle file upload if provided
+    # Supabase upload if provided
     file = request.files.get("image_file")
     if file and file.filename:
-        filepath = os.path.join(app.config["UPLOAD_FOLDER"], secure_filename(file.filename))
-        file.save(filepath)
-        # You could upload to Supabase Storage or use local URL if needed
-        data["image_url"] = "/uploads/" + secure_filename(file.filename)
+        saved_url = _upload_to_supabase(file)
+        if saved_url:
+            data["image_url"] = saved_url
 
     try:
         supabase.table("catalog_items").update(data).eq("id", item_id).execute()
@@ -648,10 +665,10 @@ def admin_catalog_create():
     tags        = _tags_csv_to_array(f.get("tags"))
     image_url   = f.get("image_url", "").strip()
 
-    # optional file upload
+    # Supabase upload
     upload = request.files.get("image_file")
     if upload and upload.filename:
-        saved_url = _save_catalog_image(upload)
+        saved_url = _upload_to_supabase(upload)
         if saved_url:
             image_url = saved_url
 
@@ -668,6 +685,7 @@ def admin_catalog_create():
             "active": active,
             "tags": tags,
             "image_url": image_url or None,
+            "created_at": datetime.utcnow().isoformat(),
             "updated_at": datetime.utcnow().isoformat()
         }).execute()
         flash(f"✅ '{name}' created.", "success")
@@ -1704,7 +1722,7 @@ def inbox():
         inbox=messages,
         sort_by=sort_by,
         tab=tab,
-        show_back=True
+        show_back=False
     )
 
 @app.route("/inbox/message/<message_id>")
@@ -1733,7 +1751,7 @@ def inbox_message(message_id):
         except Exception as e:
             print("⚠️ inbox_message (receipt) fetch failed:", e)
             abort(500)
-        return render_template("inbox_message.html", msg=msg, show_back=True)
+        return render_template("inbox_message.html", msg=msg, show_back=False)
 
     # Normal notification
     try:
@@ -2102,7 +2120,7 @@ def catalog_item(item_id):
         it = r.data[0]
         it["cost_stamps"] = int(it.get("cost_stamps") or 0)
         it["stock"] = int(it.get("stock") or 0)
-        return render_template("catalog_item.html", item=it, show_back=True)
+        return render_template("catalog_item.html", item=it, show_back=False)
     except Exception as e:
         print("⚠️ catalog_item failed:", e)
         abort(500)
@@ -2168,7 +2186,7 @@ def catalog_redeem(item_id):
             item=item,
             balance=balance,
             meetups=meetups,
-            show_back=True
+            show_back=False
         )
 
     # POST — place order
@@ -2326,7 +2344,7 @@ def catalog_receipt(redemption_id):
         print("⚠️ receipt: fetch failed:", e)
         abort(500)
 
-    return render_template("catalog_receipt.html", rec=rec, show_back=True)
+    return render_template("catalog_receipt.html", rec=rec, show_back=False)
 
 # ====== OCR test (debug) ======
 @app.route("/ocr_test", methods=["GET", "POST"])
