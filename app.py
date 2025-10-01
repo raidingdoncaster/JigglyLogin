@@ -12,6 +12,7 @@ from PIL import Image
 from pywebpush import webpush, WebPushException
 import pytesseract
 from datetime import datetime, date, timezone, timedelta
+from dateutil import parser
 import io, base64, time
 from markupsafe import Markup, escape
 
@@ -32,6 +33,18 @@ app.permanent_session_lifetime = timedelta(days=365)
 UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
+
+def parse_dt_safe(dt_str):
+    if not dt_str:
+        return datetime.min.replace(tzinfo=timezone.utc)
+    try:
+        dt = parser.isoparse(dt_str)
+        if dt.tzinfo is None:
+            # make naive -> UTC aware
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt
+    except Exception:
+        return datetime.min.replace(tzinfo=timezone.utc)
 
 # ====== Google Sheets setup ======
 SCOPES = [
@@ -1565,28 +1578,46 @@ def dashboard():
     )
 
 # ====== Inbox, Notifications, Receipts ======
-def _build_receipt_message(trainer: str, rec: dict) -> dict:
-    """Map a redemption row to a 'notification-like' dict for the inbox UI."""
-    item = rec.get("item_snapshot") or {}
-    meetup = ((rec.get("metadata") or {}).get("meetup")) or {}
+def _normalize_iso(dt_val):
+    """Ensure datetime-like values always return UTC ISO string with tzinfo."""
+    if not dt_val:
+        return datetime.utcnow().replace(tzinfo=timezone.utc).isoformat()
 
+    # If it's already a datetime
+    if isinstance(dt_val, datetime):
+        if dt_val.tzinfo is None:
+            dt_val = dt_val.replace(tzinfo=timezone.utc)
+        else:
+            dt_val = dt_val.astimezone(timezone.utc)
+        return dt_val.isoformat()
+
+    # If it's a string (ISO-ish)
+    try:
+        from dateutil import parser
+        parsed = parser.isoparse(str(dt_val))
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=timezone.utc)
+        else:
+            parsed = parsed.astimezone(timezone.utc)
+        return parsed.isoformat()
+    except Exception:
+        return datetime.utcnow().replace(tzinfo=timezone.utc).isoformat()
+
+def _build_receipt_message(trainer, rec):
+    """Turn a redemption record into an inbox-style 'message' dict."""
     return {
-        "id": f"rec:{rec.get('id')}",                 # <-- distinguish from notifications
+        "id": f"rec:{rec['id']}",
+        "subject": f"🧾 Receipt: {rec['item_snapshot']['name']}",
+        "message": f"You redeemed {rec['item_snapshot']['name']} "
+                   f"for {rec['stamps_spent']} stamps at {rec['metadata']['meetup']['name']}.",
+        "sent_at": _normalize_iso(rec.get("created_at")),
         "type": "receipt",
-        "audience": trainer,
-        "subject": f"🧾 Receipt: {item.get('name', 'Prize')}",
-        "message": (
-            f"Thanks for your order! You redeemed '{item.get('name','')}' "
-            f"for {rec.get('stamps_spent', 0)} stamps.\n\n"
-            f"Pick-up at {meetup.get('name','TBA')} — {meetup.get('location','TBA')} "
-            f"on {meetup.get('date','TBA')} @ {meetup.get('start_time','TBA')}."
-        ),
+        "read_by": [],
         "metadata": {
-            "url": url_for("catalog_receipt", redemption_id=rec.get("id"))
-        },
-        "sent_at": rec.get("created_at"),
-        # show as 'read' by default so receipts don't permanently look unread
-        "read_by": [trainer],
+            "url": f"/catalog/receipt/{rec['id']}",
+            "status": rec.get("status"),
+            "meetup": rec.get("metadata", {}).get("meetup")
+        }
     }
 
 @app.route("/inbox")
@@ -1614,20 +1645,17 @@ def inbox():
             elif sort_by == "read":
                 nq = nq.contains("read_by", [trainer])
             elif sort_by == "type":
-                # type sort will be handled after merge; still order secondarily by date
-                pass
+                pass  # type sort handled after merge
 
-            # default time ordering (we'll re-apply after merging with receipts)
             nq = nq.order("sent_at", desc=(sort_by != "oldest"))
             notif_rows = nq.execute().data or []
 
-            # If tab == notifications, exclude any receipt-type notifs (to avoid dupes)
             if tab == "notifications":
                 notif_rows = [n for n in notif_rows if (n.get("type") or "").lower() != "receipt"]
         except Exception as e:
             print("⚠️ Supabase notifications fetch failed:", e)
 
-    # --- Pull receipts from redemptions and map to message-like objects ---
+    # --- Pull receipts as message-like objects ---
     receipt_rows = []
     if USE_SUPABASE and supabase and tab in ("all", "receipts"):
         try:
@@ -1640,33 +1668,32 @@ def inbox():
         except Exception as e:
             print("⚠️ Supabase receipts fetch failed:", e)
 
-    # --- Merge based on tab ---
+    # --- Merge ---
     if tab == "notifications":
         messages = notif_rows
     elif tab == "receipts":
         messages = receipt_rows
-    else:  # all
+    else:
         messages = (notif_rows or []) + (receipt_rows or [])
 
-    # --- Post-merge sorting & filtering ---
-    def parse_dt(d):  # safe key for sorting
-        try:
-            return datetime.fromisoformat((d or "").replace("Z", "+00:00"))
-        except Exception:
-            return datetime.min
-
+    # --- Sorting & filtering ---
     if sort_by == "type":
-        messages.sort(key=lambda m: ((m.get("type") or "").lower(), -parse_dt(m.get("sent_at")).timestamp()))
+        messages.sort(
+            key=lambda m: (
+                (m.get("type") or "").lower(),
+                -parse_dt_safe(m.get("sent_at")).timestamp()
+            )
+        )
     elif sort_by == "oldest":
-        messages.sort(key=lambda m: parse_dt(m.get("sent_at")))
-    else:  # newest (default)
-        messages.sort(key=lambda m: parse_dt(m.get("sent_at")), reverse=True)
+        messages.sort(key=lambda m: parse_dt_safe(m.get("sent_at")))
+    else:  # newest
+        messages.sort(key=lambda m: parse_dt_safe(m.get("sent_at")), reverse=True)
 
     if not messages:
         messages = [{
             "subject": "📭 No messages yet",
             "message": "Your inbox is empty. You’ll see updates, receipts, and announcements here.",
-            "sent_at": datetime.utcnow().isoformat(),
+            "sent_at": datetime.utcnow().replace(tzinfo=timezone.utc).isoformat(),
             "type": "info",
             "read_by": []
         }]
@@ -1688,7 +1715,7 @@ def inbox_message(message_id):
 
     trainer = session["trainer"]
 
-    # Receipt messages: message_id starts with "rec:"
+    # Receipt messages
     if message_id.startswith("rec:"):
         rec_id = message_id.split("rec:", 1)[1]
         try:
@@ -1708,7 +1735,7 @@ def inbox_message(message_id):
             abort(500)
         return render_template("inbox_message.html", msg=msg, show_back=True)
 
-    # Regular notification
+    # Normal notification
     try:
         r = (supabase.table("notifications")
              .select("*")
@@ -1729,7 +1756,7 @@ def inbox_message(message_id):
         print("⚠️ inbox_message (notification) failed:", e)
         abort(500)
 
-    return render_template("inbox_message.html", msg=msg, show_back=True)
+    return render_template("inbox_message.html", msg=msg, show_back=False)
 
 # ====== Logout ======
 @app.route("/logout")
@@ -2417,6 +2444,14 @@ def change_avatar():
         current_avatar=current_avatar,
         current_background=current_background,
     )
+
+@app.context_processor
+def inject_current_avatar():
+    if "trainer" in session:
+        _, user = find_user(session["trainer"])
+        if user:
+            return {"current_avatar": user.get("avatar_icon", "avatar1.png")}
+    return {"current_avatar": "avatar1.png"}
 
 # ====== Stamp Processor ======
 @app.context_processor
