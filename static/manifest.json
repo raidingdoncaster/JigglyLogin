@@ -1,7 +1,7 @@
 {
   "name": "Raiding Doncaster and Beyond",
   "short_name": "RDAB",
-  "start_url": "/login",
+  "start_url": "/dashboard",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",

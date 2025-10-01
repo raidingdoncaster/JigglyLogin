@@ -1736,7 +1736,7 @@ def inbox_message(message_id):
 def logout():
     session.clear()
     flash("You have been logged out.", "success")
-    return redirect(url_for("home"))
+    return redirect(url_for("login"))
 
 # ====== Manage Account: Change PIN ======
 @app.route("/change_pin", methods=["POST"])
