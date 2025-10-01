@@ -1,0 +1,36 @@
+{% extends "base.html" if false else "" %}
+<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Order History</title>
+<style>
+  body{background:#0e0f12;color:#e9edf2;font:14px/1.4 system-ui}
+  .container{max-width:900px;margin:0 auto;padding:16px}
+  .card{background:#121623;border:1px solid #232a3e;border-radius:12px;padding:12px;margin-bottom:10px}
+  .muted{color:#9aa3b2}
+  .row{display:grid;grid-template-columns:60px 1fr auto;gap:10px;align-items:center}
+  img{width:60px;height:60px;object-fit:cover;border-radius:8px;background:#0f1320}
+  .tag{background:#23283a;border:1px solid #2a3146;padding:4px 8px;border-radius:999px}
+</style>
+<div class="container">
+  <h2>Order History</h2>
+  {% if not redemptions %}
+    <p class="muted">No redemptions yet.</p>
+  {% endif %}
+  {% for r in redemptions %}
+  {% set snap = r.item_snapshot or {} %}
+  <div class="card">
+    <div class="row">
+      <img src="{{ snap.image_url or url_for('static', filename='icons/catalog-app.png') }}" alt="">
+      <div>
+        <div style="font-weight:700">{{ snap.name or 'Prize' }}</div>
+        <div class="muted">{{ r.stamps_spent }} 🟊 • {{ r.status }}</div>
+        {% if r.metadata and r.metadata.meetup %}
+          <div class="muted">Pickup: {{ r.metadata.meetup.name }} • {{ r.metadata.meetup.location }} • {{ r.metadata.meetup.date }} {{ r.metadata.meetup.start_time }}</div>
+        {% endif %}
+      </div>
+      <div style="display:flex;gap:8px">
+        <a class="tag" href="{{ url_for('catalog_receipt', redemption_id=r.id) }}">View receipt</a>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>

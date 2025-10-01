@@ -19,6 +19,9 @@
       <div>
         <strong>{{ rec.item_snapshot.name }}</strong><br>
         <span class="muted">Cost:</span> {{ rec.stamps_spent }} stamps
+        {% if rec.catalog_item_id in watch_ids %}
+          <div class="watch-note">👀 You had this item on your Watchlist.</div>
+        {% endif %}
       </div>
     </div>
   </div>
@@ -52,13 +55,12 @@
 .status.pending{ background:#fff7ed; color:#9a3412; }
 .status.fulfilled{ background:#e8f7ef; color:#065f46; }
 .status.cancelled{ background:#fee2e2; color:#991b1b; }
-
 .section{ border-top:1px dashed #e5e7eb; padding-top:10px; margin-top:10px; }
 .muted{ color:#6b7280; font-size:.9em; }
 .mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 .item{ display:flex; gap:10px; align-items:center; }
 .thumb{ width:72px; height:72px; border-radius:8px; background:#eef3f8 center/cover no-repeat; }
-
+.watch-note{ font-size:0.85em; color:#3a8dde; margin-top:4px; font-weight:600; }
 .footer-actions{ margin-top:14px; text-align:center; }
 .footer-actions .btn{ text-decoration:none; background:#eef2ff; color:#3a8dde; padding:8px 12px; border-radius:8px; font-weight:700; }
 </style>

@@ -20,16 +20,36 @@
     {% endif %}
 
     <div class="actions">
-    {% set can_redeem = (item.active and (item.stock or 0) > 0) %}
-    {% if can_redeem %}
-        <a href="{{ url_for('catalog_redeem', item_id=item.id) }}" class="primary">Redeem</a>
-    {% else %}
-        <button disabled title="Unavailable">Unavailable</button>
-    {% endif %}
-    <a href="{{ url_for('catalog') }}" class="secondary">⬅ Back to Catalog</a>
+      {% set can_redeem = (item.active and (item.stock or 0) > 0) %}
+      {% if can_redeem %}
+          <a href="{{ url_for('catalog_redeem', item_id=item.id) }}" class="primary">Redeem</a>
+      {% else %}
+          <button disabled title="Unavailable">Unavailable</button>
+      {% endif %}
+      <button id="watchBtn" class="secondary">
+        {% if item.id in watch_ids %}🔭 Remove from Watchlist{% else %}🔭 Add to Watchlist{% endif %}
+      </button>
+      <a href="{{ url_for('catalog') }}" class="secondary">⬅ Back to Catalog</a>
     </div>
   </div>
 </div>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const btn = document.getElementById("watchBtn");
+  if (btn) {
+    btn.addEventListener("click", () => {
+      fetch(`/watchlist/toggle/{{ item.id }}`, {method: "POST"})
+        .then(r => r.json())
+        .then(data => {
+          if (data.success) {
+            btn.textContent = data.watched ? "🔭 Remove from Watchlist" : "🔭 Add to Watchlist";
+          }
+        });
+    });
+  }
+});
+</script>
 
 <style>
 .item-detail{ display:grid; grid-template-columns:1fr; gap:12px; }
@@ -39,10 +59,10 @@
 .pill{ background:#f4f7fa; border-radius:999px; padding:3px 8px; font-size:.9em; margin-right:6px; }
 .pill.low{ background:#fff5f5; color:#b91c1c; }
 .tag{ font-size:.8em; background:#f4f4f5; padding:3px 6px; border-radius:6px; margin-right:6px; }
-.actions{ margin-top:14px; display:flex; gap:8px; }
-.actions button{ background:#3a8dde; color:#fff; border:none; padding:8px 12px; border-radius:8px; font-weight:700; opacity:.7; cursor:not-allowed; }
-.actions .secondary{ text-decoration:none; background:#eef2ff; color:#3a8dde; padding:8px 12px; border-radius:8px; font-weight:700; }
-.actions .primary{ text-decoration:none; background:#3a8dde; color:#fff; padding:8px 12px; border-radius:8px; font-weight:700; }
+.actions{ margin-top:14px; display:flex; gap:8px; flex-wrap:wrap; }
+.actions button, .actions a{ text-decoration:none; background:#eef2ff; color:#3a8dde; padding:8px 12px; border-radius:8px; font-weight:700; border:none; cursor:pointer; }
+.actions .primary{ background:#3a8dde; color:#fff; }
+.actions button[disabled]{ opacity:.6; cursor:not-allowed; }
 </style>
 
 {% endblock %}
