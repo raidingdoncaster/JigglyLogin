@@ -7,10 +7,8 @@
 
   <script>
     // Detect if running as a PWA standalone (iOS + Android)
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches 
-                    || window.navigator.standalone === true;
-
-    // If so, send a header for backend detection
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches
+                      || window.navigator.standalone === true;
     if (isStandalone) {
       fetch("/pwa-flag", { method: "POST" });
     }
@@ -31,6 +29,10 @@
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
 
   <style>
+    :root{
+      --brand:#3a8dde;
+      --brand2:#5eb8ff;
+    }
     body{
       margin:0;
       font-family:'Montserrat',sans-serif;
@@ -41,7 +43,7 @@
     /* Loading screen */
     #loading-screen{
       position:fixed; inset:0;
-      background:linear-gradient(135deg,#3a8dde,#5eb8ff);
+      background:linear-gradient(135deg,var(--brand),var(--brand2));
       display:flex; flex-direction:column; align-items:center; justify-content:center;
       z-index:9999; color:#fff; font-size:1.2em;
     }
@@ -51,7 +53,7 @@
     /* Header */
     header{
       position:sticky; top:0; z-index:1000;
-      background:linear-gradient(135deg,#3a8dde,#5eb8ff);
+      background:linear-gradient(135deg,var(--brand),var(--brand2));
       padding:6px 12px;
       display:flex; align-items:center; justify-content:space-between;
       color:#fff;
@@ -93,7 +95,7 @@
     .inbox-dropdown li:last-child{ border-bottom:none; }
     .inbox-dropdown .view-all{
       display:block; margin-top:8px; text-align:center; text-decoration:none;
-      background:#3a8dde; color:#fff; padding:6px 8px; border-radius:6px; font-weight:600;
+      background:var(--brand); color:#fff; padding:6px 8px; border-radius:6px; font-weight:600;
     }
 
     /* Inbox badge */
@@ -110,6 +112,25 @@
       box-shadow: 0 2px 4px rgba(0,0,0,0.2);
     }
 
+    /* Avatar dropdown */
+    .avatar-wrapper{ position:relative; }
+    .avatar-icon{
+      border-radius:50%;
+      border:2px solid #fff;
+      width:40px; height:40px; object-fit:cover;
+    }
+    .avatar-dropdown{
+      position:absolute; right:0; top:50px; display:none;
+      background:#fff; color:#333; border-radius:10px;
+      box-shadow:0 8px 20px rgba(0,0,0,.2); min-width:190px; overflow:hidden; z-index:2100;
+    }
+    .avatar-dropdown a, .avatar-dropdown button{
+      display:block; width:100%; text-align:left;
+      padding:10px 14px; border:0; background:#fff; color:#333; text-decoration:none; font-size:.95em; cursor:pointer;
+    }
+    .avatar-dropdown a:hover, .avatar-dropdown button:hover{ background:#f5f7fb; }
+    .avatar-dropdown .sep{ height:1px; background:#eee; margin:4px 0; }
+
     /* Main content container */
     .container{
       max-width:420px; margin:60px auto; padding:20px; background:#fff;
@@ -122,6 +143,42 @@
     .flash-success{ background:#d4edda; border:1px solid #155724; color:#155724; }
     .flash-error{ background:#f8d7da; border:1px solid #721c24; color:#721c24; }
     .flash-warning{ background:#fff3cd; border:1px solid #856404; color:#856404; }
+
+    /* Modal: Manage Account */
+    .modal-backdrop{
+      position:fixed; inset:0; background:rgba(0,0,0,.45);
+      display:none; align-items:flex-end; justify-content:center; z-index:3000;
+    }
+    .modal-card{
+      width:100%; max-width:520px; background:#fff; border-radius:16px 16px 0 0;
+      box-shadow:0 -8px 24px rgba(0,0,0,.25); padding:14px 14px 18px; max-height:92vh; overflow:auto;
+      animation:slideUp .25s ease-out;
+    }
+    @keyframes slideUp{ from{ transform:translateY(24px); opacity:.8;} to{ transform:none; opacity:1;} }
+    .modal-header{
+      display:flex; align-items:center; justify-content:space-between; gap:8px; padding:6px 4px 10px;
+      border-bottom:1px solid #eee; position:sticky; top:0; background:#fff; z-index:1;
+    }
+    .modal-header h3{ margin:0; font-size:1.05em; color:#111; }
+    .close-btn{ background:transparent; border:0; font-size:1.6em; line-height:1; cursor:pointer; color:#333; }
+
+    .settings-section{ margin-top:10px; border:1px solid #eee; border-radius:10px; overflow:hidden; }
+    .settings-section details{ border-bottom:1px solid #eee; }
+    .settings-section details:last-child{ border-bottom:none; }
+    .settings-section summary{
+      list-style:none; cursor:pointer; padding:12px; background:#f7f8fb; font-weight:700; color:#333;
+    }
+    .settings-section summary::-webkit-details-marker{ display:none; }
+    .settings-body{ padding:12px; }
+    .settings-body form input, .settings-body form button{
+      width:100%; margin:6px 0; padding:10px; border-radius:8px; border:1px solid #ccc; font-size:.95em;
+    }
+    .btn-primary{ background:var(--brand); color:#fff; border:none; }
+    .btn-danger{ background:#e74c3c; color:#fff; border:none; }
+    .meta{ font-size:.9em; color:#666; }
+    .pin-row{ display:flex; gap:8px; }
+    .pin-row input{ flex:1; }
+    .row-actions{ display:flex; gap:8px; }
 
     /* Mobile */
     @media(max-width:480px){
@@ -161,6 +218,37 @@
           if(!dd.contains(e.target)) dd.style.display="none";
         });
       }
+
+      // Avatar dropdown
+      const ab=document.getElementById("avatarToggle");
+      const ad=document.getElementById("avatarDropdown");
+      if(ab && ad){
+        ab.addEventListener("click",(e)=>{
+          e.stopPropagation();
+          ad.style.display = ad.style.display==="block" ? "none" : "block";
+        });
+        document.addEventListener("click",(e)=>{
+          if(!ad.contains(e.target)) ad.style.display="none";
+        });
+      }
+
+      // Manage Account modal open/close
+      const mm = document.getElementById('manageAccountModal');
+      const openBtns = document.querySelectorAll('[data-open-account-modal]');
+      openBtns.forEach(b=>b.addEventListener('click',()=>{
+        document.getElementById("avatarDropdown")?.style && (document.getElementById("avatarDropdown").style.display="none");
+        mm.style.display='flex';
+        document.body.style.overflow='hidden';
+      }));
+      document.getElementById('closeAccountModal')?.addEventListener('click', closeAccountModal);
+      mm?.addEventListener('click', (e)=>{ if(e.target === mm) closeAccountModal(); });
+      document.addEventListener('keydown', (e)=>{ if(e.key==='Escape' && mm.style.display==='flex') closeAccountModal(); });
+
+      function closeAccountModal(){
+        mm.style.display='none';
+        document.body.style.overflow='';
+      }
+      window._closeAccountModal = closeAccountModal; // expose if needed
     });
 
     function togglePin(id,btn){
@@ -224,10 +312,20 @@
           </div>
         </div>
 
-        <!-- Logout -->
-        <a href="{{ url_for('logout') }}" class="nav-item" title="Log out">
-          <img src="{{ url_for('static', filename='nav/logout.png') }}" alt="Logout" class="nav-icon">
-        </a>
+        <!-- Avatar (profile hub) -->
+        {% set nav_avatar = (current_avatar if current_avatar is defined else (avatar if avatar is defined else 'avatar1.png')) %}
+        <div class="avatar-wrapper">
+          <button type="button" class="nav-item" id="avatarToggle" title="Account">
+            <img src="{{ url_for('static', filename='avatars/' ~ nav_avatar) }}"
+                 alt="Avatar" class="nav-icon avatar-icon">
+          </button>
+          <div id="avatarDropdown" class="avatar-dropdown">
+            <a href="{{ url_for('change_avatar') }}">👤 Edit Avatar</a>
+            <button type="button" data-open-account-modal>⚙️ Manage Account</button>
+            <div class="sep"></div>
+            <a href="{{ url_for('logout') }}">🚪 Log Out</a>
+          </div>
+        </div>
       {% endif %}
     </nav>
   </header>
@@ -247,20 +345,92 @@
     {% if show_back %}
       <div style="margin-top:20px; text-align:center;">
         <a href="{{ url_for('dashboard') }}"
-           style="display:inline-block; padding:10px 18px; background:#3a8dde; color:#fff; border-radius:6px; text-decoration:none; font-weight:600;">
+           style="display:inline-block; padding:10px 18px; background:var(--brand); color:#fff; border-radius:6px; text-decoration:none; font-weight:600;">
           ⬅ Back to Dashboard
         </a>
       </div>
     {% endif %}
   </div>
 
+  <!-- GLOBAL Manage Account MODAL (available on ALL pages) -->
+  {% if session.get('trainer') %}
+  <div id="manageAccountModal" class="modal-backdrop" aria-hidden="true">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="accountModalTitle">
+      <div class="modal-header">
+        <h3 id="accountModalTitle">⚙️ Manage My Account</h3>
+        <button id="closeAccountModal" class="close-btn" aria-label="Close">×</button>
+      </div>
+
+      <div class="settings-section">
+        <details>
+          <summary>🔑 Change PIN</summary>
+          <div class="settings-body">
+            <form action="{{ url_for('change_pin') }}" method="post">
+              <input type="password" name="old_pin" placeholder="Old PIN" required>
+              <input type="text" name="memorable" placeholder="Memorable Password" required>
+              <div class="pin-row">
+                <input type="password" name="new_pin" id="modal_new_pin" pattern="\d{4}" maxlength="4" placeholder="New 4-digit PIN" required>
+                <button type="button" onclick="togglePin('modal_new_pin', this)">Show</button>
+              </div>
+              <button type="submit" class="btn-primary">Update PIN</button>
+            </form>
+          </div>
+        </details>
+
+        <details>
+          <summary>📝 Change Memorable Password</summary>
+          <div class="settings-body">
+            <form action="{{ url_for('change_memorable') }}" method="post">
+              <input type="text" name="old_memorable" placeholder="Old Memorable" required>
+              <input type="text" name="new_memorable" placeholder="New Memorable" required>
+              <button type="submit" class="btn-primary">Update Memorable</button>
+            </form>
+          </div>
+        </details>
+
+        <details>
+          <summary>🔒 Security</summary>
+          <div class="settings-body">
+            <p class="meta">Account type: {{ account_type }}</p>
+            <form action="{{ url_for('logout_everywhere') }}" method="post" class="row-actions">
+              <button type="submit" class="btn-primary">Log Out Everywhere</button>
+            </form>
+          </div>
+        </details>
+
+        <details>
+          <summary>🔔 Notifications</summary>
+          <div class="settings-body">
+            <p class="meta" style="text-align:center;">
+              Push notifications will be coming soon.<br>
+              For now, check your 📬 <a href="{{ url_for('inbox') }}">Inbox</a> for updates.
+            </p>
+          </div>
+        </details>
+
+        <details>
+          <summary>🗑️ Delete Account</summary>
+          <div class="settings-body">
+            <p class="meta" style="color:#b00;">
+              ⚠️ This will permanently delete your account, including Passport stamps, profile, and prize history.
+              <strong>This cannot be undone.</strong>
+            </p>
+            <form action="{{ url_for('delete_account') }}" method="post">
+              <input type="text" name="confirm_name" placeholder="Type your trainer name to confirm" required>
+              <button type="submit" class="btn-danger">Delete My Account</button>
+            </form>
+          </div>
+        </details>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
   <!-- Register Service Worker (single canonical URL) -->
   <script>
   (function () {
     if (!('serviceWorker' in navigator)) return;
-
     const SW_URL = '/service-worker.js?v=7';
-
     navigator.serviceWorker.register(SW_URL, { scope: '/' })
       .then(reg => reg.update())
       .then(() => navigator.serviceWorker.ready)
@@ -276,16 +446,9 @@
   <script>
     let deferredPrompt;
 
-    function isIos() {
-      return /iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase());
-    }
-    function isInStandaloneMode() {
-      return ('standalone' in window.navigator) && window.navigator.standalone;
-    }
-    function dismissBanner(id) {
-      const el = document.getElementById(id);
-      if (el) el.style.display = 'none';
-    }
+    function isIos() { return /iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase()); }
+    function isInStandaloneMode() { return ('standalone' in window.navigator) && window.navigator.standalone; }
+    function dismissBanner(id) { const el = document.getElementById(id); if (el) el.style.display = 'none'; }
 
     window.addEventListener('beforeinstallprompt', (e) => {
       if (isIos()) return;
@@ -314,33 +477,16 @@
   </script>
 
   {% if account_type == "Admin" %}
-  <a href="{{ url_for('admin_dashboard') }}" id="admin-fab" title="Admin Dashboard">
-    👑
-  </a>
-
+  <a href="{{ url_for('admin_dashboard') }}" id="admin-fab" title="Admin Dashboard">👑</a>
   <style>
-  #admin-fab {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    width: 56px;
-    height: 56px;
-    background: #3a8dde;
-    color: white;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.6em;
-    text-decoration: none;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-    z-index: 2000;
-    transition: background 0.2s, transform 0.2s;
-  }
-  #admin-fab:hover {
-    background: #2f73bb;
-    transform: scale(1.08);
-  }
+    #admin-fab {
+      position: fixed; bottom: 20px; right: 20px; width: 56px; height: 56px;
+      background: var(--brand); color: white; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.6em; text-decoration: none; box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+      z-index: 2000; transition: background 0.2s, transform 0.2s;
+    }
+    #admin-fab:hover { background: #2f73bb; transform: scale(1.08); }
   </style>
   {% endif %}
 </body>

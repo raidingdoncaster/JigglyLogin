@@ -6,7 +6,7 @@
   <div class="trainer-card-overlay"></div>
   <div class="trainer-card-content">
     <div style="display:flex; align-items:center; gap:15px;">
-      <img src="{{ url_for('static', filename='avatars/' ~ avatar) }}" 
+      <img src="{{ url_for('static', filename='avatars/' ~ avatar) }}"
            alt="Avatar" class="avatar" id="dashboard-avatar">
       <div>
         <p class="welcome-back">Welcome back,</p>
@@ -81,76 +81,18 @@
       <img src="{{ url_for('static', filename='icons/catalog-app.png') }}" alt="Catalog">
       <span>Catalog</span>
     </a>
-    <div class="explore-card" onclick="alert('Gyms are Under Construction')">
+    <div class="explore-card" onclick="alert('City Perks are Under Construction')">
       <img src="{{ url_for('static', filename='icons/perks-app.png') }}" alt="City Perks">
       <span>City Perks</span>
     </div>
-    <div class="explore-card" onclick="alert('Gyms are Under Construction')">
+    <div class="explore-card" onclick="alert('City Guides are Under Construction')">
       <img src="{{ url_for('static', filename='icons/guides-app.png') }}" alt="City Guides">
       <span>City Guides</span>
     </div>
-    <div class="explore-card" onclick="alert('Gyms are Under Construction')">
+    <div class="explore-card" onclick="alert('Leagues are Under Construction')">
       <img src="{{ url_for('static', filename='icons/leagues-app.png') }}" alt="Leagues">
       <span>Leagues</span>
     </div>
-  </div>
-</div>
-
-<!-- Manage Account -->
-<div class="manage-account">
-  <h3>⚙️ Manage My Account</h3>
-
-  <button class="accordion-toggle">🔑 Change PIN</button>
-  <div class="accordion-content">
-    <form action="{{ url_for('change_pin') }}" method="post">
-      <input type="password" name="old_pin" placeholder="Old PIN" required>
-      <input type="text" name="memorable" placeholder="Memorable Password" required>
-      <div class="pin-group">
-        <input type="password" name="new_pin" id="new_pin" pattern="\d{4}" maxlength="4" 
-               placeholder="New 4-digit PIN" required>
-        <button type="button" onclick="togglePin('new_pin', this)">Show</button>
-      </div>
-      <button type="submit">Update PIN</button>
-    </form>
-  </div>
-
-  <button class="accordion-toggle">📝 Change Memorable Password</button>
-  <div class="accordion-content">
-    <form action="{{ url_for('change_memorable') }}" method="post">
-      <input type="text" name="old_memorable" placeholder="Old Memorable" required>
-      <input type="text" name="new_memorable" placeholder="New Memorable" required>
-      <button type="submit">Update Memorable</button>
-    </form>
-  </div>
-
-  <button class="accordion-toggle">🔒 Security</button>
-  <div class="accordion-content">
-    <p class="meta">Last login: {{ last_login }}</p>
-    <p class="meta">Account type: {{ account_type }}</p>
-    <form action="{{ url_for('logout_everywhere') }}" method="post">
-      <button type="submit">Log Out Everywhere</button>
-    </form>
-  </div>
-
-  <!-- Notifications Placeholder -->
-  <button class="accordion-toggle">🔔 Notifications</button>
-  <div class="accordion-content">
-    <p style="font-size:0.9em; color:#777; text-align:center;">
-      Push notifications will be coming soon.<br>
-      For now, check your 📬 <a href="{{ url_for('inbox') }}">Inbox</a> for updates.
-    </p>
-  </div>
-
-  <button class="accordion-toggle">🗑️ Delete Account</button>
-  <div class="accordion-content">
-    <p class="warning">
-      ⚠️ This will permanently delete your account, including Passport stamps, profile, and prize history.
-      <strong>This cannot be undone.</strong>
-    </p>
-    <form action="{{ url_for('delete_account') }}" method="post">
-      <input type="text" name="confirm_name" placeholder="Type your trainer name to confirm" required>
-      <button type="submit" class="danger-btn">Delete My Account</button>
-    </form>
   </div>
 </div>
 
@@ -164,28 +106,6 @@
 .explore-card { background:none; height:130px; display:flex; flex-direction:column; align-items:center; justify-content:center; border-radius:8px; text-decoration:none; }
 .explore-card img { width:90px; height:90px; }
 .explore-card span { margin-top:6px; font-size:0.9em; font-weight:600; color:#333; }
-
-.manage-account { background:#fff; border:1px solid #ccc; border-radius:12px; padding:15px; }
-.manage-account h3 { text-align:center; margin-top:0; }
-.accordion-toggle { width:100%; padding:10px; background:#f0f0f0; border:none; border-radius:6px; font-weight:600; cursor:pointer; margin-top:8px; }
-.accordion-content { max-height:0; overflow:hidden; transition:max-height 0.3s ease; padding:0 5px; }
-.accordion-content form { margin-top:10px; }
-.accordion-content input, .accordion-content button { width:100%; margin:5px 0; padding:8px; border-radius:6px; border:1px solid #ccc; }
-.pin-group { display:flex; gap:6px; }
-.pin-group input { flex:1; }
-.pin-group button { width:70px; flex-shrink:0; }
-.warning { font-size:0.9em; color:#b00; }
-.danger-btn { background:#e74c3c; color:white; }
 </style>
-
-<script>
-document.querySelectorAll(".accordion-toggle").forEach(btn=>{
-  btn.addEventListener("click",()=>{
-    btn.classList.toggle("active");
-    const content=btn.nextElementSibling;
-    content.style.maxHeight=content.style.maxHeight?null:content.scrollHeight+"px";
-  });
-});
-</script>
 
 {% endblock %}
