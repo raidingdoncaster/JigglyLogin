@@ -1,68 +1,141 @@
 {% extends "base.html" %}
 {% block content %}
 
-<h1>🎁 {{ item.name }}</h1>
-
-<div class="item-detail">
-  <div class="left" style="background-image:url('{{ item.image_url or url_for('static', filename='icons/catalog-app.png') }}');"></div>
-  <div class="right">
-    <p class="desc">{{ item.description or 'No description provided.' }}</p>
-    <div class="row">
-      <span class="pill">🪙 {{ item.cost_stamps }} stamps</span>
-      <span class="pill {{ 'low' if (item.stock or 0) <= 3 else '' }}">📦 {{ item.stock }} in stock</span>
+<div class="item-card-detail">
+  <!-- Thumbnail with Cost + Watch -->
+  <div class="item-thumb" style="background-image:url('{{ item.image_url or url_for('static', filename='icons/catalog-app.png') }}')">
+    <div class="cost-badge">
+      <img src="{{ url_for('static', filename='catalog/container/cost.png') }}" alt="Cost">
+      <span>{{ item.cost_stamps }}</span>
     </div>
+    <button id="watchBtn" class="watch-btn" data-id="{{ item.id }}">
+      <img 
+        src="{{ url_for('static', filename='catalog/binocularsa.png') if item.id not in watch_ids else url_for('static', filename='catalog/binocularsb.png') }}" 
+        alt="Watchlist">
+    </button>
+  </div>
+
+  <!-- Meta Info -->
+  <div class="item-meta">
+    <h1>{{ item.name }}</h1>
+    <p class="desc">{{ item.description or 'No description provided.' }}</p>
+
+    <div class="status-row">
+      <span class="stock {{ 'low' if (item.stock or 0) <= 3 else '' }}">
+        📦 {{ item.stock }} in stock
+      </span>
+    </div>
+
     {% if item.tags and item.tags|length %}
-    <div class="tags" style="margin-top:8px;">
+    <div class="tags">
       {% for t in item.tags %}
       <span class="tag">#{{ t }}</span>
       {% endfor %}
     </div>
     {% endif %}
+  </div>
 
-    <div class="actions">
-      {% set can_redeem = (item.active and (item.stock or 0) > 0) %}
-      {% if can_redeem %}
-          <a href="{{ url_for('catalog_redeem', item_id=item.id) }}" class="primary">Redeem</a>
-      {% else %}
-          <button disabled title="Unavailable">Unavailable</button>
-      {% endif %}
-      <button id="watchBtn" class="secondary">
-        {% if item.id in watch_ids %}🔭 Remove from Watchlist{% else %}🔭 Add to Watchlist{% endif %}
-      </button>
-      <a href="{{ url_for('catalog') }}" class="secondary">⬅ Back to Catalog</a>
-    </div>
+  <!-- Actions -->
+  <div class="item-actions">
+    {% set can_redeem = (item.active and (item.stock or 0) > 0) %}
+    {% if can_redeem %}
+      <a href="{{ url_for('catalog_redeem', item_id=item.id) }}" class="buy-btn">
+        <img src="{{ url_for('static', filename='catalog/container/trade.png') }}" alt="Redeem">
+      </a>
+    {% else %}
+      <button disabled class="buy-btn">Unavailable</button>
+    {% endif %}
+    <a href="{{ url_for('catalog') }}" class="back-btn">⬅ Back to Catalog</a>
   </div>
 </div>
+
+<style>
+.item-card-detail {
+  background:#fff;
+  border-radius:16px;
+  padding:16px;
+  box-shadow:0 2px 10px rgba(0,0,0,.08);
+  max-width:600px;
+  margin:0 auto;
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+}
+
+.item-thumb {
+  position:relative;
+  width:100%;
+  height:240px;
+  border-radius:14px;
+  background:#eef3f8 center/cover no-repeat;
+}
+
+.cost-badge {
+  position:absolute;
+  top:8px;left:8px;
+  display:flex;align-items:center;gap:6px;
+  background:rgba(255,255,255,.9);
+  padding:2px 6px;
+  border-radius:12px;
+  font-weight:bold;
+}
+.cost-badge img {width:24px;height:24px;}
+
+.watch-btn {
+  position:absolute;
+  top:8px;right:8px;
+  background:none;
+  border:none;
+  cursor:pointer;
+}
+.watch-btn img {width:28px;height:28px;}
+
+.item-meta h1 {margin:0 0 6px;font-size:1.5em;}
+.item-meta .desc {color:#444;margin-bottom:8px;}
+
+.status-row {margin-bottom:6px;}
+.stock {font-weight:600;padding:3px 8px;border-radius:8px;background:#f4f7fa;}
+.stock.low {background:#fff5f5;color:#b91c1c;}
+
+.tags {display:flex;flex-wrap:wrap;gap:6px;}
+.tag {background:#eef2ff;color:#3a8dde;padding:4px 8px;border-radius:6px;font-size:0.8em;}
+
+.item-actions {display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+.buy-btn {
+  display:inline-flex;align-items:center;justify-content:center;
+  background:none;border:none;cursor:pointer;
+}
+.buy-btn img {width:64px;height:64px;}
+.buy-btn[disabled]{opacity:.6;cursor:not-allowed;}
+
+.back-btn {
+  background:#eef2ff;
+  color:#3a8dde;
+  padding:8px 12px;
+  border-radius:8px;
+  text-decoration:none;
+  font-weight:600;
+}
+</style>
 
 <script>
 document.addEventListener("DOMContentLoaded", () => {
   const btn = document.getElementById("watchBtn");
   if (btn) {
     btn.addEventListener("click", () => {
-      fetch(`/watchlist/toggle/{{ item.id }}`, {method: "POST"})
-        .then(r => r.json())
-        .then(data => {
-          if (data.success) {
-            btn.textContent = data.watched ? "🔭 Remove from Watchlist" : "🔭 Add to Watchlist";
+      fetch(`/watchlist/toggle/{{ item.id }}`, {method:"POST"})
+        .then(r=>r.json())
+        .then(data=>{
+          if(data.success){
+            const img=btn.querySelector("img");
+            img.src = data.watched
+              ? "{{ url_for('static', filename='catalog/binocularsb.png') }}"
+              : "{{ url_for('static', filename='catalog/binocularsa.png') }}";
           }
         });
     });
   }
 });
 </script>
-
-<style>
-.item-detail{ display:grid; grid-template-columns:1fr; gap:12px; }
-@media(min-width:560px){ .item-detail{ grid-template-columns:1.1fr 1.2fr; } }
-.left{ width:100%; height:220px; background:#eef3f8 center/cover no-repeat; border-radius:12px; }
-.right .desc{ color:#444; }
-.pill{ background:#f4f7fa; border-radius:999px; padding:3px 8px; font-size:.9em; margin-right:6px; }
-.pill.low{ background:#fff5f5; color:#b91c1c; }
-.tag{ font-size:.8em; background:#f4f4f5; padding:3px 6px; border-radius:6px; margin-right:6px; }
-.actions{ margin-top:14px; display:flex; gap:8px; flex-wrap:wrap; }
-.actions button, .actions a{ text-decoration:none; background:#eef2ff; color:#3a8dde; padding:8px 12px; border-radius:8px; font-weight:700; border:none; cursor:pointer; }
-.actions .primary{ background:#3a8dde; color:#fff; }
-.actions button[disabled]{ opacity:.6; cursor:not-allowed; }
-</style>
 
 {% endblock %}

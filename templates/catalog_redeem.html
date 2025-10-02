@@ -1,30 +1,36 @@
 {% extends "base.html" %}
 {% block content %}
 
-<h1>✅ Redeem: {{ item.name }}</h1>
-
-<div class="redeem-wrap">
-  <div class="summary">
-    <div class="thumb" style="background-image:url('{{ item.image_url or url_for('static', filename='icons/catalog-app.png') }}');"></div>
-    <div class="meta">
-      <p class="desc">{{ item.description or '' }}</p>
-      <div class="row">
-        <span class="pill">🪙 Cost: {{ item.cost_stamps }}</span>
-        <span class="pill {{ 'low' if (item.stock or 0) <= 3 else '' }}">📦 Stock: {{ item.stock }}</span>
-      </div>
-      <div class="row">
-        <span class="pill {{ 'bad' if (balance|int) < (item.cost_stamps|int) else 'good' }}">💰 Your balance: {{ balance }}</span>
-      </div>
-      {% if item.id in watch_ids %}
-      <p class="watch-msg">👀 This item is on your Watchlist.</p>
-      {% endif %}
-      {% if balance < item.cost_stamps %}
-      <p class="warn">You don't have enough stamps to redeem this prize.</p>
-      {% endif %}
+<div class="item-card-detail">
+  <!-- Item Thumbnail with Cost -->
+  <div class="item-thumb" style="background-image:url('{{ item.image_url or url_for('static', filename='icons/catalog-app.png') }}')">
+    <div class="cost-badge">
+      <img src="{{ url_for('static', filename='catalog/container/cost.png') }}" alt="Cost">
+      <span>{{ item.cost_stamps }}</span>
     </div>
   </div>
 
-  <form method="post" class="card" onsubmit="return confirmSubmit();">
+  <!-- Meta Info -->
+  <div class="item-meta">
+    <h1>Redeem: {{ item.name }}</h1>
+    <p class="desc">{{ item.description or '' }}</p>
+
+    <div class="status-row">
+      <span class="stock {{ 'low' if (item.stock or 0) <= 3 else '' }}">
+        📦 {{ item.stock }} in stock
+      </span>
+      <span class="balance {{ 'bad' if balance < item.cost_stamps else 'good' }}">
+        💰 Your balance: {{ balance }}
+      </span>
+    </div>
+
+    {% if balance < item.cost_stamps %}
+    <p class="warn">You don’t have enough stamps to redeem this prize.</p>
+    {% endif %}
+  </div>
+
+  <!-- Redemption Form -->
+  <form method="post" class="redeem-form" onsubmit="return confirmSubmit();">
     <h3>🗓️ Choose a Meet-up</h3>
     {% if meetups and meetups|length %}
       <div class="meetups">
@@ -32,8 +38,8 @@
         <label class="meetup">
           <input type="radio" name="meetup_id" value="{{ m.id }}" required>
           <div>
-            <div class="top"><strong>{{ m.name }}</strong></div>
-            <div class="sub">{{ m.location }} • {{ m.date|to_date }} @ {{ m.start_time }}</div>
+            <strong>{{ m.name }}</strong><br>
+            <span class="muted">{{ m.location }} • {{ m.date|to_date }} @ {{ m.start_time }}</span>
           </div>
         </label>
         {% endfor %}
@@ -47,36 +53,42 @@
       I confirm I want to spend {{ item.cost_stamps }} stamps for <strong>{{ item.name }}</strong>.
     </label>
 
-    <div class="actions">
-      <button type="submit" {% if balance < item.cost_stamps or not meetups %}disabled{% endif %}>
-        Place Order
+    <div class="item-actions">
+      <button type="submit" class="buy-btn" {% if balance < item.cost_stamps or not meetups %}disabled{% endif %}>
+        <img src="{{ url_for('static', filename='catalog/container/trade.png') }}" alt="Redeem">
       </button>
-      <a href="{{ url_for('catalog_item', item_id=item.id) }}" class="secondary">Cancel</a>
+      <a href="{{ url_for('catalog_item', item_id=item.id) }}" class="back-btn">⬅ Cancel</a>
     </div>
   </form>
 </div>
 
 <style>
-.redeem-wrap{ display:grid; gap:12px; }
-.summary{ display:flex; gap:12px; background:#fff; border-radius:12px; padding:12px; box-shadow:0 1px 8px rgba(0,0,0,.08); }
-.thumb{ width:40%; min-width:130px; height:150px; background:#eef3f8 center/cover no-repeat; border-radius:10px; }
-.meta .row{ margin-top:6px; }
-.pill{ background:#f4f7fa; border-radius:999px; padding:3px 8px; font-size:.85em; margin-right:6px; }
-.pill.bad{ background:#fff5f5; color:#b91c1c; }
-.pill.good{ background:#e8f7ef; color:#065f46; }
-.warn{ color:#b91c1c; font-weight:600; margin-top:6px; }
-.watch-msg{ color:#3a8dde; margin-top:6px; font-weight:600; }
-
-.card{ background:#fff; border-radius:12px; padding:12px; box-shadow:0 1px 8px rgba(0,0,0,.08); }
-.meetups{ display:flex; flex-direction:column; gap:8px; margin:10px 0; }
-.meetup{ display:flex; gap:8px; align-items:center; border:1px solid #eee; border-radius:8px; padding:8px; }
-.meetup .sub{ color:#6b7280; font-size:.9em; }
-.confirm{ display:flex; align-items:center; gap:8px; margin-top:8px; }
-.actions{ display:flex; gap:8px; margin-top:10px; }
-.actions button{ background:#3a8dde; color:#fff; border:none; padding:8px 12px; border-radius:8px; font-weight:700; cursor:pointer; }
-.actions button[disabled]{ opacity:.6; cursor:not-allowed; }
-.actions .secondary{ text-decoration:none; background:#eef2ff; color:#3a8dde; padding:8px 12px; border-radius:8px; font-weight:700; }
+.item-card-detail {background:#fff;border-radius:16px;padding:16px;box-shadow:0 2px 10px rgba(0,0,0,.08);max-width:600px;margin:0 auto;display:flex;flex-direction:column;gap:14px;}
+.item-thumb {position:relative;width:100%;height:200px;border-radius:14px;background:#eef3f8 center/cover no-repeat;}
+.cost-badge {position:absolute;top:8px;left:8px;display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.9);padding:2px 6px;border-radius:12px;font-weight:bold;}
+.cost-badge img {width:24px;height:24px;}
+.item-meta h1 {margin:0 0 6px;font-size:1.4em;}
+.item-meta .desc {color:#444;margin-bottom:8px;}
+.stock {font-weight:600;padding:3px 8px;border-radius:8px;background:#f4f7fa;}
+.stock.low {background:#fff5f5;color:#b91c1c;}
+.balance.good {background:#e8f7ef;color:#065f46;padding:3px 8px;border-radius:8px;}
+.balance.bad {background:#fff5f5;color:#b91c1c;padding:3px 8px;border-radius:8px;}
+.warn {color:#b91c1c;font-weight:600;margin-top:6px;}
+.redeem-form {background:#f9fafb;padding:12px;border-radius:12px;}
+.meetups {display:flex;flex-direction:column;gap:8px;margin:10px 0;}
+.meetup {display:flex;gap:8px;align-items:flex-start;border:1px solid #eee;border-radius:8px;padding:8px;}
+.meetup input{margin-top:4px;}
+.muted {color:#6b7280;font-size:.9em;}
+.confirm {display:flex;align-items:center;gap:6px;margin:12px 0;}
+.item-actions {display:flex;gap:10px;align-items:center;}
+.buy-btn {background:none;border:none;cursor:pointer;}
+.buy-btn img {width:64px;height:64px;}
+.buy-btn[disabled]{opacity:.6;cursor:not-allowed;}
+.back-btn {background:#eef2ff;color:#3a8dde;padding:8px 12px;border-radius:8px;text-decoration:none;font-weight:600;}
 </style>
 
-<script>function confirmSubmit(){ return true; }</script>
+<script>
+function confirmSubmit(){return true;}
+</script>
+
 {% endblock %}

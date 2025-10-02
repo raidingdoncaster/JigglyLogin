@@ -4,92 +4,108 @@
 <style>
 /* === Catalog Styles === */
 .catalog-hero {
-  display: flex; align-items: center; gap: 12px;
-  background: #3a8dde; color: white;
-  padding: 14px; border-radius: 12px;
+  display:flex;align-items:center;gap:12px;
+  background:#3a8dde;color:white;
+  padding:14px;border-radius:12px;margin-bottom:12px;
 }
 .catalog-icon {
-  width: 64px; height: 64px;
-  background: url('{{ url_for("static", filename="catalog/catalog-app.png") }}') center/cover no-repeat;
-  border-radius: 16px;
+  width:64px;height:64px;
+  background:url('{{ url_for("static", filename="catalog/catalog-app.png") }}') center/cover no-repeat;
+  border-radius:16px;
 }
-.catalog-title h1 { margin: 0; font-size: 1.6em; }
-.catalog-title p { margin: 4px 0; font-size: 0.95em; }
-.back-link { font-size: 0.85em; color: #e0eaff; text-decoration: none; }
+.catalog-title h1 {margin:0;font-size:1.6em;}
+.catalog-title p {margin:4px 0;font-size:0.95em;}
+.back-link {font-size:0.85em;color:#e0eaff;text-decoration:none;}
 
 /* === Featured Carousel === */
-.featured-carousel { position: relative; overflow: hidden; border-radius: 16px; margin: 16px 0; }
-.carousel-track { display: flex; transition: transform 0.6s ease; }
-.carousel-slide { min-width: 100%; display:flex; justify-content:center; align-items:center; }
-.carousel-slide img { width: 100%; height: auto; border-radius: 16px; }
-
-/* Pokéball Dots */
-.carousel-controls { position:absolute; bottom:12px; left:50%; transform:translateX(-50%); display:flex; align-items:center; gap:8px; }
-.carousel-prev, .carousel-next {
-  background: rgba(255,255,255,0.8); border:none; font-size:1.2em;
-  padding:4px 10px; border-radius:50%; cursor:pointer;
+.featured-carousel {position:relative;overflow:hidden;border-radius:16px;margin:12px 0;}
+.carousel-track {display:flex;transition:transform 0.6s ease;}
+.carousel-slide {min-width:100%;display:flex;justify-content:center;align-items:center;}
+.carousel-slide img {width:100%;height:auto;border-radius:16px;}
+.carousel-controls {position:absolute;bottom:10px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:8px;}
+.carousel-prev,.carousel-next {
+  background:rgba(255,255,255,0.8);border:none;font-size:1.2em;
+  padding:4px 10px;border-radius:50%;cursor:pointer;
 }
-.carousel-dots { display:flex; gap:8px; }
+.carousel-dots {display:flex;gap:8px;}
 .carousel-dots .dot {
-  width:18px; height:18px; border-radius:50%; background:white;
-  border:2px solid #000; position:relative; overflow:hidden; cursor:pointer;
+  width:18px;height:18px;border-radius:50%;background:white;
+  border:2px solid #000;position:relative;overflow:hidden;cursor:pointer;
 }
-.carousel-dots .dot::before { content:""; position:absolute; top:0; left:0; width:100%; height:50%; background:red; }
+.carousel-dots .dot::before {content:"";position:absolute;top:0;left:0;width:100%;height:50%;background:red;}
 .carousel-dots .dot::after {
-  content:""; position:absolute; top:50%; left:50%; width:6px; height:6px;
-  background:white; border:2px solid #000; border-radius:50%; transform:translate(-50%,-50%);
+  content:"";position:absolute;top:50%;left:50%;width:6px;height:6px;
+  background:white;border:2px solid #000;border-radius:50%;transform:translate(-50%,-50%);
 }
-.carousel-dots .dot.active { transform:scale(1.2); border-color:#3a8dde; box-shadow:0 0 6px rgba(58,141,222,0.6); }
+.carousel-dots .dot.active {transform:scale(1.2);border-color:#3a8dde;box-shadow:0 0 6px rgba(58,141,222,0.6);}
 
-/* Quick Links */
-.quick-links { display:flex; align-items:center; gap:10px; margin:14px 0; }
-.quick-link {
-  background:#eef2ff; color:#3a8dde; padding:6px 10px;
-  border-radius:8px; text-decoration:none; font-size:0.85em; font-weight:600;
+/* === Quick Links === */
+.quick-links {
+  display:flex;align-items:center;gap:8px;justify-content:space-between;
+  margin:10px 0;
+}
+.quick-link, .watchlist-btn {
+  flex:1;
+  text-align:center;
+  background:#eef2ff;
+  color:#3a8dde;
+  padding:6px 8px;
+  border-radius:8px;
+  text-decoration:none;
+  font-size:0.8em;
+  font-weight:600;
+  height:36px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
 }
 .watchlist-btn img {
-  width:24px; height:24px; display:block;
+  width:20px;height:20px;object-fit:contain;
 }
 
-/* Categories */
+/* === Categories === */
 .categories {
-  background: url('{{ url_for("static", filename="catalog/catbg.png") }}') center/cover no-repeat;
-  padding: 16px; border-radius: 12px; margin-bottom: 20px;
+  margin:10px 0;
+  background:url('{{ url_for("static", filename="catalog/catbg.png") }}') center/cover no-repeat;
+  padding:20px;border-radius:12px;
 }
-.categories h2 { font-size:1.1em; margin-bottom:12px; color:#fff; }
+.categories h2 {font-size:1.1em;margin-bottom:10px;color:white;text-shadow:0 1px 2px rgba(0,0,0,.3);}
 .category-grid {
   display:grid;
-  grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
-  gap: 16px;
-  text-align:center;
+  grid-template-columns:repeat(5,1fr);
+  grid-template-rows:repeat(2,auto);
+  gap:14px;
 }
 .category-btn {
-  display:flex; flex-direction:column; align-items:center; justify-content:center;
-  text-decoration:none; color:#fff; font-size:0.8em; font-weight:600;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  text-decoration:none;color:white;font-size:0.8em;font-weight:600;text-align:center;
 }
 .category-btn img {
-  width:64px; height:64px; object-fit:contain; margin-bottom:6px;
+  width:64px;height:64px;object-fit:contain;margin-bottom:4px;
 }
 
-/* Item Grid */
-.item-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:14px; }
-.item-card { background:#fff; border-radius:12px; padding:10px; box-shadow:0 1px 8px rgba(0,0,0,.08); display:flex; flex-direction:column; }
-.item-thumb { position:relative; width:100%; height:150px; border-radius:10px; background:#eef3f8 center/cover no-repeat; }
-.cost { position:absolute; top:8px; left:8px; background:#fff; padding:3px 6px; border-radius:8px; font-size:0.8em; font-weight:bold; }
-.watch-btn { position:absolute; top:8px; right:8px; background:#fff; border:none; border-radius:50%; padding:5px 7px; cursor:pointer; }
-.item-meta { margin-top:8px; }
-.item-meta h3 { margin:0; font-size:1.05em; }
-.item-meta .desc { font-size:0.85em; color:#555; }
-.tags { margin-top:4px; }
-.tag { background:#eef2ff; color:#3a8dde; font-size:0.75em; padding:2px 6px; border-radius:6px; margin-right:4px; }
-.item-actions { margin-top:auto; text-align:right; }
-.buy-btn { background:#3a8dde; color:#fff; padding:6px 10px; border-radius:8px; text-decoration:none; font-weight:600; }
+/* === Item Grid (unchanged from last update) === */
+.item-grid {display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-top:12px;}
+.item-card {background:#fff;border-radius:12px;padding:10px;box-shadow:0 1px 8px rgba(0,0,0,.08);display:flex;flex-direction:column;}
+.item-thumb {position:relative;width:100%;height:150px;border-radius:10px;background:#eef3f8 center/cover no-repeat;}
+.cost {position:absolute;top:8px;left:8px;background:#fff;padding:3px 6px;border-radius:8px;font-size:0.8em;font-weight:bold;}
+.watch-btn {position:absolute;top:8px;right:8px;background:#fff;border:none;border-radius:50%;padding:5px 7px;cursor:pointer;}
+.item-meta {margin-top:8px;}
+.item-meta h3 {margin:0;font-size:1.05em;}
+.item-meta .desc {font-size:0.85em;color:#555;}
+.tags {margin-top:4px;}
+.tag {background:#eef2ff;color:#3a8dde;font-size:0.75em;padding:2px 6px;border-radius:6px;margin-right:4px;}
+.item-actions {margin-top:auto;text-align:right;}
+.buy-btn {background:#3a8dde;color:#fff;padding:6px 10px;border-radius:8px;text-decoration:none;font-weight:600;}
 
-/* Watchlist Modal */
-.modal { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,.4); display:flex; align-items:center; justify-content:center; }
-.modal.hidden { display:none; }
-.modal-content { background:#fff; border-radius:12px; padding:16px; width:90%; max-width:400px; }
-.close-btn { background:#3a8dde; color:#fff; padding:6px 10px; border-radius:8px; border:none; cursor:pointer; }
+/* === Watchlist Modal === */
+.modal {position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;}
+.modal.hidden {display:none;}
+.modal-content {background:#fff;border-radius:12px;padding:16px;width:90%;max-width:400px;}
+.close-btn {background:#3a8dde;color:#fff;padding:6px 10px;border-radius:8px;border:none;cursor:pointer;}
 </style>
 
 <div class="catalog-hero">

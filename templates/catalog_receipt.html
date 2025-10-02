@@ -1,68 +1,59 @@
 {% extends "base.html" %}
 {% block content %}
 
-<h1>🧾 Order Receipt</h1>
-
-<div class="receipt">
-  <div class="row">
-    <div>
-      <div class="muted">Redemption ID</div>
-      <div class="mono">{{ rec.id }}</div>
-    </div>
+<div class="item-card-detail">
+  <!-- Header -->
+  <div class="receipt-header">
+    <h1>🧾 Order Receipt</h1>
     <div class="status {{ rec.status|lower }}">{{ rec.status }}</div>
   </div>
 
-  <div class="section">
-    <h3>🎁 Item</h3>
-    <div class="item">
-      <div class="thumb" style="background-image:url('{{ rec.item_snapshot.image_url or url_for('static', filename='icons/catalog-app.png') }}');"></div>
-      <div>
-        <strong>{{ rec.item_snapshot.name }}</strong><br>
-        <span class="muted">Cost:</span> {{ rec.stamps_spent }} stamps
-        {% if rec.catalog_item_id in watch_ids %}
-          <div class="watch-note">👀 You had this item on your Watchlist.</div>
-        {% endif %}
-      </div>
+  <!-- Item Section -->
+  <div class="item-thumb" style="background-image:url('{{ rec.item_snapshot.image_url or url_for('static', filename='icons/catalog-app.png') }}')">
+    <div class="cost-badge">
+      <img src="{{ url_for('static', filename='catalog/container/cost.png') }}" alt="Cost">
+      <span>{{ rec.stamps_spent }}</span>
     </div>
   </div>
 
+  <div class="item-meta">
+    <h2>{{ rec.item_snapshot.name }}</h2>
+  </div>
+
+  <!-- Pickup Section -->
   <div class="section">
     <h3>🗓️ Pick-up</h3>
-    <div>
-      <div><span class="muted">Meet-up:</span> {{ rec.metadata.meetup.name }}</div>
-      <div><span class="muted">Location:</span> {{ rec.metadata.meetup.location }}</div>
-      <div><span class="muted">When:</span> {{ rec.metadata.meetup.date|to_date }} @ {{ rec.metadata.meetup.start_time }}</div>
-    </div>
+    <p><strong>Meet-up:</strong> {{ rec.metadata.meetup.name }}</p>
+    <p><strong>Location:</strong> {{ rec.metadata.meetup.location }}</p>
+    <p><strong>When:</strong> {{ rec.metadata.meetup.date|to_date }} @ {{ rec.metadata.meetup.start_time }}</p>
   </div>
 
+  <!-- Trainer Info -->
   <div class="section">
     <h3>👤 Trainer</h3>
-    <div>
-      <div><span class="muted">Username:</span> {{ rec.trainer_username }}</div>
-      <div><span class="muted">Placed:</span> {{ rec.created_at|to_date }}</div>
-    </div>
+    <p><strong>Username:</strong> {{ rec.trainer_username }}</p>
+    <p><strong>Placed:</strong> {{ rec.created_at|to_date }}</p>
+    <p><strong>Redemption ID:</strong> <code>{{ rec.id }}</code></p>
   </div>
 
-  <div class="footer-actions">
-    <a href="{{ url_for('catalog') }}" class="btn">⬅ Back to Arcade</a>
+  <!-- Footer Actions -->
+  <div class="item-actions">
+    <a href="{{ url_for('catalog') }}" class="back-btn">⬅ Back to Catalog</a>
   </div>
 </div>
 
 <style>
-.receipt{ background:#fff; border-radius:12px; padding:14px; box-shadow:0 1px 12px rgba(0,0,0,.08); }
-.row{ display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
-.status{ font-size:.8em; padding:4px 10px; border-radius:999px; background:#eef2ff; color:#334155; }
-.status.pending{ background:#fff7ed; color:#9a3412; }
-.status.fulfilled{ background:#e8f7ef; color:#065f46; }
-.status.cancelled{ background:#fee2e2; color:#991b1b; }
-.section{ border-top:1px dashed #e5e7eb; padding-top:10px; margin-top:10px; }
-.muted{ color:#6b7280; font-size:.9em; }
-.mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
-.item{ display:flex; gap:10px; align-items:center; }
-.thumb{ width:72px; height:72px; border-radius:8px; background:#eef3f8 center/cover no-repeat; }
-.watch-note{ font-size:0.85em; color:#3a8dde; margin-top:4px; font-weight:600; }
-.footer-actions{ margin-top:14px; text-align:center; }
-.footer-actions .btn{ text-decoration:none; background:#eef2ff; color:#3a8dde; padding:8px 12px; border-radius:8px; font-weight:700; }
+.item-card-detail {background:#fff;border-radius:16px;padding:16px;box-shadow:0 2px 10px rgba(0,0,0,.08);max-width:600px;margin:0 auto;display:flex;flex-direction:column;gap:14px;}
+.receipt-header {display:flex;justify-content:space-between;align-items:center;}
+.status {font-size:.85em;padding:4px 10px;border-radius:999px;}
+.status.pending {background:#fff7ed;color:#9a3412;}
+.status.fulfilled {background:#e8f7ef;color:#065f46;}
+.status.cancelled {background:#fee2e2;color:#991b1b;}
+.item-thumb {position:relative;width:100%;height:200px;border-radius:14px;background:#eef3f8 center/cover no-repeat;}
+.cost-badge {position:absolute;top:8px;left:8px;display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.9);padding:2px 6px;border-radius:12px;font-weight:bold;}
+.cost-badge img {width:24px;height:24px;}
+.section {border-top:1px dashed #ddd;padding-top:10px;}
+.back-btn {background:#eef2ff;color:#3a8dde;padding:8px 12px;border-radius:8px;text-decoration:none;font-weight:600;}
 </style>
 
 {% endblock %}
