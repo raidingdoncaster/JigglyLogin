@@ -47,16 +47,28 @@
   background:#eef2ff; color:#3a8dde; padding:6px 10px;
   border-radius:8px; text-decoration:none; font-size:0.85em; font-weight:600;
 }
-.watchlist-btn { background:none; border:none; cursor:pointer; }
+.watchlist-btn img {
+  width:24px; height:24px; display:block;
+}
 
 /* Categories */
-.categories h2 { font-size:1.1em; margin-bottom:8px; }
-.category-grid { display:flex; flex-wrap:wrap; gap:10px; }
+.categories {
+  background: url('{{ url_for("static", filename="catalog/catbg.png") }}') center/cover no-repeat;
+  padding: 16px; border-radius: 12px; margin-bottom: 20px;
+}
+.categories h2 { font-size:1.1em; margin-bottom:12px; color:#fff; }
+.category-grid {
+  display:grid;
+  grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+  gap: 16px;
+  text-align:center;
+}
 .category-btn {
-  width:70px; height:70px; border-radius:50%;
-  background:#3a8dde center/50% no-repeat;
-  color:#fff; text-align:center; display:flex; align-items:center; justify-content:center;
-  text-decoration:none; font-size:0.8em;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  text-decoration:none; color:#fff; font-size:0.8em; font-weight:600;
+}
+.category-btn img {
+  width:64px; height:64px; object-fit:contain; margin-bottom:6px;
 }
 
 /* Item Grid */
@@ -117,16 +129,16 @@
 <section class="categories">
   <h2>Categories</h2>
   <div class="category-grid">
-    <a href="#pins" class="category-btn" style="background-image:url('{{ url_for('static', filename='catalog/pins.png') }}')">Pins</a>
-    <a href="#plushies" class="category-btn" style="background-image:url('{{ url_for('static', filename='catalog/plushies.png') }}')">Plushies</a>
-    <a href="#tcg" class="category-btn" style="background-image:url('{{ url_for('static', filename='catalog/tcg.png') }}')">TCG</a>
-    <a href="#keychains" class="category-btn" style="background-image:url('{{ url_for('static', filename='catalog/keychains.png') }}')">Keychains</a>
-    <a href="#accessories" class="category-btn" style="background-image:url('{{ url_for('static', filename='catalog/accessories.png') }}')">Accessories</a>
-    <a href="#games" class="category-btn" style="background-image:url('{{ url_for('static', filename='catalog/games.png') }}')">Games</a>
-    <a href="#bundles" class="category-btn" style="background-image:url('{{ url_for('static', filename='catalog/bundles.png') }}')">Bundles</a>
-    <a href="#codes" class="category-btn" style="background-image:url('{{ url_for('static', filename='catalog/digital-codes.png') }}')">Digital</a>
-    <a href="#latest" class="category-btn" style="background-image:url('{{ url_for('static', filename='catalog/latest.png') }}')">Latest</a>
-    <a href="#all" class="category-btn" style="background-image:url('{{ url_for('static', filename='catalog/viewall.png') }}')">View All</a>
+    <a href="#pins" class="category-btn"><img src="{{ url_for('static', filename='catalog/pins.png') }}"><span>Pins</span></a>
+    <a href="#plushies" class="category-btn"><img src="{{ url_for('static', filename='catalog/plushies.png') }}"><span>Plushies</span></a>
+    <a href="#tcg" class="category-btn"><img src="{{ url_for('static', filename='catalog/tcg.png') }}"><span>TCG</span></a>
+    <a href="#keychains" class="category-btn"><img src="{{ url_for('static', filename='catalog/keychains.png') }}"><span>Keychains</span></a>
+    <a href="#accessories" class="category-btn"><img src="{{ url_for('static', filename='catalog/accessories.png') }}"><span>Accessories</span></a>
+    <a href="#games" class="category-btn"><img src="{{ url_for('static', filename='catalog/games.png') }}"><span>Games</span></a>
+    <a href="#bundles" class="category-btn"><img src="{{ url_for('static', filename='catalog/bundles.png') }}"><span>Bundles</span></a>
+    <a href="#codes" class="category-btn"><img src="{{ url_for('static', filename='catalog/digital-codes.png') }}"><span>Digital</span></a>
+    <a href="#latest" class="category-btn"><img src="{{ url_for('static', filename='catalog/latest.png') }}"><span>Latest</span></a>
+    <a href="#all" class="category-btn"><img src="{{ url_for('static', filename='catalog/viewall.png') }}"><span>View All</span></a>
   </div>
 </section>
 
