@@ -2,112 +2,199 @@
 {% block content %}
 
 <style>
-/* === Catalog Styles === */
-.catalog-hero {
-  display:flex;align-items:center;gap:12px;
-  background:#3a8dde;color:white;
-  padding:14px;border-radius:12px;margin-bottom:12px;
+/* =============== GLOBAL TWEAKS & SPACING =============== */
+:root{
+  --blue:#3a8dde;
+  --sky:#e9f0ff;
+  --card:#ffffff;
+  --ink:#1f2937;
+  --muted:#6b7280;
+  --chip:#eef2ff;
+  --radius:16px;
 }
-.catalog-icon {
-  width:64px;height:64px;
+.section-gap{ margin:10px 0; }
+
+/* =============== HERO =============== */
+.catalog-hero{
+  display:flex; align-items:center; gap:12px;
+  background:var(--blue); color:#fff;
+  padding:14px; border-radius:18px; margin:8px 0 12px;
+}
+.catalog-icon{
+  width:64px; height:64px;
   background:url('{{ url_for("static", filename="catalog/catalog-app.png") }}') center/cover no-repeat;
-  border-radius:16px;
+  border-radius:14px; flex:0 0 auto;
 }
-.catalog-title h1 {margin:0;font-size:1.6em;}
-.catalog-title p {margin:4px 0;font-size:0.95em;}
-.back-link {font-size:0.85em;color:#e0eaff;text-decoration:none;}
+.catalog-title h1{ margin:0; font-size:1.8rem; line-height:1; }
+.catalog-title p{ margin:.35rem 0 .4rem; opacity:.95; }
+.back-link{ color:#e0eaff; text-decoration:none; font-size:.92rem; }
 
-/* === Featured Carousel === */
-.featured-carousel {position:relative;overflow:hidden;border-radius:16px;margin:12px 0;}
-.carousel-track {display:flex;transition:transform 0.6s ease;}
-.carousel-slide {min-width:100%;display:flex;justify-content:center;align-items:center;}
-.carousel-slide img {width:100%;height:auto;border-radius:16px;}
-.carousel-controls {position:absolute;bottom:10px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:8px;}
-.carousel-prev,.carousel-next {
-  background:rgba(255,255,255,0.8);border:none;font-size:1.2em;
-  padding:4px 10px;border-radius:50%;cursor:pointer;
+/* =============== FEATURED (shorter banner) =============== */
+.featured-carousel{ position:relative; overflow:hidden; border-radius:18px; margin:6px 0 8px; }
+.carousel-track{ display:flex; transition:transform .6s ease; }
+.carousel-slide{ min-width:100%; display:flex; justify-content:center; }
+.carousel-slide img{
+  width:100%; height:auto; border-radius:18px;
+  max-height:220px; object-fit:cover;
 }
-.carousel-dots {display:flex;gap:8px;}
-.carousel-dots .dot {
-  width:18px;height:18px;border-radius:50%;background:white;
-  border:2px solid #000;position:relative;overflow:hidden;cursor:pointer;
-}
-.carousel-dots .dot::before {content:"";position:absolute;top:0;left:0;width:100%;height:50%;background:red;}
-.carousel-dots .dot::after {
-  content:"";position:absolute;top:50%;left:50%;width:6px;height:6px;
-  background:white;border:2px solid #000;border-radius:50%;transform:translate(-50%,-50%);
-}
-.carousel-dots .dot.active {transform:scale(1.2);border-color:#3a8dde;box-shadow:0 0 6px rgba(58,141,222,0.6);}
+@media (min-width:768px){ .carousel-slide img{ max-height:320px; } }
 
-/* === Quick Links === */
-.quick-links {
-  display:flex;align-items:center;gap:8px;justify-content:space-between;
-  margin:10px 0;
+.carousel-controls{
+  position:absolute; bottom:10px; left:50%; transform:translateX(-50%);
+  display:flex; align-items:center; gap:10px;
 }
-.quick-link, .watchlist-btn {
-  flex:1;
-  text-align:center;
-  background:#eef2ff;
-  color:#3a8dde;
-  padding:6px 8px;
-  border-radius:8px;
-  text-decoration:none;
-  font-size:0.8em;
-  font-weight:600;
-  height:36px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
+.carousel-prev,.carousel-next{
+  background:rgba(255,255,255,.85); border:none; border-radius:50%;
+  width:32px; height:32px; font-size:1.15rem; line-height:32px; cursor:pointer;
+}
+
+/* Pokéball dots */
+.carousel-dots{ display:flex; gap:10px; }
+.carousel-dots .dot{
+  width:18px; height:18px; border-radius:50%; background:#fff; border:2px solid #000;
+  position:relative; overflow:hidden; cursor:pointer; box-shadow:0 1px 2px rgba(0,0,0,.18);
+}
+.carousel-dots .dot::before{ content:""; position:absolute; left:0; top:0; width:100%; height:50%; background:#e11d24; }
+.carousel-dots .dot::after{
+  content:""; position:absolute; left:50%; top:50%; width:6px; height:6px;
+  background:#fff; border:2px solid #000; border-radius:50%; transform:translate(-50%,-50%);
+}
+.carousel-dots .dot.active{ transform:scale(1.2); border-color:var(--blue); box-shadow:0 0 6px rgba(58,141,222,.6); }
+
+/* =============== QUICK LINKS (one row, equal height, content width) =============== */
+.quick-links{
+  display:flex; align-items:center; gap:8px; flex-wrap:nowrap; justify-content:flex-start;
+  margin:6px 0 8px; overflow:hidden;
+}
+.quick-links .quick-link{
+  display:inline-flex; align-items:center; justify-content:center;
+  height:40px; padding:0 12px;
+  background:var(--chip); color:var(--blue); border-radius:12px;
+  text-decoration:none; font-weight:700; font-size:.92rem;
   white-space:nowrap;
-  overflow:hidden;
-  text-overflow:ellipsis;
 }
-.watchlist-btn img {
-  width:20px;height:20px;object-fit:contain;
+.quick-links .watchlist-btn{
+  display:inline-flex; align-items:center; justify-content:center;
+  width:48px; height:40px; padding:0; border:none; cursor:pointer;
+  background:var(--chip); border-radius:12px; flex:0 0 auto;
+}
+.quick-links .watchlist-btn img{ width:22px; height:22px; object-fit:contain; }
+
+/* =============== CATEGORIES (exact catbg.png frame, 2×1) =============== */
+.categories{ margin:6px 0 10px; }
+.cat-frame{
+  position:relative; width:100%;
+  aspect-ratio: 2 / 1;     /* matches your background (1536×768 ≈ 2:1) */
+  background:url('{{ url_for("static", filename="catalog/catbg.png") }}') center/contain no-repeat;
+  border-radius:18px; overflow:hidden;
+}
+.cat-title{
+  position:absolute; top:6%; left:5%;
+  color:#fff; font-weight:800; font-size:clamp(1.1rem, 3.8vw, 1.6rem);
+  text-shadow:0 2px 6px rgba(0,0,0,.35);
+}
+.cat-grid{
+  position:absolute;
+  /* Safe insets so icons stay inside the art */
+  inset: 18% 5% 10% 5%;
+  display:grid; grid-template-columns:repeat(5, 1fr); grid-template-rows:repeat(2, 1fr);
+  gap:clamp(6px, 1.8vw, 16px); align-items:center; justify-items:center;
+}
+.category-btn{
+  display:flex; flex-direction:column; align-items:center; gap:6px;
+  text-decoration:none; color:#fff; font-weight:800;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,.25));
+}
+.category-btn img{ width:min(68px, 13vw); height:auto; }
+.category-btn span{
+  font-size:clamp(.85rem, 2.5vw, 1.1rem);
+  text-shadow:0 2px 6px rgba(0,0,0,.35);
 }
 
-/* === Categories === */
-.categories {
-  margin:10px 0;
-  background:url('{{ url_for("static", filename="catalog/catbg.png") }}') center/cover no-repeat;
-  padding:20px;border-radius:12px;
+/* =============== ITEM GRID — CARD MATCHES CONCEPT =============== */
+.item-grid{
+  display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr));
+  gap:14px; margin:10px 0 16px;
 }
-.categories h2 {font-size:1.1em;margin-bottom:10px;color:white;text-shadow:0 1px 2px rgba(0,0,0,.3);}
-.category-grid {
-  display:grid;
-  grid-template-columns:repeat(5,1fr);
-  grid-template-rows:repeat(2,auto);
-  gap:14px;
-}
-.category-btn {
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-  text-decoration:none;color:white;font-size:0.8em;font-weight:600;text-align:center;
-}
-.category-btn img {
-  width:64px;height:64px;object-fit:contain;margin-bottom:4px;
+.item-card{
+  background:var(--card); border-radius:22px; overflow:hidden;
+  box-shadow:0 4px 18px rgba(0,0,0,.08), inset 0 0 0 1px rgba(0,0,0,.04);
 }
 
-/* === Item Grid (unchanged from last update) === */
-.item-grid {display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-top:12px;}
-.item-card {background:#fff;border-radius:12px;padding:10px;box-shadow:0 1px 8px rgba(0,0,0,.08);display:flex;flex-direction:column;}
-.item-thumb {position:relative;width:100%;height:150px;border-radius:10px;background:#eef3f8 center/cover no-repeat;}
-.cost {position:absolute;top:8px;left:8px;background:#fff;padding:3px 6px;border-radius:8px;font-size:0.8em;font-weight:bold;}
-.watch-btn {position:absolute;top:8px;right:8px;background:#fff;border:none;border-radius:50%;padding:5px 7px;cursor:pointer;}
-.item-meta {margin-top:8px;}
-.item-meta h3 {margin:0;font-size:1.05em;}
-.item-meta .desc {font-size:0.85em;color:#555;}
-.tags {margin-top:4px;}
-.tag {background:#eef2ff;color:#3a8dde;font-size:0.75em;padding:2px 6px;border-radius:6px;margin-right:4px;}
-.item-actions {margin-top:auto;text-align:right;}
-.buy-btn {background:#3a8dde;color:#fff;padding:6px 10px;border-radius:8px;text-decoration:none;font-weight:600;}
+/* top bar badges */
+.card-topbar{ position:relative; height:0; }
+.cost-pill{
+  position:absolute; top:10px; left:10px;
+  display:flex; align-items:center; gap:6px;
+  background:#dff6e9; border:2px solid #6fc592; color:#0a5c2b;
+  padding:4px 10px; border-radius:14px;
+  box-shadow:0 2px 0 rgba(0,0,0,.08);
+}
+.cost-pill .icon{
+  width:22px; height:22px; background:url('{{ url_for("static", filename="catalog/container/cost.png") }}') center/contain no-repeat;
+}
+.watch-circle{
+  position:absolute; top:10px; right:10px;
+  width:42px; height:42px; background:#b6f1e4; border:1.5px solid #7bd7c3;
+  backdrop-filter: blur(2px);
+  border-radius:50%; display:flex; align-items:center; justify-content:center;
+  cursor:pointer;
+  box-shadow:0 2px 0 rgba(0,0,0,.08);
+}
+.watch-circle img{ width:24px; height:24px; }
 
-/* === Watchlist Modal === */
-.modal {position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;}
-.modal.hidden {display:none;}
-.modal-content {background:#fff;border-radius:12px;padding:16px;width:90%;max-width:400px;}
-.close-btn {background:#3a8dde;color:#fff;padding:6px 10px;border-radius:8px;border:none;cursor:pointer;}
+/* hero image */
+.card-hero{
+  margin:0 12px; height:200px; border-radius:14px;
+  background:#eef3f8 center/cover no-repeat;
+}
+
+/* bottom band + fab */
+.card-bottom{
+  position:relative;
+  background:#74bdf0; color:#0b213d;
+  border-top-left-radius:18px; border-top-right-radius:18px;
+  margin-top:12px; padding:14px 14px 58px;
+}
+.item-name{ margin:0 0 4px; font-size:1.2rem; font-weight:800; color:#0b213d; }
+.item-desc{ margin:0; color:#e7f3ff; opacity:.95; }
+
+.buy-fab{
+  position:absolute; right:14px; bottom:14px;
+  width:96px; height:96px; border-radius:50%;
+  background:#75c06a; box-shadow:0 8px 18px rgba(0,0,0,.12);
+  display:flex; align-items:center; justify-content:center;
+}
+.buy-fab img{ width:66px; height:66px; object-fit:contain; }
+
+/* footer chips */
+.card-footer{
+  display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+  padding:10px 14px 14px;
+}
+.stock-pill{
+  background:#f89e3c; color:#2a1800; border-radius:14px;
+  padding:4px 10px; font-weight:800; box-shadow:0 2px 0 rgba(0,0,0,.08);
+}
+.tag-chip{
+  background:#cfefff; color:#0c4781; padding:6px 10px; border-radius:14px; font-weight:700;
+}
+
+/* =============== WATCHLIST MODAL =============== */
+.modal{ position:fixed; inset:0; background:rgba(0,0,0,.42); display:flex; align-items:center; justify-content:center; z-index:50; }
+.modal.hidden{ display:none; }
+.modal-content{ width:min(420px, 92vw); background:#fff; border-radius:16px; padding:16px; }
+.close-btn{ background:var(--blue); color:#fff; padding:8px 12px; border:none; border-radius:10px; cursor:pointer; float:right; }
+
+/* =============== SMALL REFINEMENTS =============== */
+@media (max-width:360px){
+  .quick-links .quick-link{ font-size:.85rem; padding:0 10px; }
+  .buy-fab{ width:86px; height:86px; }
+  .buy-fab img{ width:58px; height:58px; }
+}
 </style>
 
+<!-- =============== HERO =============== -->
 <div class="catalog-hero">
   <div class="catalog-icon"></div>
   <div class="catalog-title">
@@ -117,98 +204,162 @@
   </div>
 </div>
 
-<!-- Featured Carousel -->
+<!-- =============== FEATURED =============== -->
 <div class="featured-carousel">
   <div class="carousel-track">
-    <div class="carousel-slide"><img src="{{ url_for('static', filename='featured/slide1.png') }}"></div>
-    <div class="carousel-slide"><img src="{{ url_for('static', filename='featured/slide2.png') }}"></div>
-    <div class="carousel-slide"><img src="{{ url_for('static', filename='featured/slide3.png') }}"></div>
-    <div class="carousel-slide"><img src="{{ url_for('static', filename='featured/slide4.png') }}"></div>
+    <div class="carousel-slide"><img src="{{ url_for('static', filename='featured/slide1.png') }}" alt=""></div>
+    <div class="carousel-slide"><img src="{{ url_for('static', filename='featured/slide2.png') }}" alt=""></div>
+    <div class="carousel-slide"><img src="{{ url_for('static', filename='featured/slide3.png') }}" alt=""></div>
+    <div class="carousel-slide"><img src="{{ url_for('static', filename='featured/slide4.png') }}" alt=""></div>
   </div>
   <div class="carousel-controls">
-    <button class="carousel-prev">‹</button>
-    <div class="carousel-dots"><span class="dot active"></span><span class="dot"></span><span class="dot"></span></div>
-    <button class="carousel-next">›</button>
+    <button class="carousel-prev" aria-label="Previous">‹</button>
+    <div class="carousel-dots">
+      <span class="dot active"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span>
+    </div>
+    <button class="carousel-next" aria-label="Next">›</button>
   </div>
 </div>
 
-<!-- Quick Links -->
+<!-- =============== QUICK LINKS =============== -->
 <div class="quick-links">
   <a href="#" class="quick-link">New here? Tap here to learn how it works!</a>
   <a href="{{ url_for('orders') }}" class="quick-link">Order history</a>
-  <button class="watchlist-btn" onclick="toggleWatchlist()">
+  <button class="watchlist-btn" onclick="toggleWatchlist()" title="Watchlist">
     <img src="{{ url_for('static', filename='catalog/binocularsb.png') }}" alt="Watchlist">
   </button>
 </div>
 
-<!-- Categories -->
+<!-- =============== CATEGORIES (exact frame) =============== -->
 <section class="categories">
-  <h2>Categories</h2>
-  <div class="category-grid">
-    <a href="#pins" class="category-btn"><img src="{{ url_for('static', filename='catalog/pins.png') }}"><span>Pins</span></a>
-    <a href="#plushies" class="category-btn"><img src="{{ url_for('static', filename='catalog/plushies.png') }}"><span>Plushies</span></a>
-    <a href="#tcg" class="category-btn"><img src="{{ url_for('static', filename='catalog/tcg.png') }}"><span>TCG</span></a>
-    <a href="#keychains" class="category-btn"><img src="{{ url_for('static', filename='catalog/keychains.png') }}"><span>Keychains</span></a>
-    <a href="#accessories" class="category-btn"><img src="{{ url_for('static', filename='catalog/accessories.png') }}"><span>Accessories</span></a>
-    <a href="#games" class="category-btn"><img src="{{ url_for('static', filename='catalog/games.png') }}"><span>Games</span></a>
-    <a href="#bundles" class="category-btn"><img src="{{ url_for('static', filename='catalog/bundles.png') }}"><span>Bundles</span></a>
-    <a href="#codes" class="category-btn"><img src="{{ url_for('static', filename='catalog/digital-codes.png') }}"><span>Digital</span></a>
-    <a href="#latest" class="category-btn"><img src="{{ url_for('static', filename='catalog/latest.png') }}"><span>Latest</span></a>
-    <a href="#all" class="category-btn"><img src="{{ url_for('static', filename='catalog/viewall.png') }}"><span>View All</span></a>
+  <div class="cat-frame">
+    <div class="cat-title">Categories</div>
+    <div class="cat-grid">
+      <a href="#pins" class="category-btn"><img src="{{ url_for('static', filename='catalog/pins.png') }}" alt=""><span>Pins</span></a>
+      <a href="#plushies" class="category-btn"><img src="{{ url_for('static', filename='catalog/plushies.png') }}" alt=""><span>Plushies</span></a>
+      <a href="#tcg" class="category-btn"><img src="{{ url_for('static', filename='catalog/tcg.png') }}" alt=""><span>TCG</span></a>
+      <a href="#keychains" class="category-btn"><img src="{{ url_for('static', filename='catalog/keychains.png') }}" alt=""><span>Keychains</span></a>
+      <a href="#accessories" class="category-btn"><img src="{{ url_for('static', filename='catalog/accessories.png') }}" alt=""><span>Accessories</span></a>
+      <a href="#games" class="category-btn"><img src="{{ url_for('static', filename='catalog/games.png') }}" alt=""><span>Games</span></a>
+      <a href="#bundles" class="category-btn"><img src="{{ url_for('static', filename='catalog/bundles.png') }}" alt=""><span>Bundles</span></a>
+      <a href="#codes" class="category-btn"><img src="{{ url_for('static', filename='catalog/digital-codes.png') }}" alt=""><span>Digital</span></a>
+      <a href="#latest" class="category-btn"><img src="{{ url_for('static', filename='catalog/latest.png') }}" alt=""><span>Latest</span></a>
+      <a href="#all" class="category-btn"><img src="{{ url_for('static', filename='catalog/viewall.png') }}" alt=""><span>View All</span></a>
+    </div>
   </div>
 </section>
 
-<!-- Item Grid -->
+<!-- =============== ITEM GRID =============== -->
 <section class="item-grid">
   {% for it in items %}
   <div class="item-card">
-    <div class="item-thumb" style="background-image:url('{{ it.image_url }}')">
-      <span class="cost">🪙 {{ it.cost_stamps }}</span>
-      <button class="watch-btn" data-id="{{ it.id }}" onclick="toggleWatch(this)">👀</button>
-    </div>
-    <div class="item-meta">
-      <h3>{{ it.name }}</h3>
-      <p class="desc">{{ it.description }}</p>
-      <div class="tags">
-        {% for t in it.tags %}
-        <span class="tag">#{{ t }}</span>
-        {% endfor %}
+    <div class="card-topbar">
+      <div class="cost-pill">
+        <span class="icon" aria-hidden="true"></span>
+        <strong>{{ it.cost_stamps }}</strong>
       </div>
+
+      <button class="watch-circle" data-id="{{ it.id }}" onclick="toggleWatch(this)" title="Toggle watch">
+        <img
+          src="{{ url_for('static', filename='catalog/' + ('binocularsb.png' if it.id in watch_ids else 'binocularsa.png')) }}"
+          data-a="{{ url_for('static', filename='catalog/binocularsa.png') }}"
+          data-b="{{ url_for('static', filename='catalog/binocularsb.png') }}"
+          alt="watch">
+      </button>
     </div>
-    <div class="item-actions">
-      <a href="{{ url_for('catalog_item', item_id=it.id) }}" class="buy-btn">Buy / View</a>
+
+    <a class="card-hero" style="background-image:url('{{ it.image_url }}');" href="{{ url_for('catalog_item', item_id=it.id) }}"></a>
+
+    <div class="card-bottom">
+      <h3 class="item-name">{{ it.name }}</h3>
+      <p class="item-desc">{{ it.description }}</p>
+
+      <a class="buy-fab" href="{{ url_for('catalog_item', item_id=it.id) }}" aria-label="Buy / View">
+        <img src="{{ url_for('static', filename='catalog/container/trade.PNG') }}" alt="">
+      </a>
+    </div>
+
+    <div class="card-footer">
+      <span class="stock-pill">stock: {{ it.stock }}</span>
+      {% for t in it.tags %}
+        <span class="tag-chip">#{{ t }}</span>
+      {% endfor %}
     </div>
   </div>
   {% endfor %}
 </section>
 
-<!-- Watchlist Modal -->
+<!-- =============== WATCHLIST MODAL =============== -->
 <div id="watchlist-modal" class="modal hidden">
   <div class="modal-content">
+    <button onclick="toggleWatchlist()" class="close-btn">Close</button>
     <h2>👀 Your Watchlist</h2>
     <div id="watchlist-items">Loading...</div>
-    <button onclick="toggleWatchlist()" class="close-btn">Close</button>
   </div>
 </div>
 
 <script>
-/* Carousel Logic */
-const track=document.querySelector(".carousel-track");
-const slides=document.querySelectorAll(".carousel-slide");
-const dots=document.querySelectorAll(".carousel-dots .dot");
-let currentIndex=0, interval=setInterval(nextSlide,6000);
-function updateCarousel(){ track.style.transform=`translateX(-${currentIndex*100}%)`; dots.forEach((d,i)=>d.classList.toggle("active",i===currentIndex)); }
-function nextSlide(){ currentIndex=(currentIndex+1)%slides.length; updateCarousel(); }
-function prevSlide(){ currentIndex=(currentIndex-1+slides.length)%slides.length; updateCarousel(); }
-document.querySelector(".carousel-next").addEventListener("click",()=>{nextSlide();resetInterval();});
-document.querySelector(".carousel-prev").addEventListener("click",()=>{prevSlide();resetInterval();});
-dots.forEach((dot,i)=>dot.addEventListener("click",()=>{currentIndex=i;updateCarousel();resetInterval();}));
-function resetInterval(){ clearInterval(interval); interval=setInterval(nextSlide,6000); }
+/* ---------- Carousel ---------- */
+const track = document.querySelector(".carousel-track");
+const slides = document.querySelectorAll(".carousel-slide");
+const dots = document.querySelectorAll(".carousel-dots .dot");
+let currentIndex = 0;
+let interval = setInterval(nextSlide, 6000);
 
-/* Watchlist Logic */
-function toggleWatchlist(){ const modal=document.getElementById("watchlist-modal"); modal.classList.toggle("hidden"); if(!modal.classList.contains("hidden")) loadWatchlist(); }
-function loadWatchlist(){ const c=document.getElementById("watchlist-items"); c.innerHTML="Loading..."; fetch("/watchlist").then(r=>r.json()).then(data=>{ if(!data.success){c.innerHTML="⚠️ Error loading watchlist."; return;} if(data.count===0){c.innerHTML="📭 Empty."; return;} c.innerHTML=""; data.items.forEach(it=>{const d=document.createElement("div"); d.className="watchlist-item"; d.innerHTML=`<strong>${it.name}</strong>`; c.appendChild(d);});}); }
-function toggleWatch(btn){ const id=btn.getAttribute("data-id"); fetch(`/watchlist/toggle/${id}`,{method:"POST"}).then(r=>r.json()).then(data=>{ if(data.success) btn.innerText=data.watched?"👀":"➕"; }); }
+function updateCarousel(){
+  track.style.transform = `translateX(-${currentIndex * 100}%)`;
+  dots.forEach((d,i)=>d.classList.toggle("active", i===currentIndex));
+}
+function nextSlide(){ currentIndex = (currentIndex + 1) % slides.length; updateCarousel(); }
+function prevSlide(){ currentIndex = (currentIndex - 1 + slides.length) % slides.length; updateCarousel(); }
+document.querySelector(".carousel-next")?.addEventListener("click", ()=>{ nextSlide(); resetTimer(); });
+document.querySelector(".carousel-prev")?.addEventListener("click", ()=>{ prevSlide(); resetTimer(); });
+dots.forEach((dot,i)=>dot.addEventListener("click", ()=>{ currentIndex=i; updateCarousel(); resetTimer(); }));
+function resetTimer(){ clearInterval(interval); interval = setInterval(nextSlide, 6000); }
+updateCarousel();
+
+/* ---------- Watchlist modal ---------- */
+function toggleWatchlist(){
+  const m = document.getElementById("watchlist-modal");
+  m.classList.toggle("hidden");
+  if(!m.classList.contains("hidden")) loadWatchlist();
+}
+function loadWatchlist(){
+  const c = document.getElementById("watchlist-items");
+  c.innerHTML = "Loading...";
+  fetch("/watchlist").then(r=>r.json()).then(data=>{
+    if(!data.success){ c.textContent = "⚠️ Error loading watchlist."; return; }
+    if(data.count===0){ c.textContent = "📭 Your watchlist is empty."; return; }
+    c.innerHTML = "";
+    data.items.forEach(item=>{
+      const row = document.createElement("div");
+      row.style.cssText = "display:flex;align-items:center;gap:10px;background:#f9fafb;border-radius:10px;padding:10px;margin:6px 0;";
+      row.innerHTML = `
+        <div style="width:48px;height:48px;border-radius:8px;background:#eef3f8 center/cover no-repeat;background-image:url('${item.image_url}')"></div>
+        <div style="flex:1;"><strong>${item.name}</strong><div style="color:#6b7280;font-size:.9em;">🪙 ${item.cost_stamps} — 📦 ${item.stock}</div></div>
+        <button style="background:#fee2e2;color:#991b1b;border:none;border-radius:8px;padding:6px 10px;cursor:pointer;"
+                onclick="toggleWatchFromModal('${item.id}')">Remove</button>`;
+      c.appendChild(row);
+    });
+  });
+}
+function toggleWatchFromModal(id){
+  fetch(`/watchlist/toggle/${id}`,{method:"POST"}).then(r=>r.json()).then(data=>{
+    if(data.success){ loadWatchlist(); 
+      const btn = document.querySelector(`.watch-circle[data-id='${id}'] img`);
+      if(btn){ btn.src = data.watched ? btn.dataset.b : btn.dataset.a; }
+    }
+  });
+}
+
+/* ---------- Watch toggle on cards ---------- */
+function toggleWatch(el){
+  const id = el.getAttribute("data-id");
+  const img = el.querySelector("img");
+  fetch(`/watchlist/toggle/${id}`,{method:"POST"}).then(r=>r.json()).then(data=>{
+    if(data.success){ img.src = data.watched ? img.dataset.b : img.dataset.a; }
+  });
+}
 </script>
 
 {% endblock %}
