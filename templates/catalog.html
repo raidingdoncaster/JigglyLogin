@@ -1,6 +1,85 @@
 {% extends "base.html" %}
 {% block content %}
 
+<style>
+/* === Catalog Styles === */
+.catalog-hero {
+  display: flex; align-items: center; gap: 12px;
+  background: #3a8dde; color: white;
+  padding: 14px; border-radius: 12px;
+}
+.catalog-icon {
+  width: 64px; height: 64px;
+  background: url('{{ url_for("static", filename="catalog/catalog-app.png") }}') center/cover no-repeat;
+  border-radius: 16px;
+}
+.catalog-title h1 { margin: 0; font-size: 1.6em; }
+.catalog-title p { margin: 4px 0; font-size: 0.95em; }
+.back-link { font-size: 0.85em; color: #e0eaff; text-decoration: none; }
+
+/* === Featured Carousel === */
+.featured-carousel { position: relative; overflow: hidden; border-radius: 16px; margin: 16px 0; }
+.carousel-track { display: flex; transition: transform 0.6s ease; }
+.carousel-slide { min-width: 100%; display:flex; justify-content:center; align-items:center; }
+.carousel-slide img { width: 100%; height: auto; border-radius: 16px; }
+
+/* Pokéball Dots */
+.carousel-controls { position:absolute; bottom:12px; left:50%; transform:translateX(-50%); display:flex; align-items:center; gap:8px; }
+.carousel-prev, .carousel-next {
+  background: rgba(255,255,255,0.8); border:none; font-size:1.2em;
+  padding:4px 10px; border-radius:50%; cursor:pointer;
+}
+.carousel-dots { display:flex; gap:8px; }
+.carousel-dots .dot {
+  width:18px; height:18px; border-radius:50%; background:white;
+  border:2px solid #000; position:relative; overflow:hidden; cursor:pointer;
+}
+.carousel-dots .dot::before { content:""; position:absolute; top:0; left:0; width:100%; height:50%; background:red; }
+.carousel-dots .dot::after {
+  content:""; position:absolute; top:50%; left:50%; width:6px; height:6px;
+  background:white; border:2px solid #000; border-radius:50%; transform:translate(-50%,-50%);
+}
+.carousel-dots .dot.active { transform:scale(1.2); border-color:#3a8dde; box-shadow:0 0 6px rgba(58,141,222,0.6); }
+
+/* Quick Links */
+.quick-links { display:flex; align-items:center; gap:10px; margin:14px 0; }
+.quick-link {
+  background:#eef2ff; color:#3a8dde; padding:6px 10px;
+  border-radius:8px; text-decoration:none; font-size:0.85em; font-weight:600;
+}
+.watchlist-btn { background:none; border:none; cursor:pointer; }
+
+/* Categories */
+.categories h2 { font-size:1.1em; margin-bottom:8px; }
+.category-grid { display:flex; flex-wrap:wrap; gap:10px; }
+.category-btn {
+  width:70px; height:70px; border-radius:50%;
+  background:#3a8dde center/50% no-repeat;
+  color:#fff; text-align:center; display:flex; align-items:center; justify-content:center;
+  text-decoration:none; font-size:0.8em;
+}
+
+/* Item Grid */
+.item-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:14px; }
+.item-card { background:#fff; border-radius:12px; padding:10px; box-shadow:0 1px 8px rgba(0,0,0,.08); display:flex; flex-direction:column; }
+.item-thumb { position:relative; width:100%; height:150px; border-radius:10px; background:#eef3f8 center/cover no-repeat; }
+.cost { position:absolute; top:8px; left:8px; background:#fff; padding:3px 6px; border-radius:8px; font-size:0.8em; font-weight:bold; }
+.watch-btn { position:absolute; top:8px; right:8px; background:#fff; border:none; border-radius:50%; padding:5px 7px; cursor:pointer; }
+.item-meta { margin-top:8px; }
+.item-meta h3 { margin:0; font-size:1.05em; }
+.item-meta .desc { font-size:0.85em; color:#555; }
+.tags { margin-top:4px; }
+.tag { background:#eef2ff; color:#3a8dde; font-size:0.75em; padding:2px 6px; border-radius:6px; margin-right:4px; }
+.item-actions { margin-top:auto; text-align:right; }
+.buy-btn { background:#3a8dde; color:#fff; padding:6px 10px; border-radius:8px; text-decoration:none; font-weight:600; }
+
+/* Watchlist Modal */
+.modal { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,.4); display:flex; align-items:center; justify-content:center; }
+.modal.hidden { display:none; }
+.modal-content { background:#fff; border-radius:12px; padding:16px; width:90%; max-width:400px; }
+.close-btn { background:#3a8dde; color:#fff; padding:6px 10px; border-radius:8px; border:none; cursor:pointer; }
+</style>
+
 <div class="catalog-hero">
   <div class="catalog-icon"></div>
   <div class="catalog-title">
@@ -10,38 +89,26 @@
   </div>
 </div>
 
-<!-- Featured Section -->
-<section class="featured">
-  <h2>⭐ Featured</h2>
-  <div class="carousel">
-    {% for f in featured_items %}
-    <div class="carousel-item" style="background-image:url('{{ f.image_url }}');">
-      <div class="carousel-content">
-        <h2>{{ f.name }}</h2>
-        <p>{{ f.description or '' }}</p>
-        <a href="{{ url_for('catalog_item', item_id=f.id) }}" class="btn-primary">View</a>
-      </div>
-    </div>
-    {% endfor %}
+<!-- Featured Carousel -->
+<div class="featured-carousel">
+  <div class="carousel-track">
+    <div class="carousel-slide"><img src="{{ url_for('static', filename='featured/slide1.png') }}"></div>
+    <div class="carousel-slide"><img src="{{ url_for('static', filename='featured/slide2.png') }}"></div>
+    <div class="carousel-slide"><img src="{{ url_for('static', filename='featured/slide3.png') }}"></div>
   </div>
-
-  <!-- Pokéball Dots -->
-  <div class="carousel-dots">
-    {% for f in featured_items %}
-    <span class="dot {% if loop.first %}active{% endif %}"></span>
-    {% endfor %}
+  <div class="carousel-controls">
+    <button class="carousel-prev">‹</button>
+    <div class="carousel-dots"><span class="dot active"></span><span class="dot"></span><span class="dot"></span></div>
+    <button class="carousel-next">›</button>
   </div>
-  <div class="carousel-progress">
-    <div class="progress-bar"></div>
-  </div>
-</section>
+</div>
 
 <!-- Quick Links -->
 <div class="quick-links">
   <a href="#" class="quick-link">New here? Tap here to learn how it works!</a>
   <a href="{{ url_for('orders') }}" class="quick-link">Order history</a>
   <button class="watchlist-btn" onclick="toggleWatchlist()">
-    <img src="{{ url_for('static', filename='icons/binoculars.png') }}" alt="Watchlist">
+    <img src="{{ url_for('static', filename='catalog/binoculars.png') }}" alt="Watchlist">
   </button>
 </div>
 
@@ -49,22 +116,18 @@
 <section class="categories">
   <h2>Categories</h2>
   <div class="category-grid">
-    {% for cat in category_order %}
-    <a href="#cat-{{ cat|lower }}" class="category-btn">{{ cat }}</a>
-    {% endfor %}
+    <a href="#pins" class="category-btn" style="background-image:url('{{ url_for('static', filename='catalog/pins.png') }}')">Pins</a>
+    <a href="#plushies" class="category-btn" style="background-image:url('{{ url_for('static', filename='catalog/plushies.png') }}')">Plushies</a>
+    <a href="#tcg" class="category-btn" style="background-image:url('{{ url_for('static', filename='catalog/tcg.png') }}')">TCG</a>
+    <a href="#keychains" class="category-btn" style="background-image:url('{{ url_for('static', filename='catalog/keychains.png') }}')">Keychains</a>
+    <a href="#accessories" class="category-btn" style="background-image:url('{{ url_for('static', filename='catalog/accessories.png') }}')">Accessories</a>
+    <a href="#games" class="category-btn" style="background-image:url('{{ url_for('static', filename='catalog/games.png') }}')">Games</a>
+    <a href="#bundles" class="category-btn" style="background-image:url('{{ url_for('static', filename='catalog/bundles.png') }}')">Bundles</a>
+    <a href="#codes" class="category-btn" style="background-image:url('{{ url_for('static', filename='catalog/digital-codes.png') }}')">Digital</a>
+    <a href="#latest" class="category-btn" style="background-image:url('{{ url_for('static', filename='catalog/latest.png') }}')">Latest</a>
+    <a href="#all" class="category-btn" style="background-image:url('{{ url_for('static', filename='catalog/viewall.png') }}')">View All</a>
   </div>
 </section>
-
-<!-- Search + Filter -->
-<div class="search-bar">
-  <input type="text" placeholder="🔍 Search" id="catalog-search">
-  <div class="filters">
-    <button>Filter</button>
-    <button>Sort</button>
-    <button>Grid</button>
-    <button>List</button>
-  </div>
-</div>
 
 <!-- Item Grid -->
 <section class="item-grid">
@@ -72,9 +135,7 @@
   <div class="item-card">
     <div class="item-thumb" style="background-image:url('{{ it.image_url }}')">
       <span class="cost">🪙 {{ it.cost_stamps }}</span>
-      <button class="watch-btn" data-id="{{ it.id }}" onclick="toggleWatch(this)">
-        {% if it.id in watch_ids %}👀{% else %}➕{% endif %}
-      </button>
+      <button class="watch-btn" data-id="{{ it.id }}" onclick="toggleWatch(this)">👀</button>
     </div>
     <div class="item-meta">
       <h3>{{ it.name }}</h3>
@@ -86,18 +147,11 @@
       </div>
     </div>
     <div class="item-actions">
-      <a href="{{ url_for('catalog_item', item_id=it.id) }}" class="buy-btn">
-        Buy / View
-      </a>
+      <a href="{{ url_for('catalog_item', item_id=it.id) }}" class="buy-btn">Buy / View</a>
     </div>
   </div>
   {% endfor %}
 </section>
-
-<!-- Back to Top -->
-<div class="back-to-top">
-  <a href="#">Back to top</a>
-</div>
 
 <!-- Watchlist Modal -->
 <div id="watchlist-modal" class="modal hidden">
@@ -108,6 +162,24 @@
   </div>
 </div>
 
-<script src="{{ url_for('static', filename='catalog.js') }}"></script>
+<script>
+/* Carousel Logic */
+const track=document.querySelector(".carousel-track");
+const slides=document.querySelectorAll(".carousel-slide");
+const dots=document.querySelectorAll(".carousel-dots .dot");
+let currentIndex=0, interval=setInterval(nextSlide,6000);
+function updateCarousel(){ track.style.transform=`translateX(-${currentIndex*100}%)`; dots.forEach((d,i)=>d.classList.toggle("active",i===currentIndex)); }
+function nextSlide(){ currentIndex=(currentIndex+1)%slides.length; updateCarousel(); }
+function prevSlide(){ currentIndex=(currentIndex-1+slides.length)%slides.length; updateCarousel(); }
+document.querySelector(".carousel-next").addEventListener("click",()=>{nextSlide();resetInterval();});
+document.querySelector(".carousel-prev").addEventListener("click",()=>{prevSlide();resetInterval();});
+dots.forEach((dot,i)=>dot.addEventListener("click",()=>{currentIndex=i;updateCarousel();resetInterval();}));
+function resetInterval(){ clearInterval(interval); interval=setInterval(nextSlide,6000); }
+
+/* Watchlist Logic */
+function toggleWatchlist(){ const modal=document.getElementById("watchlist-modal"); modal.classList.toggle("hidden"); if(!modal.classList.contains("hidden")) loadWatchlist(); }
+function loadWatchlist(){ const c=document.getElementById("watchlist-items"); c.innerHTML="Loading..."; fetch("/watchlist").then(r=>r.json()).then(data=>{ if(!data.success){c.innerHTML="⚠️ Error loading watchlist."; return;} if(data.count===0){c.innerHTML="📭 Empty."; return;} c.innerHTML=""; data.items.forEach(it=>{const d=document.createElement("div"); d.className="watchlist-item"; d.innerHTML=`<strong>${it.name}</strong>`; c.appendChild(d);});}); }
+function toggleWatch(btn){ const id=btn.getAttribute("data-id"); fetch(`/watchlist/toggle/${id}`,{method:"POST"}).then(r=>r.json()).then(data=>{ if(data.success) btn.innerText=data.watched?"👀":"➕"; }); }
+</script>
 
 {% endblock %}
