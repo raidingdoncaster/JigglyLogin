@@ -122,6 +122,56 @@
 .stock-pill{background:#f8c07a;color:#2a1800;border-radius:12px;padding:3px 6px;font-size:.8rem;}
 .tag-chip{background:#dcebfb;color:#0c4781;border-radius:12px;padding:3px 6px;font-size:.8rem;white-space:nowrap;}
 .more-chip{background:#eef2ff;color:#375a9e;border-radius:12px;padding:3px 8px;font-size:.8rem;cursor:pointer;}
+
+/* =============== CATEGORY HEADER + TOOLS =============== */
+.category-header {
+  margin: 14px 0;
+}
+
+.category-header h2 {
+  margin: 0 0 8px;
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.category-tools {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.category-tools input[type="search"] {
+  flex: 1;
+  padding: 8px 10px;
+  border: 1px solid var(--divider);
+  border-radius: 10px;
+  font-size: 0.9rem;
+}
+
+.category-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.category-actions button {
+  padding: 8px 12px;
+  border: 1px solid var(--divider);
+  border-radius: 10px;
+  background: var(--chip);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.category-actions select {
+  padding: 8px 10px;
+  border: 1px solid var(--divider);
+  border-radius: 10px;
+  background: var(--chip);
+  font-size: 0.9rem;
+  cursor: pointer;
+}
 </style>
 
 
@@ -175,6 +225,34 @@
     </div>
   </div>
 </section>
+
+<!-- CATEGORY HEADER + TOOLS -->
+<div class="category-header">
+  <h2 id="current-category">Latest</h2>
+  <div class="category-tools">
+    <input type="search" id="catalog-search" placeholder="Search catalog...">
+    <div class="category-actions">
+      <select id="filter-select">
+        <option value="all">All Categories</option>
+        <option value="Pins">Pins</option>
+        <option value="Plushies">Plushies</option>
+        <option value="TCG">TCG</option>
+        <option value="Keychains">Keychains</option>
+        <option value="Accessories">Accessories</option>
+        <option value="Games">Games</option>
+        <option value="Master Bundles">Bundles</option>
+      </select>
+
+      <select id="sort-select">
+        <option value="newest">Newest</option>
+        <option value="lowcost">Lowest Cost</option>
+        <option value="highcost">Highest Cost</option>
+        <option value="stock">Stock</option>
+      </select>
+    </div>
+    </div>
+  </div>
+</div>
 
 <!-- =============== ITEM GRID =============== -->
 <section class="item-grid">
@@ -313,6 +391,69 @@ window.addEventListener("resize", ()=>{ document.querySelectorAll(".js-tag-row")
   row.querySelectorAll(".tag-chip").forEach(t=>t.style.display="inline-flex");
   clampTagRow(row);
 });});
+
+/* ---------- Catalog tools ---------- */
+const searchInput = document.getElementById("catalog-search");
+const filterSelect = document.getElementById("filter-select");
+const sortSelect = document.getElementById("sort-select");
+const itemGrid = document.querySelector(".item-grid");
+
+function applyFilters() {
+  const term = searchInput.value.toLowerCase();
+  const filter = filterSelect.value.toLowerCase();
+
+  document.querySelectorAll(".item-card").forEach(card => {
+    const name = card.querySelector("h3").textContent.toLowerCase();
+    const desc = card.querySelector("p").textContent.toLowerCase();
+    const tags = (card.querySelector(".card-footer")?.innerText || "").toLowerCase();
+
+    let matchesSearch = !term || name.includes(term) || desc.includes(term);
+    let matchesFilter = filter === "all" || tags.includes(filter);
+
+    card.style.display = (matchesSearch && matchesFilter) ? "" : "none";
+  });
+
+  // 🔄 Update the category title
+  const titleEl = document.getElementById("current-category");
+
+  if (term && (filter === "all" || !filter)) {
+    // ✅ If searching (and not filtering), show "Search results"
+    titleEl.textContent = "Search results";
+  } else if (filter === "all") {
+    titleEl.textContent = "Latest";
+  } else {
+    // Capitalize the first letter of the filter name
+    titleEl.textContent = filter.charAt(0).toUpperCase() + filter.slice(1);
+  }
+}
+
+function applySort() {
+  const sortVal = sortSelect.value;
+  const cards = Array.from(document.querySelectorAll(".item-card"));
+
+  cards.sort((a, b) => {
+    const costA = parseInt(a.querySelector(".cost-pill span").textContent) || 0;
+    const costB = parseInt(b.querySelector(".cost-pill span").textContent) || 0;
+    const stockA = parseInt(a.querySelector(".stock-pill").textContent.replace(/\D/g, "")) || 0;
+    const stockB = parseInt(b.querySelector(".stock-pill").textContent.replace(/\D/g, "")) || 0;
+
+    switch (sortVal) {
+      case "lowcost": return costA - costB;
+      case "highcost": return costB - costA;
+      case "stock": return stockB - stockA;
+      default: return 0; // "newest" is default (server-ordered)
+    }
+  });
+
+  // Reattach sorted cards
+  cards.forEach(c => itemGrid.appendChild(c));
+}
+
+// Event listeners
+searchInput.addEventListener("input", applyFilters);
+filterSelect.addEventListener("change", applyFilters);
+sortSelect.addEventListener("change", applySort);
+
 </script>
 
 {% endblock %}
