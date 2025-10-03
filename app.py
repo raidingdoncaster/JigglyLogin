@@ -97,82 +97,39 @@ import uuid
 
 def _upload_to_supabase(file_storage, folder="catalog"):
     """
-    Upload a file to the *catalog* bucket and return a PUBLIC URL.
-    - Works with both supabase-py variants
-    - Logs what it's doing
-    - Generates a unique filename
+    Uploads a file to the Supabase 'catalog' bucket and returns its public URL.
+    Compatible with supabase-py >= 2.0.
     """
-    bucket = "catalog"
-
-    # 0) Guardrails
     if not supabase:
-        print("❌ Supabase client is not initialized.")
+        print("❌ Supabase client not initialized.")
         return None
     if not file_storage or not getattr(file_storage, "filename", ""):
-        print("❌ No file supplied to _upload_to_supabase.")
+        print("❌ No file supplied to upload.")
         return None
 
     try:
-        # 1) Build a safe, unique object key (no leading slash!)
-        original = secure_filename(file_storage.filename)
-        root, ext = os.path.splitext(original or "upload")
-        # keep an 8-char uuid to ensure uniqueness even within the same second
-        unique = datetime.utcnow().strftime("%Y%m%d%H%M%S") + "-" + uuid.uuid4().hex[:8]
-        fname = f"{root or 'file'}_{unique}{ext or ''}"
+        # Build unique key
+        fname = secure_filename(file_storage.filename)
+        root, ext = os.path.splitext(fname)
+        stamp = datetime.utcnow().strftime("%Y%m%d%H%M%S")
+        fname = f"{root}_{stamp}{ext}"
+        object_key = f"{folder}/{fname}" if folder else fname
 
-        folder = (folder or "").strip("/")          # e.g. "catalog" or "items"
-        object_key = f"{folder}/{fname}" if folder else fname  # path INSIDE the bucket
-
-        # 2) Read bytes & work out a content-type
-        try:
-            file_storage.stream.seek(0)
-        except Exception:
-            pass
+        # Read file bytes
+        file_storage.stream.seek(0)
         file_bytes = file_storage.read()
-        if not file_bytes:
-            print("❌ File stream was empty.")
-            return None
 
-        content_type = (
-            (getattr(file_storage, "mimetype", None) or "").strip()
-            or mimetypes.guess_type(fname)[0]
-            or "application/octet-stream"
-        )
+        # 🔑 Upload — v2 client just takes path + bytes
+        res = supabase.storage.from_("catalog").upload(object_key, file_bytes)
+        print("➡️ Upload result:", res)
 
-        print(f"➡️  Uploading to Supabase: bucket={bucket}, key={object_key}, bytes={len(file_bytes)}, type={content_type}")
-
-        # 3) Do the upload (support both option styles)
-        file_obj = io.BytesIO(file_bytes)
-        try:
-            # common signature
-            supabase.storage.from_(bucket).upload(
-                object_key,
-                file_obj,
-                {"content_type": content_type, "upsert": False}
-            )
-        except TypeError:
-            # alt signature used by some versions
-            supabase.storage.from_(bucket).upload(
-                file=object_key,
-                file_content=file_bytes,
-                file_options={"content-type": content_type, "upsert": "false"}
-            )
-
-        # 4) Quick sanity check (optional but nice): try to make a signed URL
-        try:
-            supabase.storage.from_(bucket).create_signed_url(object_key, 60)
-            print("✅ Upload verified (signed URL created).")
-        except Exception as ve:
-            print(f"⚠️ Could not create signed URL (continuing): {ve}")
-
-        # 5) Return the public URL (bucket must have "Get" policy for anon/auth)
-        public_url = supabase.storage.from_(bucket).get_public_url(object_key)
-        if not public_url:
-            print("⚠️ get_public_url returned empty; check storage public policy.")
-            return None
-
-        print(f"✅ Public URL: {public_url}")
+        # Return public URL
+        public_url = supabase.storage.from_("catalog").get_public_url(object_key)
+        print("✅ Uploaded file URL:", public_url)
         return public_url
+    except Exception as e:
+        print("❌ Supabase upload failed:", e)
+        return None
 
     except Exception as e:
         # Supabase errors sometimes wrap useful fields on .args[0]
