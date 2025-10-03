@@ -5,24 +5,26 @@
 /* =============== THEME =============== */
 :root{
   --blue:#3a8dde; --sky:#e9f0ff; --card:#fff; --ink:#1f2937; --muted:#6b7280;
-  --chip:#eef2ff; --radius:18px;
+  --chip:#eef2ff; --radius:18px; --divider:#e5e7eb;
 }
+
+/* Add spacing and divider lines */
+.section{margin:20px 0;padding-bottom:10px;border-bottom:1px solid var(--divider);}
+.section:last-of-type{border-bottom:none;}
 
 /* =============== HERO =============== */
 .catalog-hero{
   display:flex;align-items:center;gap:12px;
-  background:var(--blue);color:#fff;padding:14px;border-radius:18px;margin:8px 0 10px;
+  background:var(--blue);color:#fff;padding:14px;border-radius:18px;margin-bottom:12px;
 }
-.catalog-icon{
-  width:64px;height:64px;border-radius:14px;flex:0 0 auto;
-  background:url('{{ url_for("static", filename="catalog/catalog-app.png") }}') center/cover no-repeat;
-}
+.catalog-icon{width:64px;height:64px;border-radius:14px;flex:0 0 auto;
+  background:url('{{ url_for("static", filename="catalog/catalog-app.png") }}') center/cover no-repeat;}
 .catalog-title h1{margin:0;font-size:1.8rem;line-height:1;}
 .catalog-title p{margin:.35rem 0 .4rem;opacity:.95;}
 .back-link{color:#e0eaff;text-decoration:none;font-size:.92rem;}
 
-/* =============== FEATURED (shorter) =============== */
-.featured-carousel{position:relative;overflow:hidden;border-radius:18px;margin:6px 0 8px;}
+/* =============== FEATURED =============== */
+.featured-carousel{position:relative;overflow:hidden;border-radius:18px;}
 .carousel-track{display:flex;transition:transform .6s ease;}
 .carousel-slide{min-width:100%;display:flex;justify-content:center;}
 .carousel-slide img{width:100%;height:auto;border-radius:18px;max-height:220px;object-fit:cover;}
@@ -36,32 +38,31 @@
 .carousel-dots .dot.active{transform:scale(1.2);border-color:var(--blue);box-shadow:0 0 6px rgba(58,141,222,.6);}
 
 /* =============== QUICK LINKS =============== */
-.quick-links{display:flex;align-items:center;gap:8px;margin:6px 0 8px;}
+.quick-links{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
 .quick-links .quick-link{
-  display:inline-flex;align-items:center;justify-content:center;height:40px;padding:0 12px;
-  background:var(--chip);color:var(--blue);border-radius:12px;text-decoration:none;font-weight:700;font-size:.92rem;white-space:nowrap;
+  display:inline-flex;align-items:center;justify-content:center;
+  height:36px;padding:0 10px;
+  background:var(--chip);color:var(--blue);border-radius:10px;
+  text-decoration:none;font-weight:500;font-size:0.85rem;white-space:nowrap;
 }
 .quick-links .watchlist-btn{
-  display:inline-flex;align-items:center;justify-content:center;width:48px;height:40px;background:var(--chip);
-  border:none;border-radius:12px;cursor:pointer;flex:0 0 auto;
+  display:inline-flex;align-items:center;justify-content:center;width:42px;height:36px;background:var(--chip);
+  border:none;border-radius:10px;cursor:pointer;flex:0 0 auto;
 }
-.quick-links .watchlist-btn img{width:22px;height:22px;object-fit:contain;}
+.quick-links .watchlist-btn img{width:20px;height:20px;object-fit:contain;}
 
-/* =============== CATEGORIES (exact catbg frame) =============== */
-.categories{margin:6px 0 10px;}
-.cat-frame{
-  position:relative;width:100%;aspect-ratio:2/1;border-radius:18px;overflow:hidden;
-  background:url('{{ url_for("static", filename="catalog/catbg.png") }}') center/contain no-repeat;
-}
-.cat-title{position:absolute;top:6%;left:5%;color:#fff;font-weight:800;font-size:clamp(1.1rem,3.8vw,1.6rem);text-shadow:0 2px 6px rgba(0,0,0,.35);}
-.cat-grid{
-  position:absolute;inset:18% 5% 10% 5%;
+/* =============== CATEGORIES =============== */
+.categories{margin-top:10px;}
+.cat-frame{position:relative;width:100%;aspect-ratio:2/1;border-radius:18px;overflow:hidden;
+  background:url('{{ url_for("static", filename="catalog/catbg.png") }}') center/contain no-repeat;}
+.cat-title{position:absolute;top:6%;left:5%;color:#000;font-weight:800;
+  font-size:clamp(1.1rem,3.8vw,1.6rem);}
+.cat-grid{position:absolute;inset:18% 5% 10% 5%;
   display:grid;grid-template-columns:repeat(5,1fr);grid-template-rows:repeat(2,1fr);
-  gap:clamp(6px,1.8vw,16px);align-items:center;justify-items:center;
-}
-.category-btn{display:flex;flex-direction:column;align-items:center;gap:6px;text-decoration:none;color:#fff;font-weight:800;filter:drop-shadow(0 1px 2px rgba(0,0,0,.25));}
+  gap:clamp(6px,1.8vw,16px);align-items:center;justify-items:center;}
+.category-btn{display:flex;flex-direction:column;align-items:center;gap:6px;text-decoration:none;color:#000;font-weight:800;}
 .category-btn img{width:min(68px,13vw);height:auto;}
-.category-btn span{font-size:clamp(.85rem,2.5vw,1.1rem);text-shadow:0 2px 6px rgba(0,0,0,.35);}
+.category-btn span{font-size:clamp(.8rem,2.5vw,1rem);}
 
 /* =============== ITEM GRID (rebuilt 2 columns) =============== */
 .item-grid{
@@ -123,8 +124,9 @@
 .more-chip{background:#eef2ff;color:#375a9e;border-radius:12px;padding:3px 8px;font-size:.8rem;cursor:pointer;}
 </style>
 
-<!-- =============== HERO =============== -->
-<div class="catalog-hero">
+
+<!-- HERO -->
+<div class="section catalog-hero">
   <div class="catalog-icon"></div>
   <div class="catalog-title">
     <h1>catalog</h1>
@@ -133,30 +135,26 @@
   </div>
 </div>
 
-<!-- =============== FEATURED =============== -->
-<div class="featured-carousel">
+<!-- FEATURED -->
+<div class="section featured-carousel">
   <div class="carousel-track">
-    <div class="carousel-slide"><img src="{{ url_for('static', filename='featured/slide1.png') }}" alt=""></div>
-    <div class="carousel-slide"><img src="{{ url_for('static', filename='featured/slide2.png') }}" alt=""></div>
-    <div class="carousel-slide"><img src="{{ url_for('static', filename='featured/slide3.png') }}" alt=""></div>
-    <div class="carousel-slide"><img src="{{ url_for('static', filename='featured/slide4.png') }}" alt=""></div>
+    <div class="carousel-slide"><img src="{{ url_for('static', filename='featured/slide1.png') }}"></div>
+    <div class="carousel-slide"><img src="{{ url_for('static', filename='featured/slide2.png') }}"></div>
+    <div class="carousel-slide"><img src="{{ url_for('static', filename='featured/slide3.png') }}"></div>
+    <div class="carousel-slide"><img src="{{ url_for('static', filename='featured/slide4.png') }}"></div>
   </div>
   <div class="carousel-controls">
-    <button class="carousel-prev" aria-label="Previous">‹</button>
-    <div class="carousel-dots">
-      <span class="dot active"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span>
-    </div>
-    <button class="carousel-next" aria-label="Next">›</button>
+    <button class="carousel-prev">‹</button>
+    <div class="carousel-dots"><span class="dot active"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+    <button class="carousel-next">›</button>
   </div>
 </div>
 
-<!-- =============== QUICK LINKS =============== -->
-<div class="quick-links">
+<!-- QUICK LINKS -->
+<div class="section quick-links">
   <a href="#" class="quick-link">New here? Tap here to learn how it works!</a>
   <a href="{{ url_for('orders') }}" class="quick-link">Order history</a>
-  <button class="watchlist-btn" onclick="toggleWatchlist()" title="Watchlist">
-    <img src="{{ url_for('static', filename='catalog/binocularsb.png') }}" alt="Watchlist">
-  </button>
+  <button class="watchlist-btn" onclick="toggleWatchlist()"><img src="{{ url_for('static', filename='catalog/binocularsb.png') }}" alt="Watchlist"></button>
 </div>
 
 <!-- =============== CATEGORIES =============== -->
