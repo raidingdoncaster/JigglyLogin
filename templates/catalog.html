@@ -65,9 +65,9 @@
 
 /* =============== ITEM GRID (2 columns) =============== */
 .item-grid{
-  display:grid;grid-template-columns:repeat(2, minmax(0,1fr));gap:12px;margin:10px 0 16px;
+  display:grid;grid-template-columns:repeat(2, minmax(0,1fr));gap:14px;margin:10px 0 16px;
 }
-@media (max-width:360px){ .item-grid{grid-template-columns:1fr;} }
+@media (max-width:420px){ .item-grid{grid-template-columns:1fr;} }
 
 .item-card{
   position:relative;background:var(--card);border-radius:22px;overflow:hidden;
@@ -77,44 +77,50 @@
 /* --- media (square image) + badges over it --- */
 .media{position:relative;margin:0 12px 8px;}
 .card-hero{
-  aspect-ratio:1/1;width:100%;border-radius:14px;background:#eef3f8 center/cover no-repeat;
+  aspect-ratio:1/1;  /* force square images */
+  width:100%;border-radius:14px;background:#eef3f8 center/cover no-repeat;
 }
 .badge-layer{position:absolute;inset:0;pointer-events:none;}
-/* stamp container uses the artwork as the container */
 .cost-pill{
-  position:absolute;top:10px;left:10px;z-index:3;pointer-events:auto;
-  width:clamp(120px, 36vw, 160px);aspect-ratio:2.8/1;
+  position:absolute;
+  top:10px;
+  left:10px;
+  z-index:3;
+  pointer-events:auto;
+  width:clamp(120px, 36vw, 160px);
+  aspect-ratio:2.8/1;
   background:url('{{ url_for("static", filename="catalog/container/cost.png") }}') center/contain no-repeat;
-  display:flex;align-items:center;justify-content:flex-end;padding-right:16px;
+  display:flex;
+  align-items:center;
+  justify-content:center;  
+  padding-left:18px;       
 }
 .cost-pill .num{
-  font-weight:800;font-size:clamp(.9rem,2.8vw,1.1rem);line-height:1;color:#0d4e2b;
+  font-weight:800;
+  font-size:1rem;
+  line-height:1;
+  color:#0d4e2b;
   text-shadow:0 1px 0 rgba(255,255,255,.75);
 }
-/* watchlist circle – icon fills full circle */
 .watch-circle{
   position:absolute;top:10px;right:10px;z-index:3;pointer-events:auto;
   width:44px;height:44px;border-radius:50%;background:rgba(182,241,228,.85);border:1.5px solid #7bd7c3;
   display:flex;align-items:center;justify-content:center;box-shadow:0 2px 0 rgba(0,0,0,.08);cursor:pointer;
 }
 .watch-circle img{width:100%;height:100%;object-fit:contain;}
-
-/* --- info row with trade icon filling height --- */
 .card-bottom{
-  display:grid;grid-template-columns:1fr min(28vw, 92px);align-items:stretch; /* icon column auto-fills height */
+  display:grid;grid-template-columns:1fr 84px;align-items:stretch;
   background:#74bdf0;color:#0b213d;border-top-left-radius:18px;border-top-right-radius:18px;
-  padding:12px 12px;
+  padding:12px;
 }
 .info{
-  min-height:72px; /* gives room for title + 2 lines desc on small screens */
-  display:flex;flex-direction:column;justify-content:center;gap:4px;
+  min-height:72px;display:flex;flex-direction:column;justify-content:center;gap:4px;
 }
 .item-name{margin:0;font-size:1.05rem;font-weight:800;line-height:1.2;max-height:2.4em;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
 .item-desc{margin:0;color:#e7f3ff;opacity:.95;font-size:.95rem;line-height:1.25;max-height:2.5em;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
 .trade-btn{align-self:stretch;justify-self:end;display:flex;align-items:center;justify-content:center;background:transparent;border:none;padding:0;cursor:pointer;}
 .trade-btn img{height:100%;width:auto;display:block;}
 
-/* --- footer chips (thinner, not bold) + single-line clamp with … --- */
 .card-footer{display:flex;gap:8px;flex-wrap:nowrap;align-items:center;padding:10px 12px 12px;overflow:hidden;}
 .stock-pill{background:#f8c07a;color:#2a1800;border-radius:12px;padding:4px 8px;font-weight:500;line-height:1;flex:0 0 auto;}
 .tag-chip{background:#dcebfb;color:#0c4781;border-radius:12px;padding:4px 8px;font-weight:500;line-height:1;flex:0 0 auto;white-space:nowrap;}
