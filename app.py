@@ -94,6 +94,7 @@ def _upload_to_supabase(file_storage, folder="catalog"):
     """Upload a file to Supabase Storage and return its public URL."""
     if not file_storage or not getattr(file_storage, "filename", ""):
         return None
+
     fname = secure_filename(file_storage.filename)
     root, ext = os.path.splitext(fname)
     stamp = datetime.utcnow().strftime("%Y%m%d%H%M%S")
@@ -101,7 +102,17 @@ def _upload_to_supabase(file_storage, folder="catalog"):
     path = f"{folder}/{fname}"
 
     try:
-        supabase.storage.from_("catalog").upload(path, file_storage.stream.read())
+        # read file bytes
+        file_bytes = file_storage.read()
+
+        # upload with correct content-type
+        supabase.storage.from_("catalog").upload(
+            path,
+            file_bytes,
+            {"content-type": file_storage.mimetype}
+        )
+
+        # return public URL
         url = supabase.storage.from_("catalog").get_public_url(path)
         return url
     except Exception as e:
@@ -269,6 +280,11 @@ def get_passport_stamps(username: str, campfire_username: str | None = None):
                 icon = url_for("static", filename="icons/win.png")
             elif "just being normal" in rl:
                 icon = url_for("static", filename="icons/normal.png")
+            elif "owed" in rl:
+                icon = url_for("static", filename="icons/owed.png")
+            elif "classic" in rl:
+                icon = url_for("static", filename="icons/classic.png")
+            
             elif event_id and event_id in event_map and event_map[event_id]:
                 icon = event_map[event_id]
             else:
