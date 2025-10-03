@@ -7,7 +7,7 @@
   --blue:#3a8dde;
   --sky:#e9f0ff;
   --card:#ffffff;
-  --ink:#1f2937;
+  --ink:#0b213d;
   --muted:#6b7280;
   --chip:#eef2ff;
   --radius:16px;
@@ -70,8 +70,7 @@
   display:inline-flex; align-items:center; justify-content:center;
   height:40px; padding:0 12px;
   background:var(--chip); color:var(--blue); border-radius:12px;
-  text-decoration:none; font-weight:700; font-size:.92rem;
-  white-space:nowrap;
+  text-decoration:none; font-weight:700; font-size:.92rem; white-space:nowrap;
 }
 .quick-links .watchlist-btn{
   display:inline-flex; align-items:center; justify-content:center;
@@ -84,7 +83,7 @@
 .categories{ margin:6px 0 10px; }
 .cat-frame{
   position:relative; width:100%;
-  aspect-ratio: 2 / 1;     /* matches your background (1536×768 ≈ 2:1) */
+  aspect-ratio: 2 / 1;     /* your background (1536×768 ≈ 2:1) */
   background:url('{{ url_for("static", filename="catalog/catbg.png") }}') center/contain no-repeat;
   border-radius:18px; overflow:hidden;
 }
@@ -94,9 +93,7 @@
   text-shadow:0 2px 6px rgba(0,0,0,.35);
 }
 .cat-grid{
-  position:absolute;
-  /* Safe insets so icons stay inside the art */
-  inset: 18% 5% 10% 5%;
+  position:absolute; inset: 18% 5% 10% 5%;
   display:grid; grid-template-columns:repeat(5, 1fr); grid-template-rows:repeat(2, 1fr);
   gap:clamp(6px, 1.8vw, 16px); align-items:center; justify-items:center;
 }
@@ -106,12 +103,9 @@
   filter: drop-shadow(0 1px 2px rgba(0,0,0,.25));
 }
 .category-btn img{ width:min(68px, 13vw); height:auto; }
-.category-btn span{
-  font-size:clamp(.85rem, 2.5vw, 1.1rem);
-  text-shadow:0 2px 6px rgba(0,0,0,.35);
-}
+.category-btn span{ font-size:clamp(.85rem, 2.5vw, 1.1rem); text-shadow:0 2px 6px rgba(0,0,0,.35); }
 
-/* =============== ITEM GRID — CARD MATCHES CONCEPT =============== */
+/* =============== ITEM GRID — MATCH THE CONCEPT =============== */
 .item-grid{
   display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr));
   gap:14px; margin:10px 0 16px;
@@ -119,9 +113,10 @@
 .item-card{
   background:var(--card); border-radius:22px; overflow:hidden;
   box-shadow:0 4px 18px rgba(0,0,0,.08), inset 0 0 0 1px rgba(0,0,0,.04);
+  position:relative;
 }
 
-/* top bar badges */
+/* top bar badges (sits above image) */
 .card-topbar{ position:relative; height:0; }
 .cost-pill{
   position:absolute; top:10px; left:10px;
@@ -136,28 +131,26 @@
 .watch-circle{
   position:absolute; top:10px; right:10px;
   width:42px; height:42px; background:#b6f1e4; border:1.5px solid #7bd7c3;
-  backdrop-filter: blur(2px);
   border-radius:50%; display:flex; align-items:center; justify-content:center;
-  cursor:pointer;
-  box-shadow:0 2px 0 rgba(0,0,0,.08);
+  cursor:pointer; box-shadow:0 2px 0 rgba(0,0,0,.08);
 }
 .watch-circle img{ width:24px; height:24px; }
 
-/* hero image */
+/* hero image (grey area) */
 .card-hero{
   margin:0 12px; height:200px; border-radius:14px;
   background:#eef3f8 center/cover no-repeat;
 }
 
-/* bottom band + fab */
+/* bottom blue band + big buy button */
 .card-bottom{
   position:relative;
-  background:#74bdf0; color:#0b213d;
+  background:#74bdf0; color:#e7f3ff;
   border-top-left-radius:18px; border-top-right-radius:18px;
   margin-top:12px; padding:14px 14px 58px;
 }
-.item-name{ margin:0 0 4px; font-size:1.2rem; font-weight:800; color:#0b213d; }
-.item-desc{ margin:0; color:#e7f3ff; opacity:.95; }
+.item-name{ margin:0 0 4px; font-size:1.35rem; font-weight:800; color:var(--ink); }
+.item-desc{ margin:0; color:#e7f3ff; opacity:.95; font-size:1rem; }
 
 .buy-fab{
   position:absolute; right:14px; bottom:14px;
@@ -167,18 +160,33 @@
 }
 .buy-fab img{ width:66px; height:66px; object-fit:contain; }
 
-/* footer chips */
+/* footer: stock + one-line tags with overflow */
 .card-footer{
-  display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+  display:flex; align-items:center; gap:10px;
   padding:10px 14px 14px;
 }
 .stock-pill{
   background:#f89e3c; color:#2a1800; border-radius:14px;
-  padding:4px 10px; font-weight:800; box-shadow:0 2px 0 rgba(0,0,0,.08);
+  padding:6px 12px; font-weight:800; white-space:nowrap;
+}
+.tags-row{
+  position:relative;
+  display:flex; align-items:center; gap:8px; flex:1 1 auto;
+  overflow:hidden; white-space:nowrap;
 }
 .tag-chip{
-  background:#cfefff; color:#0c4781; padding:6px 10px; border-radius:14px; font-weight:700;
+  background:#cfefff; color:#0c4781;
+  padding:6px 10px; border-radius:14px; font-weight:700;
+  display:inline-flex; align-items:center; white-space:nowrap; flex:0 0 auto;
 }
+.tag-chip.more{ cursor:pointer; }
+.more-pop{
+  position:absolute; right:0; top:calc(100% + 6px);
+  background:#fff; border:1px solid #e5e7eb; border-radius:12px;
+  padding:8px; box-shadow:0 10px 24px rgba(0,0,0,.12);
+  display:none; z-index:10; max-width:min(80vw, 320px);
+}
+.more-pop .tag-chip{ margin:4px 4px 0 0; }
 
 /* =============== WATCHLIST MODAL =============== */
 .modal{ position:fixed; inset:0; background:rgba(0,0,0,.42); display:flex; align-items:center; justify-content:center; z-index:50; }
@@ -261,7 +269,7 @@
 
       <button class="watch-circle" data-id="{{ it.id }}" onclick="toggleWatch(this)" title="Toggle watch">
         <img
-          src="{{ url_for('static', filename='catalog/' + ('binocularsb.png' if it.id in watch_ids else 'binocularsa.png')) }}"
+          src="{{ url_for('static', filename='catalog/binocularsb.png') if it.id in watch_ids else url_for('static', filename='catalog/binocularsa.png') }}"
           data-a="{{ url_for('static', filename='catalog/binocularsa.png') }}"
           data-b="{{ url_for('static', filename='catalog/binocularsb.png') }}"
           alt="watch">
@@ -281,9 +289,13 @@
 
     <div class="card-footer">
       <span class="stock-pill">stock: {{ it.stock }}</span>
-      {% for t in it.tags %}
-        <span class="tag-chip">#{{ t }}</span>
-      {% endfor %}
+      <div class="tags-row">
+        {% for t in it.tags %}
+          <span class="tag-chip">#{{ t }}</span>
+        {% endfor %}
+        <button class="tag-chip more" type="button" title="More tags">…</button>
+        <div class="more-pop"></div>
+      </div>
     </div>
   </div>
   {% endfor %}
@@ -307,6 +319,7 @@ let currentIndex = 0;
 let interval = setInterval(nextSlide, 6000);
 
 function updateCarousel(){
+  if(!track) return;
   track.style.transform = `translateX(-${currentIndex * 100}%)`;
   dots.forEach((d,i)=>d.classList.toggle("active", i===currentIndex));
 }
@@ -360,6 +373,59 @@ function toggleWatch(el){
     if(data.success){ img.src = data.watched ? img.dataset.b : img.dataset.a; }
   });
 }
+
+/* ---------- One-line tags with "…" overflow ---------- */
+function layoutTags(){
+  document.querySelectorAll('.item-card .card-footer').forEach(footer=>{
+    const row = footer.querySelector('.tags-row');
+    if(!row) return;
+
+    const chips = Array.from(row.querySelectorAll('.tag-chip:not(.more)'));
+    const moreBtn = row.querySelector('.tag-chip.more');
+    const pop = row.querySelector('.more-pop');
+
+    // Reset all
+    chips.forEach(ch=>ch.style.display = 'inline-flex');
+    moreBtn.style.display = 'none';
+    pop.style.display = 'none';
+    pop.innerHTML = '';
+
+    // Measure available width (minus a small buffer)
+    // We want only the tags area, not the stock pill
+    const available = row.clientWidth - 6;
+
+    // Show moreBtn temporarily to measure if needed
+    moreBtn.style.display = 'inline-flex';
+    const moreW = moreBtn.offsetWidth + 8; // include gap
+    let used = 0;
+    const hidden = [];
+
+    chips.forEach(ch=>{
+      const w = ch.offsetWidth + 8; // include gap
+      if (used + w + moreW <= available){
+        used += w;
+      } else {
+        ch.style.display = 'none';
+        hidden.push(ch.textContent.trim());
+      }
+    });
+
+    if(hidden.length){
+      // Setup popover content
+      pop.innerHTML = hidden.map(t=>`<span class="tag-chip"> ${t} </span>`).join('');
+      moreBtn.onclick = (e)=>{
+        e.stopPropagation();
+        pop.style.display = (pop.style.display === 'block') ? 'none' : 'block';
+      };
+      document.addEventListener('click', ()=>{ pop.style.display = 'none'; }, {once:true});
+    } else {
+      moreBtn.style.display = 'none';
+    }
+  });
+}
+window.addEventListener('resize', layoutTags);
+if (document.fonts && document.fonts.ready) { document.fonts.ready.then(layoutTags); }
+document.addEventListener('DOMContentLoaded', layoutTags);
 </script>
 
 {% endblock %}
