@@ -2,145 +2,123 @@
 {% block content %}
 
 <style>
-/* =============== GLOBAL =============== */
+/* =============== THEME =============== */
 :root{
-  --blue:#3a8dde;
-  --chip:#eef2ff;
-  --ink:#0b213d;
+  --blue:#3a8dde; --sky:#e9f0ff; --card:#fff; --ink:#1f2937; --muted:#6b7280;
+  --chip:#eef2ff; --radius:18px;
 }
-.section-gap{ margin:10px 0; }
 
 /* =============== HERO =============== */
 .catalog-hero{
-  display:flex; align-items:center; gap:12px;
-  background:var(--blue); color:#fff;
-  padding:14px; border-radius:18px; margin:8px 0 12px;
+  display:flex;align-items:center;gap:12px;
+  background:var(--blue);color:#fff;padding:14px;border-radius:18px;margin:8px 0 10px;
 }
 .catalog-icon{
-  width:64px; height:64px;
+  width:64px;height:64px;border-radius:14px;flex:0 0 auto;
   background:url('{{ url_for("static", filename="catalog/catalog-app.png") }}') center/cover no-repeat;
-  border-radius:14px; flex:0 0 auto;
 }
-.catalog-title h1{ margin:0; font-size:1.8rem; line-height:1; }
-.catalog-title p{ margin:.35rem 0 .4rem; opacity:.95; }
-.back-link{ color:#e0eaff; text-decoration:none; font-size:.92rem; }
+.catalog-title h1{margin:0;font-size:1.8rem;line-height:1;}
+.catalog-title p{margin:.35rem 0 .4rem;opacity:.95;}
+.back-link{color:#e0eaff;text-decoration:none;font-size:.92rem;}
 
-/* =============== FEATURED =============== */
-.featured-carousel{ position:relative; overflow:hidden; border-radius:18px; margin:6px 0 8px; }
-.carousel-track{ display:flex; transition:transform .6s ease; }
-.carousel-slide{ min-width:100%; display:flex; justify-content:center; }
-.carousel-slide img{ width:100%; height:auto; border-radius:18px; max-height:220px; object-fit:cover; }
-@media (min-width:768px){ .carousel-slide img{ max-height:320px; } }
-.carousel-controls{ position:absolute; bottom:10px; left:50%; transform:translateX(-50%); display:flex; align-items:center; gap:10px; }
-.carousel-prev,.carousel-next{ background:rgba(255,255,255,.85); border:none; border-radius:50%; width:32px; height:32px; font-size:1.15rem; line-height:32px; cursor:pointer; }
-.carousel-dots{ display:flex; gap:10px; }
-.carousel-dots .dot{ width:18px; height:18px; border-radius:50%; background:#fff; border:2px solid #000; position:relative; overflow:hidden; cursor:pointer; box-shadow:0 1px 2px rgba(0,0,0,.18); }
-.carousel-dots .dot::before{ content:""; position:absolute; left:0; top:0; width:100%; height:50%; background:#e11d24; }
-.carousel-dots .dot::after{ content:""; position:absolute; left:50%; top:50%; width:6px; height:6px; background:#fff; border:2px solid #000; border-radius:50%; transform:translate(-50%,-50%); }
-.carousel-dots .dot.active{ transform:scale(1.2); border-color:var(--blue); box-shadow:0 0 6px rgba(58,141,222,.6); }
+/* =============== FEATURED (shorter) =============== */
+.featured-carousel{position:relative;overflow:hidden;border-radius:18px;margin:6px 0 8px;}
+.carousel-track{display:flex;transition:transform .6s ease;}
+.carousel-slide{min-width:100%;display:flex;justify-content:center;}
+.carousel-slide img{width:100%;height:auto;border-radius:18px;max-height:220px;object-fit:cover;}
+@media(min-width:768px){ .carousel-slide img{max-height:320px;} }
+.carousel-controls{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:10px;}
+.carousel-prev,.carousel-next{background:rgba(255,255,255,.85);border:none;border-radius:50%;width:32px;height:32px;font-size:1.15rem;line-height:32px;cursor:pointer;}
+.carousel-dots{display:flex;gap:10px;}
+.carousel-dots .dot{width:18px;height:18px;border-radius:50%;background:#fff;border:2px solid #000;position:relative;overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,.18);cursor:pointer;}
+.carousel-dots .dot::before{content:"";position:absolute;left:0;top:0;width:100%;height:50%;background:#e11d24;}
+.carousel-dots .dot::after{content:"";position:absolute;left:50%;top:50%;width:6px;height:6px;background:#fff;border:2px solid #000;border-radius:50%;transform:translate(-50%,-50%);}
+.carousel-dots .dot.active{transform:scale(1.2);border-color:var(--blue);box-shadow:0 0 6px rgba(58,141,222,.6);}
 
 /* =============== QUICK LINKS =============== */
-.quick-links{ display:flex; align-items:center; gap:8px; margin:6px 0 8px; }
-.quick-links .quick-link{ display:inline-flex; align-items:center; justify-content:center; height:40px; padding:0 12px; background:var(--chip); color:var(--blue); border-radius:12px; text-decoration:none; font-weight:700; font-size:.92rem; white-space:nowrap; }
-.quick-links .watchlist-btn{ display:inline-flex; align-items:center; justify-content:center; width:48px; height:40px; padding:0; border:none; cursor:pointer; background:var(--chip); border-radius:12px; }
-.quick-links .watchlist-btn img{ width:22px; height:22px; object-fit:contain; }
-
-/* =============== CATEGORIES =============== */
-.categories{ margin:6px 0 10px; }
-.cat-frame{ position:relative; width:100%; aspect-ratio:2/1; background:url('{{ url_for("static", filename="catalog/catbg.png") }}') center/contain no-repeat; border-radius:18px; overflow:hidden; }
-.cat-title{ position:absolute; top:6%; left:5%; color:#fff; font-weight:800; font-size:clamp(1.1rem, 3.8vw, 1.6rem); text-shadow:0 2px 6px rgba(0,0,0,.35); }
-.cat-grid{ position:absolute; inset:18% 5% 10% 5%; display:grid; grid-template-columns:repeat(5,1fr); grid-template-rows:repeat(2,1fr); gap:clamp(6px,1.8vw,16px); align-items:center; justify-items:center; }
-.category-btn{ display:flex; flex-direction:column; align-items:center; gap:6px; text-decoration:none; color:#fff; font-weight:800; filter:drop-shadow(0 1px 2px rgba(0,0,0,.25)); }
-.category-btn img{ width:min(68px,13vw); height:auto; }
-.category-btn span{ font-size:clamp(.85rem,2.5vw,1.1rem); text-shadow:0 2px 6px rgba(0,0,0,.35); }
-
-/* =============== ITEM GRID =============== */
-.item-grid{ display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:14px; margin:10px 0 16px; }
-.item-card{ background:#fff; border-radius:22px; overflow:hidden; box-shadow:0 4px 18px rgba(0,0,0,.08), inset 0 0 0 1px rgba(0,0,0,.04); position:relative; }
-
-/* --- top badges --- */
-.card-topbar{ position:relative; height:0; }
-
-/* cost.png as the pill; number aligned to the RIGHT of the art */
-.cost-pill{
-  position:absolute; top:10px; left:10px;
-  width:128px; height:48px;
-  background:url('{{ url_for("static", filename="catalog/container/cost.png") }}') center/contain no-repeat;
-  display:flex; align-items:center; justify-content:flex-end;
-  padding-right:16px; padding-left:56px;   /* left padding keeps clear of the stamp art */
-  font-weight:800; font-size:1.05rem; color:#0a5c2b; text-shadow:0 1px 0 rgba(255,255,255,.5);
+.quick-links{display:flex;align-items:center;gap:8px;margin:6px 0 8px;}
+.quick-links .quick-link{
+  display:inline-flex;align-items:center;justify-content:center;height:40px;padding:0 12px;
+  background:var(--chip);color:var(--blue);border-radius:12px;text-decoration:none;font-weight:700;font-size:.92rem;white-space:nowrap;
 }
-.cost-pill .icon{ display:none; }
-
-/* watch button (binocular art fills the circle) */
-.watch-circle{
-  position:absolute; top:10px; right:10px;
-  width:42px; height:42px; background:#b6f1e4; border:1.5px solid #7bd7c3;
-  border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 2px 0 rgba(0,0,0,.08);
+.quick-links .watchlist-btn{
+  display:inline-flex;align-items:center;justify-content:center;width:48px;height:40px;background:var(--chip);
+  border:none;border-radius:12px;cursor:pointer;flex:0 0 auto;
 }
-.watch-circle img{ width:100%; height:100%; object-fit:contain; }
+.quick-links .watchlist-btn img{width:22px;height:22px;object-fit:contain;}
 
-/* --- image between badges and info --- */
+/* =============== CATEGORIES (exact catbg frame) =============== */
+.categories{margin:6px 0 10px;}
+.cat-frame{
+  position:relative;width:100%;aspect-ratio:2/1;border-radius:18px;overflow:hidden;
+  background:url('{{ url_for("static", filename="catalog/catbg.png") }}') center/contain no-repeat;
+}
+.cat-title{position:absolute;top:6%;left:5%;color:#fff;font-weight:800;font-size:clamp(1.1rem,3.8vw,1.6rem);text-shadow:0 2px 6px rgba(0,0,0,.35);}
+.cat-grid{
+  position:absolute;inset:18% 5% 10% 5%;
+  display:grid;grid-template-columns:repeat(5,1fr);grid-template-rows:repeat(2,1fr);
+  gap:clamp(6px,1.8vw,16px);align-items:center;justify-items:center;
+}
+.category-btn{display:flex;flex-direction:column;align-items:center;gap:6px;text-decoration:none;color:#fff;font-weight:800;filter:drop-shadow(0 1px 2px rgba(0,0,0,.25));}
+.category-btn img{width:min(68px,13vw);height:auto;}
+.category-btn span{font-size:clamp(.85rem,2.5vw,1.1rem);text-shadow:0 2px 6px rgba(0,0,0,.35);}
+
+/* =============== ITEM GRID (2 columns) =============== */
+.item-grid{
+  display:grid;grid-template-columns:repeat(2, minmax(0,1fr));gap:12px;margin:10px 0 16px;
+}
+@media (max-width:360px){ .item-grid{grid-template-columns:1fr;} }
+
+.item-card{
+  position:relative;background:var(--card);border-radius:22px;overflow:hidden;
+  box-shadow:0 4px 18px rgba(0,0,0,.08), inset 0 0 0 1px rgba(0,0,0,.04);
+}
+
+/* --- media (square image) + badges over it --- */
+.media{position:relative;margin:0 12px 8px;}
 .card-hero{
-  display:block;
-  margin:0 12px; height:200px; border-radius:14px;
-  background:#eef3f8 center/cover no-repeat;
+  aspect-ratio:1/1;width:100%;border-radius:14px;background:#eef3f8 center/cover no-repeat;
 }
+.badge-layer{position:absolute;inset:0;pointer-events:none;}
+/* stamp container uses the artwork as the container */
+.cost-pill{
+  position:absolute;top:10px;left:10px;z-index:3;pointer-events:auto;
+  width:clamp(120px, 36vw, 160px);aspect-ratio:2.8/1;
+  background:url('{{ url_for("static", filename="catalog/container/cost.png") }}') center/contain no-repeat;
+  display:flex;align-items:center;justify-content:flex-end;padding-right:16px;
+}
+.cost-pill .num{
+  font-weight:800;font-size:clamp(.9rem,2.8vw,1.1rem);line-height:1;color:#0d4e2b;
+  text-shadow:0 1px 0 rgba(255,255,255,.75);
+}
+/* watchlist circle – icon fills full circle */
+.watch-circle{
+  position:absolute;top:10px;right:10px;z-index:3;pointer-events:auto;
+  width:44px;height:44px;border-radius:50%;background:rgba(182,241,228,.85);border:1.5px solid #7bd7c3;
+  display:flex;align-items:center;justify-content:center;box-shadow:0 2px 0 rgba(0,0,0,.08);cursor:pointer;
+}
+.watch-circle img{width:100%;height:100%;object-fit:contain;}
 
-/* --- thinner info band --- */
+/* --- info row with trade icon filling height --- */
 .card-bottom{
-  position:relative;
-  background:#74bdf0; color:#e7f3ff;
-  border-top-left-radius:18px; border-top-right-radius:18px;
-  margin-top:10px; padding:10px 12px 46px;  /* thinner */
+  display:grid;grid-template-columns:1fr min(28vw, 92px);align-items:stretch; /* icon column auto-fills height */
+  background:#74bdf0;color:#0b213d;border-top-left-radius:18px;border-top-right-radius:18px;
+  padding:12px 12px;
 }
-.item-name{
-  margin:0 0 2px; font-size:1.25rem; font-weight:800; color:var(--ink);
-  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
+.info{
+  min-height:72px; /* gives room for title + 2 lines desc on small screens */
+  display:flex;flex-direction:column;justify-content:center;gap:4px;
 }
-.item-desc{
-  margin:0; color:#e7f3ff; opacity:.95; font-size:1rem;
-  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
-}
+.item-name{margin:0;font-size:1.05rem;font-weight:800;line-height:1.2;max-height:2.4em;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
+.item-desc{margin:0;color:#e7f3ff;opacity:.95;font-size:.95rem;line-height:1.25;max-height:2.5em;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
+.trade-btn{align-self:stretch;justify-self:end;display:flex;align-items:center;justify-content:center;background:transparent;border:none;padding:0;cursor:pointer;}
+.trade-btn img{height:100%;width:auto;display:block;}
 
-/* trade.PNG = the button (no green circle behind) */
-.buy-icon{
-  position:absolute; right:12px; bottom:8px;
-  width:72px; height:72px; display:flex; align-items:center; justify-content:center;
-  background:transparent; box-shadow:none; border:none;
-}
-.buy-icon img{ width:72px; height:72px; object-fit:contain; }
-
-/* --- footer: slimmer pills + one-line tags with overflow --- */
-.card-footer{ display:flex; align-items:center; gap:10px; padding:8px 12px 12px; }
-.stock-pill{
-  background:#f7b46f; color:#2a1800; border-radius:12px;
-  padding:4px 8px; font-weight:500; white-space:nowrap;
-}
-.tags-row{ position:relative; display:flex; align-items:center; gap:8px; flex:1 1 auto; overflow:hidden; white-space:nowrap; }
-.tag-chip{
-  background:#dcedff; color:#0c4781; padding:4px 8px; border-radius:12px;
-  font-weight:500; display:inline-flex; align-items:center; white-space:nowrap; flex:0 0 auto;
-}
-.tag-chip.more{ cursor:pointer; }
-.more-pop{
-  position:absolute; right:0; top:calc(100% + 6px);
-  background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:8px;
-  box-shadow:0 10px 24px rgba(0,0,0,.12); display:none; z-index:10; max-width:min(80vw, 320px);
-}
-.more-pop .tag-chip{ margin:4px 4px 0 0; }
-
-/* =============== MODAL =============== */
-.modal{ position:fixed; inset:0; background:rgba(0,0,0,.42); display:flex; align-items:center; justify-content:center; z-index:50; }
-.modal.hidden{ display:none; }
-.modal-content{ width:min(420px, 92vw); background:#fff; border-radius:16px; padding:16px; }
-.close-btn{ background:var(--blue); color:#fff; padding:8px 12px; border:none; border-radius:10px; cursor:pointer; float:right; }
-
-/* tiny devices */
-@media (max-width:360px){
-  .buy-icon{ width:64px; height:64px; right:10px; }
-  .buy-icon img{ width:64px; height:64px; }
-}
+/* --- footer chips (thinner, not bold) + single-line clamp with … --- */
+.card-footer{display:flex;gap:8px;flex-wrap:nowrap;align-items:center;padding:10px 12px 12px;overflow:hidden;}
+.stock-pill{background:#f8c07a;color:#2a1800;border-radius:12px;padding:4px 8px;font-weight:500;line-height:1;flex:0 0 auto;}
+.tag-chip{background:#dcebfb;color:#0c4781;border-radius:12px;padding:4px 8px;font-weight:500;line-height:1;flex:0 0 auto;white-space:nowrap;}
+.more-chip{background:#eef2ff;color:#375a9e;border-radius:12px;padding:4px 10px;font-weight:600;cursor:pointer;flex:0 0 auto;}
 </style>
 
 <!-- =============== HERO =============== -->
@@ -198,165 +176,138 @@
   </div>
 </section>
 
-<!-- =============== ITEM GRID =============== -->
+<!-- =============== ITEM GRID (2 COLS) =============== -->
 <section class="item-grid">
   {% for it in items %}
   <div class="item-card">
-    <div class="card-topbar">
-      <div class="cost-pill">
-        <span class="icon" aria-hidden="true"></span>
-        <strong>{{ it.cost_stamps }}</strong>
+    <!-- Square media with badges layered -->
+    <div class="media">
+      <a class="card-hero" style="background-image:url('{{ it.image_url }}');" href="{{ url_for('catalog_item', item_id=it.id) }}"></a>
+      <div class="badge-layer">
+        <div class="cost-pill"><span class="num">{{ it.cost_stamps }}</span></div>
+        <button class="watch-circle" data-id="{{ it.id }}" onclick="toggleWatch(this)" title="Toggle watch">
+          <img
+            src="{{ url_for('static', filename='catalog/' + ('binocularsb.png' if it.id in watch_ids else 'binocularsa.png')) }}"
+            data-a="{{ url_for('static', filename='catalog/binocularsa.png') }}"
+            data-b="{{ url_for('static', filename='catalog/binocularsb.png') }}"
+            alt="watch">
+        </button>
       </div>
-
-      <button class="watch-circle" data-id="{{ it.id }}" onclick="toggleWatch(this)" title="Toggle watch">
-        <img
-          src="{{ url_for('static', filename='catalog/binocularsb.png') if it.id in watch_ids else url_for('static', filename='catalog/binocularsa.png') }}"
-          data-a="{{ url_for('static', filename='catalog/binocularsa.png') }}"
-          data-b="{{ url_for('static', filename='catalog/binocularsb.png') }}"
-          alt="watch">
-      </button>
     </div>
 
-    <a class="card-hero" style="background-image:url('{{ it.image_url }}');" href="{{ url_for('catalog_item', item_id=it.id) }}"></a>
-
+    <!-- Info row with trade icon filling height -->
     <div class="card-bottom">
-      <h3 class="item-name">{{ it.name }}</h3>
-      <p class="item-desc">{{ it.description }}</p>
-
-      <!-- trade icon only — no green circle -->
-      <a class="buy-icon" href="{{ url_for('catalog_item', item_id=it.id) }}" aria-label="Buy / View">
+      <div class="info">
+        <h3 class="item-name">{{ it.name }}</h3>
+        <p class="item-desc">{{ it.description }}</p>
+      </div>
+      <a class="trade-btn" href="{{ url_for('catalog_item', item_id=it.id) }}" aria-label="Buy / View">
         <img src="{{ url_for('static', filename='catalog/container/trade.PNG') }}" alt="">
       </a>
     </div>
 
-    <div class="card-footer">
+    <!-- Chips (single-line with …) -->
+    <div class="card-footer js-tag-row">
       <span class="stock-pill">stock: {{ it.stock }}</span>
-      <div class="tags-row">
-        {% for t in it.tags %}
-          <span class="tag-chip">#{{ t }}</span>
-        {% endfor %}
-        <button class="tag-chip more" type="button" title="More tags">…</button>
-        <div class="more-pop"></div>
-      </div>
+      {% for t in it.tags %}
+        <span class="tag-chip">#{{ t }}</span>
+      {% endfor %}
     </div>
   </div>
   {% endfor %}
 </section>
 
 <!-- =============== WATCHLIST MODAL =============== -->
-<div id="watchlist-modal" class="modal hidden">
-  <div class="modal-content">
-    <button onclick="toggleWatchlist()" class="close-btn">Close</button>
+<div id="watchlist-modal" class="modal hidden" style="position:fixed;inset:0;background:rgba(0,0,0,.42);display:flex;align-items:center;justify-content:center;z-index:50;">
+  <div class="modal-content" style="width:min(420px,92vw);background:#fff;border-radius:16px;padding:16px;">
+    <button onclick="toggleWatchlist()" class="close-btn" style="background:var(--blue);color:#fff;padding:8px 12px;border:none;border-radius:10px;cursor:pointer;float:right;">Close</button>
     <h2>👀 Your Watchlist</h2>
     <div id="watchlist-items">Loading...</div>
   </div>
 </div>
 
 <script>
-/* ---------- Carousel ---------- */
-const track = document.querySelector(".carousel-track");
-const slides = document.querySelectorAll(".carousel-slide");
-const dots = document.querySelectorAll(".carousel-dots .dot");
-let currentIndex = 0;
-let interval = setInterval(nextSlide, 6000);
-function updateCarousel(){ if(!track) return; track.style.transform = `translateX(-${currentIndex * 100}%)`; dots.forEach((d,i)=>d.classList.toggle("active", i===currentIndex)); }
-function nextSlide(){ currentIndex = (currentIndex + 1) % slides.length; updateCarousel(); }
-function prevSlide(){ currentIndex = (currentIndex - 1 + slides.length) % slides.length; updateCarousel(); }
-document.querySelector(".carousel-next")?.addEventListener("click", ()=>{ nextSlide(); resetTimer(); });
-document.querySelector(".carousel-prev")?.addEventListener("click", ()=>{ prevSlide(); resetTimer(); });
-dots.forEach((dot,i)=>dot.addEventListener("click", ()=>{ currentIndex=i; updateCarousel(); resetTimer(); }));
-function resetTimer(){ clearInterval(interval); interval = setInterval(nextSlide, 6000); }
+/* ---------- Featured carousel ---------- */
+const track=document.querySelector(".carousel-track");
+const slides=document.querySelectorAll(".carousel-slide");
+const dots=document.querySelectorAll(".carousel-dots .dot");
+let currentIndex=0, interval=setInterval(nextSlide,6000);
+function updateCarousel(){ track.style.transform=`translateX(-${currentIndex*100}%)`; dots.forEach((d,i)=>d.classList.toggle("active",i===currentIndex)); }
+function nextSlide(){ currentIndex=(currentIndex+1)%slides.length; updateCarousel(); }
+function prevSlide(){ currentIndex=(currentIndex-1+slides.length)%slides.length; updateCarousel(); }
+document.querySelector(".carousel-next")?.addEventListener("click",()=>{nextSlide();resetTimer();});
+document.querySelector(".carousel-prev")?.addEventListener("click",()=>{prevSlide();resetTimer();});
+dots.forEach((dot,i)=>dot.addEventListener("click",()=>{currentIndex=i;updateCarousel();resetTimer();}));
+function resetTimer(){ clearInterval(interval); interval=setInterval(nextSlide,6000); }
 updateCarousel();
 
-/* ---------- Watchlist modal ---------- */
+/* ---------- Watchlist modal & toggle ---------- */
 function toggleWatchlist(){
-  const m = document.getElementById("watchlist-modal");
+  const m=document.getElementById("watchlist-modal");
   m.classList.toggle("hidden");
   if(!m.classList.contains("hidden")) loadWatchlist();
 }
 function loadWatchlist(){
-  const c = document.getElementById("watchlist-items");
-  c.innerHTML = "Loading...";
+  const c=document.getElementById("watchlist-items");
+  c.innerHTML="Loading...";
   fetch("/watchlist").then(r=>r.json()).then(data=>{
-    if(!data.success){ c.textContent = "⚠️ Error loading watchlist."; return; }
-    if(data.count===0){ c.textContent = "📭 Your watchlist is empty."; return; }
-    c.innerHTML = "";
+    if(!data.success){c.textContent="⚠️ Error loading watchlist.";return;}
+    if(data.count===0){c.textContent="📭 Your watchlist is empty.";return;}
+    c.innerHTML="";
     data.items.forEach(item=>{
-      const row = document.createElement("div");
-      row.style.cssText = "display:flex;align-items:center;gap:10px;background:#f9fafb;border-radius:10px;padding:10px;margin:6px 0;";
-      row.innerHTML = `
+      const row=document.createElement("div");
+      row.style.cssText="display:flex;align-items:center;gap:10px;background:#f9fafb;border-radius:10px;padding:10px;margin:6px 0;";
+      row.innerHTML=`
         <div style="width:48px;height:48px;border-radius:8px;background:#eef3f8 center/cover no-repeat;background-image:url('${item.image_url}')"></div>
         <div style="flex:1;"><strong>${item.name}</strong><div style="color:#6b7280;font-size:.9em;">🪙 ${item.cost_stamps} — 📦 ${item.stock}</div></div>
-        <button style="background:#fee2e2;color:#991b1b;border:none;border-radius:8px;padding:6px 10px;cursor:pointer;"
-                onclick="toggleWatchFromModal('${item.id}')">Remove</button>`;
+        <button style="background:#fee2e2;color:#991b1b;border:none;border-radius:8px;padding:6px 10px;cursor:pointer;" onclick="toggleWatchFromModal('${item.id}')">Remove</button>`;
       c.appendChild(row);
     });
   });
 }
 function toggleWatchFromModal(id){
   fetch(`/watchlist/toggle/${id}`,{method:"POST"}).then(r=>r.json()).then(data=>{
-    if(data.success){ loadWatchlist(); 
-      const btn = document.querySelector(`.watch-circle[data-id='${id}'] img`);
-      if(btn){ btn.src = data.watched ? btn.dataset.b : btn.dataset.a; }
+    if(data.success){ loadWatchlist();
+      const img=document.querySelector(`.watch-circle[data-id='${id}'] img`);
+      if(img){ img.src = data.watched ? img.dataset.b : img.dataset.a; }
     }
   });
 }
-
-/* ---------- Toggle on cards ---------- */
 function toggleWatch(el){
-  const id = el.getAttribute("data-id");
-  const img = el.querySelector("img");
+  const id=el.getAttribute("data-id");
+  const img=el.querySelector("img");
   fetch(`/watchlist/toggle/${id}`,{method:"POST"}).then(r=>r.json()).then(data=>{
     if(data.success){ img.src = data.watched ? img.dataset.b : img.dataset.a; }
   });
 }
 
-/* ---------- One-line tags with "…" overflow ---------- */
-function layoutTags(){
-  document.querySelectorAll('.item-card .card-footer').forEach(footer=>{
-    const row = footer.querySelector('.tags-row');
-    if(!row) return;
-
-    const chips = Array.from(row.querySelectorAll('.tag-chip:not(.more)'));
-    const moreBtn = row.querySelector('.tag-chip.more');
-    const pop = row.querySelector('.more-pop');
-
-    chips.forEach(ch=>ch.style.display = 'inline-flex');
-    moreBtn.style.display = 'none';
-    pop.style.display = 'none';
-    pop.innerHTML = '';
-
-    const available = row.clientWidth - 6;
-    moreBtn.style.display = 'inline-flex';
-    const moreW = moreBtn.offsetWidth + 8;
-    let used = 0;
-    const hidden = [];
-
-    chips.forEach(ch=>{
-      const w = ch.offsetWidth + 8;
-      if (used + w + moreW <= available){
-        used += w;
-      } else {
-        ch.style.display = 'none';
-        hidden.push(ch.textContent.trim());
-      }
-    });
-
-    if(hidden.length){
-      pop.innerHTML = hidden.map(t=>`<span class="tag-chip"> ${t} </span>`).join('');
-      moreBtn.onclick = (e)=>{
-        e.stopPropagation();
-        pop.style.display = (pop.style.display === 'block') ? 'none' : 'block';
-      };
-      document.addEventListener('click', ()=>{ pop.style.display = 'none'; }, {once:true});
-    } else {
-      moreBtn.style.display = 'none';
-    }
-  });
+/* ---------- Single-line tag clamp with “…” ---------- */
+function clampTagRow(row){
+  const maxWidth=row.clientWidth;
+  const chips=[...row.querySelectorAll(".tag-chip")];
+  if(!chips.length) return;
+  let used=row.querySelector(".stock-pill")?.offsetWidth||0;
+  let i=0;
+  while(i<chips.length && used + chips[i].offsetWidth + 36 < maxWidth){ // 36 ≈ room for “…” chip
+    used += chips[i].offsetWidth + 8; i++;
+  }
+  const hidden=chips.slice(i);
+  hidden.forEach(ch=>ch.style.display="none");
+  if(hidden.length){
+    const more=document.createElement("span");
+    more.className="more-chip";
+    more.textContent="…";
+    more.title=hidden.map(h=>h.textContent).join(" ");
+    more.addEventListener("click", ()=>{ hidden.forEach(h=>h.style.display="inline-flex"); more.remove(); });
+    row.appendChild(more);
+  }
 }
-window.addEventListener('resize', layoutTags);
-if (document.fonts && document.fonts.ready) { document.fonts.ready.then(layoutTags); }
-document.addEventListener('DOMContentLoaded', layoutTags);
+window.addEventListener("load", ()=>{ document.querySelectorAll(".js-tag-row").forEach(clampTagRow); });
+window.addEventListener("resize", ()=>{ document.querySelectorAll(".js-tag-row").forEach(row=>{
+  row.querySelectorAll(".more-chip").forEach(m=>m.remove());
+  row.querySelectorAll(".tag-chip").forEach(t=>t.style.display="inline-flex");
+  clampTagRow(row);
+});});
 </script>
 
 {% endblock %}
