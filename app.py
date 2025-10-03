@@ -91,32 +91,45 @@ def home():
 
 # ===== Catalog Receipt Helper =====
 def _upload_to_supabase(file_storage, folder="catalog"):
-    """Upload a file to Supabase Storage and return its public URL."""
-    if not file_storage or not getattr(file_storage, "filename", ""):
+    """
+    Upload a file to Supabase Storage and return a URL you can render on the site.
+    - Uses a file-like stream (required by supabase-py).
+    - Works with both SDK v1/v2 return shapes for get_public_url.
+    """
+    if not (supabase and file_storage and getattr(file_storage, "filename", "")):
         return None
 
     fname = secure_filename(file_storage.filename)
     root, ext = os.path.splitext(fname)
-    stamp = datetime.utcnow().strftime("%Y%m%d%H%M%S")
-    fname = f"{root}_{stamp}{ext}"
-    path = f"{folder}/{fname}"
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
+    key = f"{folder}/{root}_{stamp}{ext}"
 
     try:
-        # read file bytes
-        file_bytes = file_storage.read()
+        # IMPORTANT: pass a file-like stream, not raw bytes
+        file_storage.stream.seek(0)
 
-        # upload with correct content-type
-        supabase.storage.from_("catalog").upload(
-            path,
-            file_bytes,
-            {"content-type": file_storage.mimetype}
+        # SDK expects camelCase option names
+        res = supabase.storage.from_("catalog").upload(
+            key,
+            file_storage.stream,
+            file_options={
+                "contentType": file_storage.mimetype or "application/octet-stream",
+                "cacheControl": "3600",
+            },
+            upsert=True,  # avoid "already exists" races
         )
 
-        # return public URL
-        url = supabase.storage.from_("catalog").get_public_url(path)
+        # ---- public URL (bucket must be Public) ----
+        pub = supabase.storage.from_("catalog").get_public_url(key)
+        url = pub.get("publicUrl") if isinstance(pub, dict) else pub
+
+        # If your bucket is Private, swap to a long-lived signed URL instead:
+        # signed = supabase.storage.from_("catalog").create_signed_url(key, 60*60*24*365)
+        # url = signed.get("signedUrl") if isinstance(signed, dict) else signed
+
         return url
     except Exception as e:
-        print("⚠️ Supabase upload failed:", e)
+        print("⚠️ Supabase upload failed:", repr(e))
         return None
 
 def absolute_url(path: str) -> str:
