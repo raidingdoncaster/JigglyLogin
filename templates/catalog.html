@@ -63,72 +63,64 @@
 .category-btn img{width:min(68px,13vw);height:auto;}
 .category-btn span{font-size:clamp(.85rem,2.5vw,1.1rem);text-shadow:0 2px 6px rgba(0,0,0,.35);}
 
-/* =============== ITEM GRID (2 columns) =============== */
+/* =============== ITEM GRID (rebuilt 2 columns) =============== */
 .item-grid{
-  display:grid;grid-template-columns:repeat(2, minmax(0,1fr));gap:12px;margin:10px 0 16px;
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:14px;
+  margin:10px 0 16px;
 }
-@media (max-width:360px){ .item-grid{grid-template-columns:1fr;} }
+@media(max-width:400px){ .item-grid{grid-template-columns:1fr;} }
 
 .item-card{
-  position:relative;background:var(--card);border-radius:22px;overflow:hidden;
-  box-shadow:0 4px 18px rgba(0,0,0,.08), inset 0 0 0 1px rgba(0,0,0,.04);
-}
-
-/* --- media (square image) + badges over it --- */
-.media{
-  position:relative;
-  margin:12px;
-  border-radius:18px;
-  overflow:hidden; /* ensures nothing overflows */
-}
-.card-hero{
-  display:block;
-  aspect-ratio:1/1;
-  width:100%;
-  border-radius:18px;
-  background:#eef3f8 center/cover no-repeat;
+  background:#fff;
+  border-radius:16px;
+  box-shadow:0 2px 8px rgba(0,0,0,.08);
   overflow:hidden;
+  display:flex;
+  flex-direction:column;
 }
-.badge-layer{position:absolute;inset:0;pointer-events:none;}
-/* stamp container uses the artwork as the container */
-.cost-pill{
-  position:absolute;top:10px;left:10px;z-index:3;pointer-events:auto;
-  width:clamp(120px, 36vw, 160px);aspect-ratio:2.8/1;
-  background:url('{{ url_for("static", filename="catalog/container/cost.png") }}') center/contain no-repeat;
-  display:flex;align-items:center;justify-content:flex-end;padding-right:16px;
-}
-.cost-pill .num{
-  font-weight:800;font-size:clamp(.9rem,2.8vw,1.1rem);line-height:1;color:#0d4e2b;
-  text-shadow:0 1px 0 rgba(255,255,255,.75);
-}
-/* watchlist circle – icon fills full circle */
-.watch-circle{
-  position:absolute;top:10px;right:10px;z-index:3;pointer-events:auto;
-  width:44px;height:44px;border-radius:50%;background:rgba(182,241,228,.85);border:1.5px solid #7bd7c3;
-  display:flex;align-items:center;justify-content:center;box-shadow:0 2px 0 rgba(0,0,0,.08);cursor:pointer;
-}
-.watch-circle img{width:100%;height:100%;object-fit:contain;}
 
-/* --- info row with trade icon filling height --- */
-.card-bottom{
-  display:grid;grid-template-columns:1fr min(28vw, 92px);align-items:stretch;
-  background:#74bdf0;color:#0b213d;border-top-left-radius:18px;border-top-right-radius:18px;
-  padding:12px;
+/* Top bar */
+.card-top{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:6px 10px;
 }
-.info{
-  min-height:72px;
-  display:flex;flex-direction:column;justify-content:center;gap:4px;
-}
-.item-name{margin:0;font-size:1.05rem;font-weight:800;line-height:1.2;max-height:2.4em;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
-.item-desc{margin:0;color:#e7f3ff;opacity:.95;font-size:.95rem;line-height:1.25;max-height:2.5em;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
-.trade-btn{align-self:stretch;justify-self:end;display:flex;align-items:center;justify-content:center;background:transparent;border:none;padding:0;cursor:pointer;}
-.trade-btn img{height:100%;width:auto;display:block;}
+.cost-pill{display:flex;align-items:center;gap:6px;}
+.cost-pill img{height:28px;width:auto;}
+.cost-pill span{font-weight:700;font-size:.95rem;color:#064e3b;}
+.watch-btn{background:none;border:none;width:32px;height:32px;padding:0;cursor:pointer;}
+.watch-btn img{width:100%;height:100%;object-fit:contain;}
 
-/* --- footer chips (thinner, not bold) + single-line clamp with … --- */
-.card-footer{display:flex;gap:8px;flex-wrap:nowrap;align-items:center;padding:10px 12px 12px;overflow:hidden;}
-.stock-pill{background:#f8c07a;color:#2a1800;border-radius:12px;padding:4px 8px;font-weight:500;line-height:1;flex:0 0 auto;}
-.tag-chip{background:#dcebfb;color:#0c4781;border-radius:12px;padding:4px 8px;font-weight:500;line-height:1;flex:0 0 auto;white-space:nowrap;}
-.more-chip{background:#eef2ff;color:#375a9e;border-radius:12px;padding:4px 10px;font-weight:600;cursor:pointer;flex:0 0 auto;}
+/* Catalog image */
+.card-image{
+  width:100%;
+  aspect-ratio:1/1;
+  background:#eef3f8 center/cover no-repeat;
+}
+
+/* Info row */
+.card-info{
+  display:flex;
+  justify-content:space-between;
+  align-items:stretch;
+  background:#74bdf0;
+  color:#fff;
+  padding:10px;
+}
+.card-info .text{flex:1;display:flex;flex-direction:column;justify-content:center;gap:4px;}
+.card-info h3{margin:0;font-size:1rem;font-weight:700;line-height:1.2;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;display:-webkit-box;}
+.card-info p{margin:0;font-size:.85rem;opacity:.9;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;display:-webkit-box;}
+.trade-btn{display:flex;align-items:center;justify-content:center;background:none;border:none;padding:0;}
+.trade-btn img{height:100%;max-height:60px;width:auto;}
+
+/* Footer */
+.card-footer{display:flex;gap:6px;align-items:center;padding:8px 10px 10px;overflow:hidden;}
+.stock-pill{background:#f8c07a;color:#2a1800;border-radius:12px;padding:3px 6px;font-size:.8rem;}
+.tag-chip{background:#dcebfb;color:#0c4781;border-radius:12px;padding:3px 6px;font-size:.8rem;white-space:nowrap;}
+.more-chip{background:#eef2ff;color:#375a9e;border-radius:12px;padding:3px 8px;font-size:.8rem;cursor:pointer;}
 </style>
 
 <!-- =============== HERO =============== -->
@@ -186,43 +178,48 @@
   </div>
 </section>
 
-<!-- =============== ITEM GRID (2 COLS) =============== -->
+<!-- =============== ITEM GRID =============== -->
 <section class="item-grid">
   {% for it in items %}
   <div class="item-card">
-    <!-- Square media with badges layered -->
-    <div class="media">
-      <a class="card-hero" style="background-image:url('{{ it.image_url }}');" href="{{ url_for('catalog_item', item_id=it.id) }}"></a>
-      <div class="badge-layer">
-        <div class="cost-pill"><span class="num">{{ it.cost_stamps }}</span></div>
-        <button class="watch-circle" data-id="{{ it.id }}" onclick="toggleWatch(this)" title="Toggle watch">
-          <img
-            src="{{ url_for('static', filename='catalog/' + ('binocularsb.png' if it.id in watch_ids else 'binocularsa.png')) }}"
-            data-a="{{ url_for('static', filename='catalog/binocularsa.png') }}"
-            data-b="{{ url_for('static', filename='catalog/binocularsb.png') }}"
-            alt="watch">
-        </button>
+
+    <!-- Top bar -->
+    <div class="card-top">
+      <div class="cost-pill">
+        <img src="{{ url_for('static', filename='catalog/container/cost.png') }}" alt="cost">
+        <span>{{ it.cost_stamps }}</span>
       </div>
+      <button class="watch-btn" data-id="{{ it.id }}" onclick="toggleWatch(this)">
+        <img
+          src="{{ url_for('static', filename='catalog/' + ('binocularsb.png' if it.id in watch_ids else 'binocularsa.png')) }}"
+          data-a="{{ url_for('static', filename='catalog/binocularsa.png') }}"
+          data-b="{{ url_for('static', filename='catalog/binocularsb.png') }}"
+          alt="watch">
+      </button>
     </div>
 
-    <!-- Info row with trade icon filling height -->
-    <div class="card-bottom">
-      <div class="info">
-        <h3 class="item-name">{{ it.name }}</h3>
-        <p class="item-desc">{{ it.description }}</p>
+    <!-- Catalog image -->
+    <div class="card-image" style="background-image:url('{{ it.image_url }}');"></div>
+
+    <!-- Info row -->
+    <div class="card-info">
+      <div class="text">
+        <h3>{{ it.name }}</h3>
+        <p>{{ it.description }}</p>
       </div>
-      <a class="trade-btn" href="{{ url_for('catalog_item', item_id=it.id) }}" aria-label="Buy / View">
-        <img src="{{ url_for('static', filename='catalog/container/trade.PNG') }}" alt="">
+      <a class="trade-btn" href="{{ url_for('catalog_item', item_id=it.id) }}">
+        <img src="{{ url_for('static', filename='catalog/container/trade.PNG') }}" alt="trade">
       </a>
     </div>
 
-    <!-- Chips (single-line with …) -->
+    <!-- Footer -->
     <div class="card-footer js-tag-row">
       <span class="stock-pill">stock: {{ it.stock }}</span>
       {% for t in it.tags %}
         <span class="tag-chip">#{{ t }}</span>
       {% endfor %}
     </div>
+
   </div>
   {% endfor %}
 </section>
@@ -278,7 +275,7 @@ function loadWatchlist(){
 function toggleWatchFromModal(id){
   fetch(`/watchlist/toggle/${id}`,{method:"POST"}).then(r=>r.json()).then(data=>{
     if(data.success){ loadWatchlist();
-      const img=document.querySelector(`.watch-circle[data-id='${id}'] img`);
+      const img=document.querySelector(`.watch-btn[data-id='${id}'] img`);
       if(img){ img.src = data.watched ? img.dataset.b : img.dataset.a; }
     }
   });
