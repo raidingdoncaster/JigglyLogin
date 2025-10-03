@@ -101,8 +101,8 @@ def _upload_to_supabase(file_storage, folder="catalog"):
     path = f"{folder}/{fname}"
 
     try:
-        supabase.storage.from_("Catalog").upload(path, file_storage.stream.read())
-        url = supabase.storage.from_("Catalog").get_public_url(path)
+        supabase.storage.from_("catalog").upload(path, file_storage.stream.read())
+        url = supabase.storage.from_("catalog").get_public_url(path)
         return url
     except Exception as e:
         print("⚠️ Supabase upload failed:", e)
