@@ -31,7 +31,7 @@
 
   <!-- Redemption Form -->
   <form method="post" class="redeem-form" onsubmit="return confirmSubmit();">
-    <h3>🗓️ Choose a Meet-up</h3>
+    <h3>🗓️ Choose a Meet-up for pickup</h3>
     {% if meetups and meetups|length %}
       <div class="meetups">
         {% for m in meetups %}
@@ -55,7 +55,7 @@
 
     <div class="item-actions">
       <button type="submit" class="buy-btn" {% if balance < item.cost_stamps or not meetups %}disabled{% endif %}>
-        <img src="{{ url_for('static', filename='catalog/container/trade.png') }}" alt="Redeem">
+        <img src="{{ url_for('static', filename='catalog/container/trade.PNG') }}" alt="Redeem">
       </button>
       <a href="{{ url_for('catalog_item', item_id=item.id) }}" class="back-btn">⬅ Cancel</a>
     </div>

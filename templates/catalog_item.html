@@ -40,7 +40,7 @@
     {% set can_redeem = (item.active and (item.stock or 0) > 0) %}
     {% if can_redeem %}
       <a href="{{ url_for('catalog_redeem', item_id=item.id) }}" class="buy-btn">
-        <img src="{{ url_for('static', filename='catalog/container/trade.png') }}" alt="Redeem">
+        <img src="{{ url_for('static', filename='catalog/container/trade.PNG') }}" alt="Redeem">
       </a>
     {% else %}
       <button disabled class="buy-btn">Unavailable</button>
