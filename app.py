@@ -2336,6 +2336,20 @@ def catalog_redeem(item_id):
             show_back=False
         )
 
+    # ====================================================
+    # 🧠 SERVER-SIDE DOUBLE REDEEM LOCK (3 SEC WINDOW)
+    # ====================================================
+    import time
+    last_redeem = session.get("last_redeem_time", 0)
+    now = time.time()
+    if now - last_redeem < 3:
+        print("⚠️ Double redeem prevented for trainer:", trainer)
+        flash("Slow down! That redemption was already processed.", "info")
+        return redirect(url_for("catalog_item", item_id=item_id))
+    session["last_redeem_time"] = now
+
+    # ====================================================
+
     # POST — place order
     meetup_id = request.form.get("meetup_id")
     confirm = request.form.get("confirm") == "yes"
@@ -2380,7 +2394,7 @@ def catalog_redeem(item_id):
     except Exception as e:
         print("⚠️ redeem: recheck failed:", e)
 
-    # Deduct stamps via Lugia (ledger) — then mirror 'stamps' in sheet1
+    # Deduct stamps via Lugia (ledger)
     cost = item["cost_stamps"]
     reason = f"Catalog Redemption: {item.get('name')}"
     lugia_msg = adjust_stamps(trainer, cost, reason, "remove")
@@ -2388,7 +2402,7 @@ def catalog_redeem(item_id):
         flash("Could not deduct stamps. Try again in a moment.", "error")
         return redirect(url_for("catalog_redeem", item_id=item_id))
 
-    # Update balance mirror (best effort)
+    # Update balance mirror
     try:
         new_balance = max(0, balance - cost)
         supabase.table("sheet1") \
@@ -2398,7 +2412,7 @@ def catalog_redeem(item_id):
     except Exception as e:
         print("⚠️ redeem: mirror stamp update failed:", e)
 
-    # Decrement stock (best effort)
+    # Decrement stock (only once, safe)
     try:
         supabase.table("catalog_items") \
             .update({"stock": max(0, int(item["stock"]) - 1)}) \
@@ -2407,7 +2421,7 @@ def catalog_redeem(item_id):
     except Exception as e:
         print("⚠️ redeem: stock update failed:", e)
 
-    # Create redemption row (PENDING)
+    # Create redemption record
     red_id = str(uuid.uuid4())
     item_snapshot = {
         "name": item.get("name"),
