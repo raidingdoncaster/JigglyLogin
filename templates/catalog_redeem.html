@@ -30,7 +30,7 @@
   </div>
 
   <!-- Redemption Form -->
-  <form method="post" class="redeem-form" onsubmit="return confirmSubmit();">
+  <form method="post" class="redeem-form" onsubmit="return confirmSubmit(this);">
     <h3>🗓️ Choose a Meet-up for pickup</h3>
     {% if meetups and meetups|length %}
       <div class="meetups">
@@ -54,12 +54,20 @@
     </label>
 
     <div class="item-actions">
-      <button type="submit" class="buy-btn" {% if balance < item.cost_stamps or not meetups %}disabled{% endif %}>
+      <button type="submit" class="buy-btn" id="redeemBtn"
+        {% if balance < item.cost_stamps or not meetups %}disabled{% endif %}>
         <img src="{{ url_for('static', filename='catalog/container/trade.PNG') }}" alt="Redeem">
       </button>
       <a href="{{ url_for('catalog_item', item_id=item.id) }}" class="back-btn">⬅ Cancel</a>
     </div>
   </form>
+</div>
+
+<!-- 🔹 LOADING OVERLAY -->
+<div id="order-loading" style="display:none;">
+  <img src="{{ url_for('static', filename='catalog/container/trade.PNG') }}" alt="Loading">
+  <div class="msg" id="order-msg">Slakoth is processing your order, please be patient…</div>
+  <div class="percent" id="order-percent">0%</div>
 </div>
 
 <style>
@@ -85,10 +93,68 @@
 .buy-btn img {width:64px;height:64px;}
 .buy-btn[disabled]{opacity:.6;cursor:not-allowed;}
 .back-btn {background:#eef2ff;color:#3a8dde;padding:8px 12px;border-radius:8px;text-decoration:none;font-weight:600;}
+
+/* 🔹 Loading overlay styling */
+#order-loading {
+  position:fixed; inset:0;
+  background:rgba(255,255,255,.97);
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  z-index:99999; text-align:center;
+  font-weight:600; font-size:1.1em; color:#333;
+}
+#order-loading img {
+  width:90px; height:90px;
+  animation:spinBounce 1.2s infinite;
+}
+@keyframes spinBounce {
+  0% {transform:rotate(0) scale(1);}
+  50% {transform:rotate(180deg) scale(1.1);}
+  100% {transform:rotate(360deg) scale(1);}
+}
+#order-loading .msg {margin-top:12px;}
+#order-loading .percent {margin-top:8px;font-size:0.9em;color:#666;}
 </style>
 
 <script>
-function confirmSubmit(){return true;}
+function confirmSubmit(form){
+  const btn=document.getElementById("redeemBtn");
+  if(btn){
+    btn.disabled=true; // 🧱 stop double click
+  }
+  showLoading(); // ⚡ trigger loader instantly
+  return true; // allow normal form submit
+}
+
+function showLoading(){
+  const loader=document.getElementById("order-loading");
+  loader.style.display="flex";
+
+  const messages=[
+    "Slakoth is processing your order, please be patient…",
+    "Eliminating potential Ultra Beast threats…",
+    "Rotom is checking our warehouse…",
+    "Delibird is printing your receipt…",
+    "Professor Willow is checking if Gyms are still under construction…"
+  ];
+
+  let msgIndex=0;
+  let percent=0;
+  const msgEl=document.getElementById("order-msg");
+  const pctEl=document.getElementById("order-percent");
+
+  const interval=setInterval(()=>{
+    percent+=5;
+    if(percent>100) percent=100;
+    pctEl.textContent=percent+"%";
+
+    if(percent % 25===0 && msgIndex<messages.length){
+      msgEl.textContent=messages[msgIndex];
+      msgIndex++;
+    }
+
+    if(percent===100) clearInterval(interval);
+  },200); // runs ~4s total
+}
 </script>
 
 {% endblock %}
