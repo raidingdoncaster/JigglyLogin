@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block content %}
+  <div style="text-align:center; padding:60px 20px;">
+    <img src="{{ url_for('static', filename='logo.png') }}" style="width:100px; margin-bottom:20px;">
+    <h2>🚧 Under Maintenance</h2>
+    <p>Our app is currently undergoing scheduled maintenance.<br>
+    Please check back soon!</p>
+    <p style="color:#888; font-size:0.9em; margin-top:20px;">
+      This page auto-updates when the system is back online.
+    </p>
+  </div>
+{% endblock %}

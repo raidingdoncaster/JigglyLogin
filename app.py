@@ -18,6 +18,7 @@ from markupsafe import Markup, escape
 
 # ====== Feature toggle ======
 USE_SUPABASE = True  # ✅ Supabase for stamps/meetups
+MAINTENANCE_MODE = True  # ⛔️ Change to True to enable maintenance mode
 
 # Try to import Supabase client
 try:
@@ -29,6 +30,23 @@ except Exception:
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
 app.permanent_session_lifetime = timedelta(days=365)
+
+@app.before_request
+def check_maintenance_mode():
+    from flask import request, redirect, url_for, render_template, session
+
+    # Allow admins through even during maintenance
+    if session.get("account_type") == "Admin":
+        return
+
+    # Skip maintenance mode for static files, manifest, and login
+    allowed_endpoints = ("static", "manifest", "service_worker", "maintenance")
+    if app.view_functions.get(request.endpoint) and request.endpoint.startswith(allowed_endpoints):
+        return
+
+    # If maintenance mode is on, show maintenance page
+    if MAINTENANCE_MODE:
+        return render_template("maintenance.html"), 503
 
 UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -1335,6 +1353,16 @@ def admin_stats():
         # highlights
         highlights=highlights
     )
+
+@app.route("/toggle_maintenance")
+def toggle_maintenance():
+    if session.get("account_type") != "Admin":
+        abort(403)
+    global MAINTENANCE_MODE
+    MAINTENANCE_MODE = not MAINTENANCE_MODE
+    state = "ON" if MAINTENANCE_MODE else "OFF"
+    flash(f"Maintenance mode is now {state}.", "warning")
+    return redirect(url_for("admin_dashboard"))
 
 # ====== Admin: Notification Center ======
 @app.route("/admin/notifications", methods=["GET", "POST"])
