@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block content %}
+  <div style="text-align:center; padding:60px 20px;">
+    <h2>👑 Admin Login</h2>
+    <form method="post" style="max-width:280px; margin:0 auto;">
+      <input type="text" name="username" placeholder="Trainer username" required
+             style="width:100%; padding:10px; margin:6px 0; border-radius:8px; border:1px solid #ccc;">
+      <input type="password" name="pin" placeholder="PIN" required
+             style="width:100%; padding:10px; margin:6px 0; border-radius:8px; border:1px solid #ccc;">
+      <button type="submit"
+              style="width:100%; background:#3a8dde; color:#fff; padding:10px;
+                     border:none; border-radius:8px; font-weight:600; cursor:pointer;">
+        Log In
+      </button>
+    </form>
+  </div>
+{% endblock %}

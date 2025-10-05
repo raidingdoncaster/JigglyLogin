@@ -40,7 +40,7 @@ def check_maintenance_mode():
         return
 
     # Skip maintenance mode for static files, manifest, and login
-    allowed_endpoints = ("static", "manifest", "service_worker", "maintenance")
+    allowed_endpoints = ("static", "manifest", "service_worker", "maintenance", "admin_login")
     if app.view_functions.get(request.endpoint) and request.endpoint.startswith(allowed_endpoints):
         return
 
@@ -590,6 +590,35 @@ def admin_dashboard():
         pending_redemptions=pending_redemptions,
         registered_trainers=registered_trainers
     )
+
+@app.route("/admin_login", methods=["GET", "POST"])
+def admin_login():
+    if request.method == "GET":
+        return render_template("admin_login.html")
+
+    username = request.form.get("username", "").strip()
+    pin = request.form.get("pin", "").strip()
+
+    # Look up account in your Sheet / Supabase / table
+    r = supabase.table("sheet1").select("*").eq("trainer_username", username).limit(1).execute()
+    if not r.data:
+        flash("Trainer not found.", "error")
+        return redirect(url_for("admin_login"))
+
+    user = r.data[0]
+    if str(user.get("pin")) != pin:
+        flash("Incorrect PIN.", "error")
+        return redirect(url_for("admin_login"))
+
+    if user.get("account_type") != "Admin":
+        flash("You are not an admin.", "error")
+        return redirect(url_for("home"))
+
+    # Success — log them in
+    session["trainer"] = user["trainer_username"]
+    session["account_type"] = "Admin"
+    flash("Welcome back, Admin!", "success")
+    return redirect(url_for("admin_dashboard"))
 
 # ====== Catalog images folder ======
 from werkzeug.utils import secure_filename
