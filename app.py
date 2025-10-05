@@ -2364,11 +2364,10 @@ def catalog_redeem(item_id):
         flash("Could not load meet-up.", "error")
         return redirect(url_for("catalog_redeem", item_id=item_id))
 
-    # Double-check stock & activity just before we commit
-    try:# ====== Catalog Items (User) ======
-from datetime import datetime, timezone
+# ====== Catalog Items (User) ======
 from flask import abort
-# CATEGORY_KEYS control what tags put what items in what categories, lol 
+
+# CATEGORY_KEYS control what tags put what items in what categories
 CATEGORY_KEYS = {
     "Pins": ["pins", "pin"],
     "Plushies": ["plush", "plushie", "plushies"],
@@ -2376,7 +2375,7 @@ CATEGORY_KEYS = {
     "Keychains": ["keychain", "keychains", "keyring", "keyrings"],
     "Accessories": ["accessory", "accessories", "sticker", "badge", "apparel", "cap", "hat"],
     "Games": ["game", "games"],
-    "Master Bundles": ["bundle", "bundles", "master bundle"]
+    "Master Bundles": ["bundle", "bundles", "master bundle"],
 }
 CATEGORY_ORDER = list(CATEGORY_KEYS.keys())
 
@@ -2406,7 +2405,13 @@ def catalog_item(item_id):
     if not supabase:
         abort(404)
     try:
-        r = supabase.table("catalog_items").select("*").eq("id", item_id).limit(1).execute()
+        r = (
+            supabase.table("catalog_items")
+            .select("*")
+            .eq("id", item_id)
+            .limit(1)
+            .execute()
+        )
         if not r.data:
             abort(404)
         it = r.data[0]
@@ -2434,11 +2439,13 @@ def catalog_redeem(item_id):
 
     # Load item (must be active and in stock)
     try:
-        r = (supabase.table("catalog_items")
-             .select("*")
-             .eq("id", item_id)
-             .limit(1)
-             .execute())
+        r = (
+            supabase.table("catalog_items")
+            .select("*")
+            .eq("id", item_id)
+            .limit(1)
+            .execute()
+        )
         if not r.data:
             flash("Item not found.", "error")
             return redirect(url_for("catalog"))
@@ -2461,13 +2468,15 @@ def catalog_redeem(item_id):
     meetups = []
     try:
         today_iso = date.today().isoformat()
-        m = (supabase.table("meetups")
-             .select("*")
-             .eq("active", True)
-             .gte("date", today_iso)
-             .order("date", desc=False)
-             .order("start_time", desc=False)
-             .execute())
+        m = (
+            supabase.table("meetups")
+            .select("*")
+            .eq("active", True)
+            .gte("date", today_iso)
+            .order("date", desc=False)
+            .order("start_time", desc=False)
+            .execute()
+        )
         meetups = m.data or []
     except Exception as e:
         print("⚠️ redeem: fetch meetups failed:", e)
@@ -2478,13 +2487,12 @@ def catalog_redeem(item_id):
             item=item,
             balance=balance,
             meetups=meetups,
-            show_back=False
+            show_back=False,
         )
 
-    # ====================================================
-    # 🧠 SERVER-SIDE DOUBLE REDEEM LOCK (3 SEC WINDOW)
-    # ====================================================
-    import time
+    # ================================
+    # SERVER-SIDE DOUBLE-CLICK LOCK
+    # ================================
     last_redeem = session.get("last_redeem_time", 0)
     now = time.time()
     if now - last_redeem < 3:
@@ -2492,8 +2500,6 @@ def catalog_redeem(item_id):
         flash("Slow down! That redemption was already processed.", "info")
         return redirect(url_for("catalog_item", item_id=item_id))
     session["last_redeem_time"] = now
-
-    # ====================================================
 
     # POST — place order
     meetup_id = request.form.get("meetup_id")
@@ -2511,11 +2517,13 @@ def catalog_redeem(item_id):
 
     # Load meetup snapshot
     try:
-        mr = (supabase.table("meetups")
-              .select("*")
-              .eq("id", meetup_id)
-              .limit(1)
-              .execute())
+        mr = (
+            supabase.table("meetups")
+            .select("*")
+            .eq("id", meetup_id)
+            .limit(1)
+            .execute()
+        )
         if not mr.data:
             flash("Meet-up not found.", "error")
             return redirect(url_for("catalog_redeem", item_id=item_id))
@@ -2527,11 +2535,13 @@ def catalog_redeem(item_id):
 
     # Double-check stock & activity just before we commit
     try:
-        r2 = (supabase.table("catalog_items")
-              .select("stock, active")
-              .eq("id", item_id)
-              .limit(1)
-              .execute())
+        r2 = (
+            supabase.table("catalog_items")
+            .select("stock, active")
+            .eq("id", item_id)
+            .limit(1)
+            .execute()
+        )
         latest = r2.data[0]
         if not latest.get("active", False) or int(latest.get("stock") or 0) <= 0:
             flash("This prize just went out of stock or offline.", "warning")
@@ -2547,17 +2557,14 @@ def catalog_redeem(item_id):
         flash("Could not deduct stamps. Try again in a moment.", "error")
         return redirect(url_for("catalog_redeem", item_id=item_id))
 
-    # Update balance mirror
+    # Update balance mirror (best effort)
     try:
         new_balance = max(0, balance - cost)
-        supabase.table("sheet1") \
-            .update({"stamps": new_balance}) \
-            .eq("trainer_username", trainer) \
-            .execute()
+        supabase.table("sheet1").update({"stamps": new_balance}).eq("trainer_username", trainer).execute()
     except Exception as e:
         print("⚠️ redeem: mirror stamp update failed:", e)
 
-    # Decrement stock (only once, safe)
+    # Decrement stock (only once)
     try:
         supabase.table("catalog_items") \
             .update({"stock": max(0, int(item["stock"]) - 1)}) \
@@ -2573,7 +2580,7 @@ def catalog_redeem(item_id):
         "cost_stamps": item.get("cost_stamps"),
         "image_url": item.get("image_url"),
         "tags": item.get("tags") or [],
-        "description": item.get("description") or ""
+        "description": item.get("description") or "",
     }
     metadata = {
         "meetup": {
@@ -2594,14 +2601,14 @@ def catalog_redeem(item_id):
             "stamps_spent": cost,
             "item_snapshot": item_snapshot,
             "metadata": metadata,
-            "created_at": datetime.now(timezone.utc).isoformat()
+            "created_at": datetime.now(timezone.utc).isoformat(),
         }).execute()
     except Exception as e:
         print("⚠️ redeem: create redemption failed:", e)
         flash("Your order couldn't be created. Stamps were deducted, contact admin.", "error")
         return redirect(url_for("catalog"))
 
-    # Send inbox message with receipt link
+    # Send inbox message with receipt link (best effort)
     try:
         receipt_url = absolute_url(url_for("catalog_receipt", redemption_id=red_id))
         subj = f"Order received: {item_snapshot['name']}"
@@ -2620,7 +2627,7 @@ def catalog_redeem(item_id):
             "message": msg,
             "metadata": {"url": receipt_url, "redemption_id": red_id},
             "sent_at": datetime.now(timezone.utc).isoformat(),
-            "read_by": []
+            "read_by": [],
         }).execute()
     except Exception as e:
         print("⚠️ redeem: inbox notify failed:", e)
@@ -2636,135 +2643,13 @@ def catalog_receipt(redemption_id):
     trainer = session["trainer"]
 
     try:
-        r = (supabase.table("redemptions")
-             .select("*")
-             .eq("id", redemption_id)
-             .limit(1)
-             .execute())
-        if not r.data:
-            abort(404)
-        rec = r.data[0]
-        if (rec.get("trainer_username") or "").lower() != trainer.lower():
-            abort(403)
-    except Exception as e:
-        print("⚠️ receipt: fetch failed:", e)
-        abort(500)
-
-    return render_template("catalog_receipt.html", rec=rec, show_back=False)
-        r2 = (supabase.table("catalog_items")
-              .select("stock, active")
-              .eq("id", item_id)
-              .limit(1)
-              .execute())
-        latest = r2.data[0]
-        if not latest.get("active", False) or int(latest.get("stock") or 0) <= 0:
-            flash("This prize just went out of stock or offline.", "warning")
-            return redirect(url_for("catalog"))
-    except Exception as e:
-        print("⚠️ redeem: recheck failed:", e)
-
-    # Deduct stamps via Lugia (ledger)
-    cost = item["cost_stamps"]
-    reason = f"Catalog Redemption: {item.get('name')}"
-    lugia_msg = adjust_stamps(trainer, cost, reason, "remove")
-    if "✅" not in lugia_msg:
-        flash("Could not deduct stamps. Try again in a moment.", "error")
-        return redirect(url_for("catalog_redeem", item_id=item_id))
-
-    # Update balance mirror
-    try:
-        new_balance = max(0, balance - cost)
-        supabase.table("sheet1") \
-            .update({"stamps": new_balance}) \
-            .eq("trainer_username", trainer) \
+        r = (
+            supabase.table("redemptions")
+            .select("*")
+            .eq("id", redemption_id)
+            .limit(1)
             .execute()
-    except Exception as e:
-        print("⚠️ redeem: mirror stamp update failed:", e)
-
-    # Decrement stock (only once, safe)
-    try:
-        supabase.table("catalog_items") \
-            .update({"stock": max(0, int(item["stock"]) - 1)}) \
-            .eq("id", item_id) \
-            .execute()
-    except Exception as e:
-        print("⚠️ redeem: stock update failed:", e)
-
-    # Create redemption record
-    red_id = str(uuid.uuid4())
-    item_snapshot = {
-        "name": item.get("name"),
-        "cost_stamps": item.get("cost_stamps"),
-        "image_url": item.get("image_url"),
-        "tags": item.get("tags") or [],
-        "description": item.get("description") or ""
-    }
-    metadata = {
-        "meetup": {
-            "id": meetup.get("id"),
-            "name": meetup.get("name"),
-            "location": meetup.get("location"),
-            "date": meetup.get("date"),
-            "start_time": meetup.get("start_time"),
-        }
-    }
-    try:
-        supabase.table("redemptions").insert({
-            "id": red_id,
-            "trainer_username": trainer,
-            "catalog_item_id": item_id,
-            "meetup_id": meetup_id,
-            "status": "PENDING",
-            "stamps_spent": cost,
-            "item_snapshot": item_snapshot,
-            "metadata": metadata,
-            "created_at": datetime.now(timezone.utc).isoformat()
-        }).execute()
-    except Exception as e:
-        print("⚠️ redeem: create redemption failed:", e)
-        flash("Your order couldn't be created. Stamps were deducted, contact admin.", "error")
-        return redirect(url_for("catalog"))
-
-    # Send inbox message with receipt link
-    try:
-        receipt_url = absolute_url(url_for("catalog_receipt", redemption_id=red_id))
-        subj = f"Order received: {item_snapshot['name']}"
-        msg = (
-            f"Hey {trainer},\n\n"
-            f"Thanks for your order! We’ve put aside **{item_snapshot['name']}**.\n"
-            f"Pick-up at: {metadata['meetup']['name']} — {metadata['meetup']['location']} "
-            f"on {metadata['meetup']['date']} at {metadata['meetup']['start_time']}.\n\n"
-            f"Receipt: {receipt_url}\n"
-            f"Status: PENDING"
         )
-        supabase.table("notifications").insert({
-            "type": "prize",
-            "audience": trainer,
-            "subject": subj,
-            "message": msg,
-            "metadata": {"url": receipt_url, "redemption_id": red_id},
-            "sent_at": datetime.now(timezone.utc).isoformat(),
-            "read_by": []
-        }).execute()
-    except Exception as e:
-        print("⚠️ redeem: inbox notify failed:", e)
-
-    return redirect(url_for("catalog_receipt", redemption_id=red_id))
-
-@app.route("/catalog/receipt/<redemption_id>")
-def catalog_receipt(redemption_id):
-    if "trainer" not in session:
-        flash("Please log in.", "warning")
-        return redirect(url_for("home"))
-
-    trainer = session["trainer"]
-
-    try:
-        r = (supabase.table("redemptions")
-             .select("*")
-             .eq("id", redemption_id)
-             .limit(1)
-             .execute())
         if not r.data:
             abort(404)
         rec = r.data[0]
