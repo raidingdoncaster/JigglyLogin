@@ -1398,6 +1398,14 @@ def admin_notifications():
 # ==== Login ====
 @app.route("/login", methods=["GET", "POST"])
 def login():
+    # 👇 NEW: If user already logged in, skip the login page entirely
+    if "trainer" in session:
+        # If they have a last_page stored, send them there
+        last_page = session.get("last_page", "dashboard")
+        try:
+            return redirect(url_for(last_page))
+        except:
+            return redirect(url_for("dashboard"))
     if request.method == "POST":
         username = request.form["username"]
         pin = request.form["pin"]
