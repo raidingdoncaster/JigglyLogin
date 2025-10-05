@@ -2256,22 +2256,6 @@ def _pick_featured_item(items):
     # 3) newest
     return items[0]
 
-@app.route("/catalog/item/<item_id>")
-def catalog_item(item_id):
-    if not supabase:
-        abort(404)
-    try:
-        r = supabase.table("catalog_items").select("*").eq("id", item_id).limit(1).execute()
-        if not r.data:
-            abort(404)
-        it = r.data[0]
-        it["cost_stamps"] = int(it.get("cost_stamps") or 0)
-        it["stock"] = int(it.get("stock") or 0)
-        return render_template("catalog_item.html", item=it, show_back=False)
-    except Exception as e:
-        print("⚠️ catalog_item failed:", e)
-        abort(500)
-
 @app.route("/catalog/redeem/<item_id>", methods=["GET", "POST"])
 def catalog_redeem(item_id):
     if "trainer" not in session:
