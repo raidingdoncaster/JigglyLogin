@@ -78,16 +78,30 @@ def pwa_flag():
 
 @app.route("/")
 def home():
+    """Smart home redirect — PWA-safe."""
     ua = request.user_agent.string.lower()
     is_mobile = bool(re.search("iphone|ipad|android|mobile", ua))
+    is_pwa = session.get("is_pwa", False)
 
-    if is_mobile and not session.get("is_pwa"):
-        return render_template("landing.html", show_back=False)
-
+    # 🔹 If user already logged in → dashboard
     if "trainer" in session:
         return redirect(url_for("dashboard"))
 
+    # 🔹 If running as PWA → go straight to login
+    if is_pwa or "wv" in ua or "pwa" in ua:
+        return redirect(url_for("login"))
+
+    # 🔹 Otherwise show normal landing page (for browsers only)
+    if is_mobile:
+        return render_template("landing.html", show_back=False)
+
+    # Default fallback
     return redirect(url_for("login"))
+
+@app.route("/session-check")
+def session_check():
+    """Quick JSON endpoint for PWA reload logic."""
+    return jsonify({"logged_in": "trainer" in session})
 
 # ===== Catalog Receipt Helper =====
 # --- put near your other imports ---
@@ -513,6 +527,7 @@ def admin_required(f):
 # ===== Admin Dashboard =====
 @app.route("/admin/dashboard")
 def admin_dashboard():
+    session["last_page"] = request.path
     if "trainer" not in session:
         flash("Please log in to access admin dashboard.", "warning")
         return redirect(url_for("home"))
@@ -1404,6 +1419,9 @@ def login():
                 print("⚠️ Supabase last_login update failed:", e)
 
             flash(f"Welcome back, {user.get('trainer_username')}!", "success")
+            last_page = session.pop("last_page", None)
+            if last_page:
+                return redirect(last_page)
             return redirect(url_for("dashboard"))
         else:
             flash("Incorrect PIN!", "error")
@@ -1442,7 +1460,6 @@ def signup():
 
     return render_template("signup.html")
 
-
 # ====== Confirm Detected Name ======
 @app.route("/detectname", methods=["GET", "POST"])
 def detectname():
@@ -1468,7 +1485,6 @@ def detectname():
             return redirect(url_for("signup"))
 
     return render_template("detectname.html", trainer_name=details["trainer_name"])
-
 
 # ====== Age Selection ======
 @app.route("/age", methods=["GET", "POST"])
@@ -1603,6 +1619,7 @@ def recover():
 # ====== Dashboard ======
 @app.route("/dashboard")
 def dashboard():
+    session["last_page"] = request.path
     if "trainer" not in session:
         flash("Please log in to access your dashboard.", "warning")
         return redirect(url_for("home"))
@@ -1679,6 +1696,7 @@ def _build_receipt_message(trainer, rec):
 
 @app.route("/inbox")
 def inbox():
+    session["last_page"] = request.path
     if "trainer" not in session:
         flash("Please log in to view your inbox.", "warning")
         return redirect(url_for("home"))
@@ -1766,6 +1784,7 @@ def inbox():
 
 @app.route("/inbox/message/<message_id>")
 def inbox_message(message_id):
+    session["last_page"] = request.path
     if "trainer" not in session:
         flash("Please log in to view your inbox.", "warning")
         return redirect(url_for("home"))
@@ -1905,6 +1924,7 @@ def delete_account():
 # ====== Passport ======
 @app.route("/passport")
 def passport():
+    session["last_page"] = request.path
     if "trainer" not in session:
         flash("Please log in to view your passport progress.", "warning")
         return redirect(url_for("home"))
@@ -1983,6 +2003,7 @@ def passport():
 # ====== Meet-up History ======
 @app.route("/meetup_history")
 def meetup_history():
+    session["last_page"] = request.path
     if "trainer" not in session:
         flash("Please log in to view your meet-up history.", "warning")
         return redirect(url_for("home"))
@@ -2097,6 +2118,7 @@ def _watchlist_remove(trainer: str, item_id: str) -> None:
 
 @app.route("/catalog")
 def catalog():
+    session["last_page"] = request.path
     """Revamped catalog page matching the wireframe."""
     # Pull active catalog items
     items = []
@@ -2201,6 +2223,7 @@ def watchlist_data():
 
 @app.route("/orders")
 def orders():
+    session["last_page"] = request.path
     if "trainer" not in session:
         flash("Please log in to view your order history.", "warning")
         return redirect(url_for("home"))
@@ -2562,6 +2585,7 @@ def ocr_test():
 # ====== Change Avatar / Background ======
 @app.route("/change_avatar", methods=["GET", "POST"])
 def change_avatar():
+    session["last_page"] = request.path
     if "trainer" not in session:
         return redirect(url_for("home"))
 

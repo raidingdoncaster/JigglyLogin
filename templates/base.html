@@ -488,6 +488,36 @@
     }
     #admin-fab:hover { background: #2f73bb; transform: scale(1.08); }
   </style>
+
+  <!-- === RDAB Session Memory === -->
+<script>
+  // Save last page before navigating away
+  window.addEventListener('beforeunload', () => {
+    const path = window.location.pathname;
+    if (!['/login', '/', '/logout'].includes(path)) {
+      localStorage.setItem('lastPage', path);
+    }
+  });
+
+  // When the app loads (PWA or browser)
+  document.addEventListener('DOMContentLoaded', () => {
+    const last = localStorage.getItem('lastPage');
+    const path = window.location.pathname;
+
+    // Only auto-redirect on home or login
+    if (last && (path === '/' || path === '/login')) {
+      fetch('/session-check')
+        .then(r => r.json())
+        .then(data => {
+          if (data.logged_in) {
+            window.location.href = last || '/dashboard';
+          }
+        })
+        .catch(() => {});
+    }
+  });
+</script>
+
   {% endif %}
 </body>
 
