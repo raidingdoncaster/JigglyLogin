@@ -1,460 +1,219 @@
 {% extends "base.html" %}
 {% block content %}
 
-<style>
-/* =============== THEME =============== */
-:root{
-  --blue:#3a8dde; --sky:#e9f0ff; --card:#fff; --ink:#1f2937; --muted:#6b7280;
-  --chip:#eef2ff; --radius:18px; --divider:#e5e7eb;
-}
-
-/* Add spacing and divider lines */
-.section{margin:20px 0;padding-bottom:10px;border-bottom:1px solid var(--divider);}
-.section:last-of-type{border-bottom:none;}
-
-/* =============== HERO =============== */
-.catalog-hero{
-  display:flex;align-items:center;gap:12px;
-  background:var(--blue);color:#fff;padding:14px;border-radius:18px;margin-bottom:12px;
-}
-.catalog-icon{width:64px;height:64px;border-radius:14px;flex:0 0 auto;
-  background:url('{{ url_for("static", filename="catalog/catalog-app.png") }}') center/cover no-repeat;}
-.catalog-title h1{margin:0;font-size:1.8rem;line-height:1;}
-.catalog-title p{margin:.35rem 0 .4rem;opacity:.95;}
-.back-link{color:#e0eaff;text-decoration:none;font-size:.92rem;}
-
-/* =============== FEATURED =============== */
-.featured-carousel{position:relative;overflow:hidden;border-radius:18px;}
-.carousel-track{display:flex;transition:transform .6s ease;}
-.carousel-slide{min-width:100%;display:flex;justify-content:center;}
-.carousel-slide img{width:100%;height:auto;border-radius:18px;max-height:220px;object-fit:cover;}
-@media(min-width:768px){ .carousel-slide img{max-height:320px;} }
-.carousel-controls{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:10px;}
-.carousel-prev,.carousel-next{background:rgba(255,255,255,.85);border:none;border-radius:50%;width:32px;height:32px;font-size:1.15rem;line-height:32px;cursor:pointer;}
-.carousel-dots{display:flex;gap:10px;}
-.carousel-dots .dot{width:18px;height:18px;border-radius:50%;background:#fff;border:2px solid #000;position:relative;overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,.18);cursor:pointer;}
-.carousel-dots .dot::before{content:"";position:absolute;left:0;top:0;width:100%;height:50%;background:#e11d24;}
-.carousel-dots .dot::after{content:"";position:absolute;left:50%;top:50%;width:6px;height:6px;background:#fff;border:2px solid #000;border-radius:50%;transform:translate(-50%,-50%);}
-.carousel-dots .dot.active{transform:scale(1.2);border-color:var(--blue);box-shadow:0 0 6px rgba(58,141,222,.6);}
-
-/* =============== QUICK LINKS =============== */
-.quick-links{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
-.quick-links .quick-link{
-  display:inline-flex;align-items:center;justify-content:center;
-  height:36px;padding:0 10px;
-  background:var(--chip);color:var(--blue);border-radius:10px;
-  text-decoration:none;font-weight:500;font-size:0.85rem;white-space:nowrap;
-}
-.quick-links .watchlist-btn{
-  display:inline-flex;align-items:center;justify-content:center;width:42px;height:36px;background:var(--chip);
-  border:none;border-radius:10px;cursor:pointer;flex:0 0 auto;
-}
-.quick-links .watchlist-btn img{width:20px;height:20px;object-fit:contain;}
-
-/* =============== CATEGORIES =============== */
-.categories{margin-top:10px;}
-.cat-frame{position:relative;width:100%;aspect-ratio:2/1;border-radius:18px;overflow:hidden;
-  background:url('{{ url_for("static", filename="catalog/catbg.png") }}') center/contain no-repeat;}
-.cat-title{position:absolute;top:6%;left:5%;color:#000;font-weight:800;
-  font-size:clamp(1.1rem,3.8vw,1.6rem);}
-.cat-grid{position:absolute;inset:18% 5% 10% 5%;
-  display:grid;grid-template-columns:repeat(5,1fr);grid-template-rows:repeat(2,1fr);
-  gap:clamp(6px,1.8vw,16px);align-items:center;justify-items:center;}
-.category-btn{display:flex;flex-direction:column;align-items:center;gap:6px;text-decoration:none;color:#000;font-weight:800;}
-.category-btn img{width:min(68px,13vw);height:auto;}
-.category-btn span{font-size:clamp(.8rem,2.5vw,1rem);}
-
-/* =============== ITEM GRID (rebuilt 2 columns) =============== */
-.item-grid{
-  display:grid;
-  grid-template-columns:repeat(2,1fr);
-  gap:14px;
-  margin:10px 0 16px;
-}
-@media(max-width:400px){ .item-grid{grid-template-columns:1fr;} }
-
-.item-card{
-  background:#fff;
-  border-radius:16px;
-  box-shadow:0 2px 8px rgba(0,0,0,.08);
-  overflow:hidden;
-  display:flex;
-  flex-direction:column;
-}
-
-/* Top bar */
-.card-top{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  padding:6px 10px;
-}
-.cost-pill{display:flex;align-items:center;gap:6px;}
-.cost-pill img{height:28px;width:auto;}
-.cost-pill span{font-weight:700;font-size:.95rem;color:#064e3b;}
-.watch-btn{background:none;border:none;width:32px;height:32px;padding:0;cursor:pointer;}
-.watch-btn img{width:100%;height:100%;object-fit:contain;}
-
-/* Catalog image */
-.card-image{
-  width:100%;
-  aspect-ratio:1/1;
-  background:#eef3f8 center/cover no-repeat;
-}
-
-/* Info row */
-.card-info{
-  display:flex;
-  justify-content:space-between;
-  align-items:stretch;
-  background:#74bdf0;
-  color:#fff;
-  padding:10px;
-}
-.card-info .text{flex:1;display:flex;flex-direction:column;justify-content:center;gap:4px;}
-.card-info h3{margin:0;font-size:1rem;font-weight:700;line-height:1.2;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;display:-webkit-box;}
-.card-info p{margin:0;font-size:.85rem;opacity:.9;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;display:-webkit-box;}
-.trade-btn{display:flex;align-items:center;justify-content:center;background:none;border:none;padding:0;}
-.trade-btn img{height:100%;max-height:60px;width:auto;}
-
-/* Footer */
-.card-footer{display:flex;gap:6px;align-items:center;padding:8px 10px 10px;overflow:hidden;}
-.stock-pill{background:#f8c07a;color:#2a1800;border-radius:12px;padding:3px 6px;font-size:.8rem;}
-.tag-chip{background:#dcebfb;color:#0c4781;border-radius:12px;padding:3px 6px;font-size:.8rem;white-space:nowrap;}
-.more-chip{background:#eef2ff;color:#375a9e;border-radius:12px;padding:3px 8px;font-size:.8rem;cursor:pointer;}
-
-/* =============== CATEGORY HEADER + TOOLS =============== */
-.category-header {
-  margin: 14px 0;
-}
-
-.category-header h2 {
-  margin: 0 0 8px;
-  font-size: 1.3rem;
-  font-weight: 700;
-  color: var(--ink);
-}
-
-.category-tools {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 10px;
-}
-
-.category-tools input[type="search"] {
-  flex: 1;
-  padding: 8px 10px;
-  border: 1px solid var(--divider);
-  border-radius: 10px;
-  font-size: 0.9rem;
-}
-
-.category-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.category-actions button {
-  padding: 8px 12px;
-  border: 1px solid var(--divider);
-  border-radius: 10px;
-  background: var(--chip);
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.category-actions select {
-  padding: 8px 10px;
-  border: 1px solid var(--divider);
-  border-radius: 10px;
-  background: var(--chip);
-  font-size: 0.9rem;
-  cursor: pointer;
-}
-</style>
-
-
-<!-- HERO -->
-<div class="section catalog-hero">
-  <div class="catalog-icon"></div>
+<div class="catalog-hero">
   <div class="catalog-title">
-    <h1>catalog</h1>
-    <p>{{ catalog_description }}</p>
-    <a href="{{ url_for('dashboard') }}" class="back-link">&lt; back to dashboard</a>
-  </div>
-</div>
-
-<!-- FEATURED -->
-<div class="section featured-carousel">
-  <div class="carousel-track">
-    <div class="carousel-slide"><img src="{{ url_for('static', filename='featured/slide1.png') }}"></div>
-    <div class="carousel-slide"><img src="{{ url_for('static', filename='featured/slide2.png') }}"></div>
-    <div class="carousel-slide"><img src="{{ url_for('static', filename='featured/slide3.png') }}"></div>
-    <div class="carousel-slide"><img src="{{ url_for('static', filename='featured/slide4.png') }}"></div>
-  </div>
-  <div class="carousel-controls">
-    <button class="carousel-prev">‹</button>
-    <div class="carousel-dots"><span class="dot active"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
-    <button class="carousel-next">›</button>
-  </div>
-</div>
-
-<!-- QUICK LINKS -->
-<div class="section quick-links">
-  <a href="#" class="quick-link">ℹ️ New here?!</a>
-  <a href="{{ url_for('orders') }}" class="quick-link">Order history</a>
-  <button class="watchlist-btn" onclick="toggleWatchlist()"><img src="{{ url_for('static', filename='catalog/binocularsb.png') }}" alt="Watchlist"></button>
-</div>
-
-<!-- =============== CATEGORIES =============== -->
-<section class="categories">
-  <div class="cat-frame">
-    <div class="cat-title">Categories</div>
-    <div class="cat-grid">
-      <a href="#pins" class="category-btn"><img src="{{ url_for('static', filename='catalog/pins.png') }}" alt=""><span>Pins</span></a>
-      <a href="#plushies" class="category-btn"><img src="{{ url_for('static', filename='catalog/plushies.png') }}" alt=""><span>Plushies</span></a>
-      <a href="#tcg" class="category-btn"><img src="{{ url_for('static', filename='catalog/tcg.png') }}" alt=""><span>TCG</span></a>
-      <a href="#keychains" class="category-btn"><img src="{{ url_for('static', filename='catalog/keychains.png') }}" alt=""><span>Keychains</span></a>
-      <a href="#accessories" class="category-btn"><img src="{{ url_for('static', filename='catalog/accessories.png') }}" alt=""><span>Accessories</span></a>
-      <a href="#games" class="category-btn"><img src="{{ url_for('static', filename='catalog/games.png') }}" alt=""><span>Games</span></a>
-      <a href="#bundles" class="category-btn"><img src="{{ url_for('static', filename='catalog/bundles.png') }}" alt=""><span>Bundles</span></a>
-      <a href="#codes" class="category-btn"><img src="{{ url_for('static', filename='catalog/digital-codes.png') }}" alt=""><span>Digital</span></a>
-      <a href="#latest" class="category-btn"><img src="{{ url_for('static', filename='catalog/latest.png') }}" alt=""><span>Latest</span></a>
-      <a href="#all" class="category-btn"><img src="{{ url_for('static', filename='catalog/viewall.png') }}" alt=""><span>View All</span></a>
+    <div class="icon-wrapper" data-cat="default">
+      <img id="categoryIcon" src="{{ url_for('static', filename='icons/tickstamp.png') }}" alt="Category Icon">
+      <div class="shine"></div>
     </div>
+    <h2 id="categoryTitle">All Items</h2>
   </div>
-</section>
+</div>
 
-<!-- CATEGORY HEADER + TOOLS -->
-<div class="category-header">
-  <h2 id="current-category">Latest</h2>
-  <div class="category-tools">
-    <input type="search" id="catalog-search" placeholder="Search catalog...">
-    <div class="category-actions">
-      <select id="filter-select">
-        <option value="all">All Categories</option>
+<!-- Filters / Sorting -->
+<div class="filters">
+  <form id="filterForm" class="filter-form">
+    <label>
+      Category
+      <select id="categoryFilter" name="category">
+        <option value="">All</option>
         <option value="Pins">Pins</option>
         <option value="Plushies">Plushies</option>
         <option value="TCG">TCG</option>
         <option value="Keychains">Keychains</option>
         <option value="Accessories">Accessories</option>
         <option value="Games">Games</option>
-        <option value="Bundles">Bundles</option>
-        <option value="In-game Codes">Codes</option>
+        <option value="Master Bundles">Master Bundles</option>
       </select>
-
-      <select id="sort-select">
+    </label>
+    <label>
+      Sort
+      <select id="sortFilter" name="sort">
         <option value="newest">Newest</option>
-        <option value="lowcost">Lowest Cost</option>
-        <option value="highcost">Highest Cost</option>
-        <option value="stock">Stock</option>
+        <option value="oldest">Oldest</option>
+        <option value="stock_high">Stock (High → Low)</option>
+        <option value="stock_low">Stock (Low → High)</option>
       </select>
-    </div>
-    </div>
+    </label>
+  </form>
+</div>
+
+<!-- Current Catalog -->
+<div class="toolbar">
+  <h2>📦 Current Stock</h2>
+  <div>
+    <button id="gridViewBtn" class="view-btn active">🔳 Grid</button>
+    <button id="listViewBtn" class="view-btn">📋 List</button>
   </div>
 </div>
 
-<!-- =============== ITEM GRID =============== -->
-<section class="item-grid">
+{% if items %}
+<div id="catalog" class="catalog-grid">
   {% for it in items %}
-  <div class="item-card">
-
-    <!-- Top bar -->
-    <div class="card-top">
-      <div class="cost-pill">
-        <img src="{{ url_for('static', filename='catalog/container/cost.png') }}" alt="cost">
-        <span>{{ it.cost_stamps }}</span>
+  <a href="{{ url_for('admin_catalog_detail', item_id=it.id) }}" class="item-card {{ 'offline' if not it.active }}">
+    <div class="thumb" style="background-image:url('{{ it.image_url or url_for('static', filename='icons/catalog-app.png') }}');"></div>
+    <div class="meta">
+      <div class="title-row">
+        <strong>{{ it.name }}</strong>
+        <span class="badge {{ 'on' if it.active else 'off' }}">{{ 'Online' if it.active else 'Offline' }}</span>
       </div>
-      <button class="watch-btn" data-id="{{ it.id }}" onclick="toggleWatch(this)">
-        <img
-          src="{{ url_for('static', filename='catalog/' + ('binocularsb.png' if it.id in watch_ids else 'binocularsa.png')) }}"
-          data-a="{{ url_for('static', filename='catalog/binocularsa.png') }}"
-          data-b="{{ url_for('static', filename='catalog/binocularsb.png') }}"
-          alt="watch">
-      </button>
-    </div>
-
-    <!-- Catalog image -->
-    <div class="card-image" style="background-image:url('{{ it.image_url }}');"></div>
-
-    <!-- Info row -->
-    <div class="card-info">
-      <div class="text">
-        <h3>{{ it.name }}</h3>
-        <p>{{ it.description }}</p>
+      <div class="pill-row">
+        <span class="pill">🪙 {{ it.cost_stamps or 0 }}</span>
+        <span class="pill {{ 'low' if (it.stock or 0) <= 3 else '' }}">📦 {{ it.stock or 0 }}</span>
       </div>
-      <a class="trade-btn" href="{{ url_for('catalog_item', item_id=it.id) }}">
-        <img src="{{ url_for('static', filename='catalog/container/trade.PNG') }}" alt="trade">
-      </a>
+      {% if it.tags and it.tags|length %}
+      <div class="tags">
+        {% for t in it.tags %}
+        <span class="tag">#{{ t }}</span>
+        {% endfor %}
+      </div>
+      {% endif %}
     </div>
-
-    <!-- Footer -->
-    <div class="card-footer js-tag-row">
-      <span class="stock-pill">stock: {{ it.stock }}</span>
-      {% for t in it.tags %}
-        <span class="tag-chip">#{{ t }}</span>
-      {% endfor %}
-    </div>
-
-  </div>
+  </a>
   {% endfor %}
-</section>
-
-<!-- =============== WATCHLIST MODAL =============== -->
-<div id="watchlist-modal" class="modal hidden" style="position:fixed;inset:0;background:rgba(0,0,0,.42);display:flex;align-items:center;justify-content:center;z-index:50;">
-  <div class="modal-content" style="width:min(420px,92vw);background:#fff;border-radius:16px;padding:16px;">
-    <button onclick="toggleWatchlist()" class="close-btn" style="background:var(--blue);color:#fff;padding:8px 12px;border:none;border-radius:10px;cursor:pointer;float:right;">Close</button>
-    <h2>👀 Your Watchlist</h2>
-    <div id="watchlist-items">Loading...</div>
-  </div>
 </div>
+{% else %}
+<p>No catalog items yet.</p>
+{% endif %}
+
+<style>
+.catalog-hero { margin-bottom: 10px; }
+.catalog-title {
+  display:flex; align-items:center; gap:10px;
+  margin-bottom:6px; position:relative;
+}
+.icon-wrapper { position:relative; width:36px; height:36px; }
+.catalog-title img {
+  width:36px; height:36px; object-fit:contain;
+  transition:opacity .3s, transform .3s;
+}
+.catalog-title.fading img,
+.catalog-title.fading h2 {
+  opacity:0; transform:scale(.95);
+}
+.catalog-title h2 {
+  font-size:1.6em; margin:0; font-weight:700; color:#222;
+  transition:opacity .3s, transform .3s;
+}
+
+/* ✨ Shiny pulse overlay */
+.shine {
+  position:absolute; top:0; left:0;
+  width:100%; height:100%;
+  border-radius:50%;
+  opacity:0; pointer-events:none;
+}
+.icon-wrapper.pulse .shine {
+  animation:pulseShine .9s ease-out;
+}
+@keyframes pulseShine {
+  0%   { transform:scale(.5); opacity:.9; }
+  60%  { transform:scale(1.3); opacity:.5; }
+  100% { transform:scale(1.6); opacity:0; }
+}
+
+/* 💥 Category-based glow colors */
+.icon-wrapper[data-cat="Pins"]          .shine { background:radial-gradient(circle, rgba(255,215,0,0.8), transparent 70%); }   /* gold */
+.icon-wrapper[data-cat="Plushies"]      .shine { background:radial-gradient(circle, rgba(255,105,180,0.8), transparent 70%); } /* pink */
+.icon-wrapper[data-cat="TCG"]           .shine { background:radial-gradient(circle, rgba(0,191,255,0.8), transparent 70%); }   /* cyan */
+.icon-wrapper[data-cat="Keychains"]     .shine { background:radial-gradient(circle, rgba(255,140,0,0.8), transparent 70%); }   /* orange */
+.icon-wrapper[data-cat="Accessories"]   .shine { background:radial-gradient(circle, rgba(144,238,144,0.8), transparent 70%); } /* green */
+.icon-wrapper[data-cat="Games"]         .shine { background:radial-gradient(circle, rgba(186,85,211,0.8), transparent 70%); }  /* purple */
+.icon-wrapper[data-cat="Master Bundles"].shine { background:radial-gradient(circle, rgba(255,0,0,0.8), transparent 70%); }     /* red */
+.icon-wrapper[data-cat="default"]       .shine { background:radial-gradient(circle, rgba(255,255,255,0.7), transparent 70%); }  /* white */
+
+/* Other layout styles */
+.card { background:#fff; border-radius:10px; padding:14px; box-shadow:0 2px 6px rgba(0,0,0,0.08); margin-bottom:16px; }
+.toolbar { display:flex; justify-content:space-between; align-items:center; margin-top:18px; margin-bottom:10px; }
+.view-btn { border:none; background:#f4f7fa; padding:6px 10px; border-radius:6px; cursor:pointer; font-weight:600; margin-left:6px; }
+.view-btn.active { background:#3a8dde; color:#fff; }
+.catalog-grid { display:grid; grid-template-columns:1fr; gap:12px; }
+.catalog-list { display:block; }
+.catalog-list .item-card { display:flex; flex-direction:row; align-items:center; }
+@media(min-width:560px){ .catalog-grid{ grid-template-columns:1fr 1fr; } }
+@media(min-width:860px){ .catalog-grid{ grid-template-columns:1fr 1fr 1fr; } }
+.item-card {
+  background:#fff; border-radius:12px; overflow:hidden;
+  box-shadow:0 2px 8px rgba(0,0,0,0.08); display:flex; flex-direction:column;
+  text-decoration:none; color:inherit;
+}
+.item-card.offline { opacity:0.88; }
+.thumb { width:100%; height:150px; background:#eef3f8 center/cover no-repeat; flex-shrink:0; }
+.catalog-list .thumb { width:100px; height:100px; margin-right:12px; }
+.meta { padding:10px 12px; flex:1; }
+.title-row { display:flex; align-items:center; justify-content:space-between; }
+.badge { font-size:0.75em; padding:2px 8px; border-radius:999px; }
+.badge.on { background:#e7f3ff; color:#2563eb; }
+.badge.off { background:#f3f4f6; color:#6b7280; }
+.pill-row { display:flex; gap:8px; margin-top:6px; }
+.pill { background:#f4f7fa; border-radius:999px; padding:3px 8px; font-size:0.8em; }
+.pill.low { background:#fff5f5; color:#b91c1c; }
+.tags { margin-top:6px; display:flex; gap:6px; flex-wrap:wrap; }
+.tag { font-size:0.75em; background:#f4f4f5; padding:3px 6px; border-radius:6px; }
+</style>
 
 <script>
-/* ---------- Featured carousel ---------- */
-const track=document.querySelector(".carousel-track");
-const slides=document.querySelectorAll(".carousel-slide");
-const dots=document.querySelectorAll(".carousel-dots .dot");
-let currentIndex=0, interval=setInterval(nextSlide,6000);
-function updateCarousel(){ track.style.transform=`translateX(-${currentIndex*100}%)`; dots.forEach((d,i)=>d.classList.toggle("active",i===currentIndex)); }
-function nextSlide(){ currentIndex=(currentIndex+1)%slides.length; updateCarousel(); }
-function prevSlide(){ currentIndex=(currentIndex-1+slides.length)%slides.length; updateCarousel(); }
-document.querySelector(".carousel-next")?.addEventListener("click",()=>{nextSlide();resetTimer();});
-document.querySelector(".carousel-prev")?.addEventListener("click",()=>{prevSlide();resetTimer();});
-dots.forEach((dot,i)=>dot.addEventListener("click",()=>{currentIndex=i;updateCarousel();resetTimer();}));
-function resetTimer(){ clearInterval(interval); interval=setInterval(nextSlide,6000); }
-updateCarousel();
+document.addEventListener("DOMContentLoaded", () => {
+  // View mode switcher
+  const gridBtn = document.getElementById("gridViewBtn");
+  const listBtn = document.getElementById("listViewBtn");
+  const catalog = document.getElementById("catalog");
 
-/* ---------- Watchlist modal & toggle ---------- */
-function toggleWatchlist(){
-  const m=document.getElementById("watchlist-modal");
-  m.classList.toggle("hidden");
-  if(!m.classList.contains("hidden")) loadWatchlist();
-}
-function loadWatchlist(){
-  const c=document.getElementById("watchlist-items");
-  c.innerHTML="Loading...";
-  fetch("/watchlist").then(r=>r.json()).then(data=>{
-    if(!data.success){c.textContent="⚠️ Error loading watchlist.";return;}
-    if(data.count===0){c.textContent="📭 Your watchlist is empty.";return;}
-    c.innerHTML="";
-    data.items.forEach(item=>{
-      const row=document.createElement("div");
-      row.style.cssText="display:flex;align-items:center;gap:10px;background:#f9fafb;border-radius:10px;padding:10px;margin:6px 0;";
-      row.innerHTML=`
-        <div style="width:48px;height:48px;border-radius:8px;background:#eef3f8 center/cover no-repeat;background-image:url('${item.image_url}')"></div>
-        <div style="flex:1;"><strong>${item.name}</strong><div style="color:#6b7280;font-size:.9em;">🪙 ${item.cost_stamps} — 📦 ${item.stock}</div></div>
-        <button style="background:#fee2e2;color:#991b1b;border:none;border-radius:8px;padding:6px 10px;cursor:pointer;" onclick="toggleWatchFromModal('${item.id}')">Remove</button>`;
-      c.appendChild(row);
-    });
+  gridBtn.addEventListener("click", () => {
+    catalog.classList.add("catalog-grid");
+    catalog.classList.remove("catalog-list");
+    gridBtn.classList.add("active");
+    listBtn.classList.remove("active");
   });
-}
-function toggleWatchFromModal(id){
-  fetch(`/watchlist/toggle/${id}`,{method:"POST"}).then(r=>r.json()).then(data=>{
-    if(data.success){ loadWatchlist();
-      const img=document.querySelector(`.watch-btn[data-id='${id}'] img`);
-      if(img){ img.src = data.watched ? img.dataset.b : img.dataset.a; }
-    }
-  });
-}
-function toggleWatch(el){
-  const id=el.getAttribute("data-id");
-  const img=el.querySelector("img");
-  fetch(`/watchlist/toggle/${id}`,{method:"POST"}).then(r=>r.json()).then(data=>{
-    if(data.success){ img.src = data.watched ? img.dataset.b : img.dataset.a; }
-  });
-}
 
-/* ---------- Single-line tag clamp with “…” ---------- */
-function clampTagRow(row){
-  const maxWidth=row.clientWidth;
-  const chips=[...row.querySelectorAll(".tag-chip")];
-  if(!chips.length) return;
-  let used=row.querySelector(".stock-pill")?.offsetWidth||0;
-  let i=0;
-  while(i<chips.length && used + chips[i].offsetWidth + 36 < maxWidth){
-    used += chips[i].offsetWidth + 8; i++;
+  listBtn.addEventListener("click", () => {
+    catalog.classList.add("catalog-list");
+    catalog.classList.remove("catalog-grid");
+    listBtn.classList.add("active");
+    gridBtn.classList.remove("active");
+  });
+
+  // Category icon + title animation
+  const categorySelect = document.getElementById("categoryFilter");
+  const iconEl = document.getElementById("categoryIcon");
+  const titleEl = document.getElementById("categoryTitle");
+  const titleWrap = document.querySelector(".catalog-title");
+  const iconWrapper = document.querySelector(".icon-wrapper");
+
+  const iconMap = {
+    "Pins": "/static/icons/pins.png",
+    "Plushies": "/static/icons/plushies.png",
+    "TCG": "/static/icons/tcg.png",
+    "Keychains": "/static/icons/keychain.png",
+    "Accessories": "/static/icons/accessories.png",
+    "Games": "/static/icons/games.png",
+    "Master Bundles": "/static/icons/bundle.png"
+  };
+
+  function updateIconAndTitle() {
+    const val = categorySelect?.value || "";
+    const newSrc   = iconMap[val] || "/static/icons/tickstamp.png";
+    const newTitle = val || "All Items";
+
+    titleWrap.classList.add("fading");
+    setTimeout(() => {
+      iconEl.src = newSrc;
+      titleEl.textContent = newTitle;
+      titleWrap.classList.remove("fading");
+
+      // ✨ Pulse with category color
+      const cat = val || "default";
+      iconWrapper.dataset.cat = cat;
+      iconWrapper.classList.remove("pulse");
+      void iconWrapper.offsetWidth;  // restart animation
+      iconWrapper.classList.add("pulse");
+    }, 250);
   }
-  const hidden=chips.slice(i);
-  hidden.forEach(ch=>ch.style.display="none");
-  if(hidden.length){
-    const more=document.createElement("span");
-    more.className="more-chip";
-    more.textContent="…";
-    more.title=hidden.map(h=>h.textContent).join(" ");
-    more.addEventListener("click", ()=>{ hidden.forEach(h=>h.style.display="inline-flex"); more.remove(); });
-    row.appendChild(more);
-  }
-}
-window.addEventListener("load", ()=>{ document.querySelectorAll(".js-tag-row").forEach(clampTagRow); });
-window.addEventListener("resize", ()=>{ document.querySelectorAll(".js-tag-row").forEach(row=>{
-  row.querySelectorAll(".more-chip").forEach(m=>m.remove());
-  row.querySelectorAll(".tag-chip").forEach(t=>t.style.display="inline-flex");
-  clampTagRow(row);
-});});
 
-/* ---------- Catalog tools ---------- */
-const searchInput = document.getElementById("catalog-search");
-const filterSelect = document.getElementById("filter-select");
-const sortSelect = document.getElementById("sort-select");
-const itemGrid = document.querySelector(".item-grid");
-
-function applyFilters() {
-  const term = searchInput.value.toLowerCase();
-  const filter = filterSelect.value.toLowerCase();
-
-  document.querySelectorAll(".item-card").forEach(card => {
-    const name = card.querySelector("h3").textContent.toLowerCase();
-    const desc = card.querySelector("p").textContent.toLowerCase();
-    const tags = (card.querySelector(".card-footer")?.innerText || "").toLowerCase();
-
-    let matchesSearch = !term || name.includes(term) || desc.includes(term);
-    let matchesFilter = filter === "all" || tags.includes(filter);
-
-    card.style.display = (matchesSearch && matchesFilter) ? "" : "none";
-  });
-
-  // 🔄 Update the category title
-  const titleEl = document.getElementById("current-category");
-
-  if (term && (filter === "all" || !filter)) {
-    // ✅ If searching (and not filtering), show "Search results"
-    titleEl.textContent = "Search results";
-  } else if (filter === "all") {
-    titleEl.textContent = "Latest";
-  } else {
-    // Capitalize the first letter of the filter name
-    titleEl.textContent = filter.charAt(0).toUpperCase() + filter.slice(1);
-  }
-}
-
-function applySort() {
-  const sortVal = sortSelect.value;
-  const cards = Array.from(document.querySelectorAll(".item-card"));
-
-  cards.sort((a, b) => {
-    const costA = parseInt(a.querySelector(".cost-pill span").textContent) || 0;
-    const costB = parseInt(b.querySelector(".cost-pill span").textContent) || 0;
-    const stockA = parseInt(a.querySelector(".stock-pill").textContent.replace(/\D/g, "")) || 0;
-    const stockB = parseInt(b.querySelector(".stock-pill").textContent.replace(/\D/g, "")) || 0;
-
-    switch (sortVal) {
-      case "lowcost": return costA - costB;
-      case "highcost": return costB - costA;
-      case "stock": return stockB - stockA;
-      default: return 0; // "newest" is default (server-ordered)
-    }
-  });
-
-  // Reattach sorted cards
-  cards.forEach(c => itemGrid.appendChild(c));
-}
-
-// Event listeners
-searchInput.addEventListener("input", applyFilters);
-filterSelect.addEventListener("change", applyFilters);
-sortSelect.addEventListener("change", applySort);
-
+  updateIconAndTitle();
+  categorySelect?.addEventListener("change", updateIconAndTitle);
+});
 </script>
 
 {% endblock %}

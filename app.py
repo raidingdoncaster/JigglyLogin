@@ -599,25 +599,35 @@ def admin_login():
     username = request.form.get("username", "").strip()
     pin = request.form.get("pin", "").strip()
 
-    # Look up account in your Sheet / Supabase / table
-    r = supabase.table("sheet1").select("*").eq("trainer_username", username).limit(1).execute()
+    # Look up account in Supabase
+    try:
+        r = supabase.table("sheet1").select("*").ilike("trainer_username", username).limit(1).execute()
+    except Exception as e:
+        print("⚠️ Supabase admin_login query failed:", e)
+        flash("Database error — please try again later.", "error")
+        return redirect(url_for("admin_login"))
+
     if not r.data:
         flash("Trainer not found.", "error")
         return redirect(url_for("admin_login"))
 
     user = r.data[0]
-    if str(user.get("pin")) != pin:
+    # Compare hashed pin
+    if user.get("pin_hash") != hash_value(pin):
         flash("Incorrect PIN.", "error")
         return redirect(url_for("admin_login"))
 
-    if user.get("account_type") != "Admin":
+    # Check for admin privilege
+    if (user.get("account_type") or "").lower() != "admin":
         flash("You are not an admin.", "error")
         return redirect(url_for("home"))
 
-    # Success — log them in
+    # ✅ Success: Log them in
     session["trainer"] = user["trainer_username"]
     session["account_type"] = "Admin"
-    flash("Welcome back, Admin!", "success")
+    session.permanent = True
+
+    flash(f"Welcome back, Admin {user['trainer_username']}!", "success")
     return redirect(url_for("admin_dashboard"))
 
 # ====== Catalog images folder ======
