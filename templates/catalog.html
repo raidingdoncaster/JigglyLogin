@@ -67,7 +67,7 @@
 .icon-wrapper[data-cat="Keychains"] .shine{background:radial-gradient(circle,rgba(255,140,0,0.8),transparent 70%);}
 .icon-wrapper[data-cat="Accessories"] .shine{background:radial-gradient(circle,rgba(144,238,144,0.8),transparent 70%);}
 .icon-wrapper[data-cat="Games"] .shine{background:radial-gradient(circle,rgba(186,85,211,0.8),transparent 70%);}
-.icon-wrapper[data-cat="Master Bundles"] .shine{background:radial-gradient(circle,rgba(255,0,0,0.8),transparent 70%);}
+.icon-wrapper[data-cat="Bundles"] .shine{background:radial-gradient(circle,rgba(255,0,0,0.8),transparent 70%);}
 .icon-wrapper[data-cat="default"] .shine{background:radial-gradient(circle,rgba(255,255,255,0.7),transparent 70%);}
 
 /* SEARCH + FILTER BAR */
@@ -104,7 +104,7 @@
   <div class="catalog-icon"></div>
   <div class="catalog-title">
     <h1>Catalog</h1>
-    <p>Discover exclusive community rewards, merch, and digital codes you can unlock with your Passport stamps.</p>
+    <p>Trade in your stamps for community rewards, merch, and digital codes!</p>
     <a href="{{ url_for('dashboard') }}" class="back-link">&lt; back to dashboard</a>
   </div>
 </div>
@@ -141,7 +141,7 @@
 </div>
 
 <div class="category-tools">
-  <input type="search" id="catalog-search" placeholder="Search catalog...">
+  <input type="search" id="catalog-search" placeholder="Search...">
   <div class="category-actions">
     <select id="filter-select">
       <option value="all">All Categories</option>
@@ -151,7 +151,7 @@
       <option value="Keychains">Keychains</option>
       <option value="Accessories">Accessories</option>
       <option value="Games">Games</option>
-      <option value="Master Bundles">Bundles</option>
+      <option value="Bundles">Bundles</option>
     </select>
     <select id="sort-select">
       <option value="newest">Newest</option>
@@ -242,13 +242,13 @@ const iconEl=document.getElementById("categoryIcon");
 const iconWrap=document.querySelector(".icon-wrapper");
 const header=document.querySelector(".catalog-header");
 const iconMap={
-  "Pins":"/static/icons/pins.png",
-  "Plushies":"/static/icons/plushies.png",
-  "TCG":"/static/icons/tcg.png",
-  "Keychains":"/static/icons/keychain.png",
-  "Accessories":"/static/icons/accessories.png",
-  "Games":"/static/icons/games.png",
-  "Master Bundles":"/static/icons/bundle.png"
+  "Pins":"/static/catalog/pins.png",
+  "Plushies":"/static/catalog/plushies.png",
+  "TCG":"/static/catalog/tcg.png",
+  "Keychains":"/static/catalog/keychain.png",
+  "Accessories":"/static/catalog/accessories.png",
+  "Games":"/static/catalog/games.png",
+  "Master Bundles":"/static/catalog/bundle.png"
 };
 function updateIcon(val){
   const newSrc=iconMap[val]||"/static/icons/tickstamp.png";
