@@ -101,23 +101,22 @@
   </div>
 </div>
 
-<style>
-.widgets { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px; margin-bottom:24px; }
+.widgets { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; margin-bottom:24px; }
 .widget { background:#fff; padding:16px; border-radius:14px; box-shadow:0 10px 24px rgba(15,23,42,0.12); text-align:center; min-height:132px; display:flex; flex-direction:column; gap:12px; justify-content:center; align-items:center; }
 .widget h3 { margin:0; font-size:1em; color:#3a8dde; }
 .btn { display:inline-flex; align-items:center; justify-content:center; padding:8px 14px; background:#3a8dde; color:#fff; border-radius:999px; text-decoration:none; font-size:0.9em; font-weight:600; box-shadow:0 4px 12px rgba(58,141,222,0.28); }
 
 .explore { display:flex; flex-direction:column; gap:12px; }
-.explore-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; }
-.explore-card { background:#fff; height:140px; display:flex; flex-direction:column; align-items:center; justify-content:center; border-radius:16px; text-decoration:none; box-shadow:0 8px 20px rgba(15,23,42,0.12); transition:transform .18s ease, box-shadow .18s ease; }
-.explore-card:hover { transform:translateY(-2px); box-shadow:0 12px 26px rgba(15,23,42,0.14); }
-.explore-card img { width:clamp(68px,18vw,92px); height:clamp(68px,18vw,92px); }
-.explore-card span { margin-top:8px; font-size:0.9em; font-weight:600; color:#333; }
+.explore-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; }
+.explore-card { background:transparent; display:flex; flex-direction:column; align-items:center; justify-content:center; text-decoration:none; padding:10px 0; transition:transform .18s ease; }
+.explore-card:hover { transform:translateY(-2px); }
+.explore-card img { width:clamp(68px,18vw,92px); height:clamp(68px,18vw,92px); filter:drop-shadow(0 10px 18px rgba(15,23,42,0.18)); }
+.explore-card span { margin-top:8px; font-size:0.9em; font-weight:600; color:#333; text-shadow:0 6px 12px rgba(15,23,42,0.12); }
 
 @media(max-width:520px){
   .trainer-card-content{padding:18px;}
   .widgets{grid-template-columns:1fr;}
-  .explore-grid{grid-template-columns:repeat(auto-fit,minmax(140px,1fr));}
+  .explore-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
 }
 </style>
 
