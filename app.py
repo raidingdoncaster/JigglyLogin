@@ -1506,6 +1506,21 @@ def login():
     return render_template("login.html")
 
 # ====== Sign Up ======
+def _trainer_exists(trainer_name: str) -> bool:
+    """Return True if this trainer username already exists in the signup sheet."""
+    try:
+        records = sheet.get_all_records()
+    except Exception as exc:  # pragma: no cover - defensive logging for Sheets outages
+        print("⚠️ Unable to read signup sheet; assuming trainer is new:", exc)
+        return False
+
+    trainer_lc = (trainer_name or "").strip().lower()
+    for record in records:
+        if record.get("Trainer Username", "").strip().lower() == trainer_lc:
+            return True
+    return False
+
+
 @app.route("/signup", methods=["GET", "POST"])
 def signup():
     if request.method == "POST":
@@ -1544,7 +1559,7 @@ def detectname():
         return redirect(url_for("signup"))
 
     if request.method == "POST":
-    action = request.form.get("action")
+        action = request.form.get("action")
 
     if action == "confirm":
         edited_name = (request.form.get("trainer_name") or "").strip()
@@ -1559,7 +1574,7 @@ def detectname():
         # ✅ Prevent duplicate usernames
         all_users = sheet.get_all_records()
         for record in all_users:
-            if record.get("Trainer Username", "").lower() == edited_name.lower():
+            if _trainer_exists(details["trainer_name"]):
                 flash("This trainer name is already registered. Please log in instead.", "error")
                 session.pop("signup_details", None)
                 return redirect(url_for("home"))
@@ -1590,7 +1605,7 @@ def age():
             # ✅ Backend guard to prevent duplicates
             records = sheet.get_all_records()
             for r in records:
-                if r.get("Trainer Username", "").lower() == details["trainer_name"].lower():
+                if _trainer_exists(details["trainer_name"]):
                     flash("This trainer already exists. Please log in.", "error")
                     session.pop("signup_details", None)
                     return redirect(url_for("home"))
