@@ -3,14 +3,27 @@
 <h2>Confirm Trainer Name</h2>
 
 <p style="text-align: center;">
-    We detected your trainer name as:  
+    One, two, and...
     <strong>{{ trainer_name }}</strong>
 </p>
 
-<form action="{{ url_for('detectname') }}" method="post" style="text-align: center; margin-top: 1em;">
-    <p>Is this correct?</p>
-    <button type="submit" name="choice" value="yes" style="margin: 0.5em;">✅ Yes, continue</button>
-    <button type="submit" name="choice" value="no" style="margin: 0.5em;">❌ No, try again</button>
+<form action="{{ url_for('detectname') }}" method="post" style="max-width: 360px; margin: 1em auto; text-align: center;">
+    <p style="margin-bottom: 0.75em;">
+        Ta-Da! We detected your trainer name. Feel free to make changes if it doesn't look right.
+    </p>
+
+    <label for="trainer_name" style="display:block; font-weight: 600; margin-bottom: 0.5em;">Trainer Name</label>
+    <input id="trainer_name" name="trainer_name" type="text" value="{{ trainer_name }}" required autofocus
+           placeholder="Type the correct trainer name" style="width: 100%; padding: 0.6em; border-radius: 6px; border: 1px solid #ccc;">
+
+    <div style="display: flex; flex-direction: column; gap: 0.5em; margin-top: 1.25em;">
+        <button type="submit" name="action" value="confirm" style="padding: 0.6em;">
+            ✅ Looks good — continue
+        </button>
+        <button type="submit" name="action" value="retry" style="padding: 0.6em; background: #f6d5d5;">
+            ❌ Re-upload screenshot
+        </button>
+    </div>
 </form>
 
 <div class="links" style="text-align: center; margin-top: 1.5em;">

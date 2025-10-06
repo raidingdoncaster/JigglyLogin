@@ -1544,22 +1544,34 @@ def detectname():
         return redirect(url_for("signup"))
 
     if request.method == "POST":
-        choice = request.form.get("choice")
-        if choice == "yes":
-            # ✅ Prevent duplicate usernames
-            all_users = sheet.get_all_records()
-            for record in all_users:
-                if record.get("Trainer Username", "").lower() == details["trainer_name"].lower():
-                    flash("This trainer name is already registered. Please log in instead.", "error")
-                    session.pop("signup_details", None)
-                    return redirect(url_for("home"))
-            return redirect(url_for("age"))
-        else:
-            flash("Please upload a clearer screenshot with your trainer name visible.", "warning")
-            session.pop("signup_details", None)
-            return redirect(url_for("signup"))
+    action = request.form.get("action")
 
-    return render_template("detectname.html", trainer_name=details["trainer_name"])
+    if action == "confirm":
+        edited_name = (request.form.get("trainer_name") or "").strip()
+        if not edited_name:
+            flash("Trainer name cannot be empty. Please double-check it.", "error")
+            return redirect(url_for("detectname"))
+
+        # Update the cached details so later steps use the edited name
+        details["trainer_name"] = edited_name
+        session["signup_details"] = details
+
+        # ✅ Prevent duplicate usernames
+        all_users = sheet.get_all_records()
+        for record in all_users:
+            if record.get("Trainer Username", "").lower() == edited_name.lower():
+                flash("This trainer name is already registered. Please log in instead.", "error")
+                session.pop("signup_details", None)
+                return redirect(url_for("home"))
+        return redirect(url_for("age"))
+
+    if action == "retry":
+        flash("Please upload a clearer screenshot with your trainer name visible.", "warning")
+        session.pop("signup_details", None)
+        return redirect(url_for("signup"))
+
+    flash("Unexpected action. Please try again.", "warning")
+    return redirect(url_for("detectname"))
 
 # ====== Age Selection ======
 @app.route("/age", methods=["GET", "POST"])
