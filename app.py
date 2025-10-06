@@ -1563,11 +1563,11 @@ def detectname():
     if not details:
         flash("Session expired. Please try signing up again.", "warning")
         return redirect(url_for("signup"))
-    
-    action = request.form.get("action") if request.method == "POST" else None
-    if request.method == "POST":
-        action = request.form.get("action")
+    if request.method == "GET":
+        trainer_name = details.get("trainer_name", "")
+        return render_template("detectname.html", trainer_name=trainer_name)
 
+    action = request.form.get("action")
     if action == "confirm":
         edited_name = (request.form.get("trainer_name") or "").strip()
         if not edited_name:
