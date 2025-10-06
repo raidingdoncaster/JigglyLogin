@@ -2733,30 +2733,6 @@ def catalog_redeem(item_id):
         flash("Could not deduct stamps. Try again in a moment.", "error")
         return redirect(url_for("catalog_redeem", item_id=item_id))
 
-    # Decrement stock (only once)
-    try:
-        updated_stock = max(0, latest_stock - 1)
-        resp = (
-            supabase.table("catalog_items")
-            .update({"stock": updated_stock}, count="exact")
-            .eq("id", item_id)
-            .eq("stock", latest_stock)
-            .execute()
-        )
-        affected = getattr(resp, "count", None)
-        if affected is None:
-            data = getattr(resp, "data", None)
-            affected = len(data or [])
-        if not affected:
-            adjust_stamps(trainer, cost, "Catalog Redemption rollback", "award")
-            flash("Another trainer just grabbed the last one. Your stamps were returned.", "warning")
-            return redirect(url_for("catalog"))
-    except Exception as e:
-        print("⚠️ redeem: stock update failed:", e)
-        adjust_stamps(trainer, cost, "Catalog Redemption rollback", "award")
-        flash("Could not update stock. Your stamps were returned; try again shortly.", "error")
-        return redirect(url_for("catalog"))
-
     # Update balance mirror (best effort) now that stock is confirmed
     try:
         new_balance = max(0, balance - cost)

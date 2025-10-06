@@ -1,4 +1,9 @@
 {% extends "base.html" %}
+
+{% block page_settings %}
+  {% set container_class = 'is-cozy' %}
+{% endblock %}
+
 {% block content %}
 
 <!-- Trainer Card -->
@@ -33,14 +38,14 @@
 
 <style>
 .trainer-card { position: relative; background-size: cover; background-position: center;
-  border-radius: 12px; overflow: hidden; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); color: white; }
-.trainer-card-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-  background: linear-gradient(to bottom, rgba(0,0,0,0.45), rgba(0,0,0,0.15)); z-index: 0; }
-.trainer-card-content { position: relative; z-index: 1; padding: 20px; }
-.welcome-back { margin: 0; font-size: 0.9em; font-weight: 400; color: #eee; text-shadow: 0 1px 3px rgba(0,0,0,0.7); }
-.trainer-name { margin: 4px 0 10px 0; font-size: 1.6em; font-weight: 700; text-shadow: 0 2px 4px rgba(0,0,0,0.7); }
-.trainer-card p { margin: 6px 0; font-size: 0.95em; text-shadow: 0 1px 3px rgba(0,0,0,0.7); }
-.avatar { width:64px; height:64px; border-radius:50%; border:3px solid #fff; box-shadow: 0 2px 6px rgba(0,0,0,0.4); }
+  border-radius: 16px; overflow: hidden; margin-bottom: 20px; box-shadow: 0 8px 24px rgba(15,23,42,0.22); color: white; }
+.trainer-card-overlay { position: absolute; inset:0;
+  background: linear-gradient(180deg, rgba(9,14,35,0.62) 0%, rgba(9,14,35,0.18) 100%); z-index: 0; }
+.trainer-card-content { position: relative; z-index: 1; padding: 22px; display:flex; flex-direction:column; gap:12px; }
+.welcome-back { margin: 0; font-size: 0.9em; font-weight: 500; color: rgba(255,255,255,0.9); letter-spacing:0.04em; text-transform:uppercase; }
+.trainer-name { margin: 2px 0 6px 0; font-size: 1.6em; font-weight: 700; text-shadow: 0 2px 4px rgba(0,0,0,0.6); }
+.trainer-card p { margin: 4px 0; font-size: 0.95em; text-shadow: 0 1px 3px rgba(0,0,0,0.6); }
+.avatar { width:68px; height:68px; border-radius:50%; border:3px solid rgba(255,255,255,0.9); box-shadow: 0 2px 8px rgba(0,0,0,0.35); }
 .meetup-icon { width:22px; height:22px; vertical-align:middle; margin-right:6px; border-radius:50%; border:2px solid #fff; }
 .customize-link { font-size:0.9em; color:#ffdd57; text-decoration:none; font-weight:600; }
 </style>
@@ -97,15 +102,23 @@
 </div>
 
 <style>
-.widgets { display:flex; gap:12px; margin-bottom:20px; }
-.widget { flex:1; background:#fff; padding:12px; border-radius:10px; box-shadow:0 2px 6px rgba(0,0,0,0.1); text-align:center; min-height:120px; }
-.widget h3 { margin-top:0; font-size:1em; color:#3a8dde; }
-.btn { padding:6px 12px; background:#3a8dde; color:#fff; border-radius:6px; text-decoration:none; font-size:0.9em; }
+.widgets { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px; margin-bottom:24px; }
+.widget { background:#fff; padding:16px; border-radius:14px; box-shadow:0 10px 24px rgba(15,23,42,0.12); text-align:center; min-height:132px; display:flex; flex-direction:column; gap:12px; justify-content:center; align-items:center; }
+.widget h3 { margin:0; font-size:1em; color:#3a8dde; }
+.btn { display:inline-flex; align-items:center; justify-content:center; padding:8px 14px; background:#3a8dde; color:#fff; border-radius:999px; text-decoration:none; font-size:0.9em; font-weight:600; box-shadow:0 4px 12px rgba(58,141,222,0.28); }
 
-.explore-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-bottom:20px; }
-.explore-card { background:none; height:130px; display:flex; flex-direction:column; align-items:center; justify-content:center; border-radius:8px; text-decoration:none; }
-.explore-card img { width:90px; height:90px; }
-.explore-card span { margin-top:6px; font-size:0.9em; font-weight:600; color:#333; }
+.explore { display:flex; flex-direction:column; gap:12px; }
+.explore-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; }
+.explore-card { background:#fff; height:140px; display:flex; flex-direction:column; align-items:center; justify-content:center; border-radius:16px; text-decoration:none; box-shadow:0 8px 20px rgba(15,23,42,0.12); transition:transform .18s ease, box-shadow .18s ease; }
+.explore-card:hover { transform:translateY(-2px); box-shadow:0 12px 26px rgba(15,23,42,0.14); }
+.explore-card img { width:clamp(68px,18vw,92px); height:clamp(68px,18vw,92px); }
+.explore-card span { margin-top:8px; font-size:0.9em; font-weight:600; color:#333; }
+
+@media(max-width:520px){
+  .trainer-card-content{padding:18px;}
+  .widgets{grid-template-columns:1fr;}
+  .explore-grid{grid-template-columns:repeat(auto-fit,minmax(140px,1fr));}
+}
 </style>
 
 {% endblock %}

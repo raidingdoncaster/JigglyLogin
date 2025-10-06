@@ -1,18 +1,29 @@
 {% extends "base.html" %}
+
+{% block page_settings %}
+  {% set container_class = 'is-cozy' %}
+{% endblock %}
+
 {% block content %}
-<div class="auth-shell">
-  <section class="auth-card" style="text-align:center;">
+<div class="auth-shell auth-shell--center">
+  <section class="auth-card auth-card--center">
     <h2>How old are you?</h2>
     <p>Please choose your age group so we can set up the right experience.</p>
 
-    <form action="{{ url_for('age') }}" method="post" class="auth-links" style="justify-content:center;margin-top:12px;">
+    <form action="{{ url_for('age') }}" method="post" class="auth-links auth-links--stack">
       <button type="submit" name="age_choice" value="13plus" class="auth-btn auth-btn--primary">👤 I am 13 or older</button>
       <button type="submit" name="age_choice" value="under13" class="auth-btn auth-btn--secondary">🧒 I am 12 or younger</button>
     </form>
 
-    <div class="auth-links" style="margin-top:16px;">
+    <div class="auth-links">
       <a href="{{ url_for('detectname') }}" class="auth-btn auth-btn--ghost">⬅ Back</a>
     </div>
   </section>
 </div>
+
+<style>
+.auth-shell--center{align-items:center;}
+.auth-card--center{text-align:center;gap:18px;}
+.auth-links--stack{justify-content:center;gap:12px;}
+</style>
 {% endblock %}

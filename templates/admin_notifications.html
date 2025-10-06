@@ -1,4 +1,9 @@
 {% extends "base.html" %}
+
+{% block page_settings %}
+  {% set container_class = 'is-wide' %}
+{% endblock %}
+
 {% block content %}
 
 <h1>📢 Notifications Center</h1>
@@ -29,42 +34,56 @@
 
 <!-- Recent Notifications -->
 <h2>🗂️ Recent Notifications</h2>
-<table class="stats-table">
-  <thead>
-    <tr>
-      <th>Sent</th>
-      <th>Audience</th>
-      <th>Subject</th>
-      <th>Message</th>
-    </tr>
-  </thead>
-  <tbody>
-    {% for n in notifications %}
-    <tr>
-      <td>{{ n.sent_at|to_date }}</td>
-      <td>{{ n.audience }}</td>
-      <td>{{ n.subject }}</td>
-      <td>{{ n.message }}</td>
-    </tr>
-    {% else %}
-    <tr><td colspan="4">No notifications yet.</td></tr>
-    {% endfor %}
-  </tbody>
-</table>
+<div class="table-scroll">
+  <table class="stats-table">
+    <thead>
+      <tr>
+        <th>Sent</th>
+        <th>Audience</th>
+        <th>Subject</th>
+        <th>Message</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for n in notifications %}
+      <tr>
+        <td>{{ n.sent_at|to_date }}</td>
+        <td>{{ n.audience }}</td>
+        <td>{{ n.subject }}</td>
+        <td>{{ n.message }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="4">No notifications yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
 
 <style>
 .notif-form {
-  background:#fff; padding:15px; border-radius:10px; margin-bottom:20px;
-  box-shadow:0 2px 6px rgba(0,0,0,0.1);
+  background:#fff; padding:20px; border-radius:16px; margin-bottom:24px;
+  box-shadow:0 10px 24px rgba(15,23,42,0.12);
 }
-.notif-form label { display:block; margin-top:10px; font-weight:600; }
+.notif-form form { display:grid; gap:14px; }
+.notif-form label { font-weight:600; font-size:0.9rem; }
 .notif-form input, .notif-form select, .notif-form textarea {
-  width:100%; padding:8px; margin-top:5px; border:1px solid #ccc; border-radius:6px;
+  width:100%; padding:10px 12px; border:1px solid #d7dbe6; border-radius:12px;
+  font-size:0.95rem; transition:border-color .2s ease, box-shadow .2s ease;
+}
+.notif-form input:focus, .notif-form select:focus, .notif-form textarea:focus {
+  outline:none; border-color:#3a8dde; box-shadow:0 0 0 3px rgba(58,141,222,0.2);
 }
 .notif-form button {
-  margin-top:12px; padding:10px 15px; background:#3a8dde; color:#fff;
-  border:none; border-radius:6px; font-weight:600; cursor:pointer;
+  justify-self:flex-start; margin-top:4px; padding:10px 18px; background:#3a8dde; color:#fff;
+  border:none; border-radius:999px; font-weight:600; cursor:pointer; box-shadow:0 8px 20px rgba(58,141,222,0.25);
 }
+
+.table-scroll { overflow-x:auto; margin-top:16px; border-radius:16px; box-shadow:0 8px 20px rgba(15,23,42,0.12); }
+.stats-table { width:100%; border-collapse:separate; border-spacing:0; min-width:480px; }
+.stats-table thead th { text-align:left; font-size:0.85rem; font-weight:700; padding:12px 14px; background:#f1f5f9; color:#1f2937; }
+.stats-table tbody td { padding:12px 14px; border-top:1px solid #e2e8f0; font-size:0.9rem; color:#334155; }
+.stats-table tbody tr:nth-child(even){ background:#f8fafc; }
+.stats-table tbody tr:hover{ background:#eef2ff; }
 </style>
 
 {% endblock %}

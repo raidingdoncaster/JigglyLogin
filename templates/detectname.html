@@ -1,17 +1,22 @@
 {% extends "base.html" %}
-{% block content %}
-<div class="auth-shell">
-  <section class="auth-card">
-    <h2>Confirm trainer name</h2>
-    <p style="text-align:center;">One, two, and... <strong>{{ trainer_name }}</strong></p>
 
-    <form action="{{ url_for('detectname') }}" method="post" class="auth-form" style="max-width:360px;margin:0 auto;">
-      <p style="text-align:center;">We detected your trainer name from the screenshot. Adjust it if something looks off.</p>
+{% block page_settings %}
+  {% set container_class = 'is-cozy' %}
+{% endblock %}
+
+{% block content %}
+<div class="auth-shell auth-shell--center">
+  <section class="auth-card auth-card--center">
+    <h2>Confirm trainer name</h2>
+    <p>One, two, and... <strong>{{ trainer_name }}</strong></p>
+
+    <form action="{{ url_for('detectname') }}" method="post" class="auth-form auth-form--compact">
+      <p class="helper-copy">We detected your trainer name from the screenshot. Adjust it if something looks off.</p>
 
       <label class="auth-label" for="trainer_name">Trainer name</label>
       <input id="trainer_name" class="auth-input" name="trainer_name" type="text" value="{{ trainer_name }}" placeholder="Type the correct trainer name" required autofocus>
 
-      <div class="auth-links" style="margin-top:12px;">
+      <div class="auth-links auth-links--stack">
         <button type="submit" name="action" value="confirm" class="auth-btn auth-btn--primary">✅ Looks good — continue</button>
         <button type="submit" name="action" value="retry" class="auth-btn auth-btn--ghost">❌ Re-upload screenshot</button>
       </div>
@@ -22,4 +27,13 @@
     </div>
   </section>
 </div>
+
+<style>
+.auth-shell--center{align-items:center;}
+.auth-card--center{text-align:center;gap:18px;}
+.auth-card--center p{margin:0;}
+.auth-form--compact{max-width:360px;margin:0 auto;gap:16px;}
+.helper-copy{text-align:center;color:#475569;font-size:0.9rem;}
+.auth-links--stack{justify-content:center;gap:12px;}
+</style>
 {% endblock %}

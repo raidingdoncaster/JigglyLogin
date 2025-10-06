@@ -1,12 +1,36 @@
 {% extends "base.html" %}
 {% set show_back = true %}
-{% block content %}
-<h2>🏆 Recently Claimed Prizes</h2>
-<p>Trainer: {{ trainer }}</p>
 
-<ul>
-    {% for prize in prizes %}
-        <li>{{ prize.item }} — {{ prize.date }}</li>
-    {% endfor %}
-</ul>
+{% block page_settings %}
+  {% set container_class = 'is-cozy' %}
+{% endblock %}
+
+{% block content %}
+<div class="prize-history">
+  <h2>🏆 Recently Claimed Prizes</h2>
+  <p class="prize-history__meta">Trainer: <strong>{{ trainer }}</strong></p>
+
+  {% if prizes %}
+    <ul class="prize-list">
+      {% for prize in prizes %}
+        <li class="prize-card">
+          <span class="prize-card__item">{{ prize.item }}</span>
+          <span class="prize-card__date">{{ prize.date }}</span>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="empty-state">No prize redemptions yet. Redeem something from the catalog to see it here.</p>
+  {% endif %}
+</div>
+
+<style>
+.prize-history{display:flex;flex-direction:column;gap:16px;}
+.prize-history__meta{margin:0;color:#475569;}
+.prize-list{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:12px;}
+.prize-card{display:flex;justify-content:space-between;align-items:center;gap:16px;background:#fff;border-radius:16px;padding:14px 18px;box-shadow:0 10px 24px rgba(15,23,42,0.12);font-weight:600;}
+.prize-card__item{color:#1f2937;}
+.prize-card__date{color:#64748b;font-size:0.9rem;}
+.empty-state{color:#64748b;font-weight:600;}
+</style>
 {% endblock %}

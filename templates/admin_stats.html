@@ -1,4 +1,9 @@
 {% extends "base.html" %}
+
+{% block page_settings %}
+  {% set container_class = 'is-wide' %}
+{% endblock %}
+
 {% block content %}
 
 <h1>📊 RDAB Stats</h1>
@@ -39,48 +44,52 @@
 <!-- Top Meetups -->
 <h2>🏆 Top Attended Meet-ups</h2>
 <canvas id="topMeetupsChart" height="200"></canvas>
-<table class="stats-table">
-  <thead>
-    <tr>
-      <th>Meet-up</th>
-      <th>Date</th>
-      <th>Attendances</th>
-    </tr>
-  </thead>
-  <tbody>
-    {% for m in top_meetups %}
-    <tr>
-      <td>{{ m.name }}</td>
-      <td>{{ m.date|to_date }}</td>
-      <td>{{ m.count }}</td>
-    </tr>
-    {% else %}
-    <tr><td colspan="3">No data available.</td></tr>
-    {% endfor %}
-  </tbody>
-</table>
+<div class="table-scroll">
+  <table class="stats-table">
+    <thead>
+      <tr>
+        <th>Meet-up</th>
+        <th>Date</th>
+        <th>Attendances</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for m in top_meetups %}
+      <tr>
+        <td>{{ m.name }}</td>
+        <td>{{ m.date|to_date }}</td>
+        <td>{{ m.count }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="3">No data available.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
 
 <!-- Top Trainers -->
 <h2>💪 Top Trainers by Attendance</h2>
 <canvas id="topTrainersChart" height="200"></canvas>
-<table class="stats-table">
-  <thead>
-    <tr>
-      <th>Trainer</th>
-      <th>Attendances</th>
-    </tr>
-  </thead>
-  <tbody>
-    {% for t in top_trainers %}
-    <tr>
-      <td>{{ t.trainer }}</td>
-      <td>{{ t.count }}</td>
-    </tr>
-    {% else %}
-    <tr><td colspan="2">No data available.</td></tr>
-    {% endfor %}
-  </tbody>
-</table>
+<div class="table-scroll">
+  <table class="stats-table">
+    <thead>
+      <tr>
+        <th>Trainer</th>
+        <th>Attendances</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for t in top_trainers %}
+      <tr>
+        <td>{{ t.trainer }}</td>
+        <td>{{ t.count }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="2">No data available.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
 
 <!-- Growth Trends -->
 <h2>📈 Growth Trends</h2>
@@ -94,55 +103,21 @@
 <canvas id="accountChart" height="200"></canvas>
 
 <style>
-.stats-summary {
-  display:flex;
-  flex-wrap:wrap;
-  gap:12px;
-  margin-bottom:20px;
-}
-.stat-card {
-  flex:1;
-  min-width:120px;
-  background:#fff;
-  border-radius:10px;
-  padding:15px;
-  text-align:center;
-  box-shadow:0 2px 6px rgba(0,0,0,0.1);
-}
-.stat-card h3 { margin:0; font-size:1.6em; color:#3a8dde; }
-.stat-card p { margin:6px 0 0; font-size:0.9em; color:#555; }
+.stats-summary {display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:24px;}
+.stat-card {background:#fff;border-radius:16px;padding:18px;text-align:center;box-shadow:0 10px 24px rgba(15,23,42,0.12);}
+.stat-card h3 { margin:0; font-size:1.6em; color:#1d4ed8; }
+.stat-card p { margin:6px 0 0; font-size:0.9em; color:#64748b; }
 
-.stats-table {
-  width:100%;
-  border-collapse:collapse;
-  margin:15px 0;
-}
-.stats-table th, .stats-table td {
-  padding:10px;
-  border:1px solid #ddd;
-  text-align:left;
-}
-.stats-table th {
-  background:#f4f7fa;
-  color:#333;
-}
-.highlight-grid {
-  display:flex;
-  gap:12px;
-  margin-bottom:20px;
-}
-.highlight {
-  flex:1;
-  background:#fff;
-  padding:12px;
-  border-radius:8px;
-  text-align:center;
-  box-shadow:0 2px 6px rgba(0,0,0,0.1);
-}
-.highlight strong {
-  font-size:1.3em;
-  color:#3a8dde;
-}
+.highlight-grid {display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:24px;}
+.highlight {background:#fff;padding:18px;border-radius:16px;text-align:center;box-shadow:0 10px 24px rgba(15,23,42,0.12);}
+.highlight strong { font-size:1.3em; color:#2563eb; }
+
+.table-scroll{overflow-x:auto;border-radius:16px;box-shadow:0 10px 24px rgba(15,23,42,0.12);margin:16px 0;}
+.stats-table { width:100%; border-collapse:separate; border-spacing:0; min-width:520px; }
+.stats-table th { text-align:left; font-size:0.85rem; font-weight:700; padding:12px 14px; background:#f1f5f9; color:#1f2937; }
+.stats-table td { padding:12px 14px; border-top:1px solid #e2e8f0; font-size:0.9rem; color:#334155; }
+.stats-table tbody tr:nth-child(even){ background:#f8fafc; }
+.stats-table tbody tr:hover{ background:#eef2ff; }
 </style>
 
 <!-- Chart.js -->

@@ -1,4 +1,9 @@
 {% extends "base.html" %}
+
+{% block page_settings %}
+  {% set container_class = 'is-wide' %}
+{% endblock %}
+
 {% block content %}
 <div style="text-align:center; padding:30px;">
   <h2>{{ title }}</h2>

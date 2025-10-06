@@ -1,4 +1,9 @@
 {% extends "base.html" %}
+
+{% block page_settings %}
+  {% set container_class = 'is-wide' %}
+{% endblock %}
+
 {% block content %}
 
 <h1>📅 Catalog Meetup Manager</h1>
@@ -52,22 +57,22 @@
 {% endif %}
 
 <style>
-.card { background:#fff; border-radius:10px; padding:14px; box-shadow:0 2px 6px rgba(0,0,0,0.08); margin-bottom:16px; }
-.grid.two { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.card { background:#fff; border-radius:14px; padding:18px; box-shadow:0 8px 20px rgba(15,23,42,0.12); margin-bottom:20px; }
+.grid.two { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:14px; }
 .grid.two .colspan { grid-column:1/-1; }
 .actions { text-align:right; }
-.actions button { background:#3a8dde; color:#fff; border:none; padding:8px 12px; border-radius:6px; font-weight:600; cursor:pointer; }
+.actions button { background:#3a8dde; color:#fff; border:none; padding:10px 16px; border-radius:999px; font-weight:600; cursor:pointer; box-shadow:0 6px 16px rgba(58,141,222,0.25); }
 
-.meetup-list { display:flex; flex-direction:column; gap:10px; margin-top:15px; }
-.meetup-card { background:#fff; border-radius:8px; padding:10px 12px; box-shadow:0 2px 6px rgba(0,0,0,0.08); display:flex; flex-direction:column; gap:6px; }
+.meetup-list { display:flex; flex-direction:column; gap:12px; margin-top:18px; }
+.meetup-card { background:#fff; border-radius:16px; padding:16px; box-shadow:0 8px 20px rgba(15,23,42,0.12); display:flex; flex-direction:column; gap:10px; }
 .meetup-card.inactive { opacity:0.7; }
-.meetup-card .meta p { margin:2px 0; font-size:0.85em; color:#555; }
-.badge { font-size:0.75em; padding:2px 8px; border-radius:999px; }
+.meetup-card .meta p { margin:2px 0; font-size:0.9em; color:#555; }
+.badge { font-size:0.75em; padding:4px 10px; border-radius:999px; }
 .badge.on { background:#e7f3ff; color:#2563eb; }
 .badge.off { background:#f3f4f6; color:#6b7280; }
 .inline-form { margin-top:4px; }
-.inline-form .check.small { font-size:0.85em; }
-.danger { background:#ef4444; color:#fff; border:none; padding:5px 10px; border-radius:6px; font-weight:600; cursor:pointer; }
+.inline-form .check.small { font-size:0.9em; }
+.danger { background:#ef4444; color:#fff; border:none; padding:10px 16px; border-radius:999px; font-weight:600; cursor:pointer; box-shadow:0 6px 18px rgba(239,68,68,0.25); }
 </style>
 
 {% endblock %}

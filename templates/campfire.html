@@ -1,11 +1,16 @@
 {% extends "base.html" %}
-{% block content %}
-<div class="auth-shell">
-  <section class="auth-card">
-    <h2 style="text-align:center;">Campfire username</h2>
-    <p style="text-align:center;">Since you are <strong>13 or older</strong>, link your Campfire username so we can connect your check-ins and reward history.</p>
 
-    <form action="{{ url_for('campfire') }}" method="post" class="auth-form" style="max-width:340px;margin:0 auto;">
+{% block page_settings %}
+  {% set container_class = 'is-cozy' %}
+{% endblock %}
+
+{% block content %}
+<div class="auth-shell auth-shell--center">
+  <section class="auth-card auth-card--narrow">
+    <h2>Campfire username</h2>
+    <p>Since you are <strong>13 or older</strong>, link your Campfire username so we can connect your check-ins and reward history.</p>
+
+    <form action="{{ url_for('campfire') }}" method="post" class="auth-form auth-form--compact">
       <label class="auth-label" for="campfire_username">Campfire username</label>
       <input id="campfire_username" class="auth-input" type="text" name="campfire_username" placeholder="e.g. @Trainer123" required>
 
@@ -21,4 +26,11 @@
     </div>
   </section>
 </div>
+
+<style>
+.auth-shell--center{align-items:center;}
+.auth-card--narrow{text-align:center;gap:18px;}
+.auth-card--narrow p{margin:0;}
+.auth-form--compact{max-width:340px;margin:0 auto;}
+</style>
 {% endblock %}

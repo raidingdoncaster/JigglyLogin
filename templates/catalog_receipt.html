@@ -1,4 +1,9 @@
 {% extends "base.html" %}
+
+{% block page_settings %}
+  {% set container_class = 'is-cozy' %}
+{% endblock %}
+
 {% block content %}
 
 <div class="item-card-detail">
@@ -43,17 +48,19 @@
 </div>
 
 <style>
-.item-card-detail {background:#fff;border-radius:16px;padding:16px;box-shadow:0 2px 10px rgba(0,0,0,.08);max-width:600px;margin:0 auto;display:flex;flex-direction:column;gap:14px;}
-.receipt-header {display:flex;justify-content:space-between;align-items:center;}
-.status {font-size:.85em;padding:4px 10px;border-radius:999px;}
+.item-card-detail {background:#fff;border-radius:18px;padding:22px;box-shadow:0 12px 28px rgba(15,23,42,0.14);display:flex;flex-direction:column;gap:18px;}
+.receipt-header {display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;}
+.status {font-size:.85em;padding:4px 12px;border-radius:999px;font-weight:600;}
 .status.pending {background:#fff7ed;color:#9a3412;}
 .status.fulfilled {background:#e8f7ef;color:#065f46;}
 .status.cancelled {background:#fee2e2;color:#991b1b;}
-.item-thumb {position:relative;width:100%;height:200px;border-radius:14px;background:#eef3f8 center/cover no-repeat;}
+.item-thumb {position:relative;width:100%;height:200px;border-radius:18px;background:#eef3f8 center/cover no-repeat;}
 .cost-badge {position:absolute;top:8px;left:8px;display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.9);padding:2px 6px;border-radius:12px;font-weight:bold;}
 .cost-badge img {width:24px;height:24px;}
-.section {border-top:1px dashed #ddd;padding-top:10px;}
-.back-btn {background:#eef2ff;color:#3a8dde;padding:8px 12px;border-radius:8px;text-decoration:none;font-weight:600;}
+.section {border-top:1px dashed #dde3f3;padding-top:14px;color:#334155;text-align:left;}
+.section h3{margin:0 0 8px;font-size:1em;color:#1d4ed8;}
+.section p{margin:4px 0;}
+.back-btn {background:#eef2ff;color:#1d4ed8;padding:10px 18px;border-radius:999px;text-decoration:none;font-weight:600;display:inline-flex;align-items:center;gap:6px;box-shadow:0 8px 20px rgba(29,78,216,0.18);}
 </style>
 
 {% endblock %}
