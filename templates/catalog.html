@@ -115,12 +115,48 @@
 }
 .bottom-bar button img{width:24px;height:24px;object-fit:contain;}
 
-/* WATCHLIST MODAL (unchanged) */
-#watchlist-modal .modal-content{
-  width:min(370px,90vw);
-  background:#fff;border-radius:16px;padding:16px 14px 46px;
-  position:relative;box-shadow:0 6px 20px rgba(0,0,0,0.25);
+/* WATCHLIST MODAL */
+#watchlist-modal{
+  position:fixed;inset:0;background:rgba(15,23,42,0.45);
+  display:flex;align-items:center;justify-content:center;z-index:120;
 }
+#watchlist-modal.hidden{display:none;}
+.watchlist-modal{
+  position:relative;
+  width:min(420px,92vw);
+  background:linear-gradient(160deg,#ffffff 0%,#e8f0ff 65%,#dfe7ff 100%);
+  border-radius:22px;
+  padding:24px 22px 26px;
+  box-shadow:0 22px 50px rgba(15,23,42,0.35);
+  display:flex;
+  flex-direction:column;
+  gap:18px;
+}
+.watchlist-head{display:flex;flex-direction:column;gap:6px;}
+.watchlist-head h2{margin:0;font-size:1.5rem;color:#0f172a;}
+.watchlist-count{margin:4px 0 0;font-weight:600;color:#1d4ed8;}
+.watchlist-note{margin:2px 0 0;color:#475569;font-size:0.85rem;}
+.watchlist-list{display:flex;flex-direction:column;gap:14px;max-height:60vh;overflow-y:auto;padding-right:4px;}
+.watchlist-list::-webkit-scrollbar{width:6px;}
+.watchlist-list::-webkit-scrollbar-thumb{background:rgba(29,78,216,0.3);border-radius:999px;}
+.watchlist-empty,.watchlist-loading{background:rgba(241,245,249,0.9);border-radius:16px;padding:18px;text-align:center;color:#475569;font-weight:600;line-height:1.5;}
+.watchlist-card{display:flex;align-items:center;gap:14px;background:#fff;border-radius:18px;padding:14px;box-shadow:0 10px 26px rgba(15,23,42,0.15);}
+.watch-thumb{width:70px;height:70px;border-radius:16px;background:#eef3f8 center/cover no-repeat;flex-shrink:0;}
+.watch-details{flex:1;display:flex;flex-direction:column;gap:10px;}
+.watch-title{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+.watch-title h3{margin:0;font-size:1rem;color:#0f172a;line-height:1.2;}
+.watch-remove{background:transparent;border:1px solid rgba(239,68,68,0.4);color:#b91c1c;border-radius:999px;padding:4px 10px;font-size:0.75rem;font-weight:600;cursor:pointer;transition:background .2s ease, color .2s ease, border-color .2s ease;}
+.watch-remove:hover{background:#fee2e2;border-color:#fca5a5;color:#991b1b;}
+.watch-meta{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+.cost-pill--small{padding:3px 8px;}
+.cost-pill--small img{height:18px;}
+.cost-pill--small span{font-size:0.85rem;}
+.stock-pill--small{padding:3px 8px;font-size:0.75rem;}
+.tag-chip--small{font-size:0.75rem;padding:3px 6px;}
+.watch-view{align-self:stretch;display:inline-flex;align-items:center;justify-content:center;width:94px;padding:10px 12px;background:#2563eb;color:#fff;text-decoration:none;border-radius:14px;font-weight:600;transition:transform .2s ease, box-shadow .2s ease;}
+.watch-view:hover{transform:translateY(-1px);box-shadow:0 12px 26px rgba(37,99,235,0.25);}
+.close-circle{position:absolute;top:12px;right:12px;background:rgba(15,23,42,0.08);border:none;border-radius:50%;width:32px;height:32px;font-size:1.2rem;line-height:1;color:#0f172a;cursor:pointer;transition:background .2s ease;}
+.close-circle:hover{background:rgba(15,23,42,0.2);}
 </style>
 
 <!-- HERO -->
@@ -237,11 +273,15 @@
 </section>
 
 <!-- WATCHLIST MODAL -->
-<div id="watchlist-modal" class="modal hidden" style="position:fixed;inset:0;background:rgba(0,0,0,.42);display:flex;align-items:center;justify-content:center;z-index:50;">
-  <div class="modal-content">
-    <h2>👀 Your Watchlist</h2>
-    <div id="watchlist-items">Loading...</div>
-    <button class="close-circle" onclick="toggleWatchlist()">×</button>
+<div id="watchlist-modal" class="modal hidden">
+  <div class="watchlist-modal">
+    <button class="close-circle" type="button" onclick="toggleWatchlist()">×</button>
+    <header class="watchlist-head">
+      <h2>👀 Your Watchlist</h2>
+      <p id="watchlist-count" class="watchlist-count"></p>
+      <p class="watchlist-note">Save up to {{ watchlist_limit }} catalog items to revisit them quickly.</p>
+    </header>
+    <div id="watchlist-items" class="watchlist-list">Loading...</div>
   </div>
 </div>
 
@@ -311,31 +351,171 @@ if(track&&slides.length){
 }
 
 /* --- Watchlist --- */
-function toggleWatchlist(){const m=document.getElementById("watchlist-modal");m.classList.toggle("hidden");if(!m.classList.contains("hidden"))loadWatchlist();}
-function loadWatchlist(){
-  const c=document.getElementById("watchlist-items");
-  c.innerHTML="Loading...";
-  fetch("/watchlist").then(r=>r.json()).then(data=>{
-    if(!data.success){c.textContent="⚠️ Error loading watchlist.";return;}
-    if(data.count===0){c.textContent="📭 Your watchlist is empty.";return;}
-    c.innerHTML="";
-    data.items.forEach(item=>{
-      const row=document.createElement("div");
-      row.className="watchlist-item";
-      row.innerHTML=`
-        <button class="remove-btn" onclick="toggleWatchFromModal('${item.id}')">×</button>
-        <div style="width:48px;height:48px;border-radius:8px;background:#eef3f8 center/cover no-repeat;background-image:url('${item.image_url}')"></div>
-        <div style="flex:1;">
-          <strong>${item.name}</strong>
-          <div style="color:#6b7280;font-size:.9em;">🪙 ${item.cost_stamps} — 📦 ${item.stock}</div>
-        </div>
-        <button class="go-btn" onclick="window.location='${window.location.origin}/catalog/item/${item.id}'">➡️</button>`;
-      c.appendChild(row);
-    });
-  });
+const WATCHLIST_LIMIT = {{ watchlist_limit }};
+const watchlistModal = document.getElementById("watchlist-modal");
+const watchlistContainer = document.getElementById("watchlist-items");
+const watchlistCountEl = document.getElementById("watchlist-count");
+const stamperIcon = "{{ url_for('static', filename='passport/stamper.png') }}";
+
+function setWatchlistCount(count) {
+  if (watchlistCountEl) {
+    watchlistCountEl.textContent = `${count}/${WATCHLIST_LIMIT} saved`;
+  }
 }
-function toggleWatchFromModal(id){fetch(`/watchlist/toggle/${id}`,{method:"POST"}).then(r=>r.json()).then(data=>{if(data.success){loadWatchlist();const img=document.querySelector(`.watch-btn[data-id='${id}'] img`);if(img){img.src=data.watched?img.dataset.b:img.dataset.a;}}});}
-function toggleWatch(el){const id=el.getAttribute("data-id");const img=el.querySelector("img");fetch(`/watchlist/toggle/${id}`,{method:"POST"}).then(r=>r.json()).then(data=>{if(data.success){img.src=data.watched?img.dataset.b:img.dataset.a;}});}
+
+function renderWatchlistMessage(message, count) {
+  if (typeof count === "number") setWatchlistCount(count);
+  if (!watchlistContainer) return;
+  watchlistContainer.innerHTML = "";
+  const box = document.createElement("div");
+  box.className = message.includes("Loading") ? "watchlist-loading" : "watchlist-empty";
+  box.innerHTML = message;
+  watchlistContainer.appendChild(box);
+}
+
+function toggleWatchlist() {
+  if (!watchlistModal) return;
+  const willOpen = watchlistModal.classList.contains("hidden");
+  watchlistModal.classList.toggle("hidden");
+  document.body.style.overflow = willOpen ? "hidden" : "";
+  if (willOpen) {
+    renderWatchlistMessage("Loading…");
+    loadWatchlist();
+  }
+}
+
+function loadWatchlist() {
+  if (!watchlistContainer) return;
+  fetch("/watchlist")
+    .then(r => r.json())
+    .then(data => {
+      if (!data.success) {
+        renderWatchlistMessage("⚠️ Error loading watchlist.");
+        return;
+      }
+      const limit = Number(data.limit) || WATCHLIST_LIMIT;
+      const count = Number(data.count) || 0;
+      setWatchlistCount(count);
+      if (count === 0) {
+        renderWatchlistMessage(`📭 Your watchlist is empty.<br>Add up to ${limit} catalog items to find them fast.`, count);
+        return;
+      }
+      watchlistContainer.innerHTML = "";
+      data.items.forEach(item => {
+        const card = document.createElement("article");
+        card.className = "watchlist-card";
+
+        const thumb = document.createElement("div");
+        thumb.className = "watch-thumb";
+        thumb.style.backgroundImage = `url('${item.image_url}')`;
+
+        const details = document.createElement("div");
+        details.className = "watch-details";
+
+        const titleRow = document.createElement("div");
+        titleRow.className = "watch-title";
+
+        const title = document.createElement("h3");
+        title.textContent = item.name || "Untitled";
+
+        const removeBtn = document.createElement("button");
+        removeBtn.type = "button";
+        removeBtn.className = "watch-remove";
+        removeBtn.textContent = "Remove";
+        removeBtn.addEventListener("click", () => toggleWatchFromModal(item.id));
+
+        titleRow.append(title, removeBtn);
+
+        const meta = document.createElement("div");
+        meta.className = "watch-meta";
+
+        const cost = document.createElement("span");
+        cost.className = "cost-pill cost-pill--small";
+        cost.innerHTML = `<img src="${stamperIcon}" alt="Stamps"><span>${item.cost_stamps}</span>`;
+
+        const stock = document.createElement("span");
+        stock.className = "stock-pill stock-pill--small";
+        stock.textContent = `📦 ${item.stock}`;
+
+        meta.append(cost, stock);
+
+        if (Array.isArray(item.tags)) {
+          item.tags.forEach(tag => {
+            if (!tag) return;
+            const chip = document.createElement("span");
+            chip.className = "tag-chip tag-chip--small";
+            chip.textContent = `#${tag}`;
+            meta.appendChild(chip);
+          });
+        }
+
+        details.append(titleRow, meta);
+
+        const view = document.createElement("a");
+        view.className = "watch-view";
+        view.href = `/catalog/item/${item.id}`;
+        view.textContent = "View item";
+
+        card.append(thumb, details, view);
+        watchlistContainer.appendChild(card);
+      });
+    })
+    .catch(() => {
+      renderWatchlistMessage("⚠️ Something went wrong. Please try again.");
+    });
+}
+
+function toggleWatchFromModal(id) {
+  fetch(`/watchlist/toggle/${id}`, { method: "POST" })
+    .then(r => r.json())
+    .then(data => {
+      if (typeof data.count === "number") {
+        setWatchlistCount(data.count);
+      }
+      if (!data.success) {
+        alert(data.error || "Unable to update watchlist right now.");
+        return;
+      }
+      loadWatchlist();
+      document.querySelectorAll(`.watch-btn[data-id='${id}'] img`).forEach(img => {
+        if (img.dataset?.a) {
+          img.src = img.dataset.a;
+        }
+      });
+    })
+    .catch(() => alert("Unable to update watchlist right now."));
+}
+
+function toggleWatch(el) {
+  const id = el.getAttribute("data-id");
+  const img = el.querySelector("img");
+  fetch(`/watchlist/toggle/${id}`, { method: "POST" })
+    .then(r => r.json())
+    .then(data => {
+      if (typeof data.count === "number") {
+        setWatchlistCount(data.count);
+      }
+      if (!data.success) {
+        alert(data.error || "Unable to update watchlist right now.");
+        return;
+      }
+      if (img) {
+        img.src = data.watched ? img.dataset.b : img.dataset.a;
+      }
+      if (watchlistModal && !watchlistModal.classList.contains("hidden")) {
+        loadWatchlist();
+      }
+    })
+    .catch(() => alert("Unable to update watchlist right now."));
+}
+
+watchlistModal?.addEventListener("click", e => {
+  if (e.target === watchlistModal) {
+    toggleWatchlist();
+  }
+});
+
+setWatchlistCount({{ watch_ids|length }});
 
 /* --- Filters + Sort --- */
 const filterSelect=document.getElementById("filter-select");

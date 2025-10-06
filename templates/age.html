@@ -1,24 +1,18 @@
 {% extends "base.html" %}
 {% block content %}
-<h2>How old are you?</h2>
+<div class="auth-shell">
+  <section class="auth-card" style="text-align:center;">
+    <h2>How old are you?</h2>
+    <p>Please choose your age group so we can set up the right experience.</p>
 
-<p style="text-align: center; margin-bottom: 1.5em;">
-    Please select your age group. This helps us set up your account correctly.
-</p>
+    <form action="{{ url_for('age') }}" method="post" class="auth-links" style="justify-content:center;margin-top:12px;">
+      <button type="submit" name="age_choice" value="13plus" class="auth-btn auth-btn--primary">👤 I am 13 or older</button>
+      <button type="submit" name="age_choice" value="under13" class="auth-btn auth-btn--secondary">🧒 I am 12 or younger</button>
+    </form>
 
-<form action="{{ url_for('age') }}" method="post" style="text-align: center;">
-    <button type="submit" name="age_choice" value="13plus"
-            style="margin: 0.5em; padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 6px;">
-        👤 I am 13 or older
-    </button>
-
-    <button type="submit" name="age_choice" value="under13"
-            style="margin: 0.5em; padding: 10px 20px; background: #ff9800; color: white; border: none; border-radius: 6px;">
-        🧒 I am 12 or younger
-    </button>
-</form>
-
-<p style="text-align:center; margin-top: 1.5em;">
-    <a href="{{ url_for('detectname') }}">⬅️ Back</a>
-</p>
+    <div class="auth-links" style="margin-top:16px;">
+      <a href="{{ url_for('detectname') }}" class="auth-btn auth-btn--ghost">⬅ Back</a>
+    </div>
+  </section>
+</div>
 {% endblock %}

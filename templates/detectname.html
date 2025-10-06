@@ -1,32 +1,25 @@
 {% extends "base.html" %}
 {% block content %}
-<h2>Confirm Trainer Name</h2>
+<div class="auth-shell">
+  <section class="auth-card">
+    <h2>Confirm trainer name</h2>
+    <p style="text-align:center;">One, two, and... <strong>{{ trainer_name }}</strong></p>
 
-<p style="text-align: center;">
-    One, two, and...
-    <strong>{{ trainer_name }}</strong>
-</p>
+    <form action="{{ url_for('detectname') }}" method="post" class="auth-form" style="max-width:360px;margin:0 auto;">
+      <p style="text-align:center;">We detected your trainer name from the screenshot. Adjust it if something looks off.</p>
 
-<form action="{{ url_for('detectname') }}" method="post" style="max-width: 360px; margin: 1em auto; text-align: center;">
-    <p style="margin-bottom: 0.75em;">
-        Ta-Da! We detected your trainer name. Feel free to make changes if it doesn't look right.
-    </p>
+      <label class="auth-label" for="trainer_name">Trainer name</label>
+      <input id="trainer_name" class="auth-input" name="trainer_name" type="text" value="{{ trainer_name }}" placeholder="Type the correct trainer name" required autofocus>
 
-    <label for="trainer_name" style="display:block; font-weight: 600; margin-bottom: 0.5em;">Trainer Name</label>
-    <input id="trainer_name" name="trainer_name" type="text" value="{{ trainer_name }}" required autofocus
-           placeholder="Type the correct trainer name" style="width: 100%; padding: 0.6em; border-radius: 6px; border: 1px solid #ccc;">
+      <div class="auth-links" style="margin-top:12px;">
+        <button type="submit" name="action" value="confirm" class="auth-btn auth-btn--primary">✅ Looks good — continue</button>
+        <button type="submit" name="action" value="retry" class="auth-btn auth-btn--ghost">❌ Re-upload screenshot</button>
+      </div>
+    </form>
 
-    <div style="display: flex; flex-direction: column; gap: 0.5em; margin-top: 1.25em;">
-        <button type="submit" name="action" value="confirm" style="padding: 0.6em;">
-            ✅ Looks good — continue
-        </button>
-        <button type="submit" name="action" value="retry" style="padding: 0.6em; background: #f6d5d5;">
-            ❌ Re-upload screenshot
-        </button>
+    <div class="auth-links">
+      <a href="{{ url_for('signup') }}" class="auth-btn auth-btn--ghost">⬅ Back to sign up</a>
     </div>
-</form>
-
-<div class="links" style="text-align: center; margin-top: 1.5em;">
-    <a href="{{ url_for('signup') }}">⬅️ Back to Sign Up</a>
+  </section>
 </div>
 {% endblock %}

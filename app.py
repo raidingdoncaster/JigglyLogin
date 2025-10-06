@@ -181,13 +181,35 @@ def session_check():
 
 
 # ===== Policies =====
+def _policy_back_action(is_pwa: bool, source: str | None):
+    if source == "login":
+        return {
+            "label": "⬅ Back to login",
+            "href": url_for("login"),
+        }, True
+    if is_pwa:
+        return {
+            "label": "⬅ Go back to the dashboard",
+            "href": url_for("dashboard"),
+        }, True
+    return {
+        "label": "⬅ Back to rdab.app",
+        "href": "https://rdab.app",
+        "external": True,
+    }, False
+
+
 @app.route("/policies")
 def policies_index():
-    is_pwa = session.get("is_pwa", False)
+    source = request.args.get("source")
+    is_pwa = session.get("is_pwa", False) or request.args.get("pwa") == "1"
+    back_action, force_pwa = _policy_back_action(is_pwa, source)
+    effective_is_pwa = is_pwa or force_pwa
     return render_template(
         "policies/index.html",
         policies=POLICY_PAGES,
-        is_pwa=is_pwa,
+        is_pwa=effective_is_pwa,
+        back_action=back_action,
         show_back=False,
     )
 
@@ -198,12 +220,17 @@ def policy_page(slug: str):
     if not policy:
         abort(404)
 
-    is_pwa = session.get("is_pwa", False)
+    source = request.args.get("source")
+    is_pwa = session.get("is_pwa", False) or request.args.get("pwa") == "1"
+    back_action, force_pwa = _policy_back_action(is_pwa, source)
+    effective_is_pwa = is_pwa or force_pwa
+
     template_name = policy.get("template") or f"policies/{slug}.html"
     return render_template(
         template_name,
         policy=policy,
-        is_pwa=is_pwa,
+        is_pwa=effective_is_pwa,
+        back_action=back_action,
         show_back=False,
     )
 
@@ -2307,14 +2334,22 @@ def _get_watchlist_ids(trainer: str) -> list[str]:
             print("⚠️ watchlist fetch failed; falling back to session:", e)
     if not ids:
         ids = _safe_list(session.get("watchlist"))
-    return ids
+    return ids[:WATCHLIST_LIMIT]
+
+# Watchlist configuration
+WATCHLIST_LIMIT = 6
 
 def _watchlist_add(trainer: str, item_id: str) -> None:
     """Add to watchlist both in Supabase (best effort) and session."""
-    # Session mirror
-    existing = set(_safe_list(session.get("watchlist")))
-    existing.add(item_id)
-    session["watchlist"] = list(existing)
+    existing = [str(x) for x in _safe_list(session.get("watchlist")) if x][:WATCHLIST_LIMIT]
+    if item_id in existing:
+        return
+    if len(existing) >= WATCHLIST_LIMIT:
+        return
+
+    # Session mirror (preserve append order)
+    existing.append(item_id)
+    session["watchlist"] = existing
 
     # Supabase
     if USE_SUPABASE and supabase:
@@ -2331,7 +2366,7 @@ def _watchlist_add(trainer: str, item_id: str) -> None:
 def _watchlist_remove(trainer: str, item_id: str) -> None:
     """Remove from watchlist in Supabase (best effort) and session."""
     # Session mirror
-    remaining = [i for i in _safe_list(session.get("watchlist")) if str(i) != str(item_id)]
+    remaining = [i for i in _safe_list(session.get("watchlist")) if str(i) != str(item_id)][:WATCHLIST_LIMIT]
     session["watchlist"] = remaining
 
     # Supabase
@@ -2406,6 +2441,7 @@ def catalog():
         "watch_ids": watch_ids,
         "catalog_description": catalog_description,
         "show_back": False,
+        "watchlist_limit": WATCHLIST_LIMIT,
     }
 
     return render_template("catalog.html", **context)
@@ -2418,13 +2454,31 @@ def watchlist_toggle(item_id):
         return jsonify({"success": False, "error": "Not logged in"}), 403
     trainer = session["trainer"]
 
-    current = set(_get_watchlist_ids(trainer))
+    current = _get_watchlist_ids(trainer)
     if item_id in current:
         _watchlist_remove(trainer, item_id)
-        return jsonify({"success": True, "watched": False})
+        remaining = len(current) - 1
+        return jsonify({
+            "success": True,
+            "watched": False,
+            "count": max(remaining, 0),
+            "limit": WATCHLIST_LIMIT,
+        })
     else:
+        if len(current) >= WATCHLIST_LIMIT:
+            return jsonify({
+                "success": False,
+                "error": f"Watchlist is limited to {WATCHLIST_LIMIT} items.",
+                "count": len(current),
+                "limit": WATCHLIST_LIMIT,
+            })
         _watchlist_add(trainer, item_id)
-        return jsonify({"success": True, "watched": True})
+        return jsonify({
+            "success": True,
+            "watched": True,
+            "count": len(current) + 1,
+            "limit": WATCHLIST_LIMIT,
+        })
 
 @app.get("/watchlist")
 def watchlist_data():
@@ -2446,10 +2500,12 @@ def watchlist_data():
     # Keep order by most recently added (session order as fallback)
     id_pos = {i: p for p, i in enumerate(ids)}
     rows.sort(key=lambda r: id_pos.get(r.get("id"), 10**9))
+    rows = rows[:WATCHLIST_LIMIT]
 
     return jsonify({
         "success": True,
         "count": len(rows),
+        "limit": WATCHLIST_LIMIT,
         "items": [{
             "id": r.get("id"),
             "name": r.get("name"),
@@ -2661,11 +2717,13 @@ def catalog_redeem(item_id):
             .execute()
         )
         latest = r2.data[0]
-        if not latest.get("active", False) or int(latest.get("stock") or 0) <= 0:
+        latest_stock = int(latest.get("stock") or 0)
+        if not latest.get("active", False) or latest_stock <= 0:
             flash("This prize just went out of stock or offline.", "warning")
             return redirect(url_for("catalog"))
     except Exception as e:
         print("⚠️ redeem: recheck failed:", e)
+        latest_stock = int(item.get("stock") or 0)
 
     # Deduct stamps via Lugia (ledger)
     cost = item["cost_stamps"]
@@ -2675,21 +2733,33 @@ def catalog_redeem(item_id):
         flash("Could not deduct stamps. Try again in a moment.", "error")
         return redirect(url_for("catalog_redeem", item_id=item_id))
 
-    # Update balance mirror (best effort)
+    # Decrement stock (only once)
+    try:
+        updated_stock = max(0, latest_stock - 1)
+        resp = (
+            supabase.table("catalog_items")
+            .update({"stock": updated_stock})
+            .eq("id", item_id)
+            .eq("stock", latest_stock)
+            .select("id, stock")
+            .execute()
+        )
+        if not resp.data:
+            adjust_stamps(trainer, cost, "Catalog Redemption rollback", "award")
+            flash("Another trainer just grabbed the last one. Your stamps were returned.", "warning")
+            return redirect(url_for("catalog"))
+    except Exception as e:
+        print("⚠️ redeem: stock update failed:", e)
+        adjust_stamps(trainer, cost, "Catalog Redemption rollback", "award")
+        flash("Could not update stock. Your stamps were returned; try again shortly.", "error")
+        return redirect(url_for("catalog"))
+
+    # Update balance mirror (best effort) now that stock is confirmed
     try:
         new_balance = max(0, balance - cost)
         supabase.table("sheet1").update({"stamps": new_balance}).eq("trainer_username", trainer).execute()
     except Exception as e:
         print("⚠️ redeem: mirror stamp update failed:", e)
-
-    # Decrement stock (only once)
-    try:
-        supabase.table("catalog_items") \
-            .update({"stock": max(0, int(item["stock"]) - 1)}) \
-            .eq("id", item_id) \
-            .execute()
-    except Exception as e:
-        print("⚠️ redeem: stock update failed:", e)
 
     # Create redemption record
     red_id = str(uuid.uuid4())

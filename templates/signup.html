@@ -1,46 +1,58 @@
 {% extends "base.html" %}
 {% block content %}
-<h2>Welcome, Trainer!</h2>
+<div class="auth-shell">
+  <section class="auth-hero">
+    <div class="hero-glow"></div>
+    <div class="hero-text">
+      <span class="hero-eyebrow">Raiding Doncaster and Beyond</span>
+      <h1>Where local Trainers level up together.</h1>
+      <p>Share your trainer profile once, set a secure PIN, and you’re ready to earn RDAB passport stamps.</p>
+    </div>
+    <div class="hero-media">
+      <img src="{{ url_for('static', filename='banner.jpg') }}" alt="RDAB community" class="hero-banner">
+    </div>
+  </section>
 
-<div style="display: flex; flex-direction: row; align-items: center; margin-bottom: 1.5em;">
-    <img src="{{ url_for('static', filename='example_profile.png') }}" 
-         alt="Example Trainer Profile" 
-         style="width: 120px; border-radius: 6px; margin-right: 1em;">
-    <p style="font-size: 0.9em; color: #333; line-height: 1.6;">
-        Upload a screenshot of your <strong>Trainer Profile</strong> in Pokémon GO.<br><br>
-        Then choose a <strong>4-digit PIN</strong> and a <strong>memorable password</strong>.<br><br>
-        ⚠️ Do <strong>not</strong> use a memorable password you use anywhere else — make it unique and write it down safely.
-    </p>
+  <section class="auth-card">
+    <h2>Set up your RDAB passport</h2>
+
+    <div class="signup-guide">
+      <img src="{{ url_for('static', filename='example_profile.png') }}" alt="Example Trainer Profile" class="signup-guide__image">
+      <div class="signup-guide__copy">
+        <p>Upload a screenshot of your <strong>Trainer Profile</strong> in Pokémon GO, making sure your trainer name is clearly visible.</p>
+        <p>Choose a unique <strong>4-digit PIN</strong> and a <strong>memorable password</strong>. Only use a memorable password for RDAB—never reuse one from another account.</p>
+      </div>
+    </div>
+
+    <form action="{{ url_for('signup') }}" method="post" enctype="multipart/form-data" class="auth-form">
+      <label class="auth-label" for="profile_screenshot">Upload profile screenshot</label>
+      <input id="profile_screenshot" class="auth-input" type="file" name="profile_screenshot" accept="image/*" required>
+
+      <label class="auth-label" for="signup-pin">Choose a 4-digit PIN</label>
+      <div class="auth-input-row">
+        <input id="signup-pin" class="auth-input" type="password" name="pin" pattern="\d{4}" maxlength="4" placeholder="1234" required>
+        <button type="button" class="auth-btn auth-btn--outline" onclick="togglePin('signup-pin', this)">Show</button>
+      </div>
+
+      <label class="auth-label" for="memorable">Memorable password (for recovery)</label>
+      <input id="memorable" class="auth-input" type="text" name="memorable" placeholder="e.g. Pikachu" required>
+
+      <button type="submit" class="auth-btn auth-btn--primary auth-btn--full">Create my account</button>
+    </form>
+
+    <div class="auth-tip">
+      ⚠️ If detection doesn’t work, try again with a clear screenshot showing your trainer name. If issues continue, contact a community admin.
+    </div>
+
+    <div class="auth-links">
+      <a href="{{ url_for('login') }}" class="auth-btn auth-btn--ghost">⬅ Back to login</a>
+    </div>
+  </section>
+
+  <section class="policy-cta">
+    <h3>Need the details?</h3>
+    <p>Review our community policies, safeguarding approach, and data promises before you join.</p>
+    <a href="{{ url_for('policies_index') }}?pwa=1&amp;source=login" class="auth-btn auth-btn--primary">View policies</a>
+  </section>
 </div>
-
-<form action="{{ url_for('signup') }}" method="post" enctype="multipart/form-data" 
-      style="display: flex; flex-direction: column; align-items: center; max-width: 320px; margin: 0 auto;">
-
-  <label style="margin-top: 0.5em; text-align: left; width: 100%;">Upload Profile Screenshot:</label>
-  <input type="file" name="profile_screenshot" accept="image/*" required 
-         style="margin: 0.5em 0; width: 100%; padding: 0.5em;">
-
-  <label style="margin-top: 0.5em; text-align: left; width: 100%;">Choose a 4-digit PIN:</label>
-  <div style="width: 100%; display: flex; gap: 6px;">
-      <input type="password" id="signup-pin" name="pin" pattern="\d{4}" maxlength="4" required 
-             style="flex: 1; padding: 0.5em;" placeholder="1234">
-      <button type="button" onclick="togglePin('signup-pin', this)" 
-              style="padding: 0.5em; font-size: 0.8em; min-width: 60px;">Show</button>
-  </div>
-
-  <label style="margin-top: 0.5em; text-align: left; width: 100%;">Memorable Password (for recovery):</label>
-  <input type="text" name="memorable" required 
-         style="margin: 0.5em 0; width: 100%; padding: 0.5em;" placeholder="e.g. Pikachu">
-
-  <button type="submit" style="margin-top: 1em; width: 100%;">Sign Up</button>
-</form>
-
-<div class="notice">
-    ⚠️ If detection doesn’t work, try again with a clear screenshot showing your trainer name.  
-    If issues continue, contact a community admin.
-</div>
-
-<p style="text-align:center; margin-top: 1em;">
-    <a href="{{ url_for('home') }}">⬅️ Back to Login</a>
-</p>
 {% endblock %}

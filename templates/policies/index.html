@@ -9,10 +9,8 @@
         Transparency keeps RDAB running smoothly. Explore the policies that outline how we protect trainers, manage rewards,
         and make sure every event is safe and welcoming.
       </p>
-      {% if is_pwa %}
-        <a href="{{ url_for('dashboard') }}" class="hero-action">⬅ Back to dashboard</a>
-      {% else %}
-        <a href="https://rdab.app" class="hero-action" target="_blank" rel="noopener">⬅ Back to rdab.app</a>
+      {% if back_action %}
+        <a href="{{ back_action.href }}" class="hero-action" {% if back_action.external %}target="_blank" rel="noopener"{% endif %}>{{ back_action.label }}</a>
       {% endif %}
     </div>
     <div class="policy-hero__glow"></div>
