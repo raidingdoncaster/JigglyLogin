@@ -2164,15 +2164,28 @@ def _safe_list(v):
         return [p for p in parts if p]
     return []
 
-def _featured_slide_names() -> list[str]:
-    """Return sorted image filenames from static/catalog/featured."""
+def _featured_slide_paths() -> list[str]:
+    """Return sorted static-relative paths for featured carousel slides."""
     static_root = Path(app.static_folder or "static")
-    folder = static_root / "catalog" / "featured"
-    if not folder.exists():
-        return []
+    candidate_dirs = [
+        static_root / "catalog" / "featured",
+        static_root / "featured",
+    ]
     allowed = {".png", ".jpg", ".jpeg", ".webp", ".gif"}
-    files = [p.name for p in folder.iterdir() if p.is_file() and p.suffix.lower() in allowed]
-    return sorted(files)
+    seen: set[str] = set()
+    slides: list[str] = []
+    for directory in candidate_dirs:
+        if not directory.exists():
+            continue
+        for path in directory.iterdir():
+            if not path.is_file() or path.suffix.lower() not in allowed:
+                continue
+            rel_path = path.relative_to(static_root).as_posix()
+            if rel_path in seen:
+                continue
+            seen.add(rel_path)
+            slides.append(rel_path)
+    return sorted(slides)
 
 
 def _featured_slide_alt(filename: str) -> str:
@@ -2272,12 +2285,13 @@ def catalog():
         it["_created"] = it.get("created_at") or it.get("updated_at") or datetime.utcnow().isoformat()
 
     # Featured carousel slides from static folder
-    slide_names = _featured_slide_names()
+    slide_paths = _featured_slide_paths()
     featured_slides = []
-    for name in slide_names:
+    for rel_path in slide_paths:
+        name = Path(rel_path).name
         featured_slides.append(
             {
-                "url": url_for("static", filename=f"catalog/featured/{name}"),
+                "url": url_for("static", filename=rel_path),
                 "alt": _featured_slide_alt(name),
             }
         )
