@@ -52,6 +52,9 @@
               {% if i < passport|length %}
                 <div class="stamp-slot filled">
                   <img src="{{ passport[i].icon }}" alt="{{ passport[i].name }}" class="stamp-image">
+                  {% if passport[i].count > 1 %}
+                    <span class="stamp-count" aria-label="Awarded {{ passport[i].count }} stamps">{{ passport[i].count }}</span>
+                  {% endif %}
                   <p class="stamp-label" title="{{ passport[i].name }}">
                     {{ passport[i].name }}
                   </p>
@@ -223,6 +226,24 @@
   align-items: center;
   justify-content: center;
 }
+.stamp-count {
+  position: absolute;
+  bottom: 18px;
+  right: 8px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: #2563eb;
+  color: #fff;
+  font-size: 0.7em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.25);
+}
+.stamp-slot .stamp-count:empty {display:none;}
 .pokeball-placeholder {
   width: 70%;
   height: 70%;

@@ -326,7 +326,15 @@ def get_passport_stamps(username: str, campfire_username: str | None = None):
         stamps, total_count = [], 0
         for r in records:
             reason = (r.get("reason") or "").strip()
-            count = int(r.get("count") or 1)
+            try:
+                count = int(r.get("count") or 1)
+            except (ValueError, TypeError):
+                count = 1
+
+            if count <= 0:
+                # Negative ledger entries represent stamp removals; skip showing them.
+                continue
+
             total_count += count
 
             # Handle both eventid and event_id
@@ -2049,7 +2057,8 @@ def passport():
     campfire_username = user.get("campfire_username", "")
 
     # === Passport Stamps ===
-    total_stamps, stamps, most_recent_stamp = get_passport_stamps(username, campfire_username)
+    total_awarded, stamps, most_recent_stamp = get_passport_stamps(username, campfire_username)
+    total_stamp_events = len(stamps)
     # nav bar: live balance
     current_stamps = int(user.get("stamps", 0) or 0)
     # page display: show all stamps from ledger
@@ -2102,7 +2111,8 @@ def passport():
         trainer=username,
         stamps=stamps,
         passports=passports,
-        total_stamps=total_stamps,
+        total_stamps=total_stamp_events,
+        total_stamps_awarded=total_awarded,
         current_stamps=current_stamps,
         most_recent_stamp=most_recent_stamp,
         lugia_summary=lugia_summary,
