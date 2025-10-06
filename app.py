@@ -18,7 +18,7 @@ from markupsafe import Markup, escape
 
 # ====== Feature toggle ======
 USE_SUPABASE = True  # ✅ Supabase for stamps/meetups
-MAINTENANCE_MODE = True  # ⛔️ Change to True to enable maintenance mode
+MAINTENANCE_MODE = False  # ⛔️ Change to True to enable maintenance mode
 
 # Try to import Supabase client
 try:
@@ -2132,7 +2132,15 @@ def to_date_filter(value):
 # ========= Catalog helpers & routes =========
 
 def _safe_list(v):
-    return v if isinstance(v, list) else []
+    """Return a list no matter how Supabase stored the tags column."""
+    if isinstance(v, list):
+        return v
+    if isinstance(v, tuple):
+        return list(v)
+    if isinstance(v, str):
+        parts = [p.strip() for p in v.split(",")]
+        return [p for p in parts if p]
+    return []
 
 def _featured_slice(items, max_count=5):
     """Prefer items tagged 'featured'; else take most recent."""
