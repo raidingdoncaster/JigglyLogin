@@ -94,6 +94,58 @@ if USE_SUPABASE and create_client and SUPABASE_URL and SUPABASE_KEY:
         print("⚠️ Could not init Supabase client:", e)
         supabase = None
 
+# ====== Policy registry ======
+POLICY_PAGES = [
+    {
+        "slug": "community-standards",
+        "title": "Community Standards (Arceus Law)",
+        "description": "Expectations for respectful play, meetup conduct, and moderator actions across RDAB.",
+        "template": "policies/community-standards.html",
+    },
+    {
+        "slug": "terms-of-service",
+        "title": "Terms of Service – RDAB App",
+        "description": "What you agree to when using the RDAB app to track stamps, rewards, and events.",
+        "template": "policies/terms-of-service.html",
+    },
+    {
+        "slug": "promise-to-parents",
+        "title": "Our Promise to Parents",
+        "description": "How we keep young trainers safe online and at meetups, plus what parents can expect from us.",
+        "template": "policies/promise-to-parents.html",
+    },
+    {
+        "slug": "privacy-policy",
+        "title": "Privacy Policy",
+        "description": "The data we collect, how it is used, and your GDPR rights within the RDAB community.",
+        "template": "policies/privacy-policy.html",
+    },
+    {
+        "slug": "safeguarding-policy",
+        "title": "Safeguarding Policy – RDAB App & Community",
+        "description": "Our safeguarding commitments for children, young people, and vulnerable adults.",
+        "template": "policies/safeguarding-policy.html",
+    },
+    {
+        "slug": "branding-fair-use",
+        "title": "Branding and Fair Use Policy",
+        "description": "How RDAB handles Pokémon intellectual property and responds to rights holder requests.",
+        "template": "policies/branding-fair-use.html",
+    },
+    {
+        "slug": "children-parental-consent",
+        "title": "Children and Parental Consent Policy",
+        "description": "Parental consent requirements, data handling, and usage rules for under-13 trainers.",
+        "template": "policies/children-parental-consent.html",
+    },
+    {
+        "slug": "user-appeals-process",
+        "title": "User Appeals Process – RDAB App & Community",
+        "description": "How suspended members can submit appeals and how RDAB reviews them.",
+        "template": "policies/user-appeals-process.html",
+    },
+]
+
 # ===== Detect mobile - force app =====
 @app.route("/pwa-flag", methods=["POST"])
 def pwa_flag():
@@ -126,6 +178,34 @@ def home():
 def session_check():
     """Quick JSON endpoint for PWA reload logic."""
     return jsonify({"logged_in": "trainer" in session})
+
+
+# ===== Policies =====
+@app.route("/policies")
+def policies_index():
+    is_pwa = session.get("is_pwa", False)
+    return render_template(
+        "policies/index.html",
+        policies=POLICY_PAGES,
+        is_pwa=is_pwa,
+        show_back=False,
+    )
+
+
+@app.route("/policies/<slug>")
+def policy_page(slug: str):
+    policy = next((p for p in POLICY_PAGES if p["slug"] == slug), None)
+    if not policy:
+        abort(404)
+
+    is_pwa = session.get("is_pwa", False)
+    template_name = policy.get("template") or f"policies/{slug}.html"
+    return render_template(
+        template_name,
+        policy=policy,
+        is_pwa=is_pwa,
+        show_back=False,
+    )
 
 # ===== Catalog Receipt Helper =====
 # --- put near your other imports ---

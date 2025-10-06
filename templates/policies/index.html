@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="policy-index" data-is-pwa="{{ 'true' if is_pwa else 'false' }}">
+  <section class="policy-hero">
+    <div class="policy-hero__text">
+      <h1>Community Policies & Guides</h1>
+      <p>
+        Transparency keeps RDAB running smoothly. Explore the policies that outline how we protect trainers, manage rewards,
+        and make sure every event is safe and welcoming.
+      </p>
+      {% if is_pwa %}
+        <a href="{{ url_for('dashboard') }}" class="hero-action">⬅ Back to dashboard</a>
+      {% else %}
+        <a href="https://rdab.app" class="hero-action" target="_blank" rel="noopener">⬅ Back to rdab.app</a>
+      {% endif %}
+    </div>
+    <div class="policy-hero__glow"></div>
+  </section>
+
+  <section class="policy-grid">
+    {% for policy in policies %}
+      <a class="policy-card" href="{{ url_for('policy_page', slug=policy.slug) }}">
+        <h2>{{ policy.title }}</h2>
+        <p>{{ policy.description }}</p>
+        <span class="policy-link">Read policy →</span>
+      </a>
+    {% endfor %}
+  </section>
+
+  <section class="policy-index__footer">
+    <p class="disclaimer">
+      This is a programme run entirely by volunteers from the ‘Raiding Doncaster and Beyond’ Campfire group and is in no way affiliated with
+      The Pokémon Company or Niantic. All competitions, giveaways, prize draws, passports and prize redemption are entirely free and there are no monetary gains.
+      For support, please contact the RDAB admin team via the Niantic Campfire app.
+    </p>
+  </section>
+</div>
+
+<style>
+.policy-index{display:flex;flex-direction:column;gap:28px;}
+.policy-hero{position:relative;overflow:hidden;border-radius:24px;padding:34px 28px;background:linear-gradient(135deg,#111827,#1e3a8a);color:#f8fafc;box-shadow:0 18px 42px rgba(15,23,42,0.4);}
+.policy-hero__text{position:relative;z-index:1;max-width:520px;display:flex;flex-direction:column;gap:16px;}
+.policy-hero h1{margin:0;font-size:2rem;line-height:1.2;}
+.policy-hero p{margin:0;font-size:1rem;line-height:1.7;color:rgba(226,232,240,0.88);}
+.hero-action{display:inline-flex;align-items:center;justify-content:center;width:max-content;margin-top:10px;padding:10px 18px;border-radius:999px;background:rgba(15,23,42,0.3);color:#f8fafc;text-decoration:none;font-weight:600;border:1px solid rgba(248,250,252,0.35);} 
+.policy-hero__glow{position:absolute;inset:auto -40% -60% 40%;height:260px;background:radial-gradient(circle,rgba(59,130,246,0.6),transparent 65%);filter:blur(0);}
+
+.policy-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px;}
+.policy-card{display:flex;flex-direction:column;gap:12px;padding:20px;border-radius:18px;background:rgba(255,255,255,0.92);backdrop-filter:blur(12px);box-shadow:0 12px 26px rgba(15,23,42,0.16);text-decoration:none;color:#0f172a;transition:transform .25s ease, box-shadow .25s ease;}
+.policy-card h2{margin:0;font-size:1.2rem;color:#1d4ed8;}
+.policy-card p{margin:0;color:#334155;font-size:0.95rem;line-height:1.5;}
+.policy-card:hover{transform:translateY(-4px);box-shadow:0 18px 36px rgba(59,130,246,0.22);} 
+.policy-link{margin-top:auto;font-weight:600;color:#0f172a;opacity:0.7;}
+
+.policy-index__footer{background:rgba(241,245,249,0.95);padding:16px 18px;border-radius:16px;color:#475569;font-size:0.85rem;line-height:1.6;}
+
+@media(max-width:560px){
+  .policy-hero{padding:28px 24px;}
+  .policy-hero h1{font-size:1.6rem;}
+  .policy-card{padding:18px;}
+}
+</style>
+
+{% endblock %}

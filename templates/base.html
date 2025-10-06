@@ -179,6 +179,29 @@
     .pin-row{ display:flex; gap:8px; }
     .pin-row input{ flex:1; }
     .row-actions{ display:flex; gap:8px; }
+    .modal-disclaimer{
+      margin:18px 0 4px;
+      padding:14px;
+      border-radius:12px;
+      background:#f8fafc;
+      border:1px solid #e2e8f0;
+      font-size:0.85em;
+      color:#475569;
+      line-height:1.6;
+    }
+    .modal-disclaimer p{margin:0 0 10px;}
+    .modal-disclaimer .policy-btn{
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      padding:8px 14px;
+      border-radius:999px;
+      background:var(--brand);
+      color:#fff;
+      text-decoration:none;
+      font-weight:600;
+      box-shadow:0 8px 20px rgba(58,141,222,0.25);
+    }
 
     /* Mobile */
     @media(max-width:480px){
@@ -421,6 +444,15 @@
             </form>
           </div>
         </details>
+      </div>
+
+      <div class="modal-disclaimer">
+        <p>
+          This is a programme run entirely by volunteers from the ‘Raiding Doncaster and Beyond’ Campfire group and is in no way affiliated with
+          The Pokémon Company or Niantic. All competitions, giveaways, prize draws, passports and prize redemption are entirely free and there are no monetary gains.
+          For support, please contact the RDAB admin team via the Niantic Campfire app.
+        </p>
+        <a class="policy-btn" href="{{ url_for('policies_index') }}">📄 View community policies</a>
       </div>
     </div>
   </div>
