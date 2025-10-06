@@ -30,6 +30,11 @@ except Exception:
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
 app.permanent_session_lifetime = timedelta(days=365)
+@app.errorhandler(404)
+@app.errorhandler(500)
+def show_custom_error_page(err):
+    status_code = getattr(err, "code", 500) or 500
+    return render_template("error.html"), status_code
 
 @app.before_request
 def check_maintenance_mode():
@@ -1557,7 +1562,8 @@ def detectname():
     if not details:
         flash("Session expired. Please try signing up again.", "warning")
         return redirect(url_for("signup"))
-
+    
+    action = request.form.get("action") if request.method == "POST" else None
     if request.method == "POST":
         action = request.form.get("action")
 
