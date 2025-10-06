@@ -1,12 +1,10 @@
 import os
-import json
 import hashlib
-import gspread
+import json
 import requests
 import uuid
 import re
-from flask import Flask, render_template, abort, request, redirect, url_for, session, flash, send_from_directory, jsonify, g
-from google.oauth2.service_account import Credentials
+from flask import Flask, render_template, abort, request, redirect, url_for, session, flash, send_from_directory, jsonify
 from werkzeug.utils import secure_filename
 from PIL import Image
 from pywebpush import webpush, WebPushException
@@ -69,18 +67,6 @@ def parse_dt_safe(dt_str):
         return dt
     except Exception:
         return datetime.min.replace(tzinfo=timezone.utc)
-
-# ====== Google Sheets setup ======
-SCOPES = [
-    "https://www.googleapis.com/auth/spreadsheets",
-    "https://www.googleapis.com/auth/drive",
-]
-creds = Credentials.from_service_account_info(
-    json.loads(os.environ["GOOGLE_APPLICATION_CREDENTIALS_JSON"]),
-    scopes=SCOPES
-)
-gclient = gspread.authorize(creds)
-sheet = gclient.open("POGO Passport Sign-Ins").worksheet("Sheet1")
 
 # ====== Supabase setup ======
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
@@ -340,12 +326,6 @@ def inject_header_data():
 # ====== Helpers ======
 def hash_value(value: str) -> str:
     return hashlib.sha256(value.encode()).hexdigest()
-
-def get_all_users():
-    """Cache Sheet1 records per-request so we only fetch once."""
-    if not hasattr(g, "user_records"):
-        g.user_records = sheet.get_all_records()
-    return g.user_records
 
 def find_user(username):
     """Find a trainer in Supabase.sheet1 (case-insensitive)."""
@@ -1284,25 +1264,23 @@ def admin_change_account_type(username):
         flash("Invalid account type.", "error")
         return redirect(url_for("admin_trainer_detail", username=username))
 
+    _, target_user = find_user(username)
+    if not target_user:
+        flash(f"No trainer found with username '{username}'", "warning")
+        return redirect(url_for("admin_trainers"))
+
+    if not supabase:
+        flash("Supabase is unavailable. Please try again later.", "error")
+        return redirect(url_for("admin_trainer_detail", username=username))
+
+    trainer_username = target_user.get("trainer_username") or username
+
     try:
-        # Update Google Sheet (Sheet1)
-        all_users = sheet.get_all_records()
-        row_index = None
-        for i, record in enumerate(all_users, start=2):
-            if record.get("Trainer Username", "").lower() == username.lower():
-                row_index = i
-                break
-        if row_index:
-            sheet.update_cell(row_index, 8, new_type)  # H = Account Type col
-
-        # Update Supabase mirror if available
-        if supabase:
-            supabase.table("sheet1") \
-                .update({"account_type": new_type}) \
-                .ilike("trainer_username", username) \
-                .execute()
-
-        flash(f"✅ {username}'s account type updated to {new_type}", "success")
+        supabase.table("sheet1") \
+            .update({"account_type": new_type}) \
+            .eq("trainer_username", trainer_username) \
+            .execute()
+        flash(f"✅ {trainer_username}'s account type updated to {new_type}", "success")
     except Exception as e:
         print("⚠️ Error updating account type:", e)
         flash("Failed to update account type.", "error")
@@ -1326,27 +1304,24 @@ def admin_reset_pin(username):
         flash("PIN must be exactly 4 digits.", "error")
         return redirect(url_for("admin_trainer_detail", username=username))
 
+    _, target_user = find_user(username)
+    if not target_user:
+        flash(f"No trainer found with username '{username}'", "warning")
+        return redirect(url_for("admin_trainers"))
+
+    if not supabase:
+        flash("Supabase is unavailable. Please try again later.", "error")
+        return redirect(url_for("admin_trainer_detail", username=username))
+
+    trainer_username = target_user.get("trainer_username") or username
+    hashed = hash_value(new_pin)
+
     try:
-        hashed = hash_value(new_pin)
-
-        # Update Google Sheet (Sheet1)
-        all_users = sheet.get_all_records()
-        row_index = None
-        for i, record in enumerate(all_users, start=2):
-            if record.get("Trainer Username", "").lower() == username.lower():
-                row_index = i
-                break
-        if row_index:
-            sheet.update_cell(row_index, 2, hashed)  # B = PIN Hash col
-
-        # Update Supabase mirror if available
-        if supabase:
-            supabase.table("sheet1") \
-                .update({"pin_hash": hashed}) \
-                .ilike("trainer_username", username) \
-                .execute()
-
-        flash(f"✅ PIN for {username} has been reset.", "success")
+        supabase.table("sheet1") \
+            .update({"pin_hash": hashed}) \
+            .eq("trainer_username", trainer_username) \
+            .execute()
+        flash(f"✅ PIN for {trainer_username} has been reset.", "success")
     except Exception as e:
         print("⚠️ Error resetting PIN:", e)
         flash("Failed to reset PIN.", "error")
@@ -1628,18 +1603,26 @@ def login():
 
 # ====== Sign Up ======
 def _trainer_exists(trainer_name: str) -> bool:
-    """Return True if this trainer username already exists in the signup sheet."""
-    try:
-        records = sheet.get_all_records()
-    except Exception as exc:  # pragma: no cover - defensive logging for Sheets outages
-        print("⚠️ Unable to read signup sheet; assuming trainer is new:", exc)
+    """Return True if this trainer username already exists in Supabase."""
+    trainer_lc = (trainer_name or "").strip().lower()
+    if not trainer_lc:
         return False
 
-    trainer_lc = (trainer_name or "").strip().lower()
-    for record in records:
-        if record.get("Trainer Username", "").strip().lower() == trainer_lc:
-            return True
-    return False
+    if not supabase:
+        return False
+
+    try:
+        resp = (
+            supabase.table("sheet1")
+            .select("trainer_username")
+            .ilike("trainer_username", trainer_lc)
+            .limit(1)
+            .execute()
+        )
+        return bool(resp.data)
+    except Exception as exc:
+        print("⚠️ Supabase _trainer_exists lookup failed:", exc)
+        return False
 
 
 @app.route("/signup", methods=["GET", "POST"])
@@ -1694,12 +1677,10 @@ def detectname():
         session["signup_details"] = details
 
         # ✅ Prevent duplicate usernames
-        all_users = sheet.get_all_records()
-        for record in all_users:
-            if _trainer_exists(details["trainer_name"]):
-                flash("This trainer name is already registered. Please log in instead.", "error")
-                session.pop("signup_details", None)
-                return redirect(url_for("home"))
+        if _trainer_exists(details["trainer_name"]):
+            flash("This trainer name is already registered. Please log in instead.", "error")
+            session.pop("signup_details", None)
+            return redirect(url_for("home"))
         return redirect(url_for("age"))
 
     if action == "retry":
@@ -1725,24 +1706,16 @@ def age():
             return redirect(url_for("campfire"))
         elif choice == "under13":
             # ✅ Backend guard to prevent duplicates
-            records = sheet.get_all_records()
-            for r in records:
-                if _trainer_exists(details["trainer_name"]):
-                    flash("This trainer already exists. Please log in.", "error")
-                    session.pop("signup_details", None)
-                    return redirect(url_for("home"))
+            if _trainer_exists(details["trainer_name"]):
+                flash("This trainer already exists. Please log in.", "error")
+                session.pop("signup_details", None)
+                return redirect(url_for("home"))
 
-            # Kids Account: store in Sheet1
-            sheet.append_row([
-                details["trainer_name"],
-                hash_value(details["pin"]),
-                details["memorable"],
-                datetime.utcnow().isoformat(),
-                "Kids Account",   # Column E
-                "0",              # Column F
-                "avatar1.png"     # Column G
-            ])
-            if supabase:
+            if not supabase:
+                flash("Supabase is currently unavailable. Please try again later.", "error")
+                return redirect(url_for("signup"))
+
+            try:
                 supabase.table("sheet1").insert({
                     "trainer_username": details["trainer_name"],
                     "pin_hash": hash_value(details["pin"]),
@@ -1752,8 +1725,12 @@ def age():
                     "stamps": 0,
                     "avatar_icon": "avatar1.png",
                     "trainer_card_background": "default.png",
-                    "account_type": "Kids Account"
+                    "account_type": "Kids Account",
                 }).execute()
+            except Exception as exc:
+                print("⚠️ Supabase kids signup insert failed:", exc)
+                flash("Signup failed due to a server error. Please try again shortly.", "error")
+                return redirect(url_for("signup"))
 
             trigger_lugia_refresh()
             session.pop("signup_details", None)
@@ -1779,25 +1756,16 @@ def campfire():
             return redirect(url_for("campfire"))
 
         # ✅ Backend guard to prevent duplicates
-        records = sheet.get_all_records()
-        for r in records:
-            if r.get("Trainer Username", "").lower() == details["trainer_name"].lower():
-                flash("This trainer already exists. Please log in.", "error")
-                session.pop("signup_details", None)
-                return redirect(url_for("home"))
+        if _trainer_exists(details["trainer_name"]):
+            flash("This trainer already exists. Please log in.", "error")
+            session.pop("signup_details", None)
+            return redirect(url_for("home"))
 
-        # Save to Sheets
-        sheet.append_row([
-            details["trainer_name"],
-            hash_value(details["pin"]),
-            details["memorable"],
-            datetime.utcnow().isoformat(),
-            campfire_username,  # Column E
-            "",                 # Column F
-            "avatar1.png",       # Column G
-            "Standard"          # Column H
-        ])
-        if supabase:
+        if not supabase:
+            flash("Supabase is currently unavailable. Please try again later.", "error")
+            return redirect(url_for("signup"))
+
+        try:
             supabase.table("sheet1").insert({
                 "trainer_username": details["trainer_name"],
                 "pin_hash": hash_value(details["pin"]),
@@ -1807,8 +1775,12 @@ def campfire():
                 "stamps": 0,
                 "avatar_icon": "avatar1.png",
                 "trainer_card_background": "default.png",
-                "account_type": "Standard"
+                "account_type": "Standard",
             }).execute()
+        except Exception as exc:
+            print("⚠️ Supabase signup insert failed:", exc)
+            flash("Signup failed due to a server error. Please try again shortly.", "error")
+            return redirect(url_for("signup"))
 
         trigger_lugia_refresh()
         session.pop("signup_details", None)
@@ -1825,16 +1797,31 @@ def recover():
         memorable = request.form.get("memorable")
         new_pin = request.form.get("new_pin")
 
-        row, user = find_user(username)
+        _, user = find_user(username)
         if not user:
             flash("❌ No trainer found with that name.", "error")
             return redirect(url_for("recover"))
 
-        if user.get("Memorable Password") != memorable:
+        stored_memorable = user.get("memorable_password") or user.get("Memorable Password")
+        if stored_memorable != memorable:
             flash("⚠️ Memorable password does not match.", "error")
             return redirect(url_for("recover"))
 
-        sheet.update_cell(row, 2, hash_value(new_pin))
+        trainer_username = user.get("trainer_username") or user.get("Trainer Username")
+        if not trainer_username or not supabase:
+            flash("Unable to reset PIN right now. Please contact support.", "error")
+            return redirect(url_for("recover"))
+
+        try:
+            supabase.table("sheet1").update({
+                "pin_hash": hash_value(new_pin),
+                "last_login": datetime.utcnow().isoformat(),
+            }).eq("trainer_username", trainer_username).execute()
+        except Exception as exc:
+            print("⚠️ Supabase PIN reset failed:", exc)
+            flash("Unable to reset PIN right now. Please try again soon.", "error")
+            return redirect(url_for("recover"))
+
         flash("✅ PIN reset! You can log in now.", "success")
         return redirect(url_for("home"))
 
@@ -2075,20 +2062,35 @@ def change_pin():
     memorable = request.form["memorable"]
     new_pin = request.form["new_pin"]
 
-    row, user = find_user(session["trainer"])
+    _, user = find_user(session["trainer"])
     if not user:
         flash("User not found.", "error")
         return redirect(url_for("dashboard"))
 
-    if user.get("PIN Hash") != hash_value(old_pin):
+    stored_pin_hash = user.get("pin_hash") or user.get("PIN Hash")
+    if stored_pin_hash != hash_value(old_pin):
         flash("Old PIN is incorrect.", "error")
         return redirect(url_for("dashboard"))
 
-    if user.get("Memorable Password") != memorable:
+    stored_memorable = user.get("memorable_password") or user.get("Memorable Password")
+    if stored_memorable != memorable:
         flash("Memorable password is incorrect.", "error")
         return redirect(url_for("dashboard"))
 
-    sheet.update_cell(row, 2, hash_value(new_pin))
+    trainer_username = user.get("trainer_username") or session["trainer"]
+    if not supabase:
+        flash("Supabase is unavailable. Please try again later.", "error")
+        return redirect(url_for("dashboard"))
+
+    try:
+        supabase.table("sheet1").update({
+            "pin_hash": hash_value(new_pin),
+        }).eq("trainer_username", trainer_username).execute()
+    except Exception as exc:
+        print("⚠️ Supabase change_pin failed:", exc)
+        flash("Unable to update PIN right now. Please try again soon.", "error")
+        return redirect(url_for("dashboard"))
+
     flash("PIN updated successfully.", "success")
     return redirect(url_for("dashboard"))
 
@@ -2101,16 +2103,30 @@ def change_memorable():
     old_memorable = request.form["old_memorable"]
     new_memorable = request.form["new_memorable"]
 
-    row, user = find_user(session["trainer"])
+    _, user = find_user(session["trainer"])
     if not user:
         flash("User not found.", "error")
         return redirect(url_for("dashboard"))
 
-    if user.get("Memorable Password") != old_memorable:
+    stored_memorable = user.get("memorable_password") or user.get("Memorable Password")
+    if stored_memorable != old_memorable:
         flash("Old memorable password is incorrect.", "error")
         return redirect(url_for("dashboard"))
 
-    sheet.update_cell(row, 3, new_memorable)
+    trainer_username = user.get("trainer_username") or session["trainer"]
+    if not supabase:
+        flash("Supabase is unavailable. Please try again later.", "error")
+        return redirect(url_for("dashboard"))
+
+    try:
+        supabase.table("sheet1").update({
+            "memorable_password": new_memorable,
+        }).eq("trainer_username", trainer_username).execute()
+    except Exception as exc:
+        print("⚠️ Supabase change_memorable failed:", exc)
+        flash("Unable to update memorable password right now. Please try again soon.", "error")
+        return redirect(url_for("dashboard"))
+
     flash("Memorable password updated successfully.", "success")
     return redirect(url_for("dashboard"))
 
@@ -2131,7 +2147,7 @@ def delete_account():
         return redirect(url_for("home"))
 
     confirm_name = request.form["confirm_name"]
-    row, user = find_user(session["trainer"])
+    _, user = find_user(session["trainer"])
     if not user:
         flash("User not found.", "error")
         return redirect(url_for("dashboard"))
@@ -2140,7 +2156,18 @@ def delete_account():
         flash("Trainer name does not match. Account not deleted.", "error")
         return redirect(url_for("dashboard"))
 
-    sheet.delete_rows(row)
+    trainer_username = user.get("trainer_username") or session["trainer"]
+    if not supabase:
+        flash("Supabase is unavailable. Please try again later.", "error")
+        return redirect(url_for("dashboard"))
+
+    try:
+        supabase.table("sheet1").delete().eq("trainer_username", trainer_username).execute()
+    except Exception as exc:
+        print("⚠️ Supabase delete_account failed:", exc)
+        flash("Unable to delete your account right now. Please try again soon.", "error")
+        return redirect(url_for("dashboard"))
+
     session.clear()
     flash("Your account has been permanently deleted.", "success")
     return redirect(url_for("home"))
@@ -2235,7 +2262,7 @@ def meetup_history():
         return redirect(url_for("home"))
 
     trainer = session["trainer"]
-    row, user = find_user(trainer)
+    _, user = find_user(trainer)
     campfire_username = user.get("campfire_username", "")
 
     sort_by = request.args.get("sort", "date_desc")
@@ -2898,22 +2925,10 @@ def change_avatar():
             flash("Invalid background choice.", "error")
             return redirect(url_for("change_avatar"))
 
-        # === Update in Google Sheets ===
-        try:
-            # Find row in Sheet1
-            all_users = sheet.get_all_records()
-            row_index = None
-            for i, record in enumerate(all_users, start=2):  # header row is 1
-                if record.get("Trainer Username", "").lower() == session["trainer"].lower():
-                    row_index = i
-                    break
-            if row_index:
-                sheet.update_cell(row_index, 7, avatar_choice)       # G = Avatar Icon
-                sheet.update_cell(row_index, 8, background_choice)   # H = Trainer Card Background
-        except Exception as e:
-            print("⚠️ Failed updating Google Sheets avatar/background:", e)
+        if not supabase:
+            flash("Supabase is unavailable. Please try again later.", "error")
+            return redirect(url_for("change_avatar"))
 
-        # === Update in Supabase ===
         try:
             supabase.table("sheet1") \
                 .update({
@@ -2924,6 +2939,8 @@ def change_avatar():
                 .execute()
         except Exception as e:
             print("⚠️ Failed updating Supabase avatar/background:", e)
+            flash("Unable to update appearance right now. Please try again soon.", "error")
+            return redirect(url_for("change_avatar"))
 
         if request.headers.get("X-Requested-With") == "XMLHttpRequest":
             return jsonify({"success": True, "avatar": avatar_choice, "background": background_choice})

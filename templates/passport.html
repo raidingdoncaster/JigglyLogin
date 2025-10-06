@@ -7,7 +7,7 @@
 {% block content %}
 
 <!-- Passport Container -->
-<div class="passport-container" style="--passport-bg: url('{{ url_for('static', filename='passport/passport-bg.png') }}');">
+<div class="passport-container" style="background-image: url('{{ url_for('static', filename='passport/passport-bg.png') }}');">
   <div class="passport-content">
   
   <!-- Passport Header -->
@@ -93,14 +93,16 @@
   width:min(100%,1080px);
   margin:0 auto;
   box-shadow:0 24px 60px rgba(15,23,42,0.18);
-  background: url('{{ url_for('static', filename='passport/passport-bg.png') }}') center/cover no-repeat;
+  background-position:center;
+  background-size:cover;
+  background-repeat:no-repeat;
   overflow:hidden;
 }
 .passport-container::before{
   content:"";
   position:absolute;
   inset:0;
-  background:linear-gradient(180deg, rgba(9,16,32,0.72) 0%, rgba(9,16,32,0.9) 100%);
+  background:linear-gradient(180deg, rgba(9,16,32,0.45) 0%, rgba(9,16,32,0.78) 100%);
 }
 .passport-content{
   position:relative;
