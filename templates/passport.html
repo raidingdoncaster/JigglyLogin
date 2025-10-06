@@ -93,7 +93,7 @@
   width:min(100%,1080px);
   margin:0 auto;
   box-shadow:0 24px 60px rgba(15,23,42,0.18);
-  background: var(--passport-bg, none) center/cover no-repeat;
+  background: url('{{ url_for('static', filename='passport/passport-bg.png') }}') center/cover no-repeat;
   overflow:hidden;
 }
 .passport-container::before{
@@ -243,8 +243,8 @@
 }
 .stamp-count {
   position: absolute;
-  bottom: 18px;
-  right: 8px;
+  top: 40px;
+  right: 6px;
   min-width: 20px;
   height: 20px;
   padding: 0 6px;

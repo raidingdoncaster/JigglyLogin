@@ -17,8 +17,32 @@
         Log in to track your progress and see what’s next.
       </p>
       <div class="hero-actions">
-        <a href="{{ url_for('login') }}" class="btn-primary">Log In</a>
-        <a href="{{ url_for('signup') }}" class="btn-secondary">Join the Community</a>
+        <button type="button" class="btn-primary" id="installBtn">Install App</button>
+      </div>
+      <div class="install-guide" id="installGuide" hidden>
+        <div class="install-card">
+          <button type="button" class="close-guide" id="closeInstall" aria-label="Close">×</button>
+          <h2>Install RDAB App</h2>
+          <div class="install-body">
+            <div class="install-step install-step--ios" id="installIOS">
+              <h3>iOS 16+</h3>
+              <ol>
+                <li>Tap the <span class="icon">⤴️</span> Share button in Safari.</li>
+                <li>Scroll and choose <strong>Add to Home Screen</strong>.</li>
+                <li>Confirm the name, then tap <strong>Add</strong>.</li>
+              </ol>
+            </div>
+            <div class="install-step install-step--android" id="installAndroid">
+              <h3>Android (Chrome)</h3>
+              <ol>
+                <li>Tap the <span class="icon">⋮</span> menu in the top right.</li>
+                <li>Select <strong>Install app</strong> or <strong>Add to Home screen</strong>.</li>
+                <li>Approve the prompt to save RDAB to your device.</li>
+              </ol>
+            </div>
+          </div>
+          <p class="install-note">Already installed? Open the RDAB icon on your home screen to log in.</p>
+        </div>
       </div>
     </div>
   </section>
@@ -138,6 +162,54 @@
   .hero-actions{flex-direction:column;align-items:flex-start;}
   .about-card{padding:20px;}
 }
+
+.install-guide{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(15,23,42,0.55);backdrop-filter:blur(6px);z-index:4000;padding:20px;}
+.install-card{position:relative;background:#0f172a;color:#f8fafc;border-radius:20px;box-shadow:0 30px 60px rgba(15,23,42,0.45);padding:24px 26px;max-width:420px;width:100%;display:flex;flex-direction:column;gap:18px;}
+.install-card h2{margin:0;font-size:1.5rem;text-align:center;}
+.install-body{display:flex;flex-direction:column;gap:18px;}
+.install-step{background:rgba(15,23,42,0.35);border-radius:16px;padding:16px;border:1px solid rgba(148,163,184,0.25);}
+.install-step h3{margin:0 0 10px;font-size:1.05rem;color:#38bdf8;text-align:left;}
+.install-step ol{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px;font-size:0.95rem;}
+.install-step li{line-height:1.5;}
+.install-step .icon{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;margin-right:4px;}
+.install-note{text-align:center;font-size:0.85rem;color:#cbd5f5;margin:0;}
+.close-guide{position:absolute;top:12px;right:14px;background:transparent;border:none;color:#f8fafc;font-size:1.6rem;cursor:pointer;}
+
+@media(max-width:440px){
+  .install-card{padding:20px;}
+}
 </style>
+
+<script>
+(function(){
+  const installBtn=document.getElementById('installBtn');
+  const guide=document.getElementById('installGuide');
+  const closeBtn=document.getElementById('closeInstall');
+  const iosBlock=document.getElementById('installIOS');
+  const androidBlock=document.getElementById('installAndroid');
+  if(!installBtn || !guide) return;
+
+  function detectPlatform(){
+    const ua=navigator.userAgent.toLowerCase();
+    const isIOS=(/iphone|ipad|ipod/.test(ua));
+    const isAndroid=/android/.test(ua);
+    iosBlock?.setAttribute('hidden', (!isIOS).toString());
+    androidBlock?.setAttribute('hidden', (!isAndroid).toString());
+    if(!isIOS && !isAndroid){
+      iosBlock?.removeAttribute('hidden');
+      androidBlock?.removeAttribute('hidden');
+    }
+  }
+
+  installBtn.addEventListener('click',()=>{
+    detectPlatform();
+    guide.hidden=false;
+  });
+  closeBtn?.addEventListener('click',()=>{guide.hidden=true;});
+  guide.addEventListener('click',e=>{
+    if(e.target===guide){guide.hidden=true;}
+  });
+})();
+</script>
 
 {% endblock %}

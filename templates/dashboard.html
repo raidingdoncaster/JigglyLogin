@@ -67,11 +67,6 @@
     <a href="{{ url_for('passport') }}" class="btn">View Passport</a>
   </div>
 
-  <style>
-  .stamp-preview { display:flex; justify-content:center; gap:6px; margin:8px 0; }
-  .stamp-icon { width:28px; height:28px; border-radius:50%; border:2px solid #3a8dde; object-fit:cover; }
-  </style>
-
   <div class="widget">
     <h3>📅 Upcoming Meet-ups</h3>
     <p style="font-size:0.85em; color:#777;">No upcoming meet-ups yet.</p>
@@ -101,10 +96,13 @@
   </div>
 </div>
 
+<style>
 .widgets { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; margin-bottom:24px; }
 .widget { background:#fff; padding:16px; border-radius:14px; box-shadow:0 10px 24px rgba(15,23,42,0.12); text-align:center; min-height:132px; display:flex; flex-direction:column; gap:12px; justify-content:center; align-items:center; }
 .widget h3 { margin:0; font-size:1em; color:#3a8dde; }
 .btn { display:inline-flex; align-items:center; justify-content:center; padding:8px 14px; background:#3a8dde; color:#fff; border-radius:999px; text-decoration:none; font-size:0.9em; font-weight:600; box-shadow:0 4px 12px rgba(58,141,222,0.28); }
+.stamp-preview { display:flex; justify-content:center; gap:6px; margin:8px 0; }
+.stamp-icon { width:28px; height:28px; border-radius:50%; border:2px solid #3a8dde; object-fit:cover; }
 
 .explore { display:flex; flex-direction:column; gap:12px; }
 .explore-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; }
