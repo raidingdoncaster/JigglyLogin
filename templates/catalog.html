@@ -25,15 +25,8 @@
 .featured-carousel{position:relative;overflow:hidden;border-radius:18px;}
 .carousel-track{display:flex;transition:transform .6s ease;}
 .carousel-slide{min-width:100%;display:flex;justify-content:center;}
-.featured-card{position:relative;display:block;width:100%;color:#fff;text-decoration:none;}
-.featured-card img{width:100%;height:auto;max-height:260px;object-fit:cover;border-radius:18px;}
-.featured-info{position:absolute;left:0;bottom:0;width:100%;padding:18px;background:linear-gradient(180deg,rgba(15,23,42,0) 0%,rgba(15,23,42,0.75) 60%,rgba(15,23,42,0.95) 100%);border-radius:0 0 18px 18px;display:flex;flex-direction:column;gap:6px;}
-.featured-info h3{margin:0;font-size:1.1rem;font-weight:700;}
-.featured-info p{margin:0;font-size:.9rem;line-height:1.3;max-height:3.2em;overflow:hidden;}
-.featured-chip{align-self:flex-start;background:rgba(255,255,255,.85);color:#1f2937;border-radius:999px;padding:2px 10px;font-size:.75rem;font-weight:700;}
-.featured-meta{display:flex;gap:12px;font-weight:600;}
-.featured-meta span{display:inline-flex;align-items:center;gap:4px;}
-@media(min-width:768px){ .featured-card img{max-height:340px;} }
+.carousel-slide img{width:100%;height:auto;max-height:260px;object-fit:cover;border-radius:18px;}
+@media(min-width:768px){.carousel-slide img{max-height:340px;}}
 .carousel-controls{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:10px;}
 .carousel-prev,.carousel-next{background:rgba(255,255,255,.85);border:none;border-radius:50%;width:32px;height:32px;font-size:1.15rem;line-height:32px;cursor:pointer;}
 .carousel-dots{display:flex;gap:10px;}
@@ -140,34 +133,23 @@
 </div>
 
 <!-- FEATURED -->
-{% if featured_items %}
+{% if featured_slides %}
 <div class="section featured-carousel" id="featuredSection">
   <div class="carousel-track">
-    {% for it in featured_items %}
+    {% for slide in featured_slides %}
     <div class="carousel-slide">
-      <a class="featured-card" href="{{ url_for('catalog_item', item_id=it.id) }}">
-        <img src="{{ it.image_url }}" alt="{{ it.name }}">
-        <div class="featured-info">
-          <span class="featured-chip">Featured</span>
-          <h3>{{ it.name }}</h3>
-          <p>{{ it.description }}</p>
-          <div class="featured-meta">
-            <span>🪙 {{ it.cost_stamps }}</span>
-            <span>📦 {{ it.stock }}</span>
-          </div>
-        </div>
-      </a>
+      <img src="{{ slide.url }}" alt="{{ slide.alt }}">
     </div>
     {% endfor %}
   </div>
   <div class="carousel-controls">
-    <button class="carousel-prev" type="button" aria-label="Previous featured item">‹</button>
+    <button class="carousel-prev" type="button" aria-label="Previous featured slide">‹</button>
     <div class="carousel-dots">
-      {% for it in featured_items %}
+      {% for slide in featured_slides %}
         <span class="dot{% if loop.first %} active{% endif %}" data-index="{{ loop.index0 }}"></span>
       {% endfor %}
     </div>
-    <button class="carousel-next" type="button" aria-label="Next featured item">›</button>
+    <button class="carousel-next" type="button" aria-label="Next featured slide">›</button>
   </div>
 </div>
 {% endif %}

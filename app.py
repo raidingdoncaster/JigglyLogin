@@ -15,6 +15,7 @@ from datetime import datetime, date, timezone, timedelta
 from dateutil import parser
 import io, base64, time
 from markupsafe import Markup, escape
+from pathlib import Path
 
 # ====== Feature toggle ======
 USE_SUPABASE = True  # ✅ Supabase for stamps/meetups
@@ -2163,13 +2164,22 @@ def _safe_list(v):
         return [p for p in parts if p]
     return []
 
-def _featured_slice(items, max_count=5):
-    """Prefer items tagged 'featured'; else take most recent."""
-    if not items:
+def _featured_slide_names() -> list[str]:
+    """Return sorted image filenames from static/catalog/featured."""
+    static_root = Path(app.static_folder or "static")
+    folder = static_root / "catalog" / "featured"
+    if not folder.exists():
         return []
-    featured = [i for i in items if any((t or "").lower() == "featured" for t in _safe_list(i.get("tags")))]
-    pool = featured or items
-    return pool[:max_count]
+    allowed = {".png", ".jpg", ".jpeg", ".webp", ".gif"}
+    files = [p.name for p in folder.iterdir() if p.is_file() and p.suffix.lower() in allowed]
+    return sorted(files)
+
+
+def _featured_slide_alt(filename: str) -> str:
+    """Generate a readable alt text from the slide filename."""
+    stem = Path(filename).stem.replace("_", " ").replace("-", " ")
+    text = stem.strip().title()
+    return text or "Featured slide"
 
 def _category_label_for(item):
     """Return the first matching category label used in your page filters."""
@@ -2261,8 +2271,16 @@ def catalog():
         it["_cat"] = _category_label_for(it)
         it["_created"] = it.get("created_at") or it.get("updated_at") or datetime.utcnow().isoformat()
 
-    # Featured carousel (up to 5)
-    featured_items = _featured_slice(items, 5)
+    # Featured carousel slides from static folder
+    slide_names = _featured_slide_names()
+    featured_slides = []
+    for name in slide_names:
+        featured_slides.append(
+            {
+                "url": url_for("static", filename=f"catalog/featured/{name}"),
+                "alt": _featured_slide_alt(name),
+            }
+        )
 
     # Build categories → items map (reusing your constants)
     categories = {label: [] for label in CATEGORY_ORDER}
@@ -2276,16 +2294,17 @@ def catalog():
     # Simple page description for the hero
     catalog_description = "Short description goes here"
 
-    return render_template(
-        "catalog.html",
-        featured_items=featured_items,
-        items=items,
-        categories=categories,
-        category_order=CATEGORY_ORDER,
-        watch_ids=watch_ids,
-        catalog_description=catalog_description,
-        show_back=False
-    )
+    context = {
+        "featured_slides": featured_slides,
+        "items": items,
+        "categories": categories,
+        "category_order": CATEGORY_ORDER,
+        "watch_ids": watch_ids,
+        "catalog_description": catalog_description,
+        "show_back": False,
+    }
+
+    return render_template("catalog.html", **context)
 
 # ========= Watchlist & Orders API=========
 
