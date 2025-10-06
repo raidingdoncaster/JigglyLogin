@@ -5,7 +5,7 @@
   <!-- Thumbnail with Cost + Watch -->
   <div class="item-thumb" style="background-image:url('{{ item.image_url or url_for('static', filename='icons/catalog-app.png') }}')">
     <div class="cost-badge">
-      <img src="{{ url_for('static', filename='catalog/container/cost.png') }}" alt="Cost">
+      <img src="{{ url_for('static', filename='passport/stamper.png') }}" alt="Cost">
       <span>{{ item.cost_stamps }}</span>
     </div>
     <button id="watchBtn" class="watch-btn" data-id="{{ item.id }}">
