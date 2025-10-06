@@ -2738,13 +2738,16 @@ def catalog_redeem(item_id):
         updated_stock = max(0, latest_stock - 1)
         resp = (
             supabase.table("catalog_items")
-            .update({"stock": updated_stock})
+            .update({"stock": updated_stock}, count="exact")
             .eq("id", item_id)
             .eq("stock", latest_stock)
-            .select("id, stock")
             .execute()
         )
-        if not resp.data:
+        affected = getattr(resp, "count", None)
+        if affected is None:
+            data = getattr(resp, "data", None)
+            affected = len(data or [])
+        if not affected:
             adjust_stamps(trainer, cost, "Catalog Redemption rollback", "award")
             flash("Another trainer just grabbed the last one. Your stamps were returned.", "warning")
             return redirect(url_for("catalog"))
