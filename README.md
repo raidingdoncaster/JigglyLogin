@@ -9,6 +9,8 @@ setting project: gcloud config set project pogo-passport
 Make sure cmd is executable: chmod +x deploy.sh
 Use ./deploy.sh to deploy to Google
 
+"Signup failed due to server error. Please try again shortly"
+
 # Check old deployments and revisions
 run in terminal for table of revisions, time and traffic %:
 gcloud run revisions list --service jigglylogin --region europe-west1

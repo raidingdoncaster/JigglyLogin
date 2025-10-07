@@ -19,33 +19,34 @@
       <div class="hero-actions">
         <button type="button" class="btn-primary" id="installBtn">Install App</button>
       </div>
-      <div class="install-guide" id="installGuide" hidden>
-        <div class="install-card">
-          <button type="button" class="close-guide" id="closeInstall" aria-label="Close">×</button>
-          <h2>Install RDAB App</h2>
-          <div class="install-body">
-            <div class="install-step install-step--ios" id="installIOS">
-              <h3>iOS 16+</h3>
-              <ol>
-                <li>Tap the <span class="icon">⤴️</span> Share button in Safari.</li>
-                <li>Scroll and choose <strong>Add to Home Screen</strong>.</li>
-                <li>Confirm the name, then tap <strong>Add</strong>.</li>
-              </ol>
-            </div>
-            <div class="install-step install-step--android" id="installAndroid">
-              <h3>Android (Chrome)</h3>
-              <ol>
-                <li>Tap the <span class="icon">⋮</span> menu in the top right.</li>
-                <li>Select <strong>Install app</strong> or <strong>Add to Home screen</strong>.</li>
-                <li>Approve the prompt to save RDAB to your device.</li>
-              </ol>
-            </div>
-          </div>
-          <p class="install-note">Already installed? Open the RDAB icon on your home screen to log in.</p>
-        </div>
-      </div>
     </div>
   </section>
+
+  <div class="install-guide" id="installGuide" hidden>
+    <div class="install-card">
+      <button type="button" class="close-guide" id="closeInstall" aria-label="Close">×</button>
+      <h2>Install RDAB App</h2>
+      <div class="install-body">
+        <div class="install-step install-step--ios" id="installIOS">
+          <h3>iOS 16+</h3>
+          <ol>
+            <li>Tap the <span class="icon">⤴️</span> Share button in Safari.</li>
+            <li>Scroll and choose <strong>Add to Home Screen</strong>.</li>
+            <li>Confirm the name, then tap <strong>Add</strong>.</li>
+          </ol>
+        </div>
+        <div class="install-step install-step--android" id="installAndroid">
+          <h3>Android (Chrome)</h3>
+          <ol>
+            <li>Tap the <span class="icon">⋮</span> menu in the top right.</li>
+            <li>Select <strong>Install app</strong> or <strong>Add to Home screen</strong>.</li>
+            <li>Approve the prompt to save RDAB to your device.</li>
+          </ol>
+        </div>
+      </div>
+      <p class="install-note">Already installed? Open the RDAB icon on your home screen to log in.</p>
+    </div>
+  </div>
 
   <section class="about-card" id="about">
     <h2>We are Raiding Doncaster and Beyond!</h2>
@@ -193,11 +194,13 @@
     const ua=navigator.userAgent.toLowerCase();
     const isIOS=(/iphone|ipad|ipod/.test(ua));
     const isAndroid=/android/.test(ua);
-    iosBlock?.setAttribute('hidden', (!isIOS).toString());
-    androidBlock?.setAttribute('hidden', (!isAndroid).toString());
-    if(!isIOS && !isAndroid){
-      iosBlock?.removeAttribute('hidden');
-      androidBlock?.removeAttribute('hidden');
+    const showIOS=isIOS || (!isIOS && !isAndroid);
+    const showAndroid=isAndroid || (!isIOS && !isAndroid);
+    if(iosBlock){
+      iosBlock.hidden=!showIOS;
+    }
+    if(androidBlock){
+      androidBlock.hidden=!showAndroid;
     }
   }
 
