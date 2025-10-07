@@ -80,6 +80,48 @@ if USE_SUPABASE and create_client and SUPABASE_URL and SUPABASE_KEY:
         print("⚠️ Could not init Supabase client:", e)
         supabase = None
 
+
+def _supabase_rest_insert(table: str, payload: dict) -> bool:
+    """Fallback insert using Supabase REST API when the Python client misbehaves."""
+    if not (SUPABASE_URL and SUPABASE_KEY):
+        return False
+
+    url = f"{SUPABASE_URL.rstrip('/')}/rest/v1/{table}"
+    headers = {
+        "apikey": SUPABASE_KEY,
+        "Authorization": f"Bearer {SUPABASE_KEY}",
+        "Content-Type": "application/json",
+        "Prefer": "return=minimal",
+    }
+    try:
+        resp = requests.post(url, json=payload, headers=headers, timeout=10)
+        if resp.status_code >= 400:
+            print(
+                "❌ Supabase REST insert failed:",
+                resp.status_code,
+                resp.text[:300],
+            )
+            return False
+        return True
+    except Exception as exc:
+        print("❌ Supabase REST insert exception:", exc)
+        return False
+
+
+def supabase_insert_row(table: str, payload: dict) -> bool:
+    """Insert helper that retries via REST if the Supabase client errors."""
+    if supabase:
+        try:
+            supabase.table(table).insert(payload).execute()
+            return True
+        except Exception as exc:
+            msg = str(exc)
+            print(f"⚠️ Supabase client insert failed: {msg}")
+            # Work around the "DELETE requires a WHERE clause" bug we've seen in prod
+            if "DELETE requires a WHERE clause" not in msg:
+                return False
+    return _supabase_rest_insert(table, payload)
+
 # ====== Policy registry ======
 POLICY_PAGES = [
     {
@@ -1715,20 +1757,19 @@ def age():
                 flash("Supabase is currently unavailable. Please try again later.", "error")
                 return redirect(url_for("signup"))
 
-            try:
-                supabase.table("sheet1").insert({
-                    "trainer_username": details["trainer_name"],
-                    "pin_hash": hash_value(details["pin"]),
-                    "memorable_password": details["memorable"],
-                    "last_login": datetime.utcnow().isoformat(),
-                    "campfire_username": "Kids Account",
-                    "stamps": 0,
-                    "avatar_icon": "avatar1.png",
-                    "trainer_card_background": "default.png",
-                    "account_type": "Kids Account",
-                }).execute()
-            except Exception as exc:
-                print("⚠️ Supabase kids signup insert failed:", exc)
+            payload = {
+                "trainer_username": details["trainer_name"],
+                "pin_hash": hash_value(details["pin"]),
+                "memorable_password": details["memorable"],
+                "last_login": datetime.utcnow().isoformat(),
+                "campfire_username": "Kids Account",
+                "stamps": 0,
+                "avatar_icon": "avatar1.png",
+                "trainer_card_background": "default.png",
+                "account_type": "Kids Account",
+            }
+            if not supabase_insert_row("sheet1", payload):
+                print("⚠️ Supabase kids signup insert failed (after retry)")
                 flash("Signup failed due to a server error. Please try again shortly.", "error")
                 return redirect(url_for("signup"))
 
@@ -1765,20 +1806,19 @@ def campfire():
             flash("Supabase is currently unavailable. Please try again later.", "error")
             return redirect(url_for("signup"))
 
-        try:
-            supabase.table("sheet1").insert({
-                "trainer_username": details["trainer_name"],
-                "pin_hash": hash_value(details["pin"]),
-                "memorable_password": details["memorable"],
-                "last_login": datetime.utcnow().isoformat(),
-                "campfire_username": campfire_username,
-                "stamps": 0,
-                "avatar_icon": "avatar1.png",
-                "trainer_card_background": "default.png",
-                "account_type": "Standard",
-            }).execute()
-        except Exception as exc:
-            print("⚠️ Supabase signup insert failed:", exc)
+        payload = {
+            "trainer_username": details["trainer_name"],
+            "pin_hash": hash_value(details["pin"]),
+            "memorable_password": details["memorable"],
+            "last_login": datetime.utcnow().isoformat(),
+            "campfire_username": campfire_username,
+            "stamps": 0,
+            "avatar_icon": "avatar1.png",
+            "trainer_card_background": "default.png",
+            "account_type": "Standard",
+        }
+        if not supabase_insert_row("sheet1", payload):
+            print("⚠️ Supabase signup insert failed (after retry)")
             flash("Signup failed due to a server error. Please try again shortly.", "error")
             return redirect(url_for("signup"))
 
