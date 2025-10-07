@@ -196,7 +196,7 @@ def home():
         return redirect(url_for("login"))
 
     # 🔹 Otherwise show normal landing page (for browsers only)
-    if is_mobile:
+    if not is_pwa:
         return render_template("landing.html", show_back=False)
 
     # Default fallback
@@ -369,6 +369,22 @@ def inject_header_data():
 def hash_value(value: str) -> str:
     return hashlib.sha256(value.encode()).hexdigest()
 
+
+def normalize_account_type(value: str | None) -> str:
+    """Return canonical account_type strings for downstream logic."""
+    if not value:
+        return "standard"
+    cleaned = value.strip()
+    lowered = cleaned.lower()
+    if lowered == "standard":
+        return "standard"
+    if lowered == "kids account":
+        return "Kids Account"
+    if lowered == "admin":
+        return "Admin"
+    return cleaned
+
+
 def find_user(username):
     """Find a trainer in Supabase.sheet1 (case-insensitive)."""
     if not supabase:
@@ -386,8 +402,8 @@ def find_user(username):
 
         record = records[0]
         record.setdefault("avatar_icon", "avatar1.png")
-        record.setdefault("trainer_card_background", "default.png")
-        record.setdefault("account_type", "Standard")
+        record.setdefault("trainer_card_background", "standard.png")
+        record["account_type"] = normalize_account_type(record.get("account_type"))
         return None, record
     except Exception as e:
         print("⚠️ Supabase find_user failed:", e)
@@ -1237,6 +1253,9 @@ def admin_trainers():
             "trainer_username, campfire_username, account_type, stamps, avatar_icon"
         ).execute()
         all_trainers = resp.data or []
+        for entry in all_trainers:
+            entry["account_type"] = normalize_account_type(entry.get("account_type"))
+            entry.setdefault("avatar_icon", "avatar1.png")
     except Exception as e:
         print("⚠️ Failed fetching all trainers:", e)
 
@@ -1301,8 +1320,9 @@ def admin_change_account_type(username):
         flash("Unauthorized access.", "error")
         return redirect(url_for("dashboard"))
 
-    new_type = request.form.get("account_type")
-    if new_type not in ["Standard", "Kids Account", "Admin"]:
+    requested_type = request.form.get("account_type")
+    new_type = normalize_account_type(requested_type)
+    if new_type not in ["standard", "Kids Account", "Admin"]:
         flash("Invalid account type.", "error")
         return redirect(url_for("admin_trainer_detail", username=username))
 
@@ -1487,7 +1507,7 @@ def admin_stats():
     stamp_counts = list(bins.values())
 
     # Account types pie
-    acct_counter = Counter((a.get("account_type") or "Standard") for a in accounts)
+    acct_counter = Counter(normalize_account_type(a.get("account_type")) for a in accounts)
     account_labels = list(acct_counter.keys())
     account_counts = list(acct_counter.values())
 
@@ -1765,7 +1785,7 @@ def age():
                 "campfire_username": "Kids Account",
                 "stamps": 0,
                 "avatar_icon": "avatar1.png",
-                "trainer_card_background": "default.png",
+                "trainer_card_background": "standard.png",
                 "account_type": "Kids Account",
             }
             if not supabase_insert_row("sheet1", payload):
@@ -1814,8 +1834,8 @@ def campfire():
             "campfire_username": campfire_username,
             "stamps": 0,
             "avatar_icon": "avatar1.png",
-            "trainer_card_background": "default.png",
-            "account_type": "Standard",
+            "trainer_card_background": "standard.png",
+            "account_type": "standard",
         }
         if not supabase_insert_row("sheet1", payload):
             print("⚠️ Supabase signup insert failed (after retry)")
@@ -1895,10 +1915,10 @@ def dashboard():
         total_stamps=total_stamps,
         current_stamps=current_stamps,
         avatar=user.get("avatar_icon", "avatar1.png"),
-        background=user.get("trainer_card_background", "default.png"),
+        background=user.get("trainer_card_background", "standard.png"),
         campfire_username=campfire_username,
         most_recent_meetup=most_recent_meetup,
-        account_type=user.get("account_type", "Standard"),
+        account_type=normalize_account_type(user.get("account_type")),
         show_back=False,
     )
 
@@ -2993,7 +3013,7 @@ def change_avatar():
     backgrounds = os.listdir(backgrounds_folder)
 
     current_avatar = user.get("avatar_icon", "avatar1.png")
-    current_background = user.get("trainer_card_background") or "default.png"
+    current_background = user.get("trainer_card_background") or "standard.png"
 
     return render_template(
         "change_avatar.html",
@@ -3038,7 +3058,7 @@ def inject_account_type():
     if "trainer" in session:
         _, user = find_user(session["trainer"])
         if user:
-            return {"account_type": user.get("account_type", "Standard")}
+            return {"account_type": normalize_account_type(user.get("account_type"))}
     return {"account_type": "Guest"}
 
 # ====== Entrypoint ======

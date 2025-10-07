@@ -17,7 +17,7 @@
   <img src="{{ url_for('static', filename='avatars/' ~ trainer.avatar_icon) }}" 
        alt="Avatar" class="avatar-lg">
   <h2>{{ trainer.trainer_username }}</h2>
-  <p><strong>Account Type:</strong> {{ trainer.account_type }}</p>
+  <p><strong>Account Type:</strong> {{ 'Standard' if trainer.account_type|lower == 'standard' else trainer.account_type }}</p>
   <p><strong>Campfire Username:</strong> {{ trainer.campfire_username or 'N/A' }}</p>
   <p><strong>Current Stamps:</strong> {{ trainer.stamps }}</p>
 </div>
@@ -44,7 +44,7 @@
     <h3>👑 Change Account Type</h3>
     <form action="{{ url_for('admin_change_account_type', username=trainer.trainer_username) }}" method="post">
       <select name="account_type" required>
-        <option value="Standard" {% if trainer.account_type == "Standard" %}selected{% endif %}>Standard</option>
+        <option value="standard" {% if trainer.account_type|lower == "standard" %}selected{% endif %}>Standard</option>
         <option value="Kids Account" {% if trainer.account_type == "Kids Account" %}selected{% endif %}>Kids Account</option>
         <option value="Admin" {% if trainer.account_type == "Admin" %}selected{% endif %}>Admin</option>
       </select>

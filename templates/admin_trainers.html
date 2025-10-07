@@ -27,7 +27,7 @@
       <img src="{{ url_for('static', filename='avatars/' ~ t.avatar_icon) }}"
            alt="Avatar" class="avatar">
       <h4>{{ t.trainer_username }}</h4>
-      <p>{{ t.account_type }}</p>
+      <p>{{ 'Standard' if t.account_type|lower == 'standard' else t.account_type }}</p>
       <p>Stamps: {{ t.stamps }}</p>
     </a>
   {% endfor %}

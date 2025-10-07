@@ -490,7 +490,7 @@
         <details>
           <summary>🔒 Security</summary>
           <div class="settings-body">
-            <p class="meta">Account type: {{ account_type }}</p>
+            <p class="meta">Account type: {{ 'Standard' if account_type|lower == 'standard' else account_type }}</p>
             <form action="{{ url_for('logout_everywhere') }}" method="post" class="row-actions">
               <button type="submit" class="btn-primary">Log Out Everywhere</button>
             </form>
