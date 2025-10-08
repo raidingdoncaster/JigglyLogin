@@ -3,6 +3,7 @@ __pycache__/
 *.pyc
 uploads/
 token.pickle
+test_supabase.py
 
 # --- Python ---
 __pycache__/

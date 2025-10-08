@@ -4,7 +4,7 @@ import json
 import requests
 import uuid
 import re
-from flask import Flask, render_template, abort, request, redirect, url_for, session, flash, send_from_directory, jsonify
+from flask import Flask, render_template, abort, request, redirect, url_for, session, flash, send_from_directory, jsonify, g
 from werkzeug.utils import secure_filename
 from PIL import Image
 from pywebpush import webpush, WebPushException
@@ -81,9 +81,21 @@ if USE_SUPABASE and create_client and SUPABASE_URL and SUPABASE_KEY:
         supabase = None
 
 
+def _clear_supabase_error():
+    try:
+        if hasattr(g, "supabase_last_error"):
+            del g.supabase_last_error
+    except RuntimeError:
+        pass
+
+
 def _supabase_rest_insert(table: str, payload: dict) -> bool:
     """Fallback insert using Supabase REST API when the Python client misbehaves."""
     if not (SUPABASE_URL and SUPABASE_KEY):
+        try:
+            g.supabase_last_error = "Missing Supabase credentials"
+        except RuntimeError:
+            pass
         return False
 
     url = f"{SUPABASE_URL.rstrip('/')}/rest/v1/{table}"
@@ -101,26 +113,44 @@ def _supabase_rest_insert(table: str, payload: dict) -> bool:
                 resp.status_code,
                 resp.text[:300],
             )
+            try:
+                g.supabase_last_error = resp.text
+            except RuntimeError:
+                pass
             return False
+        _clear_supabase_error()
         return True
     except Exception as exc:
         print("❌ Supabase REST insert exception:", exc)
+        try:
+            g.supabase_last_error = str(exc)
+        except RuntimeError:
+            pass
         return False
 
 
 def supabase_insert_row(table: str, payload: dict) -> bool:
     """Insert helper that retries via REST if the Supabase client errors."""
+    last_error = None
     if supabase:
         try:
             supabase.table(table).insert(payload).execute()
+            _clear_supabase_error()
             return True
         except Exception as exc:
             msg = str(exc)
             print(f"⚠️ Supabase client insert failed: {msg}")
-            # Work around the "DELETE requires a WHERE clause" bug we've seen in prod
-            if "DELETE requires a WHERE clause" not in msg:
-                return False
-    return _supabase_rest_insert(table, payload)
+            last_error = msg
+            try:
+                g.supabase_last_error = msg
+            except RuntimeError:
+                pass
+    ok = _supabase_rest_insert(table, payload)
+    if not ok and last_error:
+        print(f"❌ Supabase insert ultimately failed after client+REST attempts: {last_error}")
+    if ok:
+        _clear_supabase_error()
+    return ok
 
 # ====== Policy registry ======
 POLICY_PAGES = [
@@ -373,11 +403,11 @@ def hash_value(value: str) -> str:
 def normalize_account_type(value: str | None) -> str:
     """Return canonical account_type strings for downstream logic."""
     if not value:
-        return "standard"
+        return "Standard"
     cleaned = value.strip()
     lowered = cleaned.lower()
     if lowered == "standard":
-        return "standard"
+        return "Standard"
     if lowered == "kids account":
         return "Kids Account"
     if lowered == "admin":
@@ -1322,7 +1352,7 @@ def admin_change_account_type(username):
 
     requested_type = request.form.get("account_type")
     new_type = normalize_account_type(requested_type)
-    if new_type not in ["standard", "Kids Account", "Admin"]:
+    if new_type not in ["Standard", "Kids Account", "Admin"]:
         flash("Invalid account type.", "error")
         return redirect(url_for("admin_trainer_detail", username=username))
 
@@ -1790,7 +1820,17 @@ def age():
             }
             if not supabase_insert_row("sheet1", payload):
                 print("⚠️ Supabase kids signup insert failed (after retry)")
-                flash("Signup failed due to a server error. Please try again shortly.", "error")
+                error_text = ""
+                try:
+                    error_text = getattr(g, "supabase_last_error", "") or ""
+                    if hasattr(g, "supabase_last_error"):
+                        del g.supabase_last_error
+                except RuntimeError:
+                    pass
+                if "duplicate key value" in error_text.lower():
+                    flash("This trainer already exists. Please log in instead.", "error")
+                else:
+                    flash("Signup failed due to a server error. Please try again shortly.", "error")
                 return redirect(url_for("signup"))
 
             trigger_lugia_refresh()
@@ -1835,11 +1875,21 @@ def campfire():
             "stamps": 0,
             "avatar_icon": "avatar1.png",
             "trainer_card_background": "standard.png",
-            "account_type": "standard",
+            "account_type": "Standard",
         }
         if not supabase_insert_row("sheet1", payload):
             print("⚠️ Supabase signup insert failed (after retry)")
-            flash("Signup failed due to a server error. Please try again shortly.", "error")
+            error_text = ""
+            try:
+                error_text = getattr(g, "supabase_last_error", "") or ""
+                if hasattr(g, "supabase_last_error"):
+                    del g.supabase_last_error
+            except RuntimeError:
+                pass
+            if "duplicate key value" in error_text.lower():
+                flash("This trainer already exists. Please log in instead.", "error")
+            else:
+                flash("Signup failed due to a server error. Please try again shortly.", "error")
             return redirect(url_for("signup"))
 
         trigger_lugia_refresh()
