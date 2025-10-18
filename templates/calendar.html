@@ -25,11 +25,11 @@
               <img src="{{ ev.cover_photo_url }}" alt="{{ ev.title }}">
             </div>
           {% endif %}
-          <div class="event-card__body">
-            <header class="event-card__header">
-              <div class="event-card__date">
-                <span class="event-card__day">{{ ev.start_local_date }}</span>
-                <span class="event-card__time">{{ ev.start_local_time }} – {{ ev.end_local_time }} (UK)</span>
+            <div class="event-card__body">
+              <header class="event-card__header">
+                <div class="event-card__date">
+                  <span class="event-card__day">{{ ev.start_local_date }}</span>
+                  <span class="event-card__time">{{ ev.start_local_time }} – {{ ev.end_local_time }} (UK)</span>
               </div>
               {% if ev.location %}
                 <div class="event-card__location">📍 {{ ev.location }}</div>
@@ -62,8 +62,8 @@
 </div>
 
 <style>
-.calendar-page { display:flex; flex-direction:column; gap:20px; }
-.calendar-header { padding-bottom:6px; border-bottom:1px solid rgba(148,163,184,0.35); }
+.calendar-page { display:flex; flex-direction:column; gap:18px; }
+.calendar-header { padding-bottom:6px; border-bottom:1px solid rgba(148,163,184,0.35); position:static; }
 .calendar-header h2 { margin:0; font-size:1.6rem; color:#0f172a; }
 .calendar-header p { margin:6px 0 0; color:#4b5563; }
 .calendar-cta { margin-top:12px; display:flex; flex-wrap:wrap; gap:10px; }
@@ -76,6 +76,7 @@
   border-radius:20px;
   box-shadow:0 14px 28px rgba(15,23,42,0.16);
   overflow:hidden;
+  text-align:left;
 }
 .event-card__media img {
   width:100%;
@@ -87,6 +88,7 @@
   display:flex;
   flex-direction:column;
   gap:12px;
+  align-items:flex-start;
 }
 .event-card__header {
   display:flex;
@@ -100,7 +102,7 @@
   font-weight:600;
   color:#1f2937;
 }
-.event-card__time { font-size:0.88rem; color:#2563eb; }
+.event-card__time { font-size:0.88rem; color:#1f2937; }
 .event-card__location { font-size:0.92rem; color:#475569; font-weight:600; }
 .event-card__title { margin:0; font-size:1.18rem; color:#0f172a; }
 .event-card__actions {
@@ -126,8 +128,8 @@
 }
 .btn:hover { transform:translateY(-1px); box-shadow:0 10px 20px rgba(58,141,222,0.28); }
 .btn-secondary { background:#f97316; box-shadow:0 6px 14px rgba(249,115,22,0.28); }
-.btn-light { background:#f8fafc; color:#2563eb; border:1px solid rgba(148,163,184,0.4); box-shadow:none; }
-.btn-light:hover { background:#e2e8f0; }
+.btn-light { background:#fff; color:#2563eb; border:1px solid rgba(148,163,184,0.6); box-shadow:none; }
+.btn-light:hover { background:#f1f5f9; }
 
 .event-empty {
   background:#fff;

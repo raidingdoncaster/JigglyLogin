@@ -52,7 +52,7 @@
 
 <!-- Widgets -->
 <div class="widgets">
-  <div class="widget">
+  <div class="widget widget--passport">
     <h3>🎟️ Passport Progress</h3>
     <p>Your stamps: {{ current_stamps }}</p>
     <div class="stamp-preview">
@@ -67,7 +67,7 @@
     <a href="{{ url_for('passport') }}" class="btn">View Passport</a>
   </div>
 
-  <div class="widget">
+  <div class="widget widget--meetups">
     <h3>📅 Upcoming Meet-ups</h3>
     {% if upcoming_meetups %}
       <div class="upcoming-list">
@@ -128,15 +128,15 @@
 </div>
 
 <style>
-.widgets { display:flex; gap:16px; margin-bottom:24px; flex-wrap:nowrap; align-items:stretch; overflow-x:auto; scrollbar-width:none; }
-.widgets::-webkit-scrollbar { display:none; }
-.widget { background:#fff; padding:16px; border-radius:14px; box-shadow:0 10px 24px rgba(15,23,42,0.12); text-align:center; min-height:132px; display:flex; flex-direction:column; gap:12px; justify-content:center; align-items:center; flex:1 1 280px; min-width:240px; }
+.widgets { display:flex; gap:12px; margin:12px 0 18px; flex-wrap:wrap; align-items:stretch; }
+.widget { background:#fff; padding:12px; border-radius:14px; box-shadow:0 8px 20px rgba(15,23,42,0.12); text-align:center; min-height:110px; display:flex; flex-direction:column; gap:10px; justify-content:center; align-items:center; flex:1 1 260px; }
+.widget--passport, .widget--meetups { flex:1 1 calc(50% - 6px); max-width:calc(50% - 6px); min-width:200px; }
 .widget h3 { margin:0; font-size:1em; color:#3a8dde; }
 .btn { display:inline-flex; align-items:center; justify-content:center; padding:8px 14px; background:#3a8dde; color:#fff; border-radius:999px; text-decoration:none; font-size:0.9em; font-weight:600; box-shadow:0 4px 12px rgba(58,141,222,0.28); }
-.stamp-preview { display:flex; justify-content:center; gap:6px; margin:8px 0; }
-.stamp-icon { width:28px; height:28px; border-radius:50%; border:2px solid #3a8dde; object-fit:cover; }
-.upcoming-list { display:flex; flex-direction:column; gap:10px; width:100%; margin:0 0 12px; }
-.upcoming-card { display:flex; align-items:center; gap:12px; background:#f1f5fb; border-radius:14px; padding:10px; box-shadow:0 6px 14px rgba(15,23,42,0.08); }
+.stamp-preview { display:flex; justify-content:center; gap:6px; margin:6px 0; }
+.stamp-icon { width:26px; height:26px; border-radius:50%; border:2px solid #3a8dde; object-fit:cover; }
+.upcoming-list { display:flex; flex-direction:column; gap:8px; width:100%; margin:0 0 8px; }
+.upcoming-card { display:flex; align-items:center; gap:10px; background:#f1f5fb; border-radius:12px; padding:8px; box-shadow:0 5px 12px rgba(15,23,42,0.08); }
 .upcoming-card__left { display:flex; flex-direction:column; align-items:center; gap:6px; }
 .upcoming-card__media { width:50px; height:50px; border-radius:12px; overflow:hidden; background:#e2e8f0; display:flex; align-items:center; justify-content:center; }
 .upcoming-card__media img { width:100%; height:100%; object-fit:cover; }
@@ -145,8 +145,8 @@
 .upcoming-card__title { font-size:0.82em; color:#1f2937; font-weight:700; }
 .upcoming-card__datetime { font-size:0.75em; color:#2563eb; font-weight:600; }
 .upcoming-card__location { font-size:0.72em; color:#475569; }
-.btn-rsvp { background:#f97316; font-size:0.72em; padding:5px 12px; box-shadow:none; }
-.btn-disabled { background:#cbd5f5; color:#475569; font-size:0.7em; padding:5px 12px; border-radius:999px; }
+.btn-rsvp { background:#f97316; font-size:0.7em; padding:4px 10px; box-shadow:none; }
+.btn-disabled { background:#cbd5f5; color:#475569; font-size:0.7em; padding:4px 10px; border-radius:999px; }
 .upcoming-empty { font-size:0.85em; color:#777; margin:0 0 12px; }
 
 .explore { display:flex; flex-direction:column; gap:12px; }
@@ -158,6 +158,10 @@
 
 @media(max-width:520px){
   .trainer-card-content{padding:18px;}
+  .widgets { gap:10px; margin:10px 0 16px; }
+  .widget { flex:1 1 calc(50% - 5px); max-width:calc(50% - 5px); padding:10px; min-width:180px; }
+  .btn { padding:7px 12px; font-size:0.85em; }
+  .explore-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
 }
 </style>
 
