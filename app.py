@@ -4,7 +4,7 @@ import json
 import requests
 import uuid
 import re
-from flask import Flask, render_template, abort, request, redirect, url_for, session, flash, send_from_directory, jsonify, g
+from flask import Flask, render_template, abort, request, redirect, url_for, session, flash, send_from_directory, jsonify, g, make_response
 from werkzeug.utils import secure_filename
 from PIL import Image
 from pywebpush import webpush, WebPushException
@@ -14,6 +14,8 @@ from dateutil import parser
 import io, base64, time
 from markupsafe import Markup, escape
 from pathlib import Path
+from zoneinfo import ZoneInfo
+from urllib.parse import urlencode, quote_plus
 
 # ====== Feature toggle ======
 USE_SUPABASE = True  # ✅ Supabase for stamps/meetups
@@ -44,7 +46,15 @@ def check_maintenance_mode():
         return
 
     # Skip maintenance mode for static files, manifest, and login
-    allowed_endpoints = ("static", "manifest", "service_worker", "maintenance", "admin_login")
+    allowed_endpoints = (
+        "static",
+        "manifest",
+        "service_worker",
+        "maintenance",
+        "admin_login",
+        "calendar_public",
+        "event_ics_file",
+    )
     if app.view_functions.get(request.endpoint) and request.endpoint.startswith(allowed_endpoints):
         return
 
@@ -55,6 +65,11 @@ def check_maintenance_mode():
 UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
+
+try:
+    LONDON_TZ = ZoneInfo("Europe/London")
+except Exception:
+    LONDON_TZ = timezone.utc
 
 def parse_dt_safe(dt_str):
     if not dt_str:
@@ -67,6 +82,112 @@ def parse_dt_safe(dt_str):
         return dt
     except Exception:
         return datetime.min.replace(tzinfo=timezone.utc)
+
+def fetch_upcoming_events(limit: int | None = None):
+    """Fetch upcoming meetup events ordered by start time in London timezone."""
+    if not (USE_SUPABASE and supabase):
+        return []
+
+    now_local = datetime.now(LONDON_TZ)
+    now_utc = datetime.utcnow().replace(tzinfo=timezone.utc)
+
+    try:
+        resp = (supabase.table("events")
+                .select("id,event_id,name,start_time,end_time,location,url,cover_photo_url")
+                .order("start_time", desc=False)
+                .execute())
+        rows = resp.data or []
+    except Exception as exc:
+        print("⚠️ Supabase upcoming events fetch failed:", exc)
+        return []
+
+    upcoming = []
+    sentinel = datetime.min.replace(tzinfo=timezone.utc)
+
+    for row in rows:
+        record_id = str(row.get("id") or "").strip()
+        start_dt = parse_dt_safe(row.get("start_time"))
+        if start_dt <= sentinel:
+            continue
+        end_dt = parse_dt_safe(row.get("end_time"))
+        if end_dt <= sentinel:
+            end_dt = start_dt + timedelta(hours=2)
+
+        start_local = start_dt.astimezone(LONDON_TZ)
+        if start_local < now_local:
+            continue
+
+        end_utc = end_dt.astimezone(timezone.utc)
+        if end_utc <= now_utc:
+            continue
+
+        event_id = str(row.get("event_id") or "").strip()
+        if not event_id:
+            event_id = record_id or f"evt-{uuid.uuid4().hex}"
+
+        upcoming.append({
+            "event_id": event_id,
+            "record_id": record_id,
+            "name": row.get("name") or "Unnamed Meetup",
+            "location": row.get("location") or "",
+            "campfire_url": row.get("url") or "",
+            "cover_photo_url": row.get("cover_photo_url") or "",
+            "start": start_dt,
+            "end": end_dt,
+            "start_local": start_local,
+            "end_local": end_dt.astimezone(LONDON_TZ),
+        })
+
+    upcoming.sort(key=lambda ev: ev["start"])
+    if limit is not None:
+        upcoming = upcoming[:limit]
+    return upcoming
+
+def build_google_calendar_link(name: str, location: str, start_dt: datetime, end_dt: datetime, campfire_url: str) -> str:
+    """Return a Google Calendar deep link for the provided event."""
+    start_fmt = start_dt.astimezone(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    end_fmt = end_dt.astimezone(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+
+    details = []
+    if campfire_url:
+        details.append(f"Campfire RSVP: {campfire_url}")
+    if location:
+        details.append(f"Location: {location}")
+
+    params = {
+        "action": "TEMPLATE",
+        "text": name,
+        "dates": f"{start_fmt}/{end_fmt}",
+    }
+    if location:
+        params["location"] = location
+    if details:
+        params["details"] = "\n".join(details)
+
+    return "https://calendar.google.com/calendar/render?" + urlencode(params, quote_via=quote_plus)
+
+def serialize_calendar_events(events):
+    """Convert upcoming event objects into a template-friendly payload."""
+    calendar_events = []
+    for ev in events:
+        google_link = build_google_calendar_link(ev["name"], ev["location"], ev["start"], ev["end"], ev["campfire_url"])
+        calendar_events.append({
+            "id": ev["event_id"],
+            "event_id": ev["event_id"],
+            "title": ev["name"],
+            "location": ev["location"],
+            "campfire_url": ev["campfire_url"],
+            "cover_photo_url": ev["cover_photo_url"],
+            "start": ev["start"].astimezone(timezone.utc).isoformat(),
+            "end": ev["end"].astimezone(timezone.utc).isoformat(),
+            "start_local_date": ev["start_local"].strftime("%A %d %B %Y"),
+            "start_local_time": ev["start_local"].strftime("%H:%M"),
+            "end_local_time": ev["end_local"].strftime("%H:%M"),
+            "google_calendar_url": google_link,
+            "ics_url": url_for("event_ics_file", event_id=ev["event_id"]),
+            "date_label": ev["start_local"].strftime("%d %b %Y"),
+        })
+    return calendar_events
 
 # ====== Supabase setup ======
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
@@ -1957,6 +2078,17 @@ def dashboard():
     current_stamps = int(user.get("stamps", 0) or 0)
 
     most_recent_meetup = get_most_recent_meetup(trainer, campfire_username)
+    upcoming_widget_events = []
+    for ev in fetch_upcoming_events(limit=3):
+        start_local = ev["start_local"]
+        upcoming_widget_events.append({
+            "event_id": ev["event_id"],
+            "name": ev["name"],
+            "when_label": start_local.strftime("%a %d %b • %H:%M"),
+            "location": ev["location"],
+            "campfire_url": ev["campfire_url"],
+            "cover_photo": ev["cover_photo_url"],
+        })
 
     return render_template(
         "dashboard.html",
@@ -1970,7 +2102,120 @@ def dashboard():
         most_recent_meetup=most_recent_meetup,
         account_type=normalize_account_type(user.get("account_type")),
         show_back=False,
+        upcoming_meetups=upcoming_widget_events,
+        calendar_url=url_for("calendar_view"),
     )
+
+@app.route("/calendar")
+def calendar_view():
+    session["last_page"] = request.path
+    if "trainer" not in session:
+        flash("Please log in to view the meetup calendar.", "warning")
+        return redirect(url_for("home"))
+
+    events = fetch_upcoming_events()
+    calendar_events = serialize_calendar_events(events)
+    return render_template(
+        "calendar.html",
+        calendar_events=calendar_events,
+        has_events=bool(calendar_events),
+        show_back=False,
+        public_view=False,
+        login_url=url_for("login"),
+        title="Meetup Calendar",
+    )
+
+@app.route("/meetups")
+def calendar_public():
+    events = fetch_upcoming_events()
+    calendar_events = serialize_calendar_events(events)
+    return render_template(
+        "calendar.html",
+        calendar_events=calendar_events,
+        has_events=bool(calendar_events),
+        show_back=False,
+        public_view=True,
+        login_url=url_for("login"),
+        title="Meetup Calendar",
+    )
+
+@app.route("/events/<event_id>.ics")
+def event_ics_file(event_id):
+    if not (USE_SUPABASE and supabase):
+        abort(404)
+
+    event_row = None
+    try:
+        resp = (supabase.table("events")
+                .select("id,event_id,name,start_time,end_time,location,url")
+                .eq("event_id", event_id)
+                .limit(1)
+                .execute())
+        data = resp.data or []
+        if data:
+            event_row = data[0]
+        else:
+            fallback = (supabase.table("events")
+                        .select("id,event_id,name,start_time,end_time,location,url")
+                        .eq("id", event_id)
+                        .limit(1)
+                        .execute())
+            fallback_data = fallback.data or []
+            if fallback_data:
+                event_row = fallback_data[0]
+    except Exception as exc:
+        print("⚠️ Supabase ICS fetch failed:", exc)
+        abort(404)
+
+    if not event_row:
+        abort(404)
+
+    start_dt = parse_dt_safe(event_row.get("start_time"))
+    sentinel = datetime.min.replace(tzinfo=timezone.utc)
+    if start_dt <= sentinel:
+        abort(404)
+    end_dt = parse_dt_safe(event_row.get("end_time"))
+    if end_dt <= sentinel or end_dt <= start_dt:
+        end_dt = start_dt + timedelta(hours=2)
+
+    dtstamp = datetime.utcnow().replace(tzinfo=timezone.utc)
+
+    def _ics_format(ts: datetime) -> str:
+        return ts.astimezone(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+
+    uid = (event_row.get("event_id") or event_row.get("id") or event_id or f"evt-{uuid.uuid4().hex}")
+    lines = [
+        "BEGIN:VCALENDAR",
+        "VERSION:2.0",
+        "PRODID:-//RDAB Community//Meetup Calendar//EN",
+        "CALSCALE:GREGORIAN",
+        "BEGIN:VEVENT",
+        f"UID:{uid}@rdab.app",
+        f"DTSTAMP:{_ics_format(dtstamp)}",
+        f"DTSTART:{_ics_format(start_dt)}",
+        f"DTEND:{_ics_format(end_dt)}",
+        f"SUMMARY:{(event_row.get('name') or 'RDAB Meetup').replace('\\n', ' ')}",
+    ]
+
+    location = event_row.get("location") or ""
+    if location:
+        lines.append(f"LOCATION:{location.replace('\\n', ' ')}")
+
+    description_bits = []
+    if event_row.get("url"):
+        description_bits.append(f"Campfire RSVP: {event_row['url']}")
+    description = "\\n".join(description_bits)
+    if description:
+        lines.append(f"DESCRIPTION:{description}")
+
+    lines.extend(["END:VEVENT", "END:VCALENDAR", ""])
+    ics_body = "\r\n".join(lines)
+    filename = secure_filename(f"{event_row.get('name') or 'meetup'}.ics") or "meetup.ics"
+
+    response = make_response(ics_body)
+    response.headers["Content-Type"] = "text/calendar; charset=utf-8"
+    response.headers["Content-Disposition"] = f'attachment; filename="{filename}"'
+    return response
 
 # ====== Inbox, Notifications, Receipts ======
 def _normalize_iso(dt_val):

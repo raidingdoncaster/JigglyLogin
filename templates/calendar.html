@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+
+{% block page_settings %}
+  {% set container_class = 'is-cozy' %}
+{% endblock %}
+
+{% block content %}
+<div class="calendar-page">
+  <header class="calendar-header">
+    <h2>Meetup Calendar</h2>
+    <p>Plan ahead for upcoming RDAB meetups. Tap an event to see details, RSVP on Campfire, or add it to your personal calendar.</p>
+    {% if public_view %}
+      <div class="calendar-cta">
+        <a href="{{ login_url }}" class="btn">Log in to RDAB App</a>
+      </div>
+    {% endif %}
+  </header>
+
+  <div class="calendar-grid">
+    <section class="calendar-grid__calendar">
+      <div id="meetup-calendar"></div>
+    </section>
+
+    <aside class="calendar-grid__sidebar">
+      <div id="calendar-event-details" class="event-details"></div>
+
+      <div class="event-list">
+        <h3>Upcoming Meetups</h3>
+        {% if has_events %}
+          <ul>
+            {% for ev in calendar_events %}
+              <li data-event-id="{{ ev.event_id }}">
+                <strong>{{ ev.title }}</strong>
+                <span>{{ ev.date_label }} · {{ ev.start_local_time }} (UK)</span>
+                {% if ev.location %}
+                  <span>{{ ev.location }}</span>
+                {% endif %}
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="muted">We’ll publish the next wave of meetups soon. Check back shortly.</p>
+        {% endif %}
+      </div>
+    </aside>
+  </div>
+</div>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css">
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
+<script>
+const CAL_EVENTS = {{ calendar_events | tojson }};
+const detailsEl = document.getElementById('calendar-event-details');
+
+function renderDetails(event) {
+  if (!detailsEl) return;
+
+  if (!event) {
+    detailsEl.innerHTML = `
+      <div class="event-details__empty">
+        <h3>No upcoming meetups yet</h3>
+        <p>Check back soon—new community events will appear here once they are scheduled.</p>
+      </div>`;
+    return;
+  }
+
+  const campfireRow = event.campfire_url
+    ? `<a class="btn btn-secondary" href="${event.campfire_url}" target="_blank" rel="noopener">Campfire RSVP</a>`
+    : `<span class="muted">Campfire link coming soon</span>`;
+
+  detailsEl.innerHTML = `
+    <div class="event-details__card">
+      ${event.cover_photo_url ? `<img src="${event.cover_photo_url}" alt="${event.title}" class="event-details__cover">` : ''}
+      <h3>${event.title}</h3>
+      <p class="event-details__datetime">${event.start_local_date} · ${event.start_local_time} – ${event.end_local_time} (UK)</p>
+      ${event.location ? `<p class="event-details__location">📍 ${event.location}</p>` : ''}
+      <div class="event-details__actions">
+        ${campfireRow}
+        <a class="btn" href="${event.google_calendar_url}" target="_blank" rel="noopener">Add to Google</a>
+        <a class="btn btn-outline" href="${event.ics_url}">Add to iOS</a>
+      </div>
+    </div>`;
+}
+
+function highlightListItem(eventId) {
+  document.querySelectorAll('.event-list li[data-event-id]').forEach(item => {
+    if (item.getAttribute('data-event-id') === eventId) {
+      item.classList.add('is-active');
+    } else {
+      item.classList.remove('is-active');
+    }
+  });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  if (!CAL_EVENTS.length) {
+    renderDetails(null);
+    return;
+  }
+
+  renderDetails(CAL_EVENTS[0]);
+  highlightListItem(CAL_EVENTS[0].id);
+
+  const calendar = new FullCalendar.Calendar(document.getElementById('meetup-calendar'), {
+    initialView: 'dayGridMonth',
+    height: 'auto',
+    events: CAL_EVENTS.map(evt => ({
+      id: evt.id,
+      title: evt.title,
+      start: evt.start,
+      end: evt.end,
+    })),
+    headerToolbar: {
+      left: 'prev,next today',
+      center: 'title',
+      right: 'dayGridMonth,listWeek'
+    },
+    eventTimeFormat: { hour: '2-digit', minute: '2-digit', meridiem: false },
+    displayEventEnd: true,
+    eventClick(info) {
+      info.jsEvent.preventDefault();
+      const match = CAL_EVENTS.find(evt => evt.id === info.event.id);
+      if (match) {
+        renderDetails(match);
+        highlightListItem(match.id);
+      }
+    }
+  });
+
+  calendar.render();
+
+  document.querySelectorAll('.event-list li[data-event-id]').forEach(item => {
+    item.addEventListener('click', () => {
+      const eventId = item.getAttribute('data-event-id');
+      const match = CAL_EVENTS.find(evt => evt.id === eventId);
+      if (match) {
+        renderDetails(match);
+        highlightListItem(match.id);
+        calendar.getEvents().forEach(ev => {
+          if (ev.id === eventId) {
+            calendar.gotoDate(ev.start);
+          }
+        });
+      }
+    });
+  });
+});
+</script>
+
+<style>
+.calendar-page { display:flex; flex-direction:column; gap:16px; }
+.calendar-header h2 { margin:0; }
+.calendar-header p { margin:4px 0 0; color:#4a5568; }
+.calendar-cta { margin-top:12px; display:flex; gap:10px; flex-wrap:wrap; }
+.calendar-grid { display:grid; grid-template-columns:2fr 1fr; gap:20px; }
+.calendar-grid__calendar { background:#fff; border-radius:16px; padding:16px; box-shadow:0 12px 20px rgba(15,23,42,0.12); }
+.calendar-grid__sidebar { display:flex; flex-direction:column; gap:16px; }
+.event-details__card { background:#fff; border-radius:16px; padding:18px; box-shadow:0 10px 18px rgba(15,23,42,0.12); display:flex; flex-direction:column; gap:12px; }
+.event-details__cover { width:100%; border-radius:12px; height:160px; object-fit:cover; box-shadow:0 8px 16px rgba(15,23,42,0.12); }
+.event-details__datetime { margin:0; font-weight:600; color:#1f2937; }
+.event-details__location { margin:0; color:#1f2937; }
+.event-details__actions { display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
+.event-details__empty { background:#fff; border-radius:16px; padding:24px; text-align:center; box-shadow:0 8px 16px rgba(15,23,42,0.08); display:flex; flex-direction:column; gap:8px; }
+.event-list { background:#fff; border-radius:16px; padding:16px; box-shadow:0 10px 18px rgba(15,23,42,0.1); }
+.event-list ul { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:12px; }
+.event-list li { padding:12px; border-radius:12px; cursor:pointer; transition:background .18s ease, transform .18s ease; display:flex; flex-direction:column; gap:4px; border:1px solid rgba(58,141,222,0.12); }
+.event-list li:hover { background:rgba(58,141,222,0.08); transform:translateY(-1px); }
+.event-list li.is-active { border-color:#3a8dde; box-shadow:0 8px 18px rgba(58,141,222,0.18); }
+.event-list li span { color:#4a5568; font-size:0.9em; }
+.btn { display:inline-flex; align-items:center; justify-content:center; padding:8px 14px; border-radius:999px; background:#3a8dde; color:#fff; text-decoration:none; font-weight:600; box-shadow:0 4px 12px rgba(58,141,222,0.25); }
+.btn-secondary { background:#f97316; box-shadow:0 4px 12px rgba(249,115,22,0.25); }
+.btn-outline { background:#fff; color:#3a8dde; border:1px solid #3a8dde; box-shadow:none; }
+.muted { color:#718096; font-size:0.9em; }
+@media(max-width:960px){
+  .calendar-grid { grid-template-columns:1fr; }
+}
+</style>
+{% endblock %}

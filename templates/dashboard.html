@@ -69,7 +69,27 @@
 
   <div class="widget">
     <h3>📅 Upcoming Meet-ups</h3>
-    <p style="font-size:0.85em; color:#777;">No upcoming meet-ups yet.</p>
+    {% if upcoming_meetups %}
+      <ul class="upcoming-list">
+        {% for meet in upcoming_meetups %}
+          <li>
+            <div>
+              <strong>{{ meet.name }}</strong>
+              <span>{{ meet.when_label }}</span>
+              {% if meet.location %}
+                <span>{{ meet.location }}</span>
+              {% endif %}
+            </div>
+            {% if meet.campfire_url %}
+              <a href="{{ meet.campfire_url }}" target="_blank" rel="noopener" class="campfire-link">Campfire ↗</a>
+            {% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="upcoming-empty">No upcoming meet-ups yet. Check back soon!</p>
+    {% endif %}
+    <a href="{{ calendar_url }}" class="btn">Open Calendar</a>
   </div>
 </div>
 
@@ -104,6 +124,13 @@
 .btn { display:inline-flex; align-items:center; justify-content:center; padding:8px 14px; background:#3a8dde; color:#fff; border-radius:999px; text-decoration:none; font-size:0.9em; font-weight:600; box-shadow:0 4px 12px rgba(58,141,222,0.28); }
 .stamp-preview { display:flex; justify-content:center; gap:6px; margin:8px 0; }
 .stamp-icon { width:28px; height:28px; border-radius:50%; border:2px solid #3a8dde; object-fit:cover; }
+.upcoming-list { list-style:none; padding:0; margin:0 0 12px; display:flex; flex-direction:column; gap:10px; width:100%; }
+.upcoming-list li { display:flex; align-items:center; justify-content:space-between; gap:12px; background:#f1f5fb; border-radius:12px; padding:10px 12px; text-align:left; }
+.upcoming-list li strong { display:block; font-size:0.95em; }
+.upcoming-list li span { display:block; font-size:0.8em; color:#4b5563; }
+.campfire-link { font-size:0.8em; font-weight:600; color:#3a8dde; text-decoration:none; }
+.campfire-link:hover { text-decoration:underline; }
+.upcoming-empty { font-size:0.85em; color:#777; margin:0 0 12px; }
 
 .explore { display:flex; flex-direction:column; gap:12px; }
 .explore-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; }
