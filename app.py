@@ -66,6 +66,10 @@ UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
+DATA_DIR = Path(app.root_path) / "data"
+DATA_DIR.mkdir(parents=True, exist_ok=True)
+CUSTOM_EVENTS_PATH = DATA_DIR / "custom_events.json"
+
 try:
     LONDON_TZ = ZoneInfo("Europe/London")
 except Exception:
@@ -83,29 +87,85 @@ def parse_dt_safe(dt_str):
     except Exception:
         return datetime.min.replace(tzinfo=timezone.utc)
 
+def load_custom_events():
+    if not CUSTOM_EVENTS_PATH.exists():
+        return []
+    try:
+        with CUSTOM_EVENTS_PATH.open("r", encoding="utf-8") as fh:
+            data = json.load(fh)
+        if isinstance(data, list):
+            return data
+    except Exception as exc:
+        print("⚠️ Failed to load custom calendar events:", exc)
+    return []
+
+def save_custom_events(events: list[dict]) -> None:
+    try:
+        with CUSTOM_EVENTS_PATH.open("w", encoding="utf-8") as fh:
+            json.dump(events, fh, indent=2)
+    except Exception as exc:
+        print("⚠️ Failed to save custom calendar events:", exc)
+
 def fetch_upcoming_events(limit: int | None = None):
     """Fetch upcoming meetup events ordered by start time in London timezone."""
     if not (USE_SUPABASE and supabase):
-        return []
+        upcoming = []
+    else:
+        upcoming = []
 
     now_local = datetime.now(LONDON_TZ)
     now_utc = datetime.utcnow().replace(tzinfo=timezone.utc)
-
-    try:
-        resp = (supabase.table("events")
-                .select("id,event_id,name,start_time,end_time,location,url,cover_photo_url")
-                .order("start_time", desc=False)
-                .execute())
-        rows = resp.data or []
-    except Exception as exc:
-        print("⚠️ Supabase upcoming events fetch failed:", exc)
-        return []
-
-    upcoming = []
     sentinel = datetime.min.replace(tzinfo=timezone.utc)
 
-    for row in rows:
-        record_id = str(row.get("id") or "").strip()
+    if USE_SUPABASE and supabase:
+        try:
+            resp = (supabase.table("events")
+                    .select("id,event_id,name,start_time,end_time,location,url,cover_photo_url")
+                    .order("start_time", desc=False)
+                    .execute())
+            rows = resp.data or []
+        except Exception as exc:
+            print("⚠️ Supabase upcoming events fetch failed:", exc)
+            rows = []
+
+        for row in rows:
+            record_id = str(row.get("id") or "").strip()
+            start_dt = parse_dt_safe(row.get("start_time"))
+            if start_dt <= sentinel:
+                continue
+            end_dt = parse_dt_safe(row.get("end_time"))
+            if end_dt <= sentinel:
+                end_dt = start_dt + timedelta(hours=2)
+
+            start_local = start_dt.astimezone(LONDON_TZ)
+            if start_local < now_local:
+                continue
+
+            end_utc = end_dt.astimezone(timezone.utc)
+            if end_utc <= now_utc:
+                continue
+
+            event_id = str(row.get("event_id") or "").strip()
+            if not event_id:
+                event_id = record_id or f"evt-{uuid.uuid4().hex}"
+
+            upcoming.append({
+                "event_id": event_id,
+                "record_id": record_id,
+                "name": row.get("name") or "Unnamed Meetup",
+                "location": row.get("location") or "",
+                "campfire_url": row.get("url") or "",
+                "cover_photo_url": row.get("cover_photo_url") or "",
+                "start": start_dt,
+                "end": end_dt,
+                "start_local": start_local,
+                "end_local": end_dt.astimezone(LONDON_TZ),
+                "source": "supabase",
+            })
+
+    # Add locally managed events
+    local_events = load_custom_events()
+    for row in local_events:
         start_dt = parse_dt_safe(row.get("start_time"))
         if start_dt <= sentinel:
             continue
@@ -123,12 +183,12 @@ def fetch_upcoming_events(limit: int | None = None):
 
         event_id = str(row.get("event_id") or "").strip()
         if not event_id:
-            event_id = record_id or f"evt-{uuid.uuid4().hex}"
+            event_id = f"local-{uuid.uuid4().hex}"
 
         upcoming.append({
             "event_id": event_id,
-            "record_id": record_id,
-            "name": row.get("name") or "Unnamed Meetup",
+            "record_id": row.get("record_id") or "",
+            "name": row.get("name") or "Community Meetup",
             "location": row.get("location") or "",
             "campfire_url": row.get("url") or "",
             "cover_photo_url": row.get("cover_photo_url") or "",
@@ -136,6 +196,7 @@ def fetch_upcoming_events(limit: int | None = None):
             "end": end_dt,
             "start_local": start_local,
             "end_local": end_dt.astimezone(LONDON_TZ),
+            "source": "local",
         })
 
     upcoming.sort(key=lambda ev: ev["start"])
@@ -1241,6 +1302,109 @@ def admin_meetups_delete(meetup_id):
 
     return redirect(url_for("admin_meetups"))
 
+def _format_local(dt_val: datetime) -> str:
+    sentinel = datetime.min.replace(tzinfo=timezone.utc)
+    if not isinstance(dt_val, datetime) or dt_val <= sentinel:
+        return "Unknown"
+    return dt_val.astimezone(LONDON_TZ).strftime("%d %b %Y · %H:%M")
+
+@app.route("/admin/calendar-events", methods=["GET", "POST"])
+@admin_required
+def admin_calendar_events():
+    session["last_page"] = request.path
+
+    events = load_custom_events()
+
+    if request.method == "POST":
+        name = (request.form.get("name") or "").strip()
+        campfire_url = (request.form.get("campfire_url") or "").strip()
+        location = (request.form.get("location") or "").strip()
+        cover_photo_url = (request.form.get("cover_photo_url") or "").strip()
+        start_raw = (request.form.get("start_datetime") or "").strip()
+        end_raw = (request.form.get("end_datetime") or "").strip()
+
+        if not name or not start_raw:
+            flash("Name and start date/time are required.", "error")
+            return redirect(url_for("admin_calendar_events"))
+
+        try:
+            start_local = datetime.fromisoformat(start_raw)
+        except ValueError:
+            flash("Invalid start date/time.", "error")
+            return redirect(url_for("admin_calendar_events"))
+        if start_local.tzinfo is None:
+            start_local = start_local.replace(tzinfo=LONDON_TZ)
+        else:
+            start_local = start_local.astimezone(LONDON_TZ)
+
+        end_local = None
+        if end_raw:
+            try:
+                end_local = datetime.fromisoformat(end_raw)
+            except ValueError:
+                flash("Invalid end date/time.", "error")
+                return redirect(url_for("admin_calendar_events"))
+            if end_local.tzinfo is None:
+                end_local = end_local.replace(tzinfo=LONDON_TZ)
+            else:
+                end_local = end_local.astimezone(LONDON_TZ)
+
+        if not end_local or end_local <= start_local:
+            end_local = start_local + timedelta(hours=2)
+
+        now_utc = datetime.utcnow().replace(tzinfo=timezone.utc)
+        event = {
+            "event_id": f"local-{uuid.uuid4().hex}",
+            "name": name,
+            "location": location,
+            "url": campfire_url,
+            "cover_photo_url": cover_photo_url,
+            "start_time": start_local.astimezone(timezone.utc).isoformat(),
+            "end_time": end_local.astimezone(timezone.utc).isoformat(),
+            "created_at": now_utc.isoformat(),
+            "updated_at": now_utc.isoformat(),
+        }
+        events.append(event)
+        save_custom_events(events)
+        flash("✅ Calendar event added.", "success")
+        return redirect(url_for("admin_calendar_events"))
+
+    # Prepare data for display
+    display_events = []
+    for ev in sorted(events, key=lambda item: item.get("start_time") or ""):
+        start_dt = parse_dt_safe(ev.get("start_time"))
+        end_dt = parse_dt_safe(ev.get("end_time"))
+        display_events.append({
+            "event_id": ev.get("event_id"),
+            "name": ev.get("name"),
+            "location": ev.get("location"),
+            "campfire_url": ev.get("url"),
+            "cover_photo_url": ev.get("cover_photo_url"),
+            "start_display": _format_local(start_dt) if start_dt else "",
+            "end_display": _format_local(end_dt) if end_dt else "",
+            "created_at": ev.get("created_at"),
+        })
+
+    return render_template(
+        "admin_calendar_events.html",
+        custom_events=display_events,
+        has_events=bool(display_events),
+    )
+
+@app.route("/admin/calendar-events/<event_id>/delete", methods=["POST"])
+@admin_required
+def admin_calendar_events_delete(event_id):
+    events = load_custom_events()
+    new_events = [ev for ev in events if str(ev.get("event_id") or "") != event_id]
+
+    if len(new_events) == len(events):
+        flash("Event not found.", "warning")
+    else:
+        save_custom_events(new_events)
+        flash("🗑️ Calendar event removed.", "success")
+
+    return redirect(url_for("admin_calendar_events"))
+
 # ===== Admin Redemptions =====
 @app.route("/admin/redemptions", methods=["GET"])
 def admin_redemptions():
@@ -2079,12 +2243,13 @@ def dashboard():
 
     most_recent_meetup = get_most_recent_meetup(trainer, campfire_username)
     upcoming_widget_events = []
-    for ev in fetch_upcoming_events(limit=3):
+    for ev in fetch_upcoming_events(limit=2):
         start_local = ev["start_local"]
         upcoming_widget_events.append({
             "event_id": ev["event_id"],
             "name": ev["name"],
-            "when_label": start_local.strftime("%a %d %b • %H:%M"),
+            "date_label": start_local.strftime("%a %d %b"),
+            "time_label": start_local.strftime("%H:%M"),
             "location": ev["location"],
             "campfire_url": ev["campfire_url"],
             "cover_photo": ev["cover_photo_url"],
@@ -2141,31 +2306,34 @@ def calendar_public():
 
 @app.route("/events/<event_id>.ics")
 def event_ics_file(event_id):
-    if not (USE_SUPABASE and supabase):
-        abort(404)
-
     event_row = None
-    try:
-        resp = (supabase.table("events")
-                .select("id,event_id,name,start_time,end_time,location,url")
-                .eq("event_id", event_id)
-                .limit(1)
-                .execute())
-        data = resp.data or []
-        if data:
-            event_row = data[0]
-        else:
-            fallback = (supabase.table("events")
-                        .select("id,event_id,name,start_time,end_time,location,url")
-                        .eq("id", event_id)
-                        .limit(1)
-                        .execute())
-            fallback_data = fallback.data or []
-            if fallback_data:
-                event_row = fallback_data[0]
-    except Exception as exc:
-        print("⚠️ Supabase ICS fetch failed:", exc)
-        abort(404)
+    if USE_SUPABASE and supabase:
+        try:
+            resp = (supabase.table("events")
+                    .select("id,event_id,name,start_time,end_time,location,url")
+                    .eq("event_id", event_id)
+                    .limit(1)
+                    .execute())
+            data = resp.data or []
+            if data:
+                event_row = data[0]
+            else:
+                fallback = (supabase.table("events")
+                            .select("id,event_id,name,start_time,end_time,location,url")
+                            .eq("id", event_id)
+                            .limit(1)
+                            .execute())
+                fallback_data = fallback.data or []
+                if fallback_data:
+                    event_row = fallback_data[0]
+        except Exception as exc:
+            print("⚠️ Supabase ICS fetch failed:", exc)
+
+    if not event_row:
+        for local in load_custom_events():
+            if str(local.get("event_id") or "") == event_id:
+                event_row = local
+                break
 
     if not event_row:
         abort(404)
