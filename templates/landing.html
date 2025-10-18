@@ -23,7 +23,7 @@
     </div>
   </section>
 
-  <div class="install-guide" id="installGuide" hidden>
+  <div class="install-guide" id="installGuide">
     <div class="install-card">
       <button type="button" class="close-guide" id="closeInstall" aria-label="Close">×</button>
       <h2>Install RDAB App</h2>
@@ -165,7 +165,8 @@
   .about-card{padding:20px;}
 }
 
-.install-guide{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(15,23,42,0.55);backdrop-filter:blur(6px);z-index:4000;padding:20px;}
+.install-guide{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(15,23,42,0.55);backdrop-filter:blur(6px);z-index:4000;padding:20px;}
+.install-guide.is-open{display:flex;}
 .install-card{position:relative;background:#0f172a;color:#f8fafc;border-radius:20px;box-shadow:0 30px 60px rgba(15,23,42,0.45);padding:24px 26px;max-width:420px;width:100%;display:flex;flex-direction:column;gap:18px;}
 .install-card h2{margin:0;font-size:1.5rem;text-align:center;}
 .install-body{display:flex;flex-direction:column;gap:18px;}
@@ -190,7 +191,8 @@
   const iosBlock=document.getElementById('installIOS');
   const androidBlock=document.getElementById('installAndroid');
   if(!installBtn || !guide) return;
-  guide.hidden=true;
+
+  function closeGuide(){ guide.classList.remove('is-open'); }
 
   function detectPlatform(){
     const ua=navigator.userAgent.toLowerCase();
@@ -208,11 +210,11 @@
 
   installBtn.addEventListener('click',()=>{
     detectPlatform();
-    guide.hidden=false;
+    guide.classList.add('is-open');
   });
-  closeBtn?.addEventListener('click',()=>{guide.hidden=true;});
+  closeBtn?.addEventListener('click',closeGuide);
   guide.addEventListener('click',e=>{
-    if(e.target===guide){guide.hidden=true;}
+    if(e.target===guide){closeGuide();}
   });
 })();
 </script>
