@@ -550,40 +550,6 @@
   })();
   </script>
 
-  <!-- Install Banners -->
-  <script>
-    let deferredPrompt;
-
-    function isIos() { return /iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase()); }
-    function isInStandaloneMode() { return ('standalone' in window.navigator) && window.navigator.standalone; }
-    function dismissBanner(id) { const el = document.getElementById(id); if (el) el.style.display = 'none'; }
-
-    window.addEventListener('beforeinstallprompt', (e) => {
-      if (isIos()) return;
-      e.preventDefault();
-      deferredPrompt = e;
-      const el = document.getElementById('install-banner');
-      if (el) el.style.display = 'flex';
-    });
-
-    function installApp() {
-      if (deferredPrompt) {
-        deferredPrompt.prompt();
-        deferredPrompt.userChoice.finally(() => {
-          deferredPrompt = null;
-          dismissBanner('install-banner');
-        });
-      }
-    }
-
-    window.addEventListener('DOMContentLoaded', () => {
-      if (isIos() && !isInStandaloneMode()) {
-        const el = document.getElementById('ios-install-banner');
-        if (el) el.style.display = 'flex';
-      }
-    });
-  </script>
-
   {% if account_type == "Admin" %}
   <a href="{{ url_for('admin_dashboard') }}" id="admin-fab" title="Admin Dashboard">👑</a>
   <style>
@@ -628,35 +594,4 @@
 
   {% endif %}
 </body>
-
-<!-- Android Install Banner -->
-<div id="install-banner" style="display:none; position:fixed; bottom:20px; left:50%; transform:translateX(-50%);
-  background:#3a8dde; color:white; padding:15px 20px; border-radius:12px;
-  box-shadow:0 4px 12px rgba(0,0,0,0.2); font-family:'Montserrat',sans-serif;
-  align-items:center; gap:12px; z-index:9999; max-width:90%;">
-  <img src="{{ url_for('static', filename='icons/app-icon-192.png') }}" style="width:40px;height:40px;border-radius:8px;">
-  <div>
-    <strong>Install RDAB App</strong><br>
-    <small>Add Raiding Doncaster and Beyond to your Home Screen</small>
-  </div>
-  <button onclick="installApp()" style="margin-left:auto; background:white; color:#3a8dde;
-    border:none; padding:6px 12px; border-radius:6px; font-weight:600; cursor:pointer;">Install</button>
-  <button onclick="dismissBanner('install-banner')" style="margin-left:8px; background:transparent;
-    color:white; border:none; font-size:1.2em; cursor:pointer;">❌</button>
-</div>
-
-<!-- iOS Install Banner -->
-<div id="ios-install-banner" style="display:none; position:fixed; bottom:20px; left:50%; transform:translateX(-50%);
-  background:#3a8dde; color:white; padding:15px 20px; border-radius:12px;
-  box-shadow:0 4px 12px rgba(0,0,0,0.2); font-family:'Montserrat',sans-serif;
-  align-items:center; gap:12px; z-index:9999; max-width:90%;">
-  <img src="{{ url_for('static', filename='icons/app-icon-192.png') }}" style="width:40px;height:40px;border-radius:8px;">
-  <div>
-    <strong>Install RDAB App</strong><br>
-    <small>Tap <span style="font-size:1.2em;">⤴️</span> then <b>Add to Home Screen</b></small>
-  </div>
-  <button onclick="dismissBanner('ios-install-banner')" style="margin-left:auto; background:transparent;
-    color:white; border:none; font-size:1.2em; cursor:pointer;">❌</button>
-</div>
-
 </html>

@@ -190,6 +190,7 @@
   const iosBlock=document.getElementById('installIOS');
   const androidBlock=document.getElementById('installAndroid');
   if(!installBtn || !guide) return;
+  guide.hidden=true;
 
   function detectPlatform(){
     const ua=navigator.userAgent.toLowerCase();

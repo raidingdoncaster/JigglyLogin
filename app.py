@@ -19,7 +19,7 @@ from urllib.parse import urlencode, quote_plus
 
 # ====== Feature toggle ======
 USE_SUPABASE = True  # ✅ Supabase for stamps/meetups
-MAINTENANCE_MODE = True  # ⛔️ Change to True to enable maintenance mode
+MAINTENANCE_MODE = False  # ⛔️ Change to True to enable maintenance mode
 
 # Try to import Supabase client
 try:
@@ -2243,7 +2243,7 @@ def dashboard():
 
     most_recent_meetup = get_most_recent_meetup(trainer, campfire_username)
     upcoming_widget_events = []
-    for ev in fetch_upcoming_events(limit=2):
+    for ev in fetch_upcoming_events(limit=1):
         start_local = ev["start_local"]
         location = ev["location"] or ""
         short_location = location.split(",")[0].strip() if location else ""
@@ -2415,19 +2415,33 @@ def _normalize_iso(dt_val):
 
 def _build_receipt_message(trainer, rec):
     """Turn a redemption record into an inbox-style 'message' dict."""
+    item = rec.get("item_snapshot") or {}
+    meetup = (rec.get("metadata") or {}).get("meetup") or {}
+    item_name = item.get("name") or "Catalog Item"
+    meetup_name = meetup.get("name") or "Unknown meetup"
+    meetup_location = meetup.get("location") or ""
+    meetup_date = meetup.get("date") or ""
+    meetup_time = meetup.get("start_time") or ""
+    meetup_stamp = " ".join(part for part in [meetup_name, meetup_location] if part).strip()
+    meetup_when = " ".join(part for part in [meetup_date, meetup_time] if part).strip()
+
     return {
         "id": f"rec:{rec['id']}",
-        "subject": f"🧾 Receipt: {rec['item_snapshot']['name']}",
-        "message": f"You redeemed {rec['item_snapshot']['name']} "
-                   f"for {rec['stamps_spent']} stamps at {rec['metadata']['meetup']['name']}.",
+        "subject": f"🧾 Receipt: {item_name}",
+        "message": (
+            f"You redeemed {item_name} for {rec.get('stamps_spent', 0)} stamps"
+            + (f" at {meetup_stamp}" if meetup_stamp else "")
+            + (f" ({meetup_when})" if meetup_when else "")
+            + "."
+        ),
         "sent_at": _normalize_iso(rec.get("created_at")),
         "type": "receipt",
         "read_by": [],
         "metadata": {
             "url": f"/catalog/receipt/{rec['id']}",
             "status": rec.get("status"),
-            "meetup": rec.get("metadata", {}).get("meetup")
-        }
+            "meetup": meetup if meetup else None,
+            }
     }
 
 @app.route("/inbox")
