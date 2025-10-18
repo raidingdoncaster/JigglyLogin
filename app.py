@@ -17,7 +17,7 @@ from pathlib import Path
 
 # ====== Feature toggle ======
 USE_SUPABASE = True  # ✅ Supabase for stamps/meetups
-MAINTENANCE_MODE = False  # ⛔️ Change to True to enable maintenance mode
+MAINTENANCE_MODE = True  # ⛔️ Change to True to enable maintenance mode
 
 # Try to import Supabase client
 try:
