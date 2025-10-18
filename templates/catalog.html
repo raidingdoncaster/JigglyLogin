@@ -108,7 +108,7 @@
 /* BOTTOM TOOLBAR */
 .bottom-bar{
   position:fixed;bottom:-60px;left:50%;transform:translateX(-50%);
-  background:var(--blue);color:#fff;border-radius:30px;
+  background:rgba(58,141,222,0.88);color:#fff;border-radius:30px;
   display:flex;align-items:center;justify-content:center;gap:26px;
   padding:8px 20px;z-index:99;box-shadow:0 4px 10px rgba(0,0,0,0.2);
   transition:bottom .3s ease;
@@ -292,7 +292,7 @@
 
 <!-- 🔵 Bottom Toolbar -->
 <div class="bottom-bar" id="bottomBar">
-  <button id="scrollToSearch" title="Search"><img src="{{ url_for('static', filename='icons/search.png') }}"></button>
+  <button id="scrollToSearch" title="Search">🔍</button>
   <button id="scrollTop" title="Top">⬆️</button>
   <button id="openWatchlist" title="Watchlist"><img src="{{ url_for('static', filename='catalog/binocularsb.png') }}"></button>
 </div>

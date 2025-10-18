@@ -2245,12 +2245,14 @@ def dashboard():
     upcoming_widget_events = []
     for ev in fetch_upcoming_events(limit=2):
         start_local = ev["start_local"]
+        location = ev["location"] or ""
+        short_location = location.split(",")[0].strip() if location else ""
         upcoming_widget_events.append({
             "event_id": ev["event_id"],
             "name": ev["name"],
             "date_label": start_local.strftime("%a %d %b"),
             "time_label": start_local.strftime("%H:%M"),
-            "location": ev["location"],
+            "location": short_location,
             "campfire_url": ev["campfire_url"],
             "cover_photo": ev["cover_photo_url"],
         })

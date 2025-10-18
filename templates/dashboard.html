@@ -73,11 +73,18 @@
       <div class="upcoming-list">
         {% for meet in upcoming_meetups %}
           <article class="upcoming-card">
-            <div class="upcoming-card__media">
-              {% if meet.cover_photo %}
-                <img src="{{ meet.cover_photo }}" alt="{{ meet.name }}">
+            <div class="upcoming-card__left">
+              <div class="upcoming-card__media">
+                {% if meet.cover_photo %}
+                  <img src="{{ meet.cover_photo }}" alt="{{ meet.name }}">
+                {% else %}
+                  <div class="upcoming-card__placeholder">🎉</div>
+                {% endif %}
+              </div>
+              {% if meet.campfire_url %}
+                <a href="{{ meet.campfire_url }}" target="_blank" rel="noopener" class="btn btn-rsvp">RSVP</a>
               {% else %}
-                <div class="upcoming-card__placeholder">🎉</div>
+                <span class="btn btn-disabled">RSVP soon</span>
               {% endif %}
             </div>
             <div class="upcoming-card__body">
@@ -87,11 +94,6 @@
                 <span class="upcoming-card__location">{{ meet.location }}</span>
               {% endif %}
             </div>
-            {% if meet.campfire_url %}
-              <a href="{{ meet.campfire_url }}" target="_blank" rel="noopener" class="btn btn-campfire">Campfire</a>
-            {% else %}
-              <span class="btn btn-disabled">Campfire soon</span>
-            {% endif %}
           </article>
         {% endfor %}
       </div>
@@ -134,16 +136,17 @@
 .stamp-preview { display:flex; justify-content:center; gap:6px; margin:8px 0; }
 .stamp-icon { width:28px; height:28px; border-radius:50%; border:2px solid #3a8dde; object-fit:cover; }
 .upcoming-list { display:flex; flex-direction:column; gap:10px; width:100%; margin:0 0 12px; }
-.upcoming-card { display:flex; align-items:center; gap:10px; background:#f1f5fb; border-radius:14px; padding:10px; box-shadow:0 6px 14px rgba(15,23,42,0.08); }
-.upcoming-card__media { flex:0 0 48px; height:48px; border-radius:12px; overflow:hidden; background:#e2e8f0; display:flex; align-items:center; justify-content:center; }
+.upcoming-card { display:flex; align-items:center; gap:12px; background:#f1f5fb; border-radius:14px; padding:10px; box-shadow:0 6px 14px rgba(15,23,42,0.08); }
+.upcoming-card__left { display:flex; flex-direction:column; align-items:center; gap:6px; }
+.upcoming-card__media { width:50px; height:50px; border-radius:12px; overflow:hidden; background:#e2e8f0; display:flex; align-items:center; justify-content:center; }
 .upcoming-card__media img { width:100%; height:100%; object-fit:cover; }
 .upcoming-card__placeholder { font-size:1.2rem; }
-.upcoming-card__body { display:flex; flex-direction:column; gap:2px; flex:1; }
-.upcoming-card__title { font-size:0.88em; color:#1f2937; }
+.upcoming-card__body { display:flex; flex-direction:column; gap:3px; flex:1; }
+.upcoming-card__title { font-size:0.82em; color:#1f2937; font-weight:700; }
 .upcoming-card__datetime { font-size:0.75em; color:#2563eb; font-weight:600; }
-.upcoming-card__location { font-size:0.75em; color:#4b5563; }
-.btn-campfire { background:#f97316; font-size:0.75em; padding:6px 10px; box-shadow:none; }
-.btn-disabled { background:#cbd5f5; color:#475569; font-size:0.75em; padding:6px 10px; border-radius:999px; }
+.upcoming-card__location { font-size:0.72em; color:#475569; }
+.btn-rsvp { background:#f97316; font-size:0.72em; padding:5px 12px; box-shadow:none; }
+.btn-disabled { background:#cbd5f5; color:#475569; font-size:0.7em; padding:5px 12px; border-radius:999px; }
 .upcoming-empty { font-size:0.85em; color:#777; margin:0 0 12px; }
 
 .explore { display:flex; flex-direction:column; gap:12px; }
