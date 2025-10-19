@@ -3690,8 +3690,8 @@ def catalog_redeem(item_id):
     # Deduct stamps via Lugia (ledger)
     cost = item["cost_stamps"]
     reason = f"Catalog Redemption: {item.get('name')}"
-    lugia_msg = adjust_stamps(trainer, cost, reason, "remove")
-    if "✅" not in lugia_msg:
+    ok, lugia_msg = adjust_stamps(trainer, cost, reason, "remove")
+    if not ok:
         flash("Could not deduct stamps. Try again in a moment.", "error")
         return redirect(url_for("catalog_redeem", item_id=item_id))
 
