@@ -28,7 +28,7 @@
   <!-- Add / Remove Stamps -->
   <div class="action-box">
     <h3>🎟️ Adjust Stamps</h3>
-    <form action="{{ url_for('admin_adjust_stamps', username=trainer.trainer_username) }}" method="post">
+    <form action="{{ url_for('admin_adjust_stamps_v2', username=trainer.trainer_username) }}" method="post">
       <input type="number" name="count" placeholder="Amount" required>
       <input type="text" name="reason" placeholder="Reason (optional)">
       <select name="action" required>

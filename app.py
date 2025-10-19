@@ -646,15 +646,10 @@ import os, requests
 LUGIA_URL = os.getenv("LUGIA_WEBAPP_URL")
 
 def adjust_stamps(trainer_username: str, count: int, reason: str, action: str, actor: str = "Admin"):
-    """
-    Calls Supabase RPC lugia_admin_adjust to award/remove stamps atomically.
-    action: 'award' or 'remove'
-    count: positive integer from form
-    """
     if not supabase:
         return False, "Supabase client not initialized on server"
 
-    # sanitize
+    # validate number
     try:
         n = int(count)
         if n <= 0:
@@ -674,22 +669,19 @@ def adjust_stamps(trainer_username: str, count: int, reason: str, action: str, a
                 "p_awardedby": actor or "Admin",
             },
         ).execute()
-
-        new_total = (getattr(resp, "data", None) or {}).get("new_total")
+        data = getattr(resp, "data", None) or {}
+        new_total = data.get("new_total")
         return True, f"✅ Updated {trainer_username}. New total: {new_total}"
-
     except Exception as e:
         return False, f"❌ Failed to update: {e}"
 
-from flask import request, redirect, url_for, flash, session
-
-@app.post("/admin/trainers/<username>/adjust-stamps")
-def admin_adjust_stamps(username):
+@app.route("/admin/trainers/<username>/adjust-stamps", methods=["POST"], endpoint="admin_adjust_stamps_v2")
+@app.route("/admin/trainers/<username>/adjust_stamps", methods=["POST"], endpoint="admin_adjust_stamps_legacy")
+def admin_adjust_stamps_route(username):
     count  = request.form.get("count", "0")
     action = request.form.get("action", "award")
     reason = request.form.get("reason", "")
 
-    # Try a few common session keys; fall back to "Admin"
     actor = (
         session.get("trainer_username")
         or session.get("username")
@@ -697,7 +689,7 @@ def admin_adjust_stamps(username):
         or "Admin"
     )
 
-    ok, msg = adjust_stamps(username, count, reason, action, actor)
+    ok, msg = adjust_stamps(username, count, reason, action, actor)  # ← pass actor
     flash(msg, "success" if ok else "error")
     return redirect(url_for("admin_trainer_detail", username=username))
 
@@ -1645,26 +1637,6 @@ def admin_trainer_detail(username):
         "admin_trainer_detail.html",
         trainer=trainer_data
     )
-
-@app.route("/admin/trainers/<username>/adjust_stamps", methods=["POST"])
-def admin_adjust_stamps(username):
-    if "trainer" not in session:
-        flash("Please log in.", "error")
-        return redirect(url_for("home"))
-
-    # Check admin status from Supabase
-    _, current_user = find_user(session["trainer"])
-    if not current_user or current_user.get("account_type") != "Admin":
-        flash("Unauthorized access.", "error")
-        return redirect(url_for("dashboard"))
-
-    action = request.form.get("action")  # "award" or "remove"
-    count = int(request.form.get("count", 0))
-    reason = request.form.get("reason", "Admin Adjustment")
-
-    result = adjust_stamps(username, count, reason, action)
-    flash(result, "success" if "✅" in result else "error")
-    return redirect(url_for("admin_trainer_detail", username=username))
 
 @app.route("/admin/trainers/<username>/change_account_type", methods=["POST"])
 def admin_change_account_type(username):
