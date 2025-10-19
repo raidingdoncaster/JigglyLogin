@@ -38,7 +38,7 @@
 
 <style>
 .trainer-card { position: relative; background-size: cover; background-position: center;
-  border-radius: 16px; overflow: hidden; margin-bottom: 20px; box-shadow: 0 8px 24px rgba(15,23,42,0.22); color: white; }
+  border-radius: 16px; overflow: hidden; margin-bottom: 12px; box-shadow: 0 8px 24px rgba(15,23,42,0.22); color: white; }
 .trainer-card-overlay { position: absolute; inset:0;
   background: linear-gradient(180deg, rgba(9,14,35,0.62) 0%, rgba(9,14,35,0.18) 100%); z-index: 0; }
 .trainer-card-content { position: relative; z-index: 1; padding: 22px; display:flex; flex-direction:column; gap:12px; }
@@ -128,9 +128,9 @@
 </div>
 
 <style>
-.widgets { display:flex; gap:12px; margin:12px 0 18px; flex-wrap:wrap; align-items:stretch; }
-.widget { background:#fff; padding:12px; border-radius:14px; box-shadow:0 8px 20px rgba(15,23,42,0.12); text-align:center; min-height:110px; display:flex; flex-direction:column; gap:10px; justify-content:center; align-items:center; flex:1 1 260px; }
-.widget--passport, .widget--meetups { flex:1 1 calc(50% - 6px); max-width:calc(50% - 6px); min-width:200px; }
+.widgets { display:grid; grid-template-columns:repeat(2,minmax(150px,1fr)); gap:12px; margin:8px 0 12px; align-items:stretch; }
+.widget { background:#fff; padding:12px; border-radius:14px; box-shadow:0 8px 20px rgba(15,23,42,0.12); text-align:center; min-height:110px; display:flex; flex-direction:column; gap:10px; justify-content:center; align-items:center; width:100%; }
+.widget--passport, .widget--meetups { min-height:100%; }
 .widget h3 { margin:0; font-size:1em; color:#3a8dde; }
 .btn { display:inline-flex; align-items:center; justify-content:center; padding:8px 14px; background:#3a8dde; color:#fff; border-radius:999px; text-decoration:none; font-size:0.9em; font-weight:600; box-shadow:0 4px 12px rgba(58,141,222,0.28); }
 .stamp-preview { display:flex; justify-content:center; gap:6px; margin:6px 0; }
@@ -149,19 +149,20 @@
 .btn-disabled { background:#cbd5f5; color:#475569; font-size:0.7em; padding:4px 10px; border-radius:999px; }
 .upcoming-empty { font-size:0.85em; color:#777; margin:0 0 12px; }
 
-.explore { display:flex; flex-direction:column; gap:12px; }
-.explore-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; }
+.explore { display:flex; flex-direction:column; gap:10px; margin-top:8px; }
+.explore h3 { margin:0; }
+.explore-grid { display:grid; grid-template-columns:repeat(4,minmax(80px,1fr)); gap:12px; }
 .explore-card { background:transparent; display:flex; flex-direction:column; align-items:center; justify-content:center; text-decoration:none; padding:10px 0; transition:transform .18s ease; }
 .explore-card:hover { transform:translateY(-2px); }
-.explore-card img { width:clamp(54px,16vw,88px); height:clamp(54px,16vw,88px); filter:drop-shadow(0 10px 18px rgba(15,23,42,0.18)); }
+.explore-card img { width:clamp(48px,14vw,80px); height:clamp(48px,14vw,80px); filter:drop-shadow(0 10px 18px rgba(15,23,42,0.18)); }
 .explore-card span { margin-top:8px; font-size:0.9em; font-weight:600; color:#333; text-shadow:0 6px 12px rgba(15,23,42,0.12); }
 
 @media(max-width:520px){
   .trainer-card-content{padding:18px;}
-  .widgets { gap:10px; margin:10px 0 16px; }
-  .widget { flex:1 1 calc(50% - 5px); max-width:calc(50% - 5px); padding:10px; min-width:180px; }
+  .widgets { gap:10px; grid-template-columns:repeat(2,minmax(120px,1fr)); margin:6px 0 10px; }
+  .widget { padding:10px; }
   .btn { padding:7px 12px; font-size:0.85em; }
-  .explore-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+  .explore-grid { grid-template-columns:repeat(4,minmax(60px,1fr)); gap:10px; }
 }
 </style>
 

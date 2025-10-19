@@ -11,7 +11,7 @@
     <p>Plan ahead with every upcoming RDAB meetup. Tap any card for quick RSVP and calendar links.</p>
     {% if public_view %}
       <div class="calendar-cta">
-        <a href="{{ login_url }}" class="btn">Log in to RDAB App</a>
+        <a href="{{ url_for('landing') }}" class="btn btn-outline">Back to RDAB</a>
       </div>
     {% endif %}
   </header>
@@ -135,6 +135,8 @@
 .btn-secondary { background:#f97316; box-shadow:0 6px 14px rgba(249,115,22,0.28); }
 .btn-light { background:#fff; color:#2563eb; border:1px solid rgba(148,163,184,0.6); box-shadow:none; }
 .btn-light:hover { background:#f1f5f9; }
+.btn-outline { background:transparent; color:#1f2937; border:1px solid rgba(148,163,184,0.6); box-shadow:none; }
+.btn-outline:hover { background:#f1f5f9; }
 
 .event-empty {
   background:#fff;

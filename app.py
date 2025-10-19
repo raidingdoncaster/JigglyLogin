@@ -12,10 +12,12 @@ import pytesseract
 from datetime import datetime, date, timezone, timedelta
 from dateutil import parser
 import io, base64, time
-from markupsafe import Markup, escape
+from markupsafe import Markup
 from pathlib import Path
 from zoneinfo import ZoneInfo
 from urllib.parse import urlencode, quote_plus
+import bleach
+from bleach.linkifier import DEFAULT_CALLBACKS
 
 # ====== Feature toggle ======
 USE_SUPABASE = True  # ✅ Supabase for stamps/meetups
@@ -422,6 +424,15 @@ def session_check():
     """Quick JSON endpoint for PWA reload logic."""
     return jsonify({"logged_in": "trainer" in session})
 
+@app.route("/about")
+def about_rdab():
+    """Public-facing About page embedding external overview content."""
+    return render_template(
+        "about.html",
+        title="About RDAB",
+        show_back=False,
+    )
+
 
 # ===== Policies =====
 def _policy_back_action(is_pwa: bool, source: str | None):
@@ -542,11 +553,44 @@ def absolute_url(path: str) -> str:
         path = '/' + path
     return f"{root}{path}"
 
+ALLOWED_INBOX_TAGS = {"a", "br", "strong", "em", "b", "i", "u", "p", "ul", "ol", "li", "blockquote", "code"}
+ALLOWED_INBOX_ATTRS = {
+    "a": ["href", "title", "target", "rel"],
+}
+
+
+def _linkify_target_blank(attrs, new=False):
+    href = attrs.get("href")
+    if not href:
+        return attrs
+
+    attrs["target"] = "_blank"
+    rel_values = set(filter(None, (attrs.get("rel") or "").split()))
+    rel_values.update({"noopener", "noreferrer"})
+    attrs["rel"] = " ".join(sorted(rel_values))
+    return attrs
+
+
+LINKIFY_CALLBACKS = list(DEFAULT_CALLBACKS) + [_linkify_target_blank]
+
 @app.template_filter("nl2br")
 def nl2br(text):
     if text is None:
-        return ""
-    return Markup(escape(text).replace("\n", "<br>"))
+        return Markup("")
+
+    cleaned = bleach.clean(
+        text,
+        tags=ALLOWED_INBOX_TAGS,
+        attributes=ALLOWED_INBOX_ATTRS,
+        strip=True,
+    )
+    cleaned = cleaned.replace("\r\n", "\n").replace("\n", "<br>")
+    linked = bleach.linkify(
+        cleaned,
+        callbacks=LINKIFY_CALLBACKS,
+        skip_tags=["a", "code"],
+    )
+    return Markup(linked)
 
 # ====== VAPID setup ======
 VAPID_PUBLIC_KEY = os.environ.get("MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEAbWEvTQ7pDPa0Q-O8drCVnHmfnzVpn7W7UkclKUd1A-yGIee_ehqUjRgMp_HxSBPMylN_H83ffaE2eDIybrTVA")
@@ -1061,6 +1105,72 @@ def _require_admin():
     if (session.get("account_type","").lower() != "admin"):
         abort(403)
 
+def update_trainer_username(current_username: str, new_username: str, actor: str = "Admin"):
+    desired = (new_username or "").strip()
+    if not desired:
+        return False, "Please provide a trainer username.", current_username
+    if desired.lower() == (current_username or "").strip().lower():
+        return False, "Trainer username is unchanged.", current_username
+    if not supabase:
+        return False, "Supabase is unavailable right now.", current_username
+
+    # Ensure target username not already taken
+    _, existing = find_user(desired)
+    if existing:
+        return False, f"Username “{desired}” is already in use.", current_username
+
+    try:
+        resp = (supabase.table("sheet1")
+                .update({"trainer_username": desired})
+                .eq("trainer_username", current_username)
+                .execute())
+        data = getattr(resp, "data", None)
+        if not data:
+            return False, f"Trainer “{current_username}” was not found.", current_username
+        return True, f"✅ Trainer username updated to {desired}.", desired
+    except Exception as e:
+        print("⚠️ update_trainer_username failed:", e)
+        return False, "Failed to update trainer username.", current_username
+
+def update_campfire_username(trainer_username: str, campfire_username: str | None, actor: str = "Admin"):
+    if not supabase:
+        return False, "Supabase is unavailable."
+    value = (campfire_username or "").strip()
+    if "@" in value:
+        value = value.replace("@", "")
+    try:
+        resp = (supabase.table("sheet1")
+                .update({"campfire_username": value or None})
+                .eq("trainer_username", trainer_username)
+                .execute())
+        data = getattr(resp, "data", None)
+        if not data:
+            return False, f"Trainer “{trainer_username}” was not found."
+        label = value or "cleared"
+        return True, f"✅ Campfire username updated ({label})."
+    except Exception as e:
+        print("⚠️ update_campfire_username failed:", e)
+        return False, "Failed to update Campfire username."
+
+def update_memorable_password(trainer_username: str, new_memorable: str, actor: str = "Admin"):
+    new_value = (new_memorable or "").strip()
+    if not new_value:
+        return False, "Please enter a memorable password."
+    if not supabase:
+        return False, "Supabase is unavailable."
+    try:
+        resp = (supabase.table("sheet1")
+                .update({"memorable_password": new_value})
+                .eq("trainer_username", trainer_username)
+                .execute())
+        data = getattr(resp, "data", None)
+        if not data:
+            return False, f"Trainer “{trainer_username}” was not found."
+        return True, "✅ Memorable password updated."
+    except Exception as e:
+        print("⚠️ update_memorable_password failed:", e)
+        return False, "Failed to update memorable password."
+
 # --- ADMIN: Change account type (supports underscore & hyphen URLs) ---
 @app.route("/admin/trainers/<username>/change-account-type", methods=["POST"], endpoint="admin_change_account_type_v2")
 @app.route("/admin/trainers/<username>/change_account_type", methods=["POST"], endpoint="admin_change_account_type_legacy")
@@ -1080,6 +1190,40 @@ def admin_reset_pin_route(username):
     new_pin = request.form.get("new_pin", "")
     actor = _current_actor()
     ok, msg = reset_pin(username, new_pin, actor)
+    flash(msg, "success" if ok else "error")
+    return redirect(url_for("admin_trainer_detail", username=username))
+
+# --- ADMIN: Change trainer username ---
+@app.route("/admin/trainers/<username>/change-username", methods=["POST"], endpoint="admin_change_trainer_username_v2")
+@app.route("/admin/trainers/<username>/change_username", methods=["POST"], endpoint="admin_change_trainer_username_legacy")
+def admin_change_trainer_username_route(username):
+    _require_admin()
+    desired = request.form.get("new_trainer_username", "")
+    actor = _current_actor()
+    ok, msg, final_username = update_trainer_username(username, desired, actor)
+    flash(msg, "success" if ok else "error")
+    redirect_username = final_username if ok else username
+    return redirect(url_for("admin_trainer_detail", username=redirect_username))
+
+# --- ADMIN: Change Campfire username ---
+@app.route("/admin/trainers/<username>/change-campfire", methods=["POST"], endpoint="admin_change_campfire_username_v2")
+@app.route("/admin/trainers/<username>/change_campfire", methods=["POST"], endpoint="admin_change_campfire_username_legacy")
+def admin_change_campfire_username_route(username):
+    _require_admin()
+    new_campfire = request.form.get("new_campfire_username", "")
+    actor = _current_actor()
+    ok, msg = update_campfire_username(username, new_campfire, actor)
+    flash(msg, "success" if ok else "error")
+    return redirect(url_for("admin_trainer_detail", username=username))
+
+# --- ADMIN: Change memorable password ---
+@app.route("/admin/trainers/<username>/change-memorable", methods=["POST"], endpoint="admin_change_memorable_password_v2")
+@app.route("/admin/trainers/<username>/change_memorable", methods=["POST"], endpoint="admin_change_memorable_password_legacy")
+def admin_change_memorable_password_route(username):
+    _require_admin()
+    new_memorable = request.form.get("new_memorable_password", "")
+    actor = _current_actor()
+    ok, msg = update_memorable_password(username, new_memorable, actor)
     flash(msg, "success" if ok else "error")
     return redirect(url_for("admin_trainer_detail", username=username))
 
@@ -1496,6 +1640,22 @@ def _format_local(dt_val: datetime) -> str:
         return "Unknown"
     return dt_val.astimezone(LONDON_TZ).strftime("%d %b %Y · %H:%M")
 
+
+def _format_meetup_summary(meetup: dict | None) -> str:
+    if not meetup:
+        return ""
+
+    name = (meetup.get("name") or "").strip() or "Meetup"
+    details = [
+        (meetup.get("date") or "").strip(),
+        (meetup.get("start_time") or "").strip(),
+        (meetup.get("location") or "").strip(),
+    ]
+    details = [d for d in details if d]
+    if details:
+        return f"{name} ({' · '.join(details)})"
+    return name
+
 @app.route("/admin/calendar-events", methods=["GET", "POST"])
 @admin_required
 def admin_calendar_events():
@@ -1630,6 +1790,26 @@ def admin_redemptions():
         to_row = from_row + per_page - 1
         resp = query.range(from_row, to_row).execute()
         redemptions = resp.data or []
+
+        meetup_lookup: dict[str, dict] = {}
+        meetup_ids = {str(r.get("meetup_id") or "").strip() for r in redemptions if r.get("meetup_id")}
+
+        if meetup_ids:
+            try:
+                meetup_resp = (
+                    supabase.table("meetups")
+                    .select("id,name,location,date,start_time")
+                    .in_("id", list(meetup_ids))
+                    .execute()
+                )
+                for row in meetup_resp.data or []:
+                    meetup_lookup[str(row.get("id") or "").strip()] = row
+            except Exception as meetup_err:
+                print("⚠️ Failed fetching meetups for redemptions:", meetup_err)
+
+        for record in redemptions:
+            meetup_key = str(record.get("meetup_id") or "").strip()
+            record["meetup_display"] = _format_meetup_summary(meetup_lookup.get(meetup_key))
 
         # Count for pagination
         total_filtered = len(
@@ -2430,7 +2610,7 @@ def age():
                 "campfire_username": "Kids Account",
                 "stamps": 0,
                 "avatar_icon": "avatar1.png",
-                "trainer_card_background": "standard.png",
+                "trainer_card_background": "default.png",
                 "account_type": "Kids Account",
             }
             if not supabase_insert_row("sheet1", payload):
@@ -2466,7 +2646,11 @@ def campfire():
         return redirect(url_for("signup"))
 
     if request.method == "POST":
-        campfire_username = request.form.get("campfire_username")
+        raw = (request.form.get("campfire_username") or "").strip()
+        if "@" in raw:
+            flash("Leave off the @ symbol from your Campfire username.", "warning")
+            return redirect(url_for("campfire"))
+        campfire_username = raw
         if not campfire_username:
             flash("Campfire username is required.", "warning")
             return redirect(url_for("campfire"))
@@ -2489,7 +2673,7 @@ def campfire():
             "campfire_username": campfire_username,
             "stamps": 0,
             "avatar_icon": "avatar1.png",
-            "trainer_card_background": "standard.png",
+            "trainer_card_background": "default.png",
             "account_type": "Standard",
         }
         if not supabase_insert_row("sheet1", payload):
@@ -2594,7 +2778,7 @@ def dashboard():
         total_stamps=total_stamps,
         current_stamps=current_stamps,
         avatar=user.get("avatar_icon", "avatar1.png"),
-        background=user.get("trainer_card_background", "standard.png"),
+        background=user.get("trainer_card_background", "default.png"),
         campfire_username=campfire_username,
         most_recent_meetup=most_recent_meetup,
         account_type=normalize_account_type(user.get("account_type")),
@@ -3888,7 +4072,7 @@ def change_avatar():
     backgrounds = os.listdir(backgrounds_folder)
 
     current_avatar = user.get("avatar_icon", "avatar1.png")
-    current_background = user.get("trainer_card_background") or "standard.png"
+    current_background = user.get("trainer_card_background") or "default.png"
 
     return render_template(
         "change_avatar.html",

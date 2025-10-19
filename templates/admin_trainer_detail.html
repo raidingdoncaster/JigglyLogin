@@ -24,6 +24,15 @@
 
 <!-- Management Actions -->
 <div class="management-actions">
+  <!-- Change Trainer Username -->
+  <div class="action-box">
+    <h3>🆔 Change Trainer Username</h3>
+    <form action="{{ url_for('admin_change_trainer_username_v2', username=trainer.trainer_username) }}" method="post">
+      <input type="text" name="new_trainer_username" value="{{ trainer.trainer_username }}" placeholder="New trainer username" required>
+      <button type="submit">Update Username</button>
+    </form>
+    <p class="action-note">Updates their login name. Make sure the new username is unique.</p>
+  </div>
 
   <!-- Add / Remove Stamps -->
   <div class="action-box">
@@ -59,6 +68,27 @@
       <input type="password" name="new_pin" maxlength="4" pattern="\d{4}" placeholder="New 4-digit PIN" required>
       <button type="submit">Reset PIN</button>
     </form>
+    <p class="action-note">PINs are required to be exactly 4 digits.</p>
+  </div>
+
+  <!-- Update Campfire Username -->
+  <div class="action-box">
+    <h3>🔥 Campfire Username</h3>
+    <form action="{{ url_for('admin_change_campfire_username_v2', username=trainer.trainer_username) }}" method="post">
+      <input type="text" name="new_campfire_username" value="{{ trainer.campfire_username }}" placeholder="Campfire username (optional)">
+      <button type="submit">Save Campfire</button>
+    </form>
+    <p class="action-note">Enter without the @ symbol. Leave blank to clear the saved Campfire username.</p>
+  </div>
+
+  <!-- Update Memorable Password -->
+  <div class="action-box">
+    <h3>🧠 Memorable Password</h3>
+    <form action="{{ url_for('admin_change_memorable_password_v2', username=trainer.trainer_username) }}" method="post">
+      <input type="text" name="new_memorable_password" placeholder="New memorable password" required>
+      <button type="submit">Update Memorable</button>
+    </form>
+    <p class="action-note">Players use this during recovery. Keep it easy to remember.</p>
   </div>
 
 </div>
@@ -135,6 +165,11 @@
 .action-box button:hover {
   transform:translateY(-1px);
   box-shadow:0 12px 26px rgba(58,141,222,0.3);
+}
+.action-note {
+  margin:6px 0 0;
+  font-size:0.78rem;
+  color:#6b7280;
 }
 
 .btn {

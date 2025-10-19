@@ -18,8 +18,11 @@
 
   <!-- Stats Section -->
   <div class="passport-stats">
-    <div class="stat-box">
-      <h4>📖 Total Passport Stamps</h4>
+    <div class="stat-box stat-lifetime">
+      <h4>📖 Lifetime Stamps</h4>
+      <button type="button" class="stat-info-button" aria-label="Learn more about Lifetime Stamps" aria-haspopup="dialog" aria-controls="lifetime-stamps-dialog" aria-expanded="false">
+        <span aria-hidden="true">ℹ️</span>
+      </button>
       <p>{{ total_stamps }}</p>
     </div>
     <div class="stat-box">
@@ -138,6 +141,16 @@
   </div>
 </div>
 
+<!-- Lifetime Stamps Info Dialog -->
+<div class="stat-info-modal" id="lifetime-stamps-dialog" role="dialog" aria-modal="true" aria-labelledby="lifetime-stamps-dialog-title" aria-hidden="true" hidden>
+  <div class="stat-info-modal-content">
+    <button type="button" class="stat-info-close" aria-label="Close Lifetime Stamps info">✕</button>
+    <h5 id="lifetime-stamps-dialog-title">Lifetime Stamps</h5>
+    <p>🧳 Your Lifetime Stamps show how many stamps you’ve ever earned in your passport (not counting multi-stamp rewards).</p>
+    <p>🎟️ Your Stamp Currency at the top shows how many you currently have to spend in the Catalog!</p>
+  </div>
+</div>
+
 <!-- ===== Styles ===== -->
 <style>
 /* Page Container */
@@ -203,11 +216,46 @@
   text-align: center;
   border:1px solid rgba(148,163,184,0.25);
   box-shadow:0 8px 18px rgba(15,23,42,0.35);
+  position:relative;
 }
 .stat-box h4 {
   font-size: 0.9em;
   margin: 0 0 6px;
   color: #93c5fd;
+}
+.stat-lifetime h4 {
+  padding-right: 28px;
+}
+.stat-info-button {
+  position:absolute;
+  top:8px;
+  right:8px;
+  width:26px;
+  height:26px;
+  border-radius:50%;
+  border:1px solid rgba(148,163,184,0.4);
+  background:rgba(30,41,59,0.85);
+  color:#bfdbfe;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:0.9em;
+  line-height:1;
+  cursor:pointer;
+  padding:0;
+  box-shadow:0 4px 12px rgba(15,23,42,0.35);
+}
+.stat-info-button span {
+  pointer-events:none;
+}
+.stat-info-button:hover,
+.stat-info-button:focus-visible {
+  background:rgba(59,130,246,0.85);
+  color:#f8fafc;
+}
+.stat-info-button:focus-visible {
+  outline:2px solid rgba(191,219,254,0.9);
+  outline-offset:2px;
 }
 .stat-box p {
   margin: 0;
@@ -396,6 +444,72 @@
   color:#b91c1c;
 }
 
+.stat-info-modal {
+  position:fixed;
+  inset:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:20px;
+  background:rgba(15,23,42,0.75);
+  z-index:999;
+}
+.stat-info-modal[hidden] {
+  display:none;
+}
+.stat-info-modal-content {
+  background:#0f172a;
+  color:#e2e8f0;
+  border-radius:18px;
+  width:100%;
+  max-width:360px;
+  padding:20px 20px 18px;
+  box-shadow:0 24px 50px rgba(15,23,42,0.45);
+  text-align:left;
+  border:1px solid rgba(148,163,184,0.28);
+  position:relative;
+}
+.stat-info-modal-content h5 {
+  margin:0 0 12px;
+  font-size:1.05em;
+  color:#bfdbfe;
+}
+.stat-info-modal-content p {
+  margin:0 0 10px;
+  font-size:0.9em;
+  line-height:1.4;
+}
+.stat-info-modal-content p:last-child {
+  margin-bottom:0;
+}
+.stat-info-close {
+  position:absolute;
+  top:10px;
+  right:10px;
+  border:none;
+  background:rgba(30,41,59,0.9);
+  color:#f8fafc;
+  border-radius:999px;
+  width:28px;
+  height:28px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:0.95em;
+  cursor:pointer;
+}
+.stat-info-close:hover,
+.stat-info-close:focus-visible {
+  background:rgba(59,130,246,0.95);
+}
+.stat-info-close:focus-visible {
+  outline:2px solid rgba(191,219,254,0.9);
+  outline-offset:3px;
+}
+body.stat-info-modal-open {
+  overflow:hidden;
+}
+
 /* Passport Grid */
 .passport-grid {
   display: flex;
@@ -499,19 +613,67 @@
 document.addEventListener("DOMContentLoaded", function(){
   const toggle = document.getElementById("classic-toggle");
   const form = document.getElementById("classic-form");
-  if (!toggle || !form) {
-    return;
+  if (toggle && form) {
+    toggle.addEventListener("click", function(){
+      const isOpen = form.classList.toggle("open");
+      form.setAttribute("aria-hidden", (!isOpen).toString());
+      if (isOpen) {
+        const numberField = form.querySelector("input[type='number']");
+        if (numberField) {
+          numberField.focus();
+        }
+      }
+    });
   }
-  toggle.addEventListener("click", function(){
-    const isOpen = form.classList.toggle("open");
-    form.setAttribute("aria-hidden", (!isOpen).toString());
-    if (isOpen) {
-      const numberField = form.querySelector("input[type='number']");
-      if (numberField) {
-        numberField.focus();
+
+  const infoButton = document.querySelector(".stat-info-button");
+  const dialog = document.getElementById("lifetime-stamps-dialog");
+
+  if (infoButton && dialog) {
+    const closeButton = dialog.querySelector(".stat-info-close");
+    let lastFocusedElement = null;
+
+    function openDialog() {
+      lastFocusedElement = document.activeElement;
+      dialog.hidden = false;
+      dialog.setAttribute("aria-hidden", "false");
+      infoButton.setAttribute("aria-expanded", "true");
+      document.body.classList.add("stat-info-modal-open");
+      if (closeButton) {
+        closeButton.focus();
       }
     }
-  });
+
+    function closeDialog() {
+      dialog.setAttribute("aria-hidden", "true");
+      dialog.hidden = true;
+      infoButton.setAttribute("aria-expanded", "false");
+      document.body.classList.remove("stat-info-modal-open");
+      if (lastFocusedElement && typeof lastFocusedElement.focus === "function") {
+        lastFocusedElement.focus();
+      } else {
+        infoButton.focus();
+      }
+    }
+
+    infoButton.addEventListener("click", openDialog);
+
+    if (closeButton) {
+      closeButton.addEventListener("click", closeDialog);
+    }
+
+    dialog.addEventListener("click", function(event) {
+      if (event.target === dialog) {
+        closeDialog();
+      }
+    });
+
+    window.addEventListener("keydown", function(event) {
+      if (!dialog.hidden && event.key === "Escape") {
+        closeDialog();
+      }
+    });
+  }
 });
 </script>
 

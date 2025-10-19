@@ -12,7 +12,16 @@
 
     <form action="{{ url_for('campfire') }}" method="post" class="auth-form auth-form--compact">
       <label class="auth-label" for="campfire_username">Campfire username</label>
-      <input id="campfire_username" class="auth-input" type="text" name="campfire_username" placeholder="e.g. @Trainer123" required>
+      <input id="campfire_username"
+             class="auth-input"
+             type="text"
+             name="campfire_username"
+             placeholder="e.g. Trainer123"
+             pattern="[^@]+"
+             title="Enter your Campfire username without the @ symbol."
+             required
+             oninput="this.value = this.value.replace(/@/g, '')">
+      <p style="font-size:0.8rem; color:#64748b; margin:4px 0 0;">Enter your Campfire username without the @ symbol.</p>
 
       <button type="submit" class="auth-btn auth-btn--primary auth-btn--full">Finish signup</button>
     </form>

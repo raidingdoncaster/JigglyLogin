@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+
+{% block page_settings %}
+  {% set container_class = 'is-fluid' %}
+{% endblock %}
+
+{% block content %}
+<div class="about-shell">
+  <header class="about-header">
+    <a href="{{ url_for('landing') }}" class="about-back">⬅ Back to RDAB</a>
+    <h1>About RDAB</h1>
+  </header>
+
+  <div class="about-frame">
+    <iframe
+      src="https://pogoprizes.my.canva.site/#about"
+      title="About RDAB overview"
+      loading="lazy"
+      allow="fullscreen"
+      referrerpolicy="no-referrer"
+    ></iframe>
+  </div>
+</div>
+
+<button type="button" class="about-scroll-top" id="about-scroll-top" aria-label="Back to top">
+  ⬆ Back to top
+</button>
+
+<style>
+.about-shell{
+  display:flex;
+  flex-direction:column;
+  gap:16px;
+  padding:0 clamp(12px,4vw,24px) 24px;
+  color:#0f172a;
+}
+.about-header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  flex-wrap:wrap;
+}
+.about-header h1{
+  margin:0;
+  font-size:1.6rem;
+}
+.about-back{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:8px 14px;
+  border-radius:999px;
+  background:#1d4ed8;
+  color:#fff;
+  text-decoration:none;
+  font-weight:600;
+  box-shadow:0 10px 24px rgba(29,78,216,0.28);
+}
+.about-back:hover{
+  transform:translateY(-1px);
+  box-shadow:0 12px 26px rgba(29,78,216,0.32);
+}
+.about-frame{
+  background:#fff;
+  border-radius:22px;
+  box-shadow:0 16px 36px rgba(15,23,42,0.18);
+  overflow:hidden;
+}
+.about-frame iframe{
+  display:block;
+  width:100%;
+  height:min(88vh,920px);
+  min-height:520px;
+  border:0;
+}
+.about-scroll-top{
+  position:fixed;
+  right:20px;
+  bottom:24px;
+  padding:10px 16px;
+  border-radius:999px;
+  border:none;
+  background:#38bdf8;
+  color:#0f172a;
+  font-weight:600;
+  cursor:pointer;
+  box-shadow:0 12px 28px rgba(56,189,248,0.32);
+  opacity:0;
+  transform:translateY(8px);
+  transition:opacity .2s ease, transform .2s ease;
+  pointer-events:none;
+}
+.about-scroll-top.is-visible{
+  opacity:1;
+  transform:translateY(0);
+  pointer-events:auto;
+}
+@media(max-width:600px){
+  .about-shell{
+    padding:0 14px 20px;
+  }
+  .about-header{
+    flex-direction:column;
+    align-items:flex-start;
+  }
+  .about-back{
+    order:2;
+  }
+  .about-frame iframe{
+    height:min(90vh,800px);
+    min-height:480px;
+  }
+}
+</style>
+
+<script>
+(function(){
+  const scrollBtn = document.getElementById("about-scroll-top");
+  if (!scrollBtn) {
+    return;
+  }
+
+  scrollBtn.addEventListener("click", function(){
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  });
+
+  window.addEventListener("scroll", function(){
+    if (window.scrollY > 320) {
+      scrollBtn.classList.add("is-visible");
+    } else {
+      scrollBtn.classList.remove("is-visible");
+    }
+  });
+})();
+</script>
+{% endblock %}

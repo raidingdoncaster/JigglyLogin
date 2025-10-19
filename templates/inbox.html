@@ -42,7 +42,7 @@
           {% endif %}
         </div>
         <p class="inbox-date">{{ msg.sent_at|to_date }}</p>
-        <p class="snippet">{{ msg.message[:90] }}{% if msg.message and msg.message|length > 90 %}…{% endif %}</p>
+        <p class="snippet">{{ msg.message|striptags|replace('\r\n', ' ')|replace('\n', ' ')|truncate(110) }}</p>
       </div>
     </a>
   {% else %}
