@@ -42,7 +42,7 @@
   <!-- Change Account Type -->
   <div class="action-box">
     <h3>👑 Change Account Type</h3>
-    <form action="{{ url_for('admin_change_account_type', username=trainer.trainer_username) }}" method="post">
+    <form action="{{ url_for('admin_change_account_type_v2', username=trainer.trainer_username) }}" method="post">
       <select name="account_type" required>
         <option value="standard" {% if trainer.account_type|lower == "standard" %}selected{% endif %}>Standard</option>
         <option value="Kids Account" {% if trainer.account_type == "Kids Account" %}selected{% endif %}>Kids Account</option>
@@ -55,7 +55,7 @@
   <!-- Reset PIN -->
   <div class="action-box">
     <h3>🔑 Reset PIN</h3>
-    <form action="{{ url_for('admin_reset_pin', username=trainer.trainer_username) }}" method="post">
+    <form action="{{ url_for('admin_reset_pin_v2', username=trainer.trainer_username) }}" method="post">
       <input type="password" name="new_pin" maxlength="4" pattern="\d{4}" placeholder="New 4-digit PIN" required>
       <button type="submit">Reset PIN</button>
     </form>

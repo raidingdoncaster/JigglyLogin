@@ -739,7 +739,7 @@ def get_passport_stamps(username: str, campfire_username: str | None = None):
                 icon = url_for("static", filename="icons/cdl.png")
             elif "win" in rl:
                 icon = url_for("static", filename="icons/win.png")
-            elif "just being normal" in rl:
+            elif "normal" in rl:
                 icon = url_for("static", filename="icons/normal.png")
             elif "owed" in rl:
                 icon = url_for("static", filename="icons/owed.png")
@@ -929,6 +929,104 @@ def send_notification(audience, subject, message, notif_type="system"):
 # ====== Admin Panel ======
 from functools import wraps
 from flask import session, redirect, url_for, flash
+
+# --- Admin utilities: change account type & reset PIN ---
+
+import os, re, hashlib
+from flask import request, redirect, url_for, flash, session, abort
+
+ALLOWED_ACCOUNT_TYPES = {
+    "standard": "Standard",
+    "kids account": "Kids Account",
+    "admin": "Admin",
+}
+
+def _current_actor():
+    return (
+        session.get("trainer_username")
+        or session.get("username")
+        or session.get("admin_username")
+        or "Admin"
+    )
+
+def change_account_type(trainer_username: str, new_type: str, actor: str = "Admin"):
+    if not new_type:
+        return False, "Please choose an account type."
+
+    norm = new_type.strip().lower()
+    if norm not in ALLOWED_ACCOUNT_TYPES:
+        return False, f"Invalid account type: {new_type}"
+
+    label = ALLOWED_ACCOUNT_TYPES[norm]
+    try:
+        resp = supabase.table("sheet1").update({"account_type": label}) \
+            .eq("trainer_username", trainer_username).execute()
+        data = getattr(resp, "data", None)
+        if not data:
+            return False, f"Trainer not found: {trainer_username}"
+        return True, f"✅ {trainer_username} is now “{label}”."
+    except Exception as e:
+        return False, f"❌ Failed to change account type: {e}"
+
+PIN_SALT = os.getenv("PIN_SALT", "static-fallback-salt")  # set a real secret in prod!
+
+def _hash_pin(pin: str, username: str) -> str:
+    # Simple salted SHA256: adequate for a 4-digit PIN admin reset flow
+    s = f"{PIN_SALT}:{username}:{pin}".encode("utf-8")
+    return hashlib.sha256(s).hexdigest()
+
+def reset_pin(trainer_username: str, new_pin: str, actor: str = "Admin"):
+    if not re.fullmatch(r"\d{4}", new_pin or ""):
+        return False, "PIN must be exactly 4 digits."
+
+    # First try a hashed column if your schema has one (pin_hash)
+    try:
+        hashed = _hash_pin(new_pin, trainer_username)
+        resp = supabase.table("sheet1").update({"pin_hash": hashed}) \
+            .eq("trainer_username", trainer_username).execute()
+        data = getattr(resp, "data", None)
+        if data:
+            return True, "✅ PIN reset."
+    except Exception:
+        # If the column doesn't exist or update fails, fall back to plaintext 'pin'
+        pass
+
+    # Fallback to plaintext column 'pin' (if that's how your current schema stores it)
+    try:
+        resp = supabase.table("sheet1").update({"pin": new_pin}) \
+            .eq("trainer_username", trainer_username).execute()
+        data = getattr(resp, "data", None)
+        if data:
+            return True, "✅ PIN reset."
+        return False, f"Trainer not found: {trainer_username}"
+    except Exception as e:
+        return False, f"❌ Failed to reset PIN: {e}"
+
+def _require_admin():
+    if (session.get("account_type","").lower() != "admin"):
+        abort(403)
+
+# --- ADMIN: Change account type (supports underscore & hyphen URLs) ---
+@app.route("/admin/trainers/<username>/change-account-type", methods=["POST"], endpoint="admin_change_account_type_v2")
+@app.route("/admin/trainers/<username>/change_account_type", methods=["POST"], endpoint="admin_change_account_type_legacy")
+def admin_change_account_type_route(username):
+    _require_admin()
+    new_type = request.form.get("account_type", "")
+    actor = _current_actor()
+    ok, msg = change_account_type(username, new_type, actor)
+    flash(msg, "success" if ok else "error")
+    return redirect(url_for("admin_trainer_detail", username=username))
+
+# --- ADMIN: Reset PIN (supports underscore & hyphen URLs) ---
+@app.route("/admin/trainers/<username>/reset-pin", methods=["POST"], endpoint="admin_reset_pin_v2")
+@app.route("/admin/trainers/<username>/reset_pin", methods=["POST"], endpoint="admin_reset_pin_legacy")
+def admin_reset_pin_route(username):
+    _require_admin()  
+    new_pin = request.form.get("new_pin", "")
+    actor = _current_actor()
+    ok, msg = reset_pin(username, new_pin, actor)
+    flash(msg, "success" if ok else "error")
+    return redirect(url_for("admin_trainer_detail", username=username))
 
 def admin_required(f):
     @wraps(f)
