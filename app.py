@@ -66,6 +66,9 @@ UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
+ALLOWED_CLASSIC_IMAGE_EXTENSIONS = {"jpg", "jpeg", "png", "webp", "gif", "heic", "heif"}
+CLASSIC_SUBMISSION_STATUSES = {"PENDING", "AWARDED", "REJECTED"}
+
 DATA_DIR = Path(app.root_path) / "data"
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 CUSTOM_EVENTS_PATH = DATA_DIR / "custom_events.json"
@@ -527,6 +530,12 @@ def _upload_to_supabase(file_storage, folder="catalog"):
         print(f"❌ Supabase upload failed: {err_txt}")
         return None
 
+def _is_allowed_image_file(filename: str) -> bool:
+    if not filename or "." not in filename:
+        return False
+    ext = filename.rsplit(".", 1)[1].lower()
+    return ext in ALLOWED_CLASSIC_IMAGE_EXTENSIONS
+
 def absolute_url(path: str) -> str:
     root = request.url_root.rstrip('/')
     if not path.startswith('/'):
@@ -692,6 +701,52 @@ def admin_adjust_stamps_route(username):
     ok, msg = adjust_stamps(username, count, reason, action, actor)  # ← pass actor
     flash(msg, "success" if ok else "error")
     return redirect(url_for("admin_trainer_detail", username=username))
+
+def get_classic_submissions_for_trainer(trainer_username: str) -> list[dict]:
+    if not (supabase and trainer_username):
+        return []
+    try:
+        resp = (
+            supabase.table("classic_passport_submissions")
+            .select("*")
+            .ilike("trainer_username", trainer_username)
+            .order("created_at", desc=True)
+            .execute()
+        )
+        return resp.data or []
+    except Exception as exc:
+        print("⚠️ Failed to load classic submissions for trainer:", exc)
+        return []
+
+def get_classic_submission(submission_id: str) -> dict | None:
+    if not (supabase and submission_id):
+        return None
+    try:
+        resp = (
+            supabase.table("classic_passport_submissions")
+            .select("*")
+            .eq("id", submission_id)
+            .limit(1)
+            .execute()
+        )
+        rows = resp.data or []
+        return rows[0] if rows else None
+    except Exception as exc:
+        print("⚠️ Failed to fetch classic submission:", exc)
+        return None
+
+def list_classic_submissions(status: str | None = None) -> list[dict]:
+    if not supabase:
+        return []
+    try:
+        query = supabase.table("classic_passport_submissions").select("*").order("created_at", desc=True)
+        if status and status.upper() != "ALL":
+            query = query.eq("status", status.upper())
+        resp = query.execute()
+        return resp.data or []
+    except Exception as exc:
+        print("⚠️ Failed to list classic submissions:", exc)
+        return []
 
 # ====== Data: stamps, inbox & meetups ======
 def get_passport_stamps(username: str, campfire_username: str | None = None):
@@ -1989,6 +2044,168 @@ def toggle_maintenance():
     flash(f"Maintenance mode is now {state}.", "warning")
     return redirect(url_for("admin_dashboard"))
 
+@app.route("/admin/classic-stamps")
+@admin_required
+def admin_classic_stamps():
+    status = (request.args.get("status", "PENDING") or "PENDING").upper()
+    valid_statuses = CLASSIC_SUBMISSION_STATUSES | {"ALL"}
+    if status not in valid_statuses:
+        status = "PENDING"
+
+    submissions_all = list_classic_submissions(None)
+    counts = Counter()
+    for entry in submissions_all:
+        counts[(entry.get("status") or "PENDING").upper()] += 1
+    counts["ALL"] = len(submissions_all)
+
+    if status == "ALL":
+        visible = submissions_all
+    else:
+        visible = [
+            entry for entry in submissions_all
+            if (entry.get("status") or "PENDING").upper() == status
+        ]
+
+    tabs = [
+        {"code": "PENDING", "label": "Pending"},
+        {"code": "AWARDED", "label": "Completed"},
+        {"code": "REJECTED", "label": "Rejected"},
+        {"code": "ALL", "label": "All"},
+    ]
+
+    return render_template(
+        "admin_classic_stamps.html",
+        submissions=visible,
+        status=status,
+        tabs=tabs,
+        counts=dict(counts),
+    )
+
+def _redirect_to_classic_dashboard(fallback_status: str = "PENDING"):
+    target = request.form.get("next") or url_for("admin_classic_stamps", status=fallback_status)
+    if not target.startswith("/"):
+        target = url_for("admin_classic_stamps", status=fallback_status)
+    return redirect(target)
+
+@app.route("/admin/classic-stamps/<submission_id>/award", methods=["POST"])
+@admin_required
+def admin_classic_stamps_award(submission_id):
+    award_raw = (request.form.get("award_count") or "").strip()
+    notes = (request.form.get("admin_notes") or "").strip()
+
+    try:
+        award_count = int(award_raw)
+    except Exception:
+        flash("Enter a whole number of stamps to award.", "warning")
+        return _redirect_to_classic_dashboard()
+
+    if award_count <= 0:
+        flash("Stamp count must be at least 1.", "warning")
+        return _redirect_to_classic_dashboard()
+
+    submission = get_classic_submission(submission_id)
+    if not submission:
+        flash("Submission not found.", "error")
+        return _redirect_to_classic_dashboard()
+
+    status = (submission.get("status") or "PENDING").upper()
+    trainer = submission.get("trainer_username")
+    if not trainer:
+        flash("Submission is missing a trainer username.", "error")
+        return _redirect_to_classic_dashboard()
+
+    if status == "AWARDED":
+        flash("This submission has already been marked as completed.", "info")
+        return _redirect_to_classic_dashboard("AWARDED")
+
+    actor = _current_actor()
+    ok, msg = adjust_stamps(trainer, award_count, "Classic", "award", actor)
+    if not ok:
+        flash(msg, "error")
+        return _redirect_to_classic_dashboard()
+
+    now = datetime.utcnow().isoformat()
+    update_payload = {
+        "status": "AWARDED",
+        "awarded_count": award_count,
+        "reviewed_by": actor,
+        "reviewed_at": now,
+        "admin_notes": notes,
+        "updated_at": now,
+    }
+
+    try:
+        supabase.table("classic_passport_submissions").update(update_payload).eq("id", submission_id).execute()
+    except Exception as exc:
+        print("⚠️ Failed to update classic submission after awarding:", exc)
+        flash("Stamps were awarded, but we could not update the submission record. Please double-check manually.", "warning")
+        return _redirect_to_classic_dashboard("AWARDED")
+
+    subject = "Classic passport stamps awarded"
+    message_lines = [
+        f"Thanks for sharing your classic passports! We've added {award_count} stamp{'s' if award_count != 1 else ''} to your digital passport.",
+        "You can recycle the paper cards or keep them as memorabilia — whichever you prefer.",
+    ]
+    if notes:
+        message_lines.append("")
+        message_lines.append(f"Admin note: {notes}")
+    send_notification(trainer, subject, "\n".join(message_lines))
+
+    flash(f"Awarded {award_count} stamp{'s' if award_count != 1 else ''} to {trainer}.", "success")
+    return _redirect_to_classic_dashboard("AWARDED")
+
+@app.route("/admin/classic-stamps/<submission_id>/reject", methods=["POST"])
+@admin_required
+def admin_classic_stamps_reject(submission_id):
+    notes = (request.form.get("admin_notes") or "").strip()
+    if not notes:
+        flash("Please add a short note explaining why it was rejected.", "warning")
+        return _redirect_to_classic_dashboard()
+
+    submission = get_classic_submission(submission_id)
+    if not submission:
+        flash("Submission not found.", "error")
+        return _redirect_to_classic_dashboard()
+
+    status = (submission.get("status") or "PENDING").upper()
+    if status == "AWARDED":
+        flash("This submission has already been marked completed. You can leave additional notes from the award form instead.", "info")
+        return _redirect_to_classic_dashboard("AWARDED")
+
+    trainer = submission.get("trainer_username")
+    if not trainer:
+        flash("Submission is missing a trainer username.", "error")
+        return _redirect_to_classic_dashboard()
+
+    actor = _current_actor()
+    now = datetime.utcnow().isoformat()
+    update_payload = {
+        "status": "REJECTED",
+        "reviewed_by": actor,
+        "reviewed_at": now,
+        "admin_notes": notes,
+        "updated_at": now,
+    }
+
+    try:
+        supabase.table("classic_passport_submissions").update(update_payload).eq("id", submission_id).execute()
+    except Exception as exc:
+        print("⚠️ Failed to update classic submission on rejection:", exc)
+        flash("We couldn't update the submission status. Please try again.", "error")
+        return _redirect_to_classic_dashboard()
+
+    subject = "Classic passport submission needs a tweak"
+    message = (
+        "Thanks for sending a photo of your classic passports. "
+        "We couldn't approve it this time. "
+        "Please review the note below and send a new photo when you're ready.\n\n"
+        f"Admin note: {notes}"
+    )
+    send_notification(trainer, subject, message)
+
+    flash(f"Marked the submission from {trainer} as rejected.", "success")
+    return _redirect_to_classic_dashboard("REJECTED")
+
 # ====== Admin: Notification Center ======
 @app.route("/admin/notifications", methods=["GET", "POST"])
 def admin_notifications():
@@ -2892,6 +3109,8 @@ def passport():
     except Exception as e:
         print("⚠️ Error loading Lugia Summary:", e)
 
+    classic_submissions = get_classic_submissions_for_trainer(username)
+
     return render_template(
         "passport.html",
         trainer=username,
@@ -2902,8 +3121,72 @@ def passport():
         current_stamps=current_stamps,
         most_recent_stamp=most_recent_stamp,
         lugia_summary=lugia_summary,
+        classic_submissions=classic_submissions,
         show_back=False,
     )
+
+@app.route("/passport/classic-upload", methods=["POST"])
+def passport_classic_upload():
+    session["last_page"] = url_for("passport")
+    if "trainer" not in session:
+        flash("Please log in to submit classic passports.", "warning")
+        return redirect(url_for("home"))
+
+    if not supabase:
+        flash("Supabase is unavailable. Please try again later.", "error")
+        return redirect(url_for("passport"))
+
+    declared_count_raw = request.form.get("classic_count", "").strip()
+    photo = request.files.get("classic_photo")
+
+    if not declared_count_raw or not declared_count_raw.isdigit():
+        flash("Please enter how many classic stamps are on your paper passports.", "warning")
+        return redirect(url_for("passport"))
+
+    declared_count = int(declared_count_raw)
+    if declared_count <= 0:
+        flash("Stamp count must be at least 1.", "warning")
+        return redirect(url_for("passport"))
+
+    if not photo or not getattr(photo, "filename", ""):
+        flash("Please choose a photo showing your classic passports.", "warning")
+        return redirect(url_for("passport"))
+
+    if not _is_allowed_image_file(photo.filename):
+        allowed_types = ", ".join(sorted(ALLOWED_CLASSIC_IMAGE_EXTENSIONS))
+        flash(f"Please upload an image file ({allowed_types}).", "warning")
+        return redirect(url_for("passport"))
+
+    photo_url = _upload_to_supabase(photo, folder="classic-passports")
+    if not photo_url:
+        flash("We couldn't upload your photo. Please try again later.", "error")
+        return redirect(url_for("passport"))
+
+    _, user = find_user(session["trainer"])
+    if not user:
+        flash("Trainer account not found. Please contact support.", "error")
+        return redirect(url_for("passport"))
+
+    payload = {
+        "trainer_username": user.get("trainer_username"),
+        "campfire_username": user.get("campfire_username"),
+        "declared_count": declared_count,
+        "photo_url": photo_url,
+        "status": "PENDING",
+        "awarded_count": 0,
+        "admin_notes": "",
+        "created_at": datetime.utcnow().isoformat(),
+        "updated_at": datetime.utcnow().isoformat(),
+    }
+
+    try:
+        supabase.table("classic_passport_submissions").insert(payload).execute()
+        flash("Thanks! We'll review your classic passports shortly.", "success")
+    except Exception as exc:
+        print("⚠️ Failed to insert classic passport submission:", exc)
+        flash("We couldn't save your submission. Please try again.", "error")
+
+    return redirect(url_for("passport"))
 
 # ====== Meet-up History ======
 @app.route("/meetup_history")

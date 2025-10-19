@@ -1,0 +1,266 @@
+{% extends "base.html" %}
+
+{% block page_settings %}
+  {% set container_class = 'is-wide' %}
+{% endblock %}
+
+{% block content %}
+
+<div class="admin-classic-header">
+  <div>
+    <h1>📸 Classic Passport Submissions</h1>
+    <p>Review paper passport uploads, approve them, and award the matching stamps.</p>
+  </div>
+</div>
+
+<div class="classic-tabs">
+  {% for tab in tabs %}
+    {% set code = tab.code %}
+    {% set count = counts.get(code, 0) %}
+    <a href="{{ url_for('admin_classic_stamps', status=code) }}"
+       class="tab-chip {{ 'active' if status == code else '' }}">
+      <span>{{ tab.label }}</span>
+      <small>{{ count }}</small>
+    </a>
+  {% endfor %}
+</div>
+
+{% if submissions %}
+  <div class="classic-admin-grid">
+    {% for entry in submissions %}
+      {% set entry_status = (entry.get('status') or 'PENDING').upper() %}
+      <article class="classic-admin-card">
+        <header>
+          <div>
+            <h3>{{ entry.get('trainer_username') or 'Unknown Trainer' }}</h3>
+            <p class="meta">
+              Submitted {{ entry.get('created_at') | to_date }}
+              • {{ entry.get('declared_count') or 0 }} stamp{{ '' if (entry.get('declared_count') or 0) == 1 else 's' }} claimed
+            </p>
+          </div>
+          <span class="status-chip status-{{ entry_status|lower }}">{{ entry_status.title() }}</span>
+        </header>
+
+        {% if entry.get('photo_url') %}
+          <div class="preview">
+            <img src="{{ entry.get('photo_url') }}" alt="Classic passport submission from {{ entry.get('trainer_username') or 'trainer' }}">
+            <a href="{{ entry.get('photo_url') }}" target="_blank" rel="noopener">Open full photo</a>
+          </div>
+        {% endif %}
+
+        {% if entry_status == 'AWARDED' %}
+          <p class="awarded-summary">
+            Awarded {{ entry.get('awarded_count') or 0 }} stamp{{ '' if (entry.get('awarded_count') or 0) == 1 else 's' }}
+            {% if entry.get('reviewed_at') %}on {{ entry.get('reviewed_at') | to_date }}{% endif %}
+            by {{ entry.get('reviewed_by') or 'Admin' }}.
+          </p>
+        {% endif %}
+
+        {% if entry.get('admin_notes') %}
+          <p class="note"><strong>Latest note:</strong> {{ entry.get('admin_notes') }}</p>
+        {% endif %}
+
+        {% if entry_status != 'AWARDED' %}
+          <form class="classic-form award" action="{{ url_for('admin_classic_stamps_award', submission_id=entry.get('id')) }}" method="post">
+            <input type="hidden" name="next" value="{{ request.full_path }}">
+            <label for="award-{{ entry.get('id') }}">How many stamps to award?</label>
+            <input id="award-{{ entry.get('id') }}" name="award_count" type="number" min="1" step="1"
+                   value="{{ entry.get('declared_count') or entry.get('awarded_count') or 1 }}" required>
+
+            <label for="notes-{{ entry.get('id') }}">Notes for trainer (optional)</label>
+            <textarea id="notes-{{ entry.get('id') }}" name="admin_notes" rows="2" placeholder="Anything they should know?">{{ entry.get('admin_notes') or '' }}</textarea>
+
+            <button type="submit" class="btn btn-award">Award Stamps</button>
+          </form>
+        {% endif %}
+
+        {% if entry_status not in ['AWARDED', 'REJECTED'] %}
+          <form class="classic-form reject" action="{{ url_for('admin_classic_stamps_reject', submission_id=entry.get('id')) }}" method="post">
+            <input type="hidden" name="next" value="{{ request.full_path }}">
+            <label for="reject-notes-{{ entry.get('id') }}">Reject with note</label>
+            <textarea id="reject-notes-{{ entry.get('id') }}" name="admin_notes" rows="2" placeholder="Explain what to fix" required></textarea>
+            <button type="submit" class="btn btn-reject">Reject Submission</button>
+          </form>
+        {% endif %}
+      </article>
+    {% endfor %}
+  </div>
+{% else %}
+  <p class="empty-state">Nothing to review here yet.</p>
+{% endif %}
+
+<style>
+.admin-classic-header h1{
+  margin:0;
+}
+.admin-classic-header p{
+  margin:4px 0 0;
+  color:#64748b;
+  font-size:0.95em;
+}
+.classic-tabs{
+  display:flex;
+  gap:12px;
+  flex-wrap:wrap;
+  margin:18px 0 24px;
+}
+.tab-chip{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:8px 16px;
+  border-radius:999px;
+  background:#f1f5f9;
+  color:#1e293b;
+  text-decoration:none;
+  font-weight:600;
+  transition:transform .15s ease, box-shadow .15s ease;
+}
+.tab-chip small{
+  background:#e2e8f0;
+  border-radius:999px;
+  padding:2px 8px;
+  font-size:0.75em;
+}
+.tab-chip.active{
+  background:#3a8dde;
+  color:#fff;
+  box-shadow:0 10px 24px rgba(58,141,222,0.25);
+}
+.tab-chip.active small{
+  background:rgba(255,255,255,0.25);
+  color:#fff;
+}
+.classic-admin-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(300px,1fr));
+  gap:18px;
+}
+.classic-admin-card{
+  background:#fff;
+  border-radius:16px;
+  padding:18px;
+  box-shadow:0 12px 28px rgba(15,23,42,0.12);
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+}
+.classic-admin-card header{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+}
+.classic-admin-card h3{
+  margin:0;
+}
+.classic-admin-card .meta{
+  margin:4px 0 0;
+  color:#64748b;
+  font-size:0.85em;
+}
+.status-chip{
+  padding:6px 12px;
+  border-radius:999px;
+  font-size:0.75em;
+  font-weight:700;
+  text-transform:uppercase;
+  letter-spacing:0.04em;
+}
+.status-pending{
+  background:rgba(250,204,21,0.22);
+  color:#92400e;
+}
+.status-awarded{
+  background:rgba(16,185,129,0.22);
+  color:#065f46;
+}
+.status-rejected{
+  background:rgba(248,113,113,0.22);
+  color:#7f1d1d;
+}
+.preview{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+.preview img{
+  max-height:220px;
+  object-fit:cover;
+  border-radius:12px;
+  border:1px solid #e2e8f0;
+}
+.preview a{
+  align-self:flex-start;
+  font-weight:600;
+  color:#3a8dde;
+  text-decoration:none;
+}
+.note{
+  margin:0;
+  background:#f1f5f9;
+  padding:10px 12px;
+  border-radius:10px;
+  font-size:0.9em;
+  color:#334155;
+}
+.awarded-summary{
+  margin:0;
+  font-size:0.9em;
+  color:#10b981;
+  font-weight:600;
+}
+.classic-form{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  padding:12px;
+  border-radius:12px;
+  border:1px solid #e2e8f0;
+  background:#f8fafc;
+}
+.classic-form label{
+  font-weight:600;
+  font-size:0.85em;
+  color:#1e293b;
+}
+.classic-form input,
+.classic-form textarea{
+  border-radius:8px;
+  border:1px solid #cbd5f5;
+  padding:8px 10px;
+  font-family:inherit;
+  font-size:0.95em;
+}
+.classic-form textarea{
+  resize:vertical;
+}
+.btn-award{
+  background:#10b981;
+  color:#fff;
+  border-radius:999px;
+  align-self:flex-start;
+  padding:8px 18px;
+}
+.btn-reject{
+  background:#ef4444;
+  color:#fff;
+  border-radius:999px;
+  align-self:flex-start;
+  padding:8px 18px;
+}
+.empty-state{
+  text-align:center;
+  padding:40px 0;
+  color:#64748b;
+  font-weight:600;
+}
+@media(max-width:640px){
+  .classic-admin-grid{
+    grid-template-columns:1fr;
+  }
+}
+</style>
+
+{% endblock %}
+

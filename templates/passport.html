@@ -45,6 +45,59 @@
   <!-- History Button -->
   <a href="{{ url_for('meetup_history') }}" class="btn btn-history">📜 View Meet-up History</a>
 
+  <!-- Classic Passport Upload -->
+  <div class="classic-card">
+    <div class="classic-header">
+      <div>
+        <h3>📸 Upload Classic Passports</h3>
+        <p>Share how many stamps are on your paper passports, add a quick photo, and we’ll convert them into digital stamps.</p>
+      </div>
+      <button type="button" class="btn classic-toggle" id="classic-toggle">Upload Classic Passports</button>
+    </div>
+
+    <form id="classic-form" class="classic-form" action="{{ url_for('passport_classic_upload') }}" method="post" enctype="multipart/form-data" aria-hidden="true">
+      <label for="classic-count">How many classic stamps?</label>
+      <input id="classic-count" name="classic_count" type="number" min="1" step="1" required>
+
+      <label for="classic-photo">Passport photo</label>
+      <input id="classic-photo" name="classic_photo" type="file" accept="image/*" required>
+      <p class="classic-hint">Make sure your trainer name is visible in the picture so our admin team can verify it.</p>
+
+      <button type="submit" class="btn classic-submit">Submit for Review</button>
+    </form>
+
+    {% if classic_submissions %}
+      <div class="classic-history">
+        <h4>Recent submissions</h4>
+        <ul>
+          {% for entry in classic_submissions %}
+            {% set status = (entry.get("status") or "PENDING").upper() %}
+            <li>
+              <div class="classic-history-top">
+                <span class="classic-chip status-{{ status|lower }}">{{ status.title() }}</span>
+                <span class="classic-chip count">{{ entry.get("declared_count") or 0 }} claimed</span>
+                {% if entry.get("awarded_count") %}
+                  <span class="classic-chip awarded">+{{ entry.get("awarded_count") }} awarded</span>
+                {% endif %}
+              </div>
+              <div class="classic-history-meta">
+                <span>{{ entry.get("created_at") | to_date }}</span>
+                {% if entry.get("photo_url") %}
+                  <a class="classic-link" href="{{ entry.get('photo_url') }}" target="_blank" rel="noopener">View photo</a>
+                {% endif %}
+              </div>
+              {% if status == "REJECTED" and entry.get("admin_notes") %}
+                <p class="classic-note">Admin note: {{ entry.get("admin_notes") }}</p>
+              {% elif status == "AWARDED" %}
+                <p class="classic-note">All done! Your digital passport has been updated.</p>
+              {% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+  </div>
+
   <!-- Passport Grid -->
   {% if passports and passports|length > 0 %}
     <div class="passport-grid">
@@ -184,6 +237,155 @@
   box-shadow:0 8px 18px rgba(59,130,246,0.3);
 }
 
+.classic-card{
+  background:rgba(15,23,42,0.72);
+  border-radius:20px;
+  padding:18px;
+  border:1px solid rgba(148,163,184,0.25);
+  box-shadow:0 24px 48px rgba(15,23,42,0.3);
+  text-align:left;
+  display:flex;
+  flex-direction:column;
+  gap:16px;
+}
+.classic-header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+}
+.classic-header h3{
+  margin:0 0 6px;
+  color:#f8fafc;
+}
+.classic-header p{
+  margin:0;
+  color:rgba(226,232,240,0.85);
+  font-size:0.9em;
+}
+.classic-toggle{
+  padding:8px 16px;
+  font-size:0.85em;
+  border-radius:999px;
+  background:#3b82f6;
+  color:#f8fafc;
+  font-weight:600;
+  box-shadow:0 8px 18px rgba(59,130,246,0.28);
+}
+.classic-form{
+  display:none;
+  flex-direction:column;
+  gap:12px;
+  background:rgba(15,23,42,0.55);
+  border-radius:16px;
+  padding:14px;
+  border:1px solid rgba(148,163,184,0.18);
+}
+.classic-form.open{
+  display:flex;
+}
+.classic-form label{
+  font-weight:600;
+  font-size:0.85em;
+  color:#bfdbfe;
+}
+.classic-form input[type="number"],
+.classic-form input[type="file"]{
+  border-radius:10px;
+  border:1px solid rgba(148,163,184,0.3);
+  padding:10px;
+  background:rgba(15,23,42,0.4);
+  color:#e2e8f0;
+}
+.classic-hint{
+  margin:0;
+  font-size:0.8em;
+  color:rgba(148,163,184,0.9);
+}
+.classic-submit{
+  align-self:flex-start;
+  padding:8px 18px;
+  border-radius:999px;
+  background:#10b981;
+  font-weight:600;
+  box-shadow:0 8px 16px rgba(16,185,129,0.28);
+}
+.classic-history{
+  background:rgba(15,23,42,0.4);
+  border-radius:16px;
+  padding:14px;
+  border:1px solid rgba(148,163,184,0.18);
+}
+.classic-history h4{
+  margin:0 0 10px;
+  color:#bfdbfe;
+  font-size:0.95em;
+}
+.classic-history ul{
+  list-style:none;
+  margin:0;
+  padding:0;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+.classic-history li{
+  background:rgba(15,23,42,0.45);
+  border-radius:12px;
+  padding:10px 12px;
+  border:1px solid rgba(148,163,184,0.16);
+}
+.classic-history-top{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  align-items:center;
+}
+.classic-chip{
+  padding:4px 10px;
+  border-radius:999px;
+  font-size:0.75em;
+  font-weight:600;
+  background:rgba(59,130,246,0.25);
+  color:#e2e8f0;
+}
+.classic-chip.count{
+  background:rgba(14,165,233,0.25);
+}
+.classic-chip.awarded{
+  background:rgba(16,185,129,0.28);
+}
+.classic-history-meta{
+  margin-top:6px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  font-size:0.75em;
+  color:rgba(203,213,225,0.9);
+}
+.classic-link{
+  color:#93c5fd;
+  text-decoration:none;
+  font-weight:600;
+}
+.classic-note{
+  margin:8px 0 0;
+  font-size:0.8em;
+  color:rgba(226,232,240,0.9);
+}
+.status-pending{
+  background:rgba(250,204,21,0.24);
+  color:#fde68a;
+}
+.status-awarded{
+  background:rgba(16,185,129,0.24);
+  color:#bbf7d0;
+}
+.status-rejected{
+  background:rgba(248,113,113,0.24);
+  color:#fecaca;
+}
+
 /* Passport Grid */
 .passport-grid {
   display: flex;
@@ -282,5 +484,25 @@
 .passport-actions{text-align:center;}
 .btn-history{padding:10px 18px;border-radius:999px;box-shadow:0 12px 28px rgba(58,141,222,0.22);}
 </style>
+
+<script>
+document.addEventListener("DOMContentLoaded", function(){
+  const toggle = document.getElementById("classic-toggle");
+  const form = document.getElementById("classic-form");
+  if (!toggle || !form) {
+    return;
+  }
+  toggle.addEventListener("click", function(){
+    const isOpen = form.classList.toggle("open");
+    form.setAttribute("aria-hidden", (!isOpen).toString());
+    if (isOpen) {
+      const numberField = form.querySelector("input[type='number']");
+      if (numberField) {
+        numberField.focus();
+      }
+    }
+  });
+});
+</script>
 
 {% endblock %}
