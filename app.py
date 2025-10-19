@@ -644,19 +644,43 @@ def trigger_lugia_refresh():
 
 import os, requests
 LUGIA_URL = os.getenv("LUGIA_WEBAPP_URL")
-def adjust_stamps(trainer, count, reason, action):
-    """Call the Lugia Google Apps Script to award/remove stamps."""
-    payload = {
-        "action": action,  # "award" or "remove"
-        "trainer": trainer,
-        "count": count,
-        "reason": reason
-    }
-    resp = requests.post(LUGIA_URL, json=payload)
-    if resp.status_code == 200:
-        return resp.text
-    else:
-        return f"❌ Error {resp.status_code}: {resp.text}"
+def adjust_stamps(trainer_username: str, count: int, reason: str, action: str, actor: str):
+    """
+    Calls Supabase RPC lugia_admin_adjust to award/remove stamps atomically.
+    action: 'award' or 'remove'
+    count: positive integer from form
+    """
+    if not supabase:
+        return False, "Supabase client not initialized on server"
+
+    # sanitize
+    try:
+        n = int(count)
+        if n <= 0:
+            return False, "Count must be a positive number"
+    except Exception:
+        return False, "Invalid count"
+
+    delta = n if action == "award" else -n
+
+    try:
+        resp = supabase.rpc(
+            "lugia_admin_adjust",
+            {
+                "p_trainer": trainer_username,
+                "p_delta": delta,
+                "p_reason": reason or "",
+                "p_awardedby": actor or "Admin",
+            },
+        ).execute()
+
+        # The function returns {"new_total": <int>} on success
+        new_total = (getattr(resp, "data", None) or {}).get("new_total")
+        return True, f"✅ Updated {trainer_username}. New total: {new_total}"
+
+    except Exception as e:
+        # Bubble up Supabase error message when possible
+        return False, f"❌ Failed to update: {e}"
 
 # ====== Data: stamps, inbox & meetups ======
 def get_passport_stamps(username: str, campfire_username: str | None = None):
