@@ -644,7 +644,8 @@ def trigger_lugia_refresh():
 
 import os, requests
 LUGIA_URL = os.getenv("LUGIA_WEBAPP_URL")
-def adjust_stamps(trainer_username: str, count: int, reason: str, action: str, actor: str):
+
+def adjust_stamps(trainer_username: str, count: int, reason: str, action: str, actor: str = "Admin"):
     """
     Calls Supabase RPC lugia_admin_adjust to award/remove stamps atomically.
     action: 'award' or 'remove'
@@ -674,13 +675,31 @@ def adjust_stamps(trainer_username: str, count: int, reason: str, action: str, a
             },
         ).execute()
 
-        # The function returns {"new_total": <int>} on success
         new_total = (getattr(resp, "data", None) or {}).get("new_total")
         return True, f"✅ Updated {trainer_username}. New total: {new_total}"
 
     except Exception as e:
-        # Bubble up Supabase error message when possible
         return False, f"❌ Failed to update: {e}"
+
+from flask import request, redirect, url_for, flash, session
+
+@app.post("/admin/trainers/<username>/adjust-stamps")
+def admin_adjust_stamps(username):
+    count  = request.form.get("count", "0")
+    action = request.form.get("action", "award")
+    reason = request.form.get("reason", "")
+
+    # Try a few common session keys; fall back to "Admin"
+    actor = (
+        session.get("trainer_username")
+        or session.get("username")
+        or session.get("admin_username")
+        or "Admin"
+    )
+
+    ok, msg = adjust_stamps(username, count, reason, action, actor)
+    flash(msg, "success" if ok else "error")
+    return redirect(url_for("admin_trainer_detail", username=username))
 
 # ====== Data: stamps, inbox & meetups ======
 def get_passport_stamps(username: str, campfire_username: str | None = None):
