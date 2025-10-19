@@ -45,7 +45,46 @@
   <!-- History Button -->
   <a href="{{ url_for('meetup_history') }}" class="btn btn-history">📜 View Meet-up History</a>
 
-  <!-- Classic Passport Upload -->
+  <!-- Passport Grid -->
+  {% if passports and passports|length > 0 %}
+    <div class="passport-grid">
+      {% for passport in passports %}
+        <div class="passport-card">
+          <div class="passport-slots">
+            {% for i in range(12) %}
+              {% if i < passport|length %}
+                <div class="stamp-slot filled">
+                  <img src="{{ passport[i].icon }}" alt="{{ passport[i].name }}" class="stamp-image">
+                  {% if passport[i].count > 1 %}
+                    <span class="stamp-count" aria-label="Awarded {{ passport[i].count }} stamps">{{ passport[i].count }}</span>
+                  {% endif %}
+                  <p class="stamp-label" title="{{ passport[i].name }}">
+                    {{ passport[i].name }}
+                  </p>
+                </div>
+              {% else %}
+                <div class="stamp-slot empty">
+                  <div class="pokeball-placeholder"></div>
+                </div>
+              {% endif %}
+            {% endfor %}
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="no-stamps">You don’t have any stamps yet. Check in at events to earn them!</p>
+  {% endif %}
+
+  <!-- Back to Dashboard -->
+  <div class="passport-actions">
+    <a href="{{ url_for('dashboard') }}" class="btn">⬅ Back to Dashboard</a>
+  </div>
+  </div>
+</div>
+
+<!-- Classic Passport Upload -->
+<div class="classic-section">
   <div class="classic-card">
     <div class="classic-header">
       <div>
@@ -96,43 +135,6 @@
         </ul>
       </div>
     {% endif %}
-  </div>
-
-  <!-- Passport Grid -->
-  {% if passports and passports|length > 0 %}
-    <div class="passport-grid">
-      {% for passport in passports %}
-        <div class="passport-card">
-          <div class="passport-slots">
-            {% for i in range(12) %}
-              {% if i < passport|length %}
-                <div class="stamp-slot filled">
-                  <img src="{{ passport[i].icon }}" alt="{{ passport[i].name }}" class="stamp-image">
-                  {% if passport[i].count > 1 %}
-                    <span class="stamp-count" aria-label="Awarded {{ passport[i].count }} stamps">{{ passport[i].count }}</span>
-                  {% endif %}
-                  <p class="stamp-label" title="{{ passport[i].name }}">
-                    {{ passport[i].name }}
-                  </p>
-                </div>
-              {% else %}
-                <div class="stamp-slot empty">
-                  <div class="pokeball-placeholder"></div>
-                </div>
-              {% endif %}
-            {% endfor %}
-          </div>
-        </div>
-      {% endfor %}
-    </div>
-  {% else %}
-    <p class="no-stamps">You don’t have any stamps yet. Check in at events to earn them!</p>
-  {% endif %}
-
-  <!-- Back to Dashboard -->
-  <div class="passport-actions">
-    <a href="{{ url_for('dashboard') }}" class="btn">⬅ Back to Dashboard</a>
-  </div>
   </div>
 </div>
 
@@ -237,12 +239,17 @@
   box-shadow:0 8px 18px rgba(59,130,246,0.3);
 }
 
+.classic-section{
+  width:min(100%,1080px);
+  margin:26px auto 0;
+  padding:0 18px 40px;
+}
 .classic-card{
-  background:rgba(15,23,42,0.72);
+  background:#fff;
   border-radius:20px;
-  padding:18px;
-  border:1px solid rgba(148,163,184,0.25);
-  box-shadow:0 24px 48px rgba(15,23,42,0.3);
+  padding:20px;
+  border:1px solid rgba(148,163,184,0.18);
+  box-shadow:0 18px 36px rgba(15,23,42,0.12);
   text-align:left;
   display:flex;
   flex-direction:column;
@@ -256,11 +263,11 @@
 }
 .classic-header h3{
   margin:0 0 6px;
-  color:#f8fafc;
+  color:#1e293b;
 }
 .classic-header p{
   margin:0;
-  color:rgba(226,232,240,0.85);
+  color:#475569;
   font-size:0.9em;
 }
 .classic-toggle{
@@ -276,10 +283,10 @@
   display:none;
   flex-direction:column;
   gap:12px;
-  background:rgba(15,23,42,0.55);
+  background:#f8fafc;
   border-radius:16px;
-  padding:14px;
-  border:1px solid rgba(148,163,184,0.18);
+  padding:16px;
+  border:1px solid rgba(148,163,184,0.2);
 }
 .classic-form.open{
   display:flex;
@@ -287,20 +294,20 @@
 .classic-form label{
   font-weight:600;
   font-size:0.85em;
-  color:#bfdbfe;
+  color:#1e293b;
 }
 .classic-form input[type="number"],
 .classic-form input[type="file"]{
   border-radius:10px;
-  border:1px solid rgba(148,163,184,0.3);
+  border:1px solid rgba(148,163,184,0.35);
   padding:10px;
-  background:rgba(15,23,42,0.4);
-  color:#e2e8f0;
+  background:#fff;
+  color:#1e293b;
 }
 .classic-hint{
   margin:0;
   font-size:0.8em;
-  color:rgba(148,163,184,0.9);
+  color:#64748b;
 }
 .classic-submit{
   align-self:flex-start;
@@ -308,17 +315,18 @@
   border-radius:999px;
   background:#10b981;
   font-weight:600;
-  box-shadow:0 8px 16px rgba(16,185,129,0.28);
+  color:#fff;
+  box-shadow:0 8px 16px rgba(16,185,129,0.24);
 }
 .classic-history{
-  background:rgba(15,23,42,0.4);
+  background:#f1f5f9;
   border-radius:16px;
-  padding:14px;
+  padding:16px;
   border:1px solid rgba(148,163,184,0.18);
 }
 .classic-history h4{
   margin:0 0 10px;
-  color:#bfdbfe;
+  color:#1e3a8a;
   font-size:0.95em;
 }
 .classic-history ul{
@@ -330,7 +338,7 @@
   gap:12px;
 }
 .classic-history li{
-  background:rgba(15,23,42,0.45);
+  background:#fff;
   border-radius:12px;
   padding:10px 12px;
   border:1px solid rgba(148,163,184,0.16);
@@ -346,14 +354,16 @@
   border-radius:999px;
   font-size:0.75em;
   font-weight:600;
-  background:rgba(59,130,246,0.25);
-  color:#e2e8f0;
+  background:rgba(59,130,246,0.12);
+  color:#1e3a8a;
 }
 .classic-chip.count{
-  background:rgba(14,165,233,0.25);
+  background:rgba(14,165,233,0.15);
+  color:#0f172a;
 }
 .classic-chip.awarded{
-  background:rgba(16,185,129,0.28);
+  background:rgba(16,185,129,0.18);
+  color:#065f46;
 }
 .classic-history-meta{
   margin-top:6px;
@@ -361,29 +371,29 @@
   align-items:center;
   justify-content:space-between;
   font-size:0.75em;
-  color:rgba(203,213,225,0.9);
+  color:#475569;
 }
 .classic-link{
-  color:#93c5fd;
+  color:#2563eb;
   text-decoration:none;
   font-weight:600;
 }
 .classic-note{
   margin:8px 0 0;
   font-size:0.8em;
-  color:rgba(226,232,240,0.9);
+  color:#1f2937;
 }
 .status-pending{
-  background:rgba(250,204,21,0.24);
-  color:#fde68a;
+  background:rgba(250,204,21,0.22);
+  color:#92400e;
 }
 .status-awarded{
-  background:rgba(16,185,129,0.24);
-  color:#bbf7d0;
+  background:rgba(16,185,129,0.22);
+  color:#047857;
 }
 .status-rejected{
-  background:rgba(248,113,113,0.24);
-  color:#fecaca;
+  background:rgba(248,113,113,0.22);
+  color:#b91c1c;
 }
 
 /* Passport Grid */
