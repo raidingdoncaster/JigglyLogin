@@ -8,6 +8,11 @@
 
 <h1>🎁 Redemptions Manager</h1>
 
+<div class="view-tabs">
+  <a href="{{ list_tab_url }}" class="view-tab {% if view_mode == 'list' %}is-active{% endif %}">Redemptions</a>
+  <a href="{{ bucket_tab_url }}" class="view-tab {% if view_mode == 'prize-buckets' %}is-active{% endif %}">Prize Buckets</a>
+</div>
+
 <!-- Stat Cards -->
 <div class="stats-summary">
   <div class="stat-card">
@@ -30,6 +35,7 @@
 
 <!-- Filters -->
 <form method="get" class="filters">
+  <input type="hidden" name="view" value="{{ view_mode }}">
   <label>
     Status:
     <select name="status" onchange="this.form.submit()">
@@ -46,127 +52,324 @@
   <button type="submit">Filter</button>
 </form>
 
-<!-- Redemption Logs -->
-<h2>🗂️ Recent Redemptions</h2>
-<div class="table-scroll">
-  <table class="stats-table">
-    <thead>
-      <tr>
-        <th>Date</th>
-        <th>Trainer</th>
-        <th>Status</th>
-        <th>Item</th>
-        <th>Pickup Meetup</th>
-        <th>Stamps</th>
-        <th>Actions</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for r in redemptions %}
-      <tr data-id="{{ r.id }}">
-        <td>{{ r.created_at|to_date }}</td>
-        <td>{{ r.trainer_username }}</td>
-        <td class="status-cell">{{ r.status }}</td>
-        <td>{{ (r.item_snapshot.name if r.item_snapshot else '') or 'Unknown Item' }}</td>
-        <td class="meetup-cell">{{ r.meetup_display or '—' }}</td>
-        <td>{{ r.stamps_spent }}</td>
-        <td class="actions-cell">
-          {% if r.status == "PENDING" %}
-            <button type="button" class="success action-btn"
-                    data-id="{{ r.id }}" data-action="fulfill">
-              Fulfill
-            </button>
-            <button type="button" class="danger action-btn"
-                    data-id="{{ r.id }}" data-action="cancel">
-              Cancel
-            </button>
-          {% else %}
-            <span class="muted">—</span>
-          {% endif %}
-        </td>
-      </tr>
-      {% else %}
-      <tr><td colspan="7">No redemptions found.</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</div>
+{% if view_mode == 'list' %}
+  <!-- Redemption Logs -->
+  <h2>🗂️ Recent Redemptions</h2>
+  <div class="table-scroll">
+    <table class="stats-table">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Trainer</th>
+          <th>Status</th>
+          <th>Item</th>
+          <th>Pickup Meetup</th>
+          <th>Stamps</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in redemptions %}
+        <tr data-id="{{ r.id }}" data-redemption-id="{{ r.id }}" data-status="{{ r.status }}">
+          <td>{{ r.created_at|to_date }}</td>
+          <td>{{ r.trainer_username }}</td>
+          <td class="status-cell">{{ r.status }}</td>
+          <td>{{ (r.item_snapshot.name if r.item_snapshot else '') or 'Unknown Item' }}</td>
+          <td class="meetup-cell">{{ r.meetup_display or '—' }}</td>
+          <td>{{ r.stamps_spent }}</td>
+          <td class="actions-cell">
+            {% if r.status == "PENDING" %}
+              <button type="button" class="success action-btn" data-id="{{ r.id }}" data-action="fulfill">Fulfill</button>
+              <button type="button" class="danger action-btn" data-id="{{ r.id }}" data-action="cancel">Cancel</button>
+            {% else %}
+              <span class="muted">—</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7">No redemptions found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
 
-<!-- Pagination -->
-<div class="pagination">
-  {% if page > 1 %}
-    <a href="{{ url_for('admin_redemptions', page=page-1, status=status_filter, search=search_user) }}">⬅ Prev</a>
-  {% endif %}
-  <span>Page {{ page }}</span>
-  {% if has_more %}
-    <a href="{{ url_for('admin_redemptions', page=page+1, status=status_filter, search=search_user) }}">Next ➡</a>
-  {% endif %}
-</div>
+  <!-- Pagination -->
+  <div class="pagination">
+    {% if page > 1 %}
+      <a href="{{ url_for('admin_redemptions', page=page-1, status=status_filter, search=search_user, view=view_mode) }}">⬅ Prev</a>
+    {% endif %}
+    <span>Page {{ page }}</span>
+    {% if has_more %}
+      <a href="{{ url_for('admin_redemptions', page=page+1, status=status_filter, search=search_user, view=view_mode) }}">Next ➡</a>
+    {% endif %}
+  </div>
+{% else %}
+  <!-- Prize Buckets -->
+  <h2>🏆 Prize Buckets</h2>
+  <div class="bucket-grid">
+    {% for bucket in prize_buckets %}
+      <div class="bucket-card {% if bucket.has_redemptions %}has-redemptions{% endif %}" data-bucket-id="{{ bucket.id }}" data-has-redemptions="{{ 'true' if bucket.has_redemptions else 'false' }}">
+        <div class="bucket-card-header">
+          <div class="bucket-card-title">
+            <h3>{{ bucket.title }}</h3>
+            {% if bucket.subtitle %}
+              <p>{{ bucket.subtitle }}</p>
+            {% endif %}
+          </div>
+          <div class="bucket-card-counts">
+            <span class="count-badge total"><span data-total-count>{{ bucket.total_redemptions }}</span> total</span>
+            <span class="count-badge pending"><span data-status-count="PENDING">{{ bucket.status_counts.PENDING }}</span> pending</span>
+            <span class="count-badge fulfilled"><span data-status-count="FULFILLED">{{ bucket.status_counts.FULFILLED }}</span> fulfilled</span>
+            <span class="count-badge cancelled"><span data-status-count="CANCELLED">{{ bucket.status_counts.CANCELLED }}</span> cancelled</span>
+            {% if bucket.extra_status_counts %}
+              {% for extra_status, extra_count in bucket.extra_status_counts.items() %}
+                <span class="count-badge"><span data-status-count="{{ extra_status }}">{{ extra_count }}</span> {{ extra_status|lower }}</span>
+              {% endfor %}
+            {% endif %}
+          </div>
+        </div>
+        <button type="button" class="bucket-card-toggle">
+          <span class="toggle-label">
+            {% if bucket.has_redemptions %}
+              View redemptions
+            {% else %}
+              View details
+            {% endif %}
+          </span>
+          <span class="toggle-icon">⌄</span>
+        </button>
+        <div class="bucket-details">
+          {% if bucket.items %}
+            {% for item in bucket.items %}
+              <div class="bucket-item">
+                <div class="bucket-item-header">
+                  <h4>{{ item.name }}</h4>
+                  <span class="item-count">{{ item.redemptions|length }}</span>
+                </div>
+                <ul class="bucket-redemption-list">
+                  {% for redemption in item.redemptions %}
+                    <li class="bucket-redemption" data-redemption-id="{{ redemption.id }}" data-status="{{ redemption.status }}">
+                      <div class="bucket-redemption-main">
+                        <span class="trainer-name">{{ redemption.trainer_username or 'Unknown Trainer' }}</span>
+                        <span class="status-pill status-{{ redemption.status|lower }}" data-status-pill>{{ redemption.status }}</span>
+                      </div>
+                      <div class="bucket-redemption-meta">
+                        <span>{{ redemption.stamps_spent or 0 }} stamps</span>
+                        <span>{{ redemption.created_at|to_date }}</span>
+                      </div>
+                      <div class="bucket-actions">
+                        {% if redemption.status == "PENDING" %}
+                          <button type="button" class="success action-btn" data-id="{{ redemption.id }}" data-action="fulfill">Fulfill</button>
+                          <button type="button" class="danger action-btn" data-id="{{ redemption.id }}" data-action="cancel">Cancel</button>
+                        {% else %}
+                          <span class="muted">—</span>
+                        {% endif %}
+                      </div>
+                    </li>
+                  {% endfor %}
+                </ul>
+              </div>
+            {% endfor %}
+          {% else %}
+            <p class="muted empty-state">No redemptions yet for this meetup.</p>
+          {% endif %}
+        </div>
+      </div>
+    {% else %}
+      <p class="muted">No meetups found.</p>
+    {% endfor %}
+  </div>
+{% endif %}
 
 <style>
-.stats-summary {display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:24px;}
-.stat-card {background:#fff;border-radius:16px;padding:18px;text-align:center;box-shadow:0 10px 24px rgba(15,23,42,0.12);}
-.stat-card h3 { margin:0; font-size:1.8em; color:#1d4ed8; }
-.stat-card p { margin:6px 0 0; font-size:0.9em; color:#64748b; font-weight:600; }
-
-.filters {display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;align-items:flex-end;}
-.filters label {font-size:0.9em;color:#475569;font-weight:600;display:flex;flex-direction:column;gap:6px;}
-.filters input, .filters select {padding:10px 12px;border:1px solid #d7dbe6;border-radius:12px;font-size:0.9rem;}
-.filters button {background:#3a8dde;color:#fff;border:none;padding:10px 16px;border-radius:999px;font-weight:600;cursor:pointer;box-shadow:0 8px 20px rgba(58,141,222,0.25);}
-
+.view-tabs{display:flex;gap:12px;margin:0 0 24px;flex-wrap:wrap;}
+.view-tab{padding:10px 18px;border-radius:999px;border:1px solid #d7dbe6;background:#fff;color:#475569;text-decoration:none;font-weight:600;transition:all 0.2s ease;}
+.view-tab:hover{border-color:#3a8dde;color:#1d4ed8;}
+.view-tab.is-active{background:#1d4ed8;border-color:#1d4ed8;color:#fff;box-shadow:0 10px 24px rgba(29,78,216,0.25);}
+.stats-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:24px;}
+.stat-card{background:#fff;border-radius:16px;padding:18px;text-align:center;box-shadow:0 10px 24px rgba(15,23,42,0.12);}
+.stat-card h3{margin:0;font-size:1.8em;color:#1d4ed8;}
+.stat-card p{margin:6px 0 0;font-size:0.9em;color:#64748b;font-weight:600;}
+.filters{display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;align-items:flex-end;}
+.filters label{font-size:0.9em;color:#475569;font-weight:600;display:flex;flex-direction:column;gap:6px;}
+.filters input,.filters select{padding:10px 12px;border:1px solid #d7dbe6;border-radius:12px;font-size:0.9rem;}
+.filters button{background:#3a8dde;color:#fff;border:none;padding:10px 16px;border-radius:999px;font-weight:600;cursor:pointer;box-shadow:0 8px 20px rgba(58,141,222,0.25);}
 .table-scroll{overflow-x:auto;border-radius:16px;box-shadow:0 10px 24px rgba(15,23,42,0.12);}
-.stats-table { width:100%; border-collapse:separate; border-spacing:0; min-width:720px; }
-.stats-table th { text-align:left; font-size:0.85rem; font-weight:700; padding:12px 14px; background:#f1f5f9; color:#1f2937; }
-.stats-table td { padding:12px 14px; border-top:1px solid #e2e8f0; font-size:0.9rem; color:#334155; }
-.stats-table tbody tr:nth-child(even){ background:#f8fafc; }
-.meetup-cell { max-width:240px; white-space:normal; word-break:break-word; color:#1f2937; }
+.stats-table{width:100%;border-collapse:separate;border-spacing:0;min-width:720px;}
+.stats-table th{text-align:left;font-size:0.85rem;font-weight:700;padding:12px 14px;background:#f1f5f9;color:#1f2937;}
+.stats-table td{padding:12px 14px;border-top:1px solid #e2e8f0;font-size:0.9rem;color:#334155;}
+.stats-table tbody tr:nth-child(even){background:#f8fafc;}
+.meetup-cell{max-width:240px;white-space:normal;word-break:break-word;color:#1f2937;}
 .muted{color:#94a3b8;}
-.success {background:#22c55e;color:white;border:none;padding:8px 12px;border-radius:999px;font-weight:600;cursor:pointer;box-shadow:0 6px 16px rgba(34,197,94,0.22);}
-.danger {background:#ef4444;color:white;border:none;padding:8px 12px;border-radius:999px;font-weight:600;cursor:pointer;box-shadow:0 6px 16px rgba(239,68,68,0.22);}
-.pagination {margin-top:18px;display:flex;justify-content:center;gap:12px;align-items:center;}
+.success{background:#22c55e;color:#fff;border:none;padding:8px 12px;border-radius:999px;font-weight:600;cursor:pointer;box-shadow:0 6px 16px rgba(34,197,94,0.22);}
+.danger{background:#ef4444;color:#fff;border:none;padding:8px 12px;border-radius:999px;font-weight:600;cursor:pointer;box-shadow:0 6px 16px rgba(239,68,68,0.22);}
+.action-btn.is-busy{opacity:0.6;pointer-events:none;}
+.pagination{margin-top:18px;display:flex;justify-content:center;gap:12px;align-items:center;}
 .pagination a{color:#1d4ed8;text-decoration:none;font-weight:600;}
+.bucket-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px;}
+.bucket-card{background:#fff;border-radius:18px;padding:18px;box-shadow:0 12px 26px rgba(15,23,42,0.12);display:flex;flex-direction:column;gap:12px;border:1px solid transparent;transition:border-color 0.2s ease,box-shadow 0.2s ease;}
+.bucket-card.has-redemptions{border-color:#c7d2fe;}
+.bucket-card-header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;}
+.bucket-card-title h3{margin:0;font-size:1.1rem;color:#1f2937;}
+.bucket-card-title p{margin:6px 0 0;font-size:0.85rem;color:#64748b;}
+.bucket-card-counts{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;}
+.count-badge{background:#f1f5f9;color:#1f2937;border-radius:999px;padding:4px 10px;font-size:0.75rem;font-weight:600;display:inline-flex;gap:6px;align-items:center;}
+.count-badge.pending{background:#fef3c7;color:#92400e;}
+.count-badge.fulfilled{background:#dcfce7;color:#166534;}
+.count-badge.cancelled{background:#fee2e2;color:#991b1b;}
+.bucket-card-toggle{background:#e2e8f0;border:none;border-radius:12px;padding:10px 14px;font-weight:600;color:#1f2937;display:flex;justify-content:space-between;align-items:center;cursor:pointer;transition:background 0.2s ease;}
+.bucket-card-toggle .toggle-icon{transition:transform 0.2s ease;}
+.bucket-card.is-open .bucket-card-toggle{background:#dbeafe;}
+.bucket-card.is-open .toggle-icon{transform:rotate(180deg);}
+.bucket-details{display:none;flex-direction:column;gap:18px;}
+.bucket-card.is-open .bucket-details{display:flex;}
+.bucket-item{border-top:1px solid #e2e8f0;padding-top:14px;}
+.bucket-item-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+.bucket-item-header h4{margin:0;font-size:1rem;color:#1f2937;}
+.item-count{background:#f1f5f9;border-radius:999px;padding:4px 10px;font-size:0.75rem;font-weight:600;color:#1f2937;}
+.bucket-redemption-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px;}
+.bucket-redemption{background:#f8fafc;border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:8px;}
+.bucket-redemption-main{display:flex;justify-content:space-between;align-items:center;font-weight:600;color:#1f2937;}
+.trainer-name{font-size:0.95rem;}
+.status-pill{background:#e2e8f0;color:#475569;border-radius:999px;padding:4px 10px;font-size:0.75rem;font-weight:600;text-transform:uppercase;}
+.status-pending{background:#fde68a;color:#92400e;}
+.status-fulfilled{background:#bbf7d0;color:#166534;}
+.status-cancelled{background:#fecaca;color:#991b1b;}
+.bucket-redemption-meta{display:flex;gap:12px;font-size:0.8rem;color:#64748b;flex-wrap:wrap;}
+.bucket-actions{display:flex;gap:10px;flex-wrap:wrap;}
+.empty-state{margin:0;}
 </style>
 
-<!-- AJAX Script -->
 <script>
-document.addEventListener("DOMContentLoaded", () => {
-  document.querySelectorAll(".action-btn").forEach(btn => {
-    btn.addEventListener("click", async () => {
-      const redemptionId = btn.dataset.id;
-      const action = btn.dataset.action;
-
-      if (action === "cancel" &&
-          !confirm("Cancel this redemption?")) return;
-
-      try {
-        const resp = await fetch(`/admin/redemptions/${redemptionId}/${action}`, {
-          method: "POST",
-          headers: { "X-Requested-With": "XMLHttpRequest" }
-        });
-        const data = await resp.json();
-
-        if (data.success) {
-          const row = btn.closest("tr");
-          row.querySelector(".status-cell").textContent = data.new_status;
-          row.querySelector(".actions-cell").innerHTML = "<span style='color:#777;'>—</span>";
-
-          // Update stat cards
-          if (data.stats) {
-            document.getElementById("stat-total").textContent = data.stats.total;
-            document.getElementById("stat-pending").textContent = data.stats.pending;
-            document.getElementById("stat-fulfilled").textContent = data.stats.fulfilled;
-            document.getElementById("stat-cancelled").textContent = data.stats.cancelled;
-          }
-        } else {
-          alert("❌ " + (data.error || "Failed to update"));
-        }
-      } catch (err) {
-        console.error(err);
-        alert("❌ Request failed");
+(function() {
+  const updateStatCards = (stats) => {
+    if (!stats) return;
+    const mapping = {
+      total: "stat-total",
+      pending: "stat-pending",
+      fulfilled: "stat-fulfilled",
+      cancelled: "stat-cancelled"
+    };
+    Object.entries(mapping).forEach(([key, id]) => {
+      const el = document.getElementById(id);
+      if (el !== null && Object.prototype.hasOwnProperty.call(stats, key)) {
+        el.textContent = stats[key];
       }
     });
+  };
+
+  const updateTableRow = (redemptionId, newStatus) => {
+    const row = document.querySelector(`tr[data-redemption-id="${redemptionId}"]`);
+    if (!row) return;
+    row.dataset.status = newStatus;
+    const statusCell = row.querySelector(".status-cell");
+    if (statusCell) {
+      statusCell.textContent = newStatus;
+    }
+    const actionsCell = row.querySelector(".actions-cell");
+    if (actionsCell) {
+      actionsCell.innerHTML = "<span class=\"muted\">—</span>";
+    }
+  };
+
+  const adjustStatusCount = (card, status, delta) => {
+    if (!card || !status) return;
+    const valueEl = card.querySelector(`[data-status-count="${status}"]`);
+    if (!valueEl) return;
+    const current = parseInt(valueEl.textContent, 10) || 0;
+    const next = Math.max(0, current + delta);
+    valueEl.textContent = next;
+  };
+
+  const updateBucketEntry = (redemptionId, newStatus) => {
+    const entry = document.querySelector(`.bucket-redemption[data-redemption-id="${redemptionId}"]`);
+    if (!entry) return;
+    const previousStatus = entry.dataset.status || "";
+    entry.dataset.status = newStatus;
+
+    const pill = entry.querySelector("[data-status-pill]");
+    if (pill) {
+      pill.textContent = newStatus;
+      pill.className = `status-pill status-${newStatus.toLowerCase()}`;
+    }
+
+    const actions = entry.querySelector(".bucket-actions");
+    if (actions) {
+      actions.innerHTML = "<span class=\"muted\">—</span>";
+    }
+
+    const card = entry.closest(".bucket-card");
+    if (card) {
+      if (previousStatus) {
+        adjustStatusCount(card, previousStatus.toUpperCase(), -1);
+      }
+      adjustStatusCount(card, newStatus.toUpperCase(), 1);
+    }
+  };
+
+  document.addEventListener("click", async (event) => {
+    const toggle = event.target.closest(".bucket-card-toggle");
+    if (toggle) {
+      const card = toggle.closest(".bucket-card");
+      if (card) {
+        const isOpen = card.classList.toggle("is-open");
+        const label = toggle.querySelector(".toggle-label");
+        if (label) {
+          const hasRedemptions = card.dataset.hasRedemptions === "true";
+          if (hasRedemptions) {
+            label.textContent = isOpen ? "Hide redemptions" : "View redemptions";
+          } else {
+            label.textContent = isOpen ? "Hide details" : "View details";
+          }
+        }
+      }
+      return;
+    }
+
+    const btn = event.target.closest(".action-btn");
+    if (!btn) {
+      return;
+    }
+
+    const redemptionId = btn.dataset.id;
+    const action = btn.dataset.action;
+
+    if (!redemptionId || !action) {
+      return;
+    }
+
+    if (action === "cancel" && !confirm("Cancel this redemption?")) {
+      return;
+    }
+
+    btn.disabled = true;
+    btn.classList.add("is-busy");
+
+    try {
+      const response = await fetch(`/admin/redemptions/${redemptionId}/${action}`, {
+        method: "POST",
+        headers: { "X-Requested-With": "XMLHttpRequest" }
+      });
+      const data = await response.json();
+
+      if (!data.success) {
+        alert("❌ " + (data.error || "Failed to update"));
+        return;
+      }
+
+      const newStatus = data.new_status || "";
+      updateTableRow(redemptionId, newStatus);
+      updateBucketEntry(redemptionId, newStatus);
+      updateStatCards(data.stats);
+    } catch (err) {
+      console.error(err);
+      alert("❌ Request failed");
+    } finally {
+      btn.disabled = false;
+      btn.classList.remove("is-busy");
+    }
   });
-});
+})();
 </script>
 
 {% endblock %}

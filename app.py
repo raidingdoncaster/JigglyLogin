@@ -4,6 +4,7 @@ import json
 import requests
 import uuid
 import re
+from collections import Counter, defaultdict
 from flask import Flask, render_template, abort, request, redirect, url_for, session, flash, send_from_directory, jsonify, g, make_response
 from werkzeug.utils import secure_filename
 from PIL import Image
@@ -1765,69 +1766,213 @@ def admin_redemptions():
         flash("Admins only!", "error")
         return redirect(url_for("dashboard"))
 
-    # Query params
+    view_mode = request.args.get("view", "list")
+    if view_mode not in {"list", "prize-buckets"}:
+        view_mode = "list"
+
     status_filter = request.args.get("status", "ALL")
     search_user = request.args.get("search", "").strip()
-    page = int(request.args.get("page", 1))
-    per_page = 20  # show 20 redemptions per page
-
-    redemptions = []
-    stats = {"total": 0, "pending": 0, "fulfilled": 0, "cancelled": 0}
-    total_filtered = 0
-
     try:
-        # Build query with filters
-        query = supabase.table("redemptions").select("*").order("created_at", desc=True)
+        page = int(request.args.get("page", 1))
+    except (TypeError, ValueError):
+        page = 1
+    if page < 1:
+        page = 1
+    per_page = 20
 
+    stats = {"total": 0, "pending": 0, "fulfilled": 0, "cancelled": 0}
+    redemptions: list[dict] = []
+    filtered_redemptions: list[dict] = []
+    prize_buckets: list[dict] = []
+    total_filtered = 0
+    total_pages = 1
+    has_more = False
+    meetup_lookup: dict[str, dict] = {}
+    all_meetups: list[dict] = []
+
+    def build_tab_url(view_name: str, page_override: int | None = None) -> str:
+        params: dict[str, object] = {"view": view_name}
         if status_filter != "ALL":
-            query = query.eq("status", status_filter)
-
+            params["status"] = status_filter
         if search_user:
-            query = query.ilike("trainer_username", f"%{search_user}%")
+            params["search"] = search_user
+        if page_override is not None:
+            params["page"] = page_override
+        elif view_name == "list":
+            params["page"] = page
+        return url_for("admin_redemptions", **params)
 
-        # Pagination: range = [from, to]
-        from_row = (page - 1) * per_page
-        to_row = from_row + per_page - 1
-        resp = query.range(from_row, to_row).execute()
-        redemptions = resp.data or []
+    list_tab_url = build_tab_url("list")
+    bucket_tab_url = build_tab_url("prize-buckets", page_override=1)
 
-        meetup_lookup: dict[str, dict] = {}
-        meetup_ids = {str(r.get("meetup_id") or "").strip() for r in redemptions if r.get("meetup_id")}
+    def build_prize_buckets(
+        meetups_list: list[dict], redemptions_list: list[dict], lookup: dict[str, dict]
+    ) -> list[dict]:
+        """Group filtered redemptions into meetup/prize buckets for the card view."""
+        by_meetup: defaultdict[str, list[dict]] = defaultdict(list)
+        for entry in redemptions_list:
+            meetup_id = str(entry.get("meetup_id") or "").strip() or "NO_MEETUP"
+            by_meetup[meetup_id].append(entry)
 
-        if meetup_ids:
-            try:
-                meetup_resp = (
-                    supabase.table("meetups")
-                    .select("id,name,location,date,start_time")
-                    .in_("id", list(meetup_ids))
-                    .execute()
+        buckets: list[dict] = []
+        seen_ids: set[str] = set()
+
+        def make_bucket(bucket_id: str, meetup_row: dict | None, entries: list[dict]) -> dict:
+            meetup_row = meetup_row or lookup.get(bucket_id)
+            is_unassigned = bucket_id == "NO_MEETUP" or meetup_row is None
+
+            if meetup_row:
+                title = (meetup_row.get("name") or "").strip() or "Meetup"
+                details = [
+                    (meetup_row.get("date") or "").strip(),
+                    (meetup_row.get("start_time") or "").strip(),
+                    (meetup_row.get("location") or "").strip(),
+                ]
+                subtitle = " · ".join([d for d in details if d])
+            elif bucket_id == "NO_MEETUP":
+                title = "No Meetup Assigned"
+                subtitle = "Redemptions missing a pickup meetup."
+            else:
+                title = "Meetup"
+                subtitle = ""
+
+            status_counts = Counter((entry.get("status") or "").upper() for entry in entries)
+            normalized_counts = {
+                "PENDING": status_counts.get("PENDING", 0),
+                "FULFILLED": status_counts.get("FULFILLED", 0),
+                "CANCELLED": status_counts.get("CANCELLED", 0),
+            }
+            extra_status_counts = {
+                key: value
+                for key, value in status_counts.items()
+                if key not in {"PENDING", "FULFILLED", "CANCELLED"} and key
+            }
+
+            items_by_name: defaultdict[str, list[dict]] = defaultdict(list)
+            for entry in entries:
+                snapshot = entry.get("item_snapshot") or {}
+                item_name = (snapshot.get("name") or "").strip() or "Unknown Prize"
+                items_by_name[item_name].append(entry)
+
+            item_blocks = []
+            for item_name in sorted(items_by_name.keys(), key=lambda name: name.lower()):
+                records = sorted(
+                    items_by_name[item_name],
+                    key=lambda row: row.get("created_at") or "",
+                    reverse=True,
                 )
-                for row in meetup_resp.data or []:
-                    meetup_lookup[str(row.get("id") or "").strip()] = row
-            except Exception as meetup_err:
-                print("⚠️ Failed fetching meetups for redemptions:", meetup_err)
+                item_blocks.append(
+                    {
+                        "name": item_name,
+                        "redemptions": records,
+                    }
+                )
 
-        for record in redemptions:
-            meetup_key = str(record.get("meetup_id") or "").strip()
-            record["meetup_display"] = _format_meetup_summary(meetup_lookup.get(meetup_key))
+            date_str = (meetup_row.get("date") or "").strip() if meetup_row else ""
+            start_time_str = (meetup_row.get("start_time") or "").strip() if meetup_row else ""
+            try:
+                sort_date = date.fromisoformat(date_str) if date_str else date.max
+            except ValueError:
+                sort_date = date.max
 
-        # Count for pagination
-        total_filtered = len(
-            supabase.table("redemptions").select("id", count="exact").execute().data or []
-        )
+            if meetup_row:
+                sort_weight = 0 if entries else 2
+            else:
+                sort_weight = 1 if entries else 3
 
-        # Global counts (ignores filters)
-        all_resp = supabase.table("redemptions").select("status").execute()
-        stats["total"] = len(all_resp.data or [])
-        stats["pending"] = sum(1 for r in all_resp.data if r["status"] == "PENDING")
-        stats["fulfilled"] = sum(1 for r in all_resp.data if r["status"] == "FULFILLED")
-        stats["cancelled"] = sum(1 for r in all_resp.data if r["status"] == "CANCELLED")
+            return {
+                "id": bucket_id,
+                "title": title,
+                "subtitle": subtitle,
+                "items": item_blocks,
+                "status_counts": normalized_counts,
+                "extra_status_counts": extra_status_counts,
+                "total_redemptions": len(entries),
+                "pending_count": normalized_counts.get("PENDING", 0),
+                "has_redemptions": bool(entries),
+                "is_unassigned": is_unassigned,
+                "is_active": bool((meetup_row or {}).get("active")),
+                "sort_key": (sort_date, start_time_str, title.lower()),
+                "sort_weight": sort_weight,
+                "meetup": meetup_row,
+            }
 
-    except Exception as e:
-        print("⚠️ Failed fetching redemptions:", e)
+        for meetup_row in meetups_list:
+            bucket_id = str(meetup_row.get("id") or "").strip()
+            if not bucket_id:
+                continue
+            seen_ids.add(bucket_id)
+            buckets.append(make_bucket(bucket_id, meetup_row, by_meetup.get(bucket_id, [])))
 
-    # total pages for pagination UI
-    total_pages = max(1, (total_filtered + per_page - 1) // per_page)
+        if "NO_MEETUP" in by_meetup:
+            buckets.append(make_bucket("NO_MEETUP", None, by_meetup["NO_MEETUP"]))
+
+        for bucket_id, entries in by_meetup.items():
+            if bucket_id in seen_ids or bucket_id == "NO_MEETUP":
+                continue
+            buckets.append(make_bucket(bucket_id, lookup.get(bucket_id), entries))
+
+        buckets.sort(key=lambda bucket: (bucket["sort_weight"], bucket["sort_key"]))
+        return buckets
+
+    if USE_SUPABASE and supabase:
+        try:
+            all_resp = (
+                supabase.table("redemptions")
+                .select("id,trainer_username,status,item_snapshot,meetup_id,stamps_spent,created_at")
+                .order("created_at", desc=True)
+                .execute()
+            )
+            all_redemptions = list(all_resp.data or [])
+
+            stats["total"] = len(all_redemptions)
+            stats["pending"] = sum(1 for r in all_redemptions if r.get("status") == "PENDING")
+            stats["fulfilled"] = sum(1 for r in all_redemptions if r.get("status") == "FULFILLED")
+            stats["cancelled"] = sum(1 for r in all_redemptions if r.get("status") == "CANCELLED")
+
+            filtered_redemptions = all_redemptions
+            if status_filter != "ALL":
+                target_status = status_filter.upper()
+                filtered_redemptions = [
+                    r for r in filtered_redemptions if (r.get("status") or "").upper() == target_status
+                ]
+            if search_user:
+                needle = search_user.lower()
+                filtered_redemptions = [
+                    r for r in filtered_redemptions
+                    if needle in (r.get("trainer_username") or "").lower()
+                ]
+
+            total_filtered = len(filtered_redemptions)
+            total_pages = max(1, (total_filtered + per_page - 1) // per_page)
+
+            start_index = (page - 1) * per_page
+            end_index = start_index + per_page
+            redemptions = filtered_redemptions[start_index:end_index]
+            has_more = page < total_pages
+
+            meetups_resp = (
+                supabase.table("meetups")
+                .select("id,name,location,date,start_time,active")
+                .order("date", desc=False)
+                .execute()
+            )
+            all_meetups = list(meetups_resp.data or [])
+            for meetup_row in all_meetups:
+                meetup_id = str(meetup_row.get("id") or "").strip()
+                if meetup_id:
+                    meetup_lookup[meetup_id] = meetup_row
+
+            for record in redemptions:
+                meetup_key = str(record.get("meetup_id") or "").strip()
+                record["meetup_display"] = _format_meetup_summary(meetup_lookup.get(meetup_key))
+
+            if view_mode == "prize-buckets":
+                prize_buckets = build_prize_buckets(all_meetups, filtered_redemptions, meetup_lookup)
+        except Exception as e:
+            print("⚠️ Failed fetching redemptions:", e)
+    else:
+        print("⚠️ Supabase not configured; skipping redemptions fetch.")
 
     return render_template(
         "admin_redemptions.html",
@@ -1837,7 +1982,13 @@ def admin_redemptions():
         search_user=search_user,
         page=page,
         total_pages=total_pages,
+        view_mode=view_mode,
+        prize_buckets=prize_buckets,
+        has_more=has_more,
+        list_tab_url=list_tab_url,
+        bucket_tab_url=bucket_tab_url,
     )
+
 
 @app.route("/admin/redemptions/<rid>/update", methods=["POST"])
 def admin_redemptions_update(rid):
@@ -1879,7 +2030,17 @@ def update_redemption_ajax(redemption_id, action):
         supabase.table("redemptions").update({"status": new_status}).eq("id", str(redemption_id)).execute()
 
         # Send notification to trainer
-        redemption = supabase.table("redemptions").select("*").eq("id", str(redemption_id)).execute().data[0]
+        redemption_resp = (
+            supabase.table("redemptions")
+            .select("*")
+            .eq("id", str(redemption_id))
+            .execute()
+        )
+        redemption_rows = redemption_resp.data or []
+        if not redemption_rows:
+            return jsonify({"success": False, "error": "Redemption not found"}), 404
+
+        redemption = redemption_rows[0]
         trainer = redemption["trainer_username"]
         item_name = (redemption.get("item_snapshot") or {}).get("name", "a prize")
 
@@ -1901,7 +2062,20 @@ def update_redemption_ajax(redemption_id, action):
             "sent_at": datetime.utcnow().isoformat()
         }).execute()
 
-        return jsonify({"success": True, "new_status": new_status})
+        stats_payload = None
+        try:
+            stats_resp = supabase.table("redemptions").select("status").execute()
+            rows = stats_resp.data or []
+            stats_payload = {
+                "total": len(rows),
+                "pending": sum(1 for row in rows if row.get("status") == "PENDING"),
+                "fulfilled": sum(1 for row in rows if row.get("status") == "FULFILLED"),
+                "cancelled": sum(1 for row in rows if row.get("status") == "CANCELLED"),
+            }
+        except Exception as stats_err:
+            print("⚠️ Failed to refresh redemption stats:", stats_err)
+
+        return jsonify({"success": True, "new_status": new_status, "stats": stats_payload})
     except Exception as e:
         print("⚠️ update_redemption_ajax failed:", e)
         return jsonify({"success": False, "error": "DB error"}), 500
