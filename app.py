@@ -28,7 +28,7 @@ MAINTENANCE_MODE = False  # ⛔️ Change to True to enable maintenance mode
 SHOW_CATALOG_APP = True
 SHOW_CITY_PERKS_APP = False
 SHOW_CITY_GUIDES_APP = False
-SHOW_LEAGUES_APP = False
+SHOW_LEAGUES_APP = True
 
 # Try to import Supabase client
 try:
