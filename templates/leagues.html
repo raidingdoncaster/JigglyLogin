@@ -1,0 +1,498 @@
+{% extends "base.html" %}
+
+{% block page_settings %}
+  {% set container_class = 'is-wide' %}
+{% endblock %}
+
+{% block content %}
+
+<div class="league-profile-card" style="background-image: url('{{ url_for('static', filename='backgrounds/' ~ background) }}');">
+  <div class="league-profile-overlay"></div>
+  <div class="league-profile-body">
+    <div class="league-profile-main">
+      <img class="league-avatar" src="{{ url_for('static', filename='avatars/' ~ avatar) }}" alt="{{ trainer }} avatar">
+      <div>
+        <p class="league-kicker">Leagues Preview</p>
+        <h1>{{ trainer }}'s League Profile</h1>
+        <p class="league-subtitle">This card will showcase your CDL scorecards, PvP standings, and limited-time event rewards as soon as leagues launch.</p>
+      </div>
+    </div>
+    <div class="league-profile-stats">
+      <div class="league-stat">
+        <span class="league-stat-label">Rank</span>
+        <strong class="league-stat-value">{{ league_card.rank }}</strong>
+      </div>
+      <div class="league-stat">
+        <span class="league-stat-label">CDL Points</span>
+        <strong class="league-stat-value">{{ league_card.cdl_points }}</strong>
+      </div>
+      <div class="league-stat">
+        <span class="league-stat-label">PvP Record</span>
+        <strong class="league-stat-value">{{ league_card.pvp_record }}</strong>
+      </div>
+      <div class="league-stat">
+        <span class="league-stat-label">Stamp Bonus</span>
+        <strong class="league-stat-value">{{ league_card.stamp_bonus }}</strong>
+      </div>
+    </div>
+    <button type="button" class="league-profile-expand" data-target="league-profile-expanded" aria-expanded="false" aria-controls="league-profile-expanded">
+      Open Full Profile
+    </button>
+  </div>
+</div>
+
+<div class="league-profile-expanded" id="league-profile-expanded">
+  <div class="league-profile-expanded-card">
+    <h3>Full League View</h3>
+    <p>{{ league_card.season_highlight }}</p>
+    <ul>
+      {% for item in league_card.focus_items %}
+        <li>{{ item }}</li>
+      {% endfor %}
+    </ul>
+    <div class="league-profile-placeholder">
+      Detailed stats, match history, and badge collections will live here once the leagues modules are ready.
+    </div>
+  </div>
+</div>
+
+<section class="mode-switcher">
+  <div class="mode-buttons">
+    {% for mode in league_modes %}
+      <button class="mode-button {% if loop.first %}is-active{% endif %}" data-mode="{{ mode.key }}">{{ mode.title }}</button>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="mode-panels">
+  {% for mode in league_modes %}
+    <article class="mode-panel {% if loop.first %}is-active{% endif %}" data-mode-panel="{{ mode.key }}">
+      <header class="mode-header">
+        <h2>{{ mode.title }}</h2>
+        <p>{{ mode.summary }}</p>
+      </header>
+
+      <div class="mode-grid">
+        <div class="mode-card">
+          <h3>What To Expect</h3>
+          <ul>
+            {% for feature in mode.features %}
+              <li>{{ feature }}</li>
+            {% endfor %}
+          </ul>
+        </div>
+        <div class="mode-card">
+          <h3>Future Goals</h3>
+          <ul>
+            {% for feature in mode.future %}
+              <li>{{ feature }}</li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+
+      {% if mode.key == "cdl" %}
+        <div class="mode-card mode-card--wide">
+          <h3>CDL Scorecard</h3>
+          <p>Your CDL card will show ranking, match history, and personal highlights at a glance. Historic cups will move into an archive so you never lose track of past performances.</p>
+          <div class="placeholder-scorecard">
+            <div>
+              <span class="label">Current Rank</span>
+              <span class="value">TBD</span>
+            </div>
+            <div>
+              <span class="label">Season Record</span>
+              <span class="value">0W - 0L</span>
+            </div>
+            <div>
+              <span class="label">Next Event</span>
+              <span class="value">Launching soon</span>
+            </div>
+          </div>
+        </div>
+      {% elif mode.key == "pvp" %}
+        <div class="mode-card mode-card--wide">
+          <h3>Season Playbook</h3>
+          <p>We are building tools to open a PvP league alongside meetups, complete with cup rules, pairings, and live scoring. Expect a Hall of Fame board once we have a few seasons under our belt.</p>
+          <ul class="playbook-highlights">
+            <li>Season timeline with rounds and match checkpoints.</li>
+            <li>Live brackets that refresh as scores are entered on-site.</li>
+            <li>Rulesets and featured Pokemon surfaced for every cup.</li>
+          </ul>
+        </div>
+      {% elif mode.key == "limited" %}
+        <div class="mode-card mode-card--wide">
+          <h3>Limited-Time Events</h3>
+          {% if live_event_settings.active %}
+            <p>Welcome to the <strong>{{ live_event_settings.theme }}</strong> hub! Look out for themed visuals, limited quests, and exclusive stamp bonuses.</p>
+          {% else %}
+            <p>{{ live_event_settings.inactive_copy }}</p>
+          {% endif %}
+          <div class="activity-grid">
+            {% for activity in live_event_settings.activities %}
+              <section class="activity-card">
+                <h4>{{ activity.title }}</h4>
+                <ul>
+                  {% for detail in activity.details %}
+                    <li>{{ detail }}</li>
+                  {% endfor %}
+                </ul>
+              </section>
+            {% endfor %}
+            <section class="activity-card">
+              <h4>More Event Ideas</h4>
+              <ul>
+                <li>City scavenger hunts with snap-and-upload proof.</li>
+                <li>Story-driven missions with NFC or QR check-ins.</li>
+                <li>Bonus stamps for streaks or challenge completions.</li>
+              </ul>
+            </section>
+          </div>
+        </div>
+      {% endif %}
+    </article>
+  {% endfor %}
+</section>
+
+<section class="roadmap-banner">
+  <h2>What Happens Next?</h2>
+  <div class="roadmap-steps">
+    <div>
+      <h4>Phase 1 - Data</h4>
+      <p>Import CDL spreadsheets, sync Supabase tables, and generate your first scorecard previews.</p>
+    </div>
+    <div>
+      <h4>Phase 2 - Live Ops</h4>
+      <p>Enable meetup hosts to open or pause leagues mid-event with instant leaderboard refreshes.</p>
+    </div>
+    <div>
+      <h4>Phase 3 - Automation</h4>
+      <p>Automatically stamp passports from league placements and limited-time event milestones.</p>
+    </div>
+  </div>
+</section>
+
+<script>
+(function () {
+  const buttons = document.querySelectorAll(".mode-button");
+  const panels = document.querySelectorAll(".mode-panel");
+
+  buttons.forEach((button) => {
+    button.addEventListener("click", () => {
+      const target = button.dataset.mode;
+      buttons.forEach((btn) => btn.classList.toggle("is-active", btn === button));
+      panels.forEach((panel) => panel.classList.toggle("is-active", panel.dataset.modePanel === target));
+    });
+  });
+
+  const expandButton = document.querySelector(".league-profile-expand");
+  const expandedPanel = document.getElementById("league-profile-expanded");
+  if (expandButton && expandedPanel) {
+    expandButton.addEventListener("click", () => {
+      const isOpen = expandedPanel.classList.toggle("is-open");
+      expandButton.setAttribute("aria-expanded", String(isOpen));
+      expandButton.textContent = isOpen ? "Close Full Profile" : "Open Full Profile";
+    });
+  }
+})();
+</script>
+
+<style>
+.league-profile-card {
+  position:relative;
+  background-size:cover;
+  background-position:center;
+  border-radius:16px;
+  overflow:hidden;
+  color:#fff;
+  margin-bottom:18px;
+  box-shadow:0 14px 30px rgba(15,23,42,0.28);
+}
+.league-profile-overlay {
+  position:absolute;
+  inset:0;
+  background:linear-gradient(135deg, rgba(9,14,35,0.78) 0%, rgba(9,14,35,0.35) 100%);
+  pointer-events:none;
+}
+.league-profile-body {
+  position:relative;
+  z-index:1;
+  padding:22px;
+  display:flex;
+  flex-direction:column;
+  gap:18px;
+}
+.league-profile-main {
+  display:flex;
+  align-items:flex-start;
+  gap:16px;
+}
+.league-avatar {
+  width:72px;
+  height:72px;
+  border-radius:50%;
+  border:3px solid rgba(255,255,255,0.85);
+  box-shadow:0 6px 16px rgba(15,23,42,0.45);
+  object-fit:cover;
+}
+.league-kicker {
+  margin:0;
+  text-transform:uppercase;
+  letter-spacing:0.08em;
+  font-size:0.75em;
+  color:#60a5fa;
+  font-weight:600;
+}
+.league-profile-body h1 {
+  margin:4px 0 8px;
+}
+.league-subtitle {
+  margin:0;
+  max-width:520px;
+  color:rgba(255,255,255,0.88);
+}
+.league-profile-stats {
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:16px;
+}
+.league-stat {
+  background:rgba(15,23,42,0.55);
+  border-radius:14px;
+  padding:14px;
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+  box-shadow:0 8px 20px rgba(15,23,42,0.25);
+}
+.league-stat-label {
+  font-size:0.78em;
+  letter-spacing:0.05em;
+  text-transform:uppercase;
+  color:rgba(255,255,255,0.7);
+}
+.league-stat-value {
+  font-size:1.05em;
+  font-weight:700;
+}
+.league-profile-expand {
+  align-self:flex-start;
+  padding:10px 18px;
+  border-radius:999px;
+  border:none;
+  background:#fde68a;
+  color:#1f2937;
+  font-weight:600;
+  cursor:pointer;
+  transition:transform 0.15s ease, box-shadow 0.15s ease;
+  box-shadow:0 10px 20px rgba(252,211,77,0.35);
+}
+.league-profile-expand:hover {
+  transform:translateY(-1px);
+  box-shadow:0 12px 24px rgba(252,211,77,0.45);
+}
+.league-profile-expanded {
+  display:none;
+  margin-bottom:18px;
+}
+.league-profile-expanded.is-open {
+  display:block;
+}
+.league-profile-expanded-card {
+  background:#fff;
+  border-radius:16px;
+  padding:22px;
+  box-shadow:0 12px 28px rgba(15,23,42,0.12);
+}
+.league-profile-expanded-card h3 {
+  margin-top:0;
+}
+.league-profile-expanded-card ul {
+  margin:12px 0 16px;
+  padding-left:18px;
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+.league-profile-placeholder {
+  border:1px dashed #cbd5f5;
+  border-radius:12px;
+  padding:16px;
+  background:#f8fafc;
+  color:#475569;
+  font-size:0.95em;
+}
+.mode-switcher {
+  margin-bottom:16px;
+}
+.mode-buttons {
+  display:flex;
+  gap:12px;
+  flex-wrap:wrap;
+}
+.mode-button {
+  padding:10px 18px;
+  border-radius:12px;
+  border:1px solid #d0d7e6;
+  background:#f8fafc;
+  font-weight:600;
+  cursor:pointer;
+  transition:all 0.18s ease;
+}
+.mode-button.is-active {
+  background:#3a8dde;
+  border-color:#3a8dde;
+  color:#fff;
+  box-shadow:0 8px 18px rgba(58,141,222,0.28);
+}
+.mode-panels {
+  position:relative;
+}
+.mode-panel {
+  display:none;
+  background:#fff;
+  border-radius:16px;
+  padding:22px;
+  box-shadow:0 12px 28px rgba(15,23,42,0.12);
+}
+.mode-panel.is-active {
+  display:block;
+}
+.mode-header h2 {
+  margin:0 0 6px;
+}
+.mode-grid {
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:16px;
+  margin-top:18px;
+}
+.mode-card {
+  background:#f8fafc;
+  border-radius:14px;
+  padding:18px;
+  box-shadow:inset 0 0 0 1px rgba(148,163,184,0.25);
+}
+.mode-card h3 {
+  margin-top:0;
+}
+.mode-card ul {
+  margin:12px 0 0;
+  padding-left:18px;
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+.mode-card--wide {
+  margin-top:18px;
+}
+.placeholder-scorecard {
+  margin-top:14px;
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:12px;
+}
+.placeholder-scorecard div {
+  background:#fff;
+  border-radius:12px;
+  padding:12px;
+  box-shadow:0 8px 16px rgba(15,23,42,0.1);
+  text-align:center;
+}
+.placeholder-scorecard .label {
+  display:block;
+  font-size:0.8em;
+  color:#64748b;
+}
+.placeholder-scorecard .value {
+  display:block;
+  margin-top:4px;
+  font-weight:700;
+  font-size:1em;
+  color:#1f2937;
+}
+.playbook-highlights {
+  margin-top:12px;
+  padding-left:18px;
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+.activity-grid {
+  margin-top:14px;
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:16px;
+}
+.activity-card {
+  background:#fff;
+  border-radius:12px;
+  padding:16px;
+  box-shadow:0 10px 18px rgba(15,23,42,0.08);
+}
+.activity-card h4 {
+  margin:0 0 8px;
+}
+.activity-card ul {
+  margin:0;
+  padding-left:16px;
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+.roadmap-banner {
+  margin-top:28px;
+  background:#fff;
+  border-radius:16px;
+  padding:22px;
+  box-shadow:0 12px 28px rgba(15,23,42,0.12);
+}
+.roadmap-banner h2 {
+  margin:0 0 14px;
+}
+.roadmap-steps {
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:16px;
+}
+.roadmap-steps div {
+  background:#f8fafc;
+  border-radius:14px;
+  padding:18px;
+  box-shadow:inset 0 0 0 1px rgba(148,163,184,0.25);
+}
+.roadmap-steps h4 {
+  margin:0 0 6px;
+  color:#3a8dde;
+}
+
+@media (max-width: 960px) {
+  .league-profile-stats {
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+  .mode-grid,
+  .placeholder-scorecard,
+  .activity-grid,
+  .roadmap-steps {
+    grid-template-columns:repeat(1,minmax(0,1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .league-profile-body {
+    padding:18px;
+  }
+  .league-profile-main {
+    flex-direction:column;
+    align-items:flex-start;
+  }
+  .league-profile-stats {
+    grid-template-columns:repeat(1,minmax(0,1fr));
+  }
+  .mode-button {
+    flex:1 1 100%;
+  }
+}
+</style>
+
+{% endblock %}

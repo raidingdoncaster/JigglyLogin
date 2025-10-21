@@ -127,17 +127,10 @@
       </div>
     {% endif %}
     {% if show_leagues_app %}
-      {% if account_type == "Admin" %}
-        <a class="explore-card" href="{{ url_for('admin_leagues') }}">
-          <img src="{{ url_for('static', filename='icons/leagues-app.png') }}" alt="Leagues">
-          <span>Leagues</span>
-        </a>
-      {% else %}
-        <div class="explore-card" onclick="alert('Leagues are Under Construction')">
-          <img src="{{ url_for('static', filename='icons/leagues-app.png') }}" alt="Leagues">
-          <span>Leagues</span>
-        </div>
-      {% endif %}
+      <a class="explore-card" href="{{ url_for('leagues') }}">
+        <img src="{{ url_for('static', filename='icons/leagues-app.png') }}" alt="Leagues">
+        <span>Leagues</span>
+      </a>
     {% endif %}
   </div>
 </div>

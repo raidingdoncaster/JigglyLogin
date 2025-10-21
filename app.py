@@ -118,6 +118,80 @@ def save_custom_events(events: list[dict]) -> None:
     except Exception as exc:
         print("⚠️ Failed to save custom calendar events:", exc)
 
+
+def build_league_content():
+    """Return static league mode copy used by the admin and player hubs."""
+    league_modes = [
+        {
+            "key": "cdl",
+            "title": "CDL",
+            "summary": "Centralise CDL records, leaderboards, and scorecards so trainers can track progress season over season.",
+            "features": [
+                "Ingest live data from the CDL Google Sheet with search across active and historical standings.",
+                "Auto-create a CDL scorecard for each trainer with win-loss, rankings, and highlight stats.",
+                "Archive seasonal tables so admins and trainers can browse past cups at any time.",
+            ],
+            "future": [
+                "Automate CDL stamp awarding based on scorecard milestones and final placements.",
+            ],
+        },
+        {
+            "key": "pvp",
+            "title": "PvP",
+            "summary": "Host seasonal leagues, track match results, and operate live brackets directly in the app.",
+            "features": [
+                "List previous seasonal leagues with standings, rosters, and match histories.",
+                "Spin up a new league with rules, eligible Pokemon, and round structures for meetups like Sinistea.",
+                "Switch a league into \"live\" mode mid-meetup so players can enter results in real time.",
+            ],
+            "future": [
+                "Launch a Hall of Fame view to spotlight top performers across seasons.",
+            ],
+        },
+        {
+            "key": "limited",
+            "title": "Limited-Time Events",
+            "summary": "Run time-bound activities like quizzes, bingo cards, and scavenger hunts with themed UIs.",
+            "features": [
+                "Toggle active vs inactive state to show either a sleeping Rotom message or a live event hub.",
+                "Configure event theming starting with the Sinistea Halloween party and reuse for future pop-ups.",
+                "Create live event activities such as quizzes, bingo cards, and scavenger hunts with admin controls.",
+            ],
+            "future": [
+                "Add advanced verifications for stamps via QR, NFC, or media uploads once tooling is ready.",
+            ],
+        },
+    ]
+
+    live_event_settings = {
+        "active": False,
+        "theme": "Sinistea Halloween Party",
+        "activities": [
+            {
+                "type": "quiz",
+                "title": "Live Quiz Tool",
+                "details": [
+                    "Admin controls to start, pause, or advance quiz questions remotely.",
+                    "Player view shows one question at a time with four answer options.",
+                    "Real-time leaderboard with streak bonuses and stamp rewards based on final points.",
+                ],
+            },
+            {
+                "type": "bingo",
+                "title": "Bingo Tool",
+                "details": [
+                    "Pre-build bingo cards so players can tap squares during events and sync progress.",
+                    "Auto-stamp completed cards with celebratory animations once all squares are marked.",
+                    "Future: require verification like QR scans, NFC taps, or screenshot upload before stamping.",
+                ],
+            },
+        ],
+        "inactive_copy": "No live events right now - the rotoms are sleeping",
+    }
+
+    return league_modes, live_event_settings
+
+
 def fetch_upcoming_events(limit: int | None = None):
     """Fetch upcoming meetup events ordered by start time in London timezone."""
     if not (USE_SUPABASE and supabase):
@@ -1325,78 +1399,58 @@ def admin_leagues():
         flash("Leagues are under construction.", "info")
         return redirect(url_for("dashboard"))
 
-    league_modes = [
-        {
-            "key": "cdl",
-            "title": "CDL",
-            "summary": "Centralise CDL records, leaderboards, and scorecards so trainers can track progress season over season.",
-            "features": [
-                "Ingest live data from the CDL Google Sheet with search across active and historical standings.",
-                "Auto-create a CDL scorecard for each trainer with win-loss, rankings, and highlight stats.",
-                "Archive seasonal tables so admins and trainers can browse past cups at any time.",
-            ],
-            "future": [
-                "Automate CDL stamp awarding based on scorecard milestones and final placements.",
-            ],
-        },
-        {
-            "key": "pvp",
-            "title": "PvP",
-            "summary": "Host seasonal leagues, track match results, and operate live brackets directly in the app.",
-            "features": [
-                "List previous seasonal leagues with standings, rosters, and match histories.",
-                "Spin up a new league with rules, eligible Pokémon, and round structures for meetups like Sinistea.",
-                "Switch a league into “live” mode mid-meetup so players can enter results in real time.",
-            ],
-            "future": [
-                "Launch a Hall of Fame view to spotlight top performers across seasons.",
-            ],
-        },
-        {
-            "key": "limited",
-            "title": "Limited-Time Events",
-            "summary": "Run time-bound activities like quizzes, bingo cards, and scavenger hunts with themed UIs.",
-            "features": [
-                "Toggle active vs inactive state to show either a sleeping Rotom message or a live event hub.",
-                "Configure event theming starting with the Sinistea Halloween party and reuse for future pop-ups.",
-                "Create live event activities such as quizzes, bingo cards, and scavenger hunts with admin controls.",
-            ],
-            "future": [
-                "Add advanced verifications for stamps via QR, NFC, or media uploads once tooling is ready.",
-            ],
-        },
-    ]
-
-    live_event_settings = {
-        "active": False,
-        "theme": "Sinistea Halloween Party",
-        "activities": [
-            {
-                "type": "quiz",
-                "title": "Live Quiz Tool",
-                "details": [
-                    "Admin controls to start, pause, or advance quiz questions remotely.",
-                    "Player view shows one question at a time with four answer options.",
-                    "Real-time leaderboard with streak bonuses and stamp rewards based on final points.",
-                ],
-            },
-            {
-                "type": "bingo",
-                "title": "Bingo Tool",
-                "details": [
-                    "Pre-build bingo cards so players can tap squares during events and sync progress.",
-                    "Auto-stamp completed cards with celebratory animations once all squares are marked.",
-                    "Future: require verification like QR scans, NFC taps, or screenshot upload before stamping.",
-                ],
-            },
-        ],
-        "inactive_copy": "No live events right now — the rotoms are sleeping",
-    }
+    league_modes, live_event_settings = build_league_content()
 
     return render_template(
         "admin_leagues.html",
         league_modes=league_modes,
         live_event_settings=live_event_settings,
+    )
+
+
+@app.route("/leagues")
+def leagues():
+    session["last_page"] = request.path
+    if "trainer" not in session:
+        flash("Please log in to explore leagues.", "warning")
+        return redirect(url_for("home"))
+
+    trainer_name = session["trainer"]
+    _, user = find_user(trainer_name)
+    if not user:
+        flash("We could not load your trainer profile.", "error")
+        return redirect(url_for("dashboard"))
+
+    league_modes, live_event_settings = build_league_content()
+    avatar = user.get("avatar_icon", "avatar1.png")
+    background = user.get("trainer_card_background", "default.png")
+
+    league_card = {
+        "rank": "Pending Launch",
+        "cdl_points": 0,
+        "pvp_record": "Coming Soon",
+        "stamp_bonus": "Auto rewards in development",
+        "season_highlight": "League scorecards unlock when the first season goes live.",
+        "focus_items": [
+            "Track CDL placements and seasonal badges once data syncs from the spreadsheet.",
+            "Follow PvP brackets in real time when meetup leagues go live.",
+            "Complete limited-time activities to earn bonus stamps during special events.",
+        ],
+    }
+
+    if live_event_settings.get("active"):
+        league_card["stamp_bonus"] = f"Earn event bonuses during {live_event_settings.get('theme')}"
+
+    return render_template(
+        "leagues.html",
+        trainer=trainer_name,
+        account_type=normalize_account_type(user.get("account_type")),
+        league_modes=league_modes,
+        live_event_settings=live_event_settings,
+        show_back=True,
+        avatar=avatar,
+        background=background,
+        league_card=league_card,
     )
 
 @app.route("/admin_login", methods=["GET", "POST"])
