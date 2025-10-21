@@ -47,6 +47,12 @@
       <img src="{{ url_for('static', filename='icons/admin/rdab-stats.png') }}" alt="RDAB Stats">
       <span>RDAB Stats</span>
     </a>
+    {% if show_leagues_app %}
+      <a class="explore-card" href="{{ url_for('admin_leagues') }}">
+        <img src="{{ url_for('static', filename='icons/leagues-app.png') }}" alt="Leagues Hub">
+        <span>Leagues Hub</span>
+      </a>
+    {% endif %}
     <a class="explore-card" href="{{ url_for('admin_notifications') }}">
       <img src="{{ url_for('static', filename='icons/admin/notification-center.png') }}" alt="Notifications Center">
       <span>Notifications Center</span>

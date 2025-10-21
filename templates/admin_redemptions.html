@@ -139,15 +139,15 @@
           <span class="toggle-icon">⌄</span>
         </button>
         <div class="bucket-details">
-          {% if bucket.items %}
-            {% for item in bucket.items %}
+          {% if bucket.prizes %}
+            {% for prize in bucket.prizes %}
               <div class="bucket-item">
                 <div class="bucket-item-header">
-                  <h4>{{ item.name }}</h4>
-                  <span class="item-count">{{ item.redemptions|length }}</span>
+                  <h4>{{ prize.name }}</h4>
+                  <span class="item-count">{{ prize.redemptions|length }}</span>
                 </div>
                 <ul class="bucket-redemption-list">
-                  {% for redemption in item.redemptions %}
+                  {% for redemption in prize.redemptions %}
                     <li class="bucket-redemption" data-redemption-id="{{ redemption.id }}" data-status="{{ redemption.status }}">
                       <div class="bucket-redemption-main">
                         <span class="trainer-name">{{ redemption.trainer_username or 'Unknown Trainer' }}</span>

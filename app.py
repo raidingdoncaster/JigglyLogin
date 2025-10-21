@@ -24,6 +24,12 @@ from bleach.linkifier import DEFAULT_CALLBACKS
 USE_SUPABASE = True  # ✅ Supabase for stamps/meetups
 MAINTENANCE_MODE = False  # ⛔️ Change to True to enable maintenance mode
 
+# ====== Dashboard feature visibility toggles ======
+SHOW_CATALOG_APP = True
+SHOW_CITY_PERKS_APP = False
+SHOW_CITY_GUIDES_APP = False
+SHOW_LEAGUES_APP = False
+
 # Try to import Supabase client
 try:
     from supabase import create_client, Client  # type: ignore
@@ -1043,7 +1049,8 @@ ALLOWED_ACCOUNT_TYPES = {
 
 def _current_actor():
     return (
-        session.get("trainer_username")
+        session.get("trainer")
+        or session.get("trainer_username")
         or session.get("username")
         or session.get("admin_username")
         or "Admin"
@@ -1103,8 +1110,13 @@ def reset_pin(trainer_username: str, new_pin: str, actor: str = "Admin"):
         return False, f"❌ Failed to reset PIN: {e}"
 
 def _require_admin():
-    if (session.get("account_type","").lower() != "admin"):
+    trainer_username = session.get("trainer")
+    if not trainer_username:
         abort(403)
+    _, admin_user = find_user(trainer_username)
+    if not admin_user or (admin_user.get("account_type") or "").lower() != "admin":
+        abort(403)
+    session["account_type"] = "Admin"
 
 def update_trainer_username(current_username: str, new_username: str, actor: str = "Admin"):
     desired = (new_username or "").strip()
@@ -1292,7 +1304,99 @@ def admin_dashboard():
         "admin_dashboard.html",
         active_catalog_items=active_catalog_items,
         pending_redemptions=pending_redemptions,
-        registered_trainers=registered_trainers
+        registered_trainers=registered_trainers,
+        show_catalog_app=SHOW_CATALOG_APP,
+        show_city_perks_app=SHOW_CITY_PERKS_APP,
+        show_city_guides_app=SHOW_CITY_GUIDES_APP,
+        show_leagues_app=SHOW_LEAGUES_APP,
+    )
+
+
+@app.route("/admin/leagues")
+def admin_leagues():
+    session["last_page"] = request.path
+    if "trainer" not in session:
+        flash("Please log in to access Leagues.", "warning")
+        return redirect(url_for("home"))
+
+    _, user = find_user(session["trainer"])
+    account_type = normalize_account_type(user.get("account_type"))
+    if account_type != "Admin":
+        flash("Leagues are under construction.", "info")
+        return redirect(url_for("dashboard"))
+
+    league_modes = [
+        {
+            "key": "cdl",
+            "title": "CDL",
+            "summary": "Centralise CDL records, leaderboards, and scorecards so trainers can track progress season over season.",
+            "features": [
+                "Ingest live data from the CDL Google Sheet with search across active and historical standings.",
+                "Auto-create a CDL scorecard for each trainer with win-loss, rankings, and highlight stats.",
+                "Archive seasonal tables so admins and trainers can browse past cups at any time.",
+            ],
+            "future": [
+                "Automate CDL stamp awarding based on scorecard milestones and final placements.",
+            ],
+        },
+        {
+            "key": "pvp",
+            "title": "PvP",
+            "summary": "Host seasonal leagues, track match results, and operate live brackets directly in the app.",
+            "features": [
+                "List previous seasonal leagues with standings, rosters, and match histories.",
+                "Spin up a new league with rules, eligible Pokémon, and round structures for meetups like Sinistea.",
+                "Switch a league into “live” mode mid-meetup so players can enter results in real time.",
+            ],
+            "future": [
+                "Launch a Hall of Fame view to spotlight top performers across seasons.",
+            ],
+        },
+        {
+            "key": "limited",
+            "title": "Limited-Time Events",
+            "summary": "Run time-bound activities like quizzes, bingo cards, and scavenger hunts with themed UIs.",
+            "features": [
+                "Toggle active vs inactive state to show either a sleeping Rotom message or a live event hub.",
+                "Configure event theming starting with the Sinistea Halloween party and reuse for future pop-ups.",
+                "Create live event activities such as quizzes, bingo cards, and scavenger hunts with admin controls.",
+            ],
+            "future": [
+                "Add advanced verifications for stamps via QR, NFC, or media uploads once tooling is ready.",
+            ],
+        },
+    ]
+
+    live_event_settings = {
+        "active": False,
+        "theme": "Sinistea Halloween Party",
+        "activities": [
+            {
+                "type": "quiz",
+                "title": "Live Quiz Tool",
+                "details": [
+                    "Admin controls to start, pause, or advance quiz questions remotely.",
+                    "Player view shows one question at a time with four answer options.",
+                    "Real-time leaderboard with streak bonuses and stamp rewards based on final points.",
+                ],
+            },
+            {
+                "type": "bingo",
+                "title": "Bingo Tool",
+                "details": [
+                    "Pre-build bingo cards so players can tap squares during events and sync progress.",
+                    "Auto-stamp completed cards with celebratory animations once all squares are marked.",
+                    "Future: require verification like QR scans, NFC taps, or screenshot upload before stamping.",
+                ],
+            },
+        ],
+        "inactive_copy": "No live events right now — the rotoms are sleeping",
+    }
+
+    return render_template(
+        "admin_leagues.html",
+        league_modes=league_modes,
+        live_event_settings=live_event_settings,
     )
 
 @app.route("/admin_login", methods=["GET", "POST"])
@@ -1854,16 +1958,16 @@ def admin_redemptions():
                 item_name = (snapshot.get("name") or "").strip() or "Unknown Prize"
                 items_by_name[item_name].append(entry)
 
-            item_blocks = []
-            for item_name in sorted(items_by_name.keys(), key=lambda name: name.lower()):
+            prize_blocks = []
+            for prize_name in sorted(items_by_name.keys(), key=lambda name: name.lower()):
                 records = sorted(
-                    items_by_name[item_name],
+                    items_by_name[prize_name],
                     key=lambda row: row.get("created_at") or "",
                     reverse=True,
                 )
-                item_blocks.append(
+                prize_blocks.append(
                     {
-                        "name": item_name,
+                        "name": prize_name,
                         "redemptions": records,
                     }
                 )
@@ -1884,7 +1988,7 @@ def admin_redemptions():
                 "id": bucket_id,
                 "title": title,
                 "subtitle": subtitle,
-                "items": item_blocks,
+                "prizes": prize_blocks,
                 "status_counts": normalized_counts,
                 "extra_status_counts": extra_status_counts,
                 "total_redemptions": len(entries),
@@ -2641,6 +2745,7 @@ def login():
 
         if user.get("pin_hash") == hash_value(pin):
             session["trainer"] = user.get("trainer_username")
+            session["account_type"] = normalize_account_type(user.get("account_type"))
             session.permanent = True
             try:
                 supabase.table("sheet1") \
@@ -2959,6 +3064,10 @@ def dashboard():
         show_back=False,
         upcoming_meetups=upcoming_widget_events,
         calendar_url=url_for("calendar_view"),
+        show_catalog_app=SHOW_CATALOG_APP,
+        show_city_perks_app=SHOW_CITY_PERKS_APP,
+        show_city_guides_app=SHOW_CITY_GUIDES_APP,
+        show_leagues_app=SHOW_LEAGUES_APP,
     )
 
 @app.route("/calendar")

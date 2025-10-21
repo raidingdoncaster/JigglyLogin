@@ -108,22 +108,37 @@
 <div class="explore">
   <h3>🔍 Explore</h3>
   <div class="explore-grid">
-    <a class="explore-card" href="{{ url_for('catalog') }}">
-      <img src="{{ url_for('static', filename='icons/catalog-app.png') }}" alt="Catalog">
-      <span>Catalog</span>
-    </a>
-    <div class="explore-card" onclick="alert('City Perks are Under Construction')">
-      <img src="{{ url_for('static', filename='icons/perks-app.png') }}" alt="City Perks">
-      <span>City Perks</span>
-    </div>
-    <div class="explore-card" onclick="alert('City Guides are Under Construction')">
-      <img src="{{ url_for('static', filename='icons/guides-app.png') }}" alt="City Guides">
-      <span>City Guides</span>
-    </div>
-    <div class="explore-card" onclick="alert('Leagues are Under Construction')">
-      <img src="{{ url_for('static', filename='icons/leagues-app.png') }}" alt="Leagues">
-      <span>Leagues</span>
-    </div>
+    {% if show_catalog_app %}
+      <a class="explore-card" href="{{ url_for('catalog') }}">
+        <img src="{{ url_for('static', filename='icons/catalog-app.png') }}" alt="Catalog">
+        <span>Catalog</span>
+      </a>
+    {% endif %}
+    {% if show_city_perks_app %}
+      <div class="explore-card" onclick="alert('City Perks are Under Construction')">
+        <img src="{{ url_for('static', filename='icons/perks-app.png') }}" alt="City Perks">
+        <span>City Perks</span>
+      </div>
+    {% endif %}
+    {% if show_city_guides_app %}
+      <div class="explore-card" onclick="alert('City Guides are Under Construction')">
+        <img src="{{ url_for('static', filename='icons/guides-app.png') }}" alt="City Guides">
+        <span>City Guides</span>
+      </div>
+    {% endif %}
+    {% if show_leagues_app %}
+      {% if account_type == "Admin" %}
+        <a class="explore-card" href="{{ url_for('admin_leagues') }}">
+          <img src="{{ url_for('static', filename='icons/leagues-app.png') }}" alt="Leagues">
+          <span>Leagues</span>
+        </a>
+      {% else %}
+        <div class="explore-card" onclick="alert('Leagues are Under Construction')">
+          <img src="{{ url_for('static', filename='icons/leagues-app.png') }}" alt="Leagues">
+          <span>Leagues</span>
+        </div>
+      {% endif %}
+    {% endif %}
   </div>
 </div>
 
