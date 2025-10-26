@@ -463,7 +463,11 @@ def _slugify_tournament_name(name: str) -> str:
 def save_pvp_rules(tournament_id: str, rules_lines: list[str]):
     if not supabase:
         return
-    supabase.table("pvp_rules").delete().eq("tournament_id", tournament_id).execute()
+    try:
+        supabase.table("pvp_rules").delete().eq("tournament_id", tournament_id).execute()
+    except Exception as exc:
+        print("⚠️ PvP rules delete failed:", exc)
+        return
     entries = []
     for idx, line in enumerate(rules_lines, start=1):
         text = (line or "").strip()
@@ -480,13 +484,20 @@ def save_pvp_rules(tournament_id: str, rules_lines: list[str]):
             "body": body,
         })
     if entries:
-        supabase.table("pvp_rules").insert(entries).execute()
+        try:
+            supabase.table("pvp_rules").insert(entries).execute()
+        except Exception as exc:
+            print("⚠️ PvP rules insert failed:", exc)
 
 
 def save_pvp_prizes(tournament_id: str, prize_lines: list[str]):
     if not supabase:
         return
-    supabase.table("pvp_prizes").delete().eq("tournament_id", tournament_id).execute()
+    try:
+        supabase.table("pvp_prizes").delete().eq("tournament_id", tournament_id).execute()
+    except Exception as exc:
+        print("⚠️ PvP prizes delete failed:", exc)
+        return
     entries = []
     for idx, line in enumerate(prize_lines, start=1):
         text = (line or "").strip()
@@ -498,7 +509,10 @@ def save_pvp_prizes(tournament_id: str, prize_lines: list[str]):
             "description": text,
         })
     if entries:
-        supabase.table("pvp_prizes").insert(entries).execute()
+        try:
+            supabase.table("pvp_prizes").insert(entries).execute()
+        except Exception as exc:
+            print("⚠️ PvP prizes insert failed:", exc)
 
 
 def upsert_pvp_tournament(data: dict, actor: str):
@@ -514,9 +528,13 @@ def upsert_pvp_tournament(data: dict, actor: str):
     if bracket_type not in {"SWISS", "ROUND_ROBIN", "SINGLE_ELIMINATION"}:
         return None, "Unsupported bracket type."
 
+    slug_value = data.get("slug")
+    if not slug_value:
+        slug_value = _slugify_tournament_name(name)
+
     payload = {
         "name": name,
-        "slug": data.get("slug") or _slugify_tournament_name(name),
+        "slug": slug_value,
         "description": (data.get("description") or "").strip(),
         "bracket_type": bracket_type,
         "status": data.get("status") or "DRAFT",
@@ -552,10 +570,23 @@ def upsert_pvp_tournament(data: dict, actor: str):
         else:
             payload["created_by"] = actor or None
             resp = supabase.table("pvp_tournaments").insert(payload).execute()
-            rows = getattr(resp, "data", None) or []
-            if not rows:
+            rows = getattr(resp, "data", None)
+            saved_id = None
+            if rows and isinstance(rows, list) and rows:
+                saved_id = rows[0].get("id")
+            if not saved_id:
+                lookup = _supabase_execute(
+                    supabase.table("pvp_tournaments")
+                    .select("id")
+                    .eq("slug", slug_value)
+                    .order("created_at", desc=True)
+                    .limit(1),
+                    [],
+                )
+                if lookup:
+                    saved_id = lookup[0]["id"]
+            if not saved_id:
                 return None, "Failed to create tournament."
-            saved_id = rows[0]["id"]
     except Exception as exc:
         print("⚠️ PvP tournament save failed:", exc)
         return None, "Unable to save tournament."
@@ -1826,6 +1857,9 @@ def admin_leagues_pvp():
             saved_id, error = upsert_pvp_tournament(form_data, _current_actor())
             if error:
                 flash(error, "error")
+                error_detail = getattr(g, "supabase_last_error", "")
+                if error_detail:
+                    flash(error_detail, "error")
                 selected_id = form_data.get("tournament_id", "")
             else:
                 flash("Tournament saved.", "success")
