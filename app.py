@@ -200,6 +200,17 @@ def _trainer_uuid_from_name(trainer_name: str) -> str:
     return str(uuid.uuid5(uuid.NAMESPACE_URL, f"trainer:{cleaned}"))
 
 
+def _ensure_uuid(value: str | None, fallback_name: str | None = None) -> str | None:
+    if value:
+        try:
+            return str(uuid.UUID(str(value)))
+        except Exception:
+            pass
+    if fallback_name:
+        return _trainer_uuid_from_name(fallback_name)
+    return None
+
+
 def _supabase_execute(query, fallback=None):
     """Execute a Supabase query and swallow errors with logging."""
     if not supabase:
@@ -568,7 +579,7 @@ def upsert_pvp_tournament(data: dict, actor: str):
             supabase.table("pvp_tournaments").update(payload).eq("id", tournament_id).execute()
             saved_id = tournament_id
         else:
-            payload["created_by"] = actor or None
+            payload["created_by"] = _ensure_uuid(data.get("created_by"), actor)
             resp = supabase.table("pvp_tournaments").insert(payload).execute()
             rows = getattr(resp, "data", None)
             saved_id = None
