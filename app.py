@@ -454,7 +454,10 @@ def save_pvp_team(registration_id: str, team_slots: list[dict]):
         return False, "Please provide at least one Pokemon."
 
     try:
-        supabase.table("pvp_teams").insert(entries).execute()
+        supabase.table("pvp_teams").upsert(
+            entries,
+            on_conflict="registration_id,pokemon_slot"
+        ).execute()
         supabase.table("pvp_registrations").update({
             "team_locked_at": datetime.utcnow().isoformat(),
         }).eq("id", registration_id).execute()

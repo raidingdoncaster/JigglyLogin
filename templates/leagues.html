@@ -80,66 +80,99 @@
   {% for mode in league_modes %}
     {% if mode.key == "pvp" %}
       <section class="leagues-section" data-section="{{ mode.key }}" id="leagues-tabpanel-{{ mode.key }}" role="tabpanel" aria-labelledby="leagues-tab-{{ mode.key }}" aria-hidden="true" hidden>
-        <div class="under-construction-banner">
-          Gyms are under construction.
-        </div>
-        <div class="mode-panel">
-          <header class="mode-header">
-            <h2>{{ mode.title }}</h2>
-            <p>{{ mode.summary }}</p>
-          </header>
-
-          {% if pvp_tournaments %}
-            <form method="get" action="{{ url_for('leagues') }}" class="pvp-switcher">
-              <label for="pvp-selector">Active tournaments</label>
-              <input type="hidden" name="tab" value="pvp">
-              <select id="pvp-selector" name="pvp_id" onchange="this.form.submit()">
-                {% for t in pvp_tournaments %}
-                  <option value="{{ t.id }}" {% if t.id == pvp_selected_id %}selected{% endif %}>
-                    {{ t.name }} ({{ t.status|title }})
-                  </option>
-                {% endfor %}
-              </select>
-            </form>
-          {% endif %}
+        <div class="pvp-pane">
+          <div class="under-construction-banner under-construction-banner--pvp">
+            Gyms are under construction.
+          </div>
+          <div class="pvp-toolbar">
+            <div class="pvp-toolbar__meta">
+              <h2>Player vs Player</h2>
+              <p>Compete in live brackets, track your rivals, and revisit legendary showdowns.</p>
+            </div>
+            {% if pvp_tournaments %}
+              <form method="get" action="{{ url_for('leagues') }}" class="pvp-toolbar__switcher">
+                <input type="hidden" name="tab" value="pvp">
+                <label for="pvp-selector" class="sr-only">Select tournament</label>
+                <select id="pvp-selector" name="pvp_id" onchange="this.form.submit()">
+                  {% for t in pvp_tournaments %}
+                    <option value="{{ t.id }}" {% if t.id == pvp_selected_id %}selected{% endif %}>
+                      {{ t.name }} • {{ t.status|replace('_', ' ')|title }}
+                    </option>
+                  {% endfor %}
+                </select>
+              </form>
+            {% endif %}
+          </div>
 
           {% set tournament = pvp_selected.tournament if pvp_selected else None %}
-          {% if not tournament %}
-            <p>No PvP tournaments are live right now. Check back soon!</p>
-          {% else %}
-            <div class="pvp-header">
-              <div>
-                <h3>{{ tournament.name }}</h3>
-                <p class="pvp-status-line">
-                  Status: <strong>{{ tournament.status|replace('_', ' ')|title }}</strong>
-                  {% if tournament.start_at %}
-                    · Starts {{ tournament.start_at.strftime('%d %b %Y %H:%M') }} UTC
-                  {% endif %}
-                </p>
-                {% if tournament.location_text %}
-                  <p class="pvp-location">{{ tournament.location_text }}</p>
-                {% endif %}
-                {% if tournament.description %}
-                  <p class="pvp-description">{{ tournament.description }}</p>
-                {% endif %}
-              </div>
-              <div class="pvp-actions">
-                {% if pvp_registration %}
-                  <span class="badge badge--success">Registered</span>
-                  <a class="btn btn-secondary" href="{{ url_for('leagues_pvp_team', tournament_id=tournament.id) }}">Edit Team</a>
-                {% elif tournament.status == "REGISTRATION" %}
-                  <a class="btn" href="{{ url_for('leagues_pvp_join', tournament_id=tournament.id) }}">Join Tournament</a>
-                {% else %}
-                  <span class="badge">Registration Closed</span>
-                {% endif %}
-              </div>
-            </div>
 
-            <div class="mode-grid">
-              <div class="mode-card">
-                <h3>Rules Snapshot</h3>
+          {% if not tournament %}
+            <div class="pvp-empty-state">
+              <h3>No live tournaments right now</h3>
+              <p>We’ll announce the next showdown here. Keep an eye out for new brackets and special formats soon.</p>
+            </div>
+          {% else %}
+            <article class="pvp-hero">
+              <div class="pvp-hero__gradient"></div>
+              <div class="pvp-hero__content">
+                <div class="pvp-hero__left">
+                  <div class="pvp-hero__eyebrow">Featured Tournament</div>
+                  <h3>{{ tournament.name }}</h3>
+                  <div class="pvp-hero__tags">
+                    <span class="pvp-chip pvp-chip--status">{{ tournament.status|replace('_', ' ')|title }}</span>
+                    <span class="pvp-chip">{{ tournament.bracket_type|replace('_', ' ')|title }}</span>
+                    {% if tournament.location_text %}
+                      <span class="pvp-chip pvp-chip--ghost">{{ tournament.location_text }}</span>
+                    {% endif %}
+                  </div>
+                  {% if tournament.description %}
+                    <p class="pvp-hero__description">{{ tournament.description }}</p>
+                  {% endif %}
+
+                  <dl class="pvp-hero__facts">
+                    {% if tournament.start_at %}
+                      <div>
+                        <dt>Kick-off</dt>
+                        <dd>{{ tournament.start_at.strftime('%d %b %Y %H:%M') }} UTC</dd>
+                      </div>
+                    {% endif %}
+                    {% if tournament.registration_close_at %}
+                      <div>
+                        <dt>Registration closes</dt>
+                        <dd>{{ tournament.registration_close_at.strftime('%d %b %Y %H:%M') }} UTC</dd>
+                      </div>
+                    {% endif %}
+                    <div>
+                      <dt>Registered trainers</dt>
+                      <dd>{{ pvp_selected.registrations|length }}</dd>
+                    </div>
+                  </dl>
+                </div>
+                <div class="pvp-hero__right">
+                  <div class="pvp-hero__cta">
+                    {% if pvp_registration %}
+                      <span class="pvp-chip pvp-chip--success">You’re on the roster</span>
+                      <a class="btn btn-secondary" href="{{ url_for('leagues_pvp_team', tournament_id=tournament.id) }}">Edit Team</a>
+                    {% elif tournament.status == "REGISTRATION" %}
+                      <a class="btn btn-primary" href="{{ url_for('leagues_pvp_join', tournament_id=tournament.id) }}">Join Tournament</a>
+                      <p class="pvp-hero__note">Spots are limited — secure your slot while registration is open.</p>
+                    {% else %}
+                      <span class="pvp-chip pvp-chip--ghost">Registration Closed</span>
+                      <p class="pvp-hero__note">Check the roster and cheer for your favourites while matches play out.</p>
+                    {% endif %}
+                  </div>
+                </div>
+              </div>
+            </article>
+
+            <div class="pvp-info-grid">
+              <section class="pvp-card">
+                <header>
+                  <h4>Rules & Format</h4>
+                  <span class="pvp-card__tag">Meta briefing</span>
+                </header>
                 {% if pvp_selected.rules %}
-                  <ul>
+                  <ul class="pvp-list">
                     {% for rule in pvp_selected.rules %}
                       <li>
                         {% if rule.title %}
@@ -150,105 +183,142 @@
                     {% endfor %}
                   </ul>
                 {% else %}
-                  <p>Rules for this tournament will appear here once the admin team posts them.</p>
+                  <p>Rules will appear here as soon as the strategic briefing is finalised.</p>
                 {% endif %}
-              </div>
-              <div class="mode-card">
-                <h3>Prizes</h3>
+              </section>
+
+              <section class="pvp-card">
+                <header>
+                  <h4>Rewards</h4>
+                  <span class="pvp-card__tag pvp-card__tag--gold">What’s at stake</span>
+                </header>
                 {% if pvp_selected.prizes %}
-                  <ul>
+                  <ol class="pvp-prize-list">
                     {% for prize in pvp_selected.prizes %}
-                      <li><strong>Place {{ prize.placement }}:</strong> {{ prize.description }}</li>
+                      <li>
+                        <span class="placement">#{{ prize.placement }}</span>
+                        <span class="prize-copy">{{ prize.description }}</span>
+                      </li>
                     {% endfor %}
-                  </ul>
+                  </ol>
                 {% elif tournament.prize_summary %}
                   <p>{{ tournament.prize_summary }}</p>
                 {% else %}
-                  <p>Prizes are being finalised. Keep training!</p>
+                  <p>The prize pool is still being assembled — expect merch, stamps, and bragging rights.</p>
                 {% endif %}
-              </div>
+              </section>
             </div>
 
-            <div class="pvp-layout">
-              <section class="mode-card">
-                <h3>Registered Trainers</h3>
+            <div class="pvp-columns">
+              <section class="pvp-card">
+                <header>
+                  <h4>Registered Trainers</h4>
+                  <span class="pvp-card__tag">{{ pvp_selected.registrations|length }} on deck</span>
+                </header>
                 {% if pvp_selected.registrations %}
                   <ul class="pvp-roster">
                     {% for reg in pvp_selected.registrations %}
                       <li>
-                        <div>
+                        <div class="pvp-roster__identity">
                           <strong>{{ reg.notes or "Trainer" }}</strong>
                           {% if reg.status %}
                             <span class="badge badge--light">{{ reg.status|title }}</span>
                           {% endif %}
                         </div>
-                        {% if reg.teams %}
-                          <span class="team-count">{{ reg.teams|length }} Pokémon locked</span>
-                        {% endif %}
+                        <div class="roster-actions">
+                          {% if reg.teams %}
+                            <span class="team-count">{{ reg.teams|length }} Pokémon locked</span>
+                            <button type="button"
+                                    class="btn-small view-team"
+                                    data-trainer="{{ reg.notes or 'Trainer' }}"
+                                    data-team="{{ reg.teams|tojson|e }}">
+                              View Team
+                            </button>
+                          {% else %}
+                            <span class="team-count is-empty">Team pending</span>
+                          {% endif %}
+                        </div>
                       </li>
                     {% endfor %}
                   </ul>
                 {% else %}
-                  <p>No trainers have registered yet. Be the first!</p>
+                  <p class="pvp-empty-card">No trainers have registered yet. Claim the first slot!</p>
                 {% endif %}
               </section>
 
-              <section class="mode-card">
-                <h3>Bracket Overview</h3>
+              <section class="pvp-card">
+                <header>
+                  <h4>Bracket Pulse</h4>
+                  <span class="pvp-card__tag">Round progression</span>
+                </header>
                 {% if pvp_selected.matches %}
                   <ul class="pvp-bracket">
                     {% for match in pvp_selected.matches %}
                       <li>
-                        Round {{ match.round_no }} · {{ match.status|replace('_', ' ')|title }}
+                        <span class="round-label">Round {{ match.round_no }}</span>
+                        <span class="round-status">{{ match.status|replace('_', ' ')|title }}</span>
                       </li>
                     {% endfor %}
                   </ul>
                 {% else %}
-                  <p>The bracket will appear here once the tournament begins.</p>
+                  <p class="pvp-empty-card">The bracket unlocks once the admin signals the start.</p>
                 {% endif %}
               </section>
 
-              <section class="mode-card">
-                <h3>Leaderboard</h3>
+              <section class="pvp-card">
+                <header>
+                  <h4>Leaderboard</h4>
+                  <span class="pvp-card__tag">Live standings</span>
+                </header>
                 {% if pvp_selected.leaderboard %}
                   <ol class="pvp-leaderboard">
                     {% for row in pvp_selected.leaderboard %}
                       <li>
-                        <span>{{ row.rank or loop.index }}.</span>
-                        <span>{{ row.registration_id[:8] }} · {{ row.points }} pts</span>
+                        <span class="pvp-rank-icon">{{ row.rank or loop.index }}</span>
+                        <div>
+                          <strong>{{ row.registration_id[:8] }}</strong>
+                          <p>{{ row.points or 0 }} pts · {{ row.wins or 0 }}W / {{ row.losses or 0 }}L{% if row.draws %} / {{ row.draws }}D{% endif %}</p>
+                        </div>
                       </li>
                     {% endfor %}
                   </ol>
                 {% else %}
-                  <p>Leaderboard standings appear once matches have been reported.</p>
+                  <p class="pvp-empty-card">Leaderboard standings appear once matches are reported.</p>
                 {% endif %}
               </section>
             </div>
           {% endif %}
 
-          {% if pvp_archive %}
-            <div class="mode-card mode-card--wide">
-              <h3>Previous Tournaments</h3>
-              <ul class="pvp-archive">
-                {% for history in pvp_archive %}
-                  <li>
-                    <strong>{{ history.name }}</strong>
-                    <span>{{ history.bracket_type|replace('_', ' ')|title }}</span>
-                    <span>Status: {{ history.status|title }}</span>
-                  </li>
-                {% endfor %}
-              </ul>
-            </div>
-          {% endif %}
+          <div class="pvp-bottom-grid">
+            {% if pvp_archive %}
+              <section class="pvp-card">
+                <header>
+                  <h4>Previous Tournaments</h4>
+                  <span class="pvp-card__tag">Hall of fame preview</span>
+                </header>
+                <ul class="pvp-archive">
+                  {% for history in pvp_archive %}
+                    <li>
+                      <div>
+                        <strong>{{ history.name }}</strong>
+                        <span class="archive-meta">{{ history.bracket_type|replace('_', ' ')|title }}</span>
+                      </div>
+                      <span class="archive-status">{{ history.status|title }}</span>
+                    </li>
+                  {% endfor %}
+                </ul>
+              </section>
+            {% endif %}
 
-          <div class="mode-card mode-card--wide">
-            <h3>Season Playbook</h3>
-            <p>We are building tools to open a PvP league alongside meetups, complete with cup rules, pairings, and live scoring. Expect a Hall of Fame board once we have a few seasons under our belt.</p>
-            <ul class="playbook-highlights">
-              <li>Season timeline with rounds and match checkpoints.</li>
-              <li>Live brackets that refresh as scores are entered on-site.</li>
-              <li>Rulesets and featured Pokemon surfaced for every cup.</li>
-            </ul>
+            <section class="pvp-card pvp-card--gradient">
+              <h4>Season Playbook</h4>
+              <p>We’re building tooling so admins can launch pop-up leagues at meetups, auto-generate pairings, and spotlight champions with a hall of fame.</p>
+              <ul class="playbook-highlights">
+                <li>Season timeline with rounds and match checkpoints.</li>
+                <li>Live brackets that refresh as scores are entered on-site.</li>
+                <li>Rulesets and featured Pokémon surfaced for every cup.</li>
+              </ul>
+            </section>
           </div>
         </div>
       </section>
@@ -338,6 +408,20 @@
 
 </div>
 
+<div class="team-modal" id="team-modal" hidden aria-hidden="true">
+  <div class="team-modal-backdrop"></div>
+  <div class="team-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="team-modal-title">
+    <header class="team-modal-header">
+      <h2 id="team-modal-title">Trainer Team</h2>
+      <button type="button" class="team-modal-close" aria-label="Close team view">✕</button>
+    </header>
+    <p class="team-modal-subtitle"></p>
+    <div class="team-modal-body">
+      <ol class="team-modal-list"></ol>
+    </div>
+  </div>
+</div>
+
 <nav class="leagues-footer-nav" role="tablist" aria-label="Leagues navigation">
   <button type="button" class="nav-button is-active" data-section-target="profile" id="leagues-tab-profile" role="tab" aria-controls="leagues-tabpanel-profile" aria-selected="true" tabindex="0">
     Leagues Profile
@@ -402,6 +486,61 @@
       expandButton.textContent = isOpen ? "Close Full Profile" : "Open Full Profile";
     });
   }
+
+  const modal = document.getElementById("team-modal");
+  const modalList = modal?.querySelector(".team-modal-list");
+  const modalSubtitle = modal?.querySelector(".team-modal-subtitle");
+  const closeModal = () => {
+    if (!modal) return;
+    modal.setAttribute("hidden", "hidden");
+    modal.setAttribute("aria-hidden", "true");
+    modal.classList.remove("is-open");
+  };
+  modal?.querySelector(".team-modal-close")?.addEventListener("click", closeModal);
+  modal?.querySelector(".team-modal-backdrop")?.addEventListener("click", closeModal);
+
+  document.addEventListener("keydown", (evt) => {
+    if (evt.key === "Escape" && modal?.classList.contains("is-open")) {
+      closeModal();
+    }
+  });
+
+  document.querySelectorAll(".view-team").forEach((button) => {
+    button.addEventListener("click", () => {
+      if (!modal || !modalList || !modalSubtitle) return;
+      const trainer = button.getAttribute("data-trainer") || "Trainer";
+      const rawTeam = button.getAttribute("data-team") || "[]";
+      let team = [];
+      try {
+        team = JSON.parse(rawTeam);
+      } catch (err) {
+        console.error("Failed to parse team payload", err);
+      }
+
+      modalSubtitle.textContent = `${trainer}'s lineup`;
+      modalList.innerHTML = "";
+      if (!team || !team.length) {
+        modalList.innerHTML = "<li>No team submitted yet.</li>";
+      } else {
+        team.forEach((slot, index) => {
+          const item = document.createElement("li");
+          const name = slot.species_name || "Mystery Pokémon";
+          const form = slot.species_form ? ` (${slot.species_form})` : "";
+          const notes = slot.moves?.notes || "";
+          item.innerHTML = `<span class="team-slot-number">${index + 1}.</span>
+            <div class="team-slot-content">
+              <strong>${name}${form}</strong>
+              ${notes ? `<p>${notes}</p>` : "" }
+            </div>`;
+          modalList.appendChild(item);
+        });
+      }
+
+      modal.removeAttribute("hidden");
+      modal.setAttribute("aria-hidden", "false");
+      modal.classList.add("is-open");
+    });
+  });
 
   showSection("profile");
 })();
@@ -564,6 +703,12 @@
   border:1px solid #facc15;
   box-shadow:0 8px 16px rgba(250,204,21,0.22);
 }
+.under-construction-banner--pvp {
+  background:linear-gradient(135deg,#f472b6,#facc15);
+  color:#fff;
+  border:none;
+  box-shadow:0 12px 24px rgba(244,114,182,0.25);
+}
 .mode-header h2 {
   margin:0 0 6px;
 }
@@ -592,48 +737,258 @@
 .mode-card--wide {
   margin-top:18px;
 }
-.pvp-switcher {
+.pvp-pane {
   display:flex;
-  align-items:center;
-  gap:12px;
-  margin-bottom:16px;
+  flex-direction:column;
+  gap:18px;
 }
-.pvp-switcher select {
-  padding:8px 12px;
-  border-radius:10px;
-  border:1px solid #d0d7e6;
-  background:#fff;
-  font-weight:600;
-}
-.pvp-header {
+.pvp-toolbar {
   display:flex;
   justify-content:space-between;
-  align-items:flex-start;
-  gap:20px;
-  margin-bottom:18px;
+  gap:16px;
+  align-items:flex-end;
 }
-.pvp-status-line {
-  margin:6px 0;
+.pvp-toolbar__meta h2 {
+  margin:0 0 6px;
+}
+.pvp-toolbar__meta p {
+  margin:0;
   color:#475569;
-  font-size:0.9em;
 }
-.pvp-location {
-  margin:4px 0;
+.pvp-toolbar__switcher select {
+  padding:10px 14px;
+  border-radius:12px;
+  border:1px solid #cbd5f5;
   font-weight:600;
-  color:#1f2937;
+  background:#fff;
+  box-shadow:0 6px 16px rgba(15,23,42,0.08);
 }
-.pvp-description {
-  margin:6px 0 0;
-  color:#475569;
+.pvp-hero {
+  position:relative;
+  overflow:hidden;
+  border-radius:20px;
+  color:#fff;
 }
-.pvp-actions {
+.pvp-hero__gradient {
+  position:absolute;
+  inset:0;
+  background:linear-gradient(135deg,#1e3a8a,#6366f1 55%,#22d3ee);
+  opacity:0.95;
+}
+.pvp-hero__content {
+  position:relative;
+  z-index:1;
+  display:flex;
+  justify-content:space-between;
+  gap:24px;
+  padding:28px;
+}
+.pvp-hero__left {
+  max-width:70%;
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+}
+.pvp-hero__eyebrow {
+  text-transform:uppercase;
+  font-size:0.75em;
+  letter-spacing:0.08em;
+  opacity:0.75;
+}
+.pvp-hero__tags {
   display:flex;
   gap:10px;
+  flex-wrap:wrap;
+}
+.pvp-chip {
+  display:inline-flex;
   align-items:center;
+  padding:6px 12px;
+  border-radius:999px;
+  background:rgba(255,255,255,0.2);
+  font-weight:600;
+  font-size:0.8em;
+}
+.pvp-chip--status {
+  background:rgba(236,72,153,0.25);
+}
+.pvp-chip--ghost {
+  background:rgba(15,23,42,0.22);
+}
+.pvp-chip--success {
+  background:rgba(34,197,94,0.3);
+}
+.pvp-hero__description {
+  margin:0;
+  font-size:1em;
+  line-height:1.5;
+  color:rgba(255,255,255,0.92);
+}
+.pvp-hero__facts {
+  display:flex;
+  gap:24px;
+  flex-wrap:wrap;
+  margin:0;
+}
+.pvp-hero__facts div {
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+}
+.pvp-hero__facts dt {
+  font-size:0.75em;
+  letter-spacing:0.08em;
+  text-transform:uppercase;
+  opacity:0.75;
+}
+.pvp-hero__facts dd {
+  margin:0;
+  font-weight:600;
+}
+.pvp-hero__right {
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  align-items:flex-end;
+  min-width:200px;
+}
+.pvp-hero__cta {
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  align-items:flex-end;
+}
+.pvp-hero__note {
+  margin:0;
+  font-size:0.85em;
+  color:rgba(255,255,255,0.75);
+  text-align:right;
+}
+.btn-primary,
+.btn-secondary {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:10px 18px;
+  border-radius:12px;
+  font-weight:600;
+  text-decoration:none;
+}
+.btn-primary {
+  background:#facc15;
+  color:#0f172a;
+  box-shadow:0 12px 24px rgba(250,204,21,0.35);
 }
 .btn-secondary {
   background:#1f2937;
   color:#fff;
+  box-shadow:0 10px 20px rgba(15,23,42,0.3);
+}
+.pvp-info-grid {
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:16px;
+}
+.pvp-card {
+  background:#fff;
+  border-radius:18px;
+  padding:20px;
+  box-shadow:0 12px 28px rgba(15,23,42,0.12);
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+.pvp-card header {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:10px;
+}
+.pvp-card__tag {
+  font-size:0.75em;
+  text-transform:uppercase;
+  letter-spacing:0.08em;
+  background:#e0e7ff;
+  color:#312e81;
+  padding:4px 10px;
+  border-radius:999px;
+  font-weight:600;
+}
+.pvp-card__tag--gold {
+  background:#fef3c7;
+  color:#b45309;
+}
+.pvp-list,
+.pvp-prize-list {
+  margin:0;
+  padding-left:18px;
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+.pvp-prize-list {
+  list-style:none;
+  padding:0;
+}
+.pvp-prize-list li {
+  display:flex;
+  gap:12px;
+  align-items:center;
+}
+.pvp-prize-list .placement {
+  width:32px;
+  height:32px;
+  border-radius:12px;
+  background:#1d4ed8;
+  color:#fff;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-weight:700;
+}
+.pvp-prize-list .prize-copy {
+  font-weight:600;
+  color:#1f2937;
+}
+.pvp-columns {
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:16px;
+}
+.pvp-roster {
+  list-style:none;
+  padding:0;
+  margin:0;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+.pvp-roster li {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:10px 12px;
+  border-radius:12px;
+  background:#f8fafc;
+  box-shadow:inset 0 0 0 1px rgba(148,163,184,0.20);
+}
+.pvp-roster__identity {
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+}
+.roster-actions {
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+.team-count {
+  font-size:0.8em;
+  color:#3a8dde;
+  font-weight:600;
+}
+.team-count.is-empty {
+  color:#94a3b8;
 }
 .btn-small {
   padding:6px 10px;
@@ -662,34 +1017,6 @@
   background:#cbd5f5;
   color:#1f2937;
 }
-.pvp-layout {
-  display:grid;
-  grid-template-columns:repeat(3,minmax(0,1fr));
-  gap:16px;
-  margin-top:18px;
-}
-.pvp-roster {
-  list-style:none;
-  padding:0;
-  margin:0;
-  display:flex;
-  flex-direction:column;
-  gap:10px;
-}
-.pvp-roster li {
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  padding:10px 12px;
-  border-radius:12px;
-  background:#fff;
-  box-shadow:0 6px 14px rgba(15,23,42,0.08);
-}
-.team-count {
-  font-size:0.8em;
-  color:#3a8dde;
-  font-weight:600;
-}
 .pvp-bracket,
 .pvp-leaderboard,
 .pvp-archive {
@@ -700,14 +1027,99 @@
   flex-direction:column;
   gap:8px;
 }
+.pvp-bracket li,
+.pvp-leaderboard li,
 .pvp-archive li {
-  display:flex;
-  flex-direction:column;
-  gap:2px;
-  padding:10px 12px;
+  background:#f8fafc;
   border-radius:12px;
-  background:#fff;
-  box-shadow:0 6px 14px rgba(15,23,42,0.08);
+  padding:12px;
+  box-shadow:inset 0 0 0 1px rgba(148,163,184,0.16);
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:12px;
+}
+.round-label {
+  font-weight:700;
+  color:#1d4ed8;
+}
+.round-status {
+  font-size:0.85em;
+  color:#475569;
+}
+.pvp-leaderboard li div p {
+  margin:2px 0 0;
+  font-size:0.8em;
+  color:#64748b;
+}
+.pvp-rank-icon {
+  width:36px;
+  height:36px;
+  border-radius:12px;
+  background:#1e3a8a;
+  color:#fff;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-weight:700;
+}
+.pvp-archive li {
+  align-items:flex-start;
+  flex-direction:column;
+  gap:6px;
+}
+.archive-meta {
+  font-size:0.85em;
+  color:#475569;
+}
+.archive-status {
+  align-self:flex-end;
+  font-size:0.8em;
+  color:#0f172a;
+  font-weight:600;
+}
+.pvp-empty-card {
+  margin:0;
+  color:#64748b;
+  font-style:italic;
+}
+.pvp-bottom-grid {
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:16px;
+}
+.pvp-card--gradient {
+  background:linear-gradient(135deg,#f472b6,#7c3aed);
+  color:#fff;
+  box-shadow:0 16px 32px rgba(124,58,237,0.35);
+}
+.pvp-card--gradient ul li {
+  color:rgba(255,255,255,0.92);
+}
+.pvp-empty-state {
+  background:#0f172a;
+  color:#fff;
+  border-radius:18px;
+  padding:28px;
+  text-align:center;
+  box-shadow:0 18px 34px rgba(15,23,42,0.4);
+}
+.pvp-empty-state h3 {
+  margin:0 0 8px;
+}
+.pvp-empty-state p {
+  margin:0;
+  color:rgba(255,255,255,0.84);
+}
+.sr-only {
+  position:absolute;
+  width:1px;
+  height:1px;
+  padding:0;
+  margin:-1px;
+  overflow:hidden;
+  clip:rect(0,0,0,0);
+  border:0;
 }
 .placeholder-scorecard {
   margin-top:14px;
@@ -821,6 +1233,76 @@
   outline:3px solid #93c5fd;
   outline-offset:2px;
 }
+.team-modal {
+  position:fixed;
+  inset:0;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  z-index:50;
+}
+.team-modal[hidden] {
+  display:none;
+}
+.team-modal-backdrop {
+  position:absolute;
+  inset:0;
+  background:rgba(15,23,42,0.6);
+  backdrop-filter:blur(6px);
+}
+.team-modal-dialog {
+  position:relative;
+  background:#fff;
+  border-radius:18px;
+  padding:22px;
+  width:min(520px, 92vw);
+  max-height:80vh;
+  overflow:auto;
+  box-shadow:0 20px 40px rgba(15,23,42,0.2);
+}
+.team-modal-header {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:10px;
+}
+.team-modal-close {
+  border:none;
+  background:transparent;
+  font-size:1.2em;
+  cursor:pointer;
+  color:#64748b;
+}
+.team-modal-subtitle {
+  margin:0 0 12px;
+  color:#475569;
+  font-weight:600;
+}
+.team-modal-list {
+  list-style:none;
+  padding:0;
+  margin:0;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+.team-modal-list li {
+  display:flex;
+  gap:12px;
+  background:#f8fafc;
+  border-radius:12px;
+  padding:12px;
+  box-shadow:inset 0 0 0 1px rgba(148,163,184,0.2);
+}
+.team-slot-number {
+  font-weight:700;
+  color:#3a8dde;
+}
+.team-slot-content p {
+  margin:4px 0 0;
+  color:#475569;
+  font-size:0.9em;
+}
 
 @media (max-width: 960px) {
   .league-profile-stats {
@@ -830,7 +1312,9 @@
   .placeholder-scorecard,
   .activity-grid,
   .roadmap-steps,
-  .pvp-layout {
+  .pvp-info-grid,
+  .pvp-columns,
+  .pvp-bottom-grid {
     grid-template-columns:repeat(1,minmax(0,1fr));
   }
 }
@@ -846,17 +1330,27 @@
   .league-profile-stats {
     grid-template-columns:repeat(1,minmax(0,1fr));
   }
-  .pvp-header {
-    flex-direction:column;
-  }
-  .pvp-actions {
-    width:100%;
-    justify-content:flex-start;
-    flex-wrap:wrap;
-  }
-  .pvp-switcher {
+  .pvp-toolbar {
     flex-direction:column;
     align-items:flex-start;
+  }
+  .pvp-toolbar__switcher select {
+    width:100%;
+  }
+  .pvp-hero__content {
+    flex-direction:column;
+  }
+  .pvp-hero__left {
+    max-width:100%;
+  }
+  .pvp-hero__right {
+    align-items:flex-start;
+  }
+  .pvp-card {
+    padding:18px;
+  }
+  .pvp-bottom-grid {
+    grid-template-columns:repeat(1,minmax(0,1fr));
   }
   .nav-button {
     font-size:0.85em;
