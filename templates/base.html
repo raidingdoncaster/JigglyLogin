@@ -60,10 +60,33 @@
       display:flex; align-items:center; justify-content:space-between;
       color:#fff;
     }
+    .header-left{display:flex;align-items:center;gap:12px;}
     .logo{
       width:80px; height:36px;
       background:url('/static/logo.png') center/cover no-repeat;
       flex:0 0 auto;
+    }
+    .nav-back-btn{
+      display:inline-flex;align-items:center;gap:8px;
+      padding:8px 16px;
+      border-radius:999px;
+      background:rgba(255,255,255,0.22);
+      color:#fff;
+      text-decoration:none;
+      font-weight:600;
+      box-shadow:0 8px 20px rgba(0,0,0,0.18);
+      transition:transform .2s ease, box-shadow .2s ease, background .2s ease;
+      white-space:nowrap;
+    }
+    .nav-back-btn:hover{
+      transform:translateY(-1px);
+      background:rgba(255,255,255,0.3);
+      box-shadow:0 12px 26px rgba(0,0,0,0.22);
+    }
+    .nav-back-icon{font-size:1rem;line-height:1;}
+    @media(max-width:520px){
+      .nav-back-label{display:none;}
+      .nav-back-btn{padding:8px 12px;}
     }
 
     /* --- NAV BAR --- */
@@ -363,7 +386,17 @@
 
   <!-- Header -->
   <header>
-    <div class="logo"></div>
+    <div class="header-left">
+      <div class="logo"></div>
+      {% if header_back_action %}
+        <a href="{{ header_back_action.href }}"
+           class="nav-back-btn"
+           {% if header_back_action.external %}target="_blank" rel="noopener"{% endif %}>
+          <span class="nav-back-icon">⬅</span>
+          <span class="nav-back-label">{{ header_back_action.label or "Back" }}</span>
+        </a>
+      {% endif %}
+    </div>
 
     <nav class="nav-icons">
       {% if session.get('trainer') %}

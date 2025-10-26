@@ -6,10 +6,7 @@
 
 {% block content %}
 <div class="about-shell">
-  <header class="about-header">
-    <a href="{{ url_for('home') }}" class="about-back">⬅ Back to RDAB</a>
-    <h1>About RDAB</h1>
-  </header>
+  <h1 class="about-heading">About RDAB</h1>
 
   <div class="about-frame">
     <iframe
@@ -34,33 +31,7 @@
   padding:0 clamp(12px,4vw,24px) 24px;
   color:#0f172a;
 }
-.about-header{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:12px;
-  flex-wrap:wrap;
-}
-.about-header h1{
-  margin:0;
-  font-size:1.6rem;
-}
-.about-back{
-  display:inline-flex;
-  align-items:center;
-  gap:8px;
-  padding:8px 14px;
-  border-radius:999px;
-  background:#1d4ed8;
-  color:#fff;
-  text-decoration:none;
-  font-weight:600;
-  box-shadow:0 10px 24px rgba(29,78,216,0.28);
-}
-.about-back:hover{
-  transform:translateY(-1px);
-  box-shadow:0 12px 26px rgba(29,78,216,0.32);
-}
+.about-heading{margin:0;font-size:1.6rem;text-align:left;}
 .about-frame{
   background:#fff;
   border-radius:22px;
@@ -99,13 +70,6 @@
 @media(max-width:600px){
   .about-shell{
     padding:0 14px 20px;
-  }
-  .about-header{
-    flex-direction:column;
-    align-items:flex-start;
-  }
-  .about-back{
-    order:2;
   }
   .about-frame iframe{
     height:min(90vh,800px);

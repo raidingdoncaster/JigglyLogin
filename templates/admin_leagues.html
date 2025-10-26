@@ -17,6 +17,10 @@
   </div>
 </div>
 
+<div class="leagues-admin-links">
+  <a href="{{ url_for('admin_leagues_pvp') }}" class="btn">Open PvP Tournament Manager</a>
+</div>
+
 <div class="leagues-tabs">
   {% for mode in league_modes %}
     <button class="leagues-tab {% if loop.first %}is-active{% endif %}" data-tab="{{ mode.key }}">{{ mode.title }}</button>
@@ -165,6 +169,12 @@
   justify-content:space-between;
   gap:24px;
   margin-bottom:24px;
+}
+.leagues-admin-links {
+  margin-bottom:20px;
+}
+.leagues-admin-links .btn {
+  padding:10px 18px;
 }
 .leagues-header h1 {
   margin:0 0 8px;

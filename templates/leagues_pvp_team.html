@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+
+{% block page_settings %}
+  {% set container_class = 'is-cozy' %}
+{% endblock %}
+
+{% block content %}
+
+<div class="pvp-team-header">
+  <a href="{{ url_for('leagues', pvp_id=tournament.id) }}" class="back-link">← Back to Leagues</a>
+  <h1>{{ tournament.name }} · Team Registration</h1>
+  <p>Lock in up to six Pokémon for this tournament. You can edit until registration closes.</p>
+</div>
+
+<section class="pvp-team-info">
+  <div>
+    <h2>Rules Snapshot</h2>
+    {% if rules %}
+      <ul>
+        {% for rule in rules[:8] %}
+          <li>
+            {% if rule.title %}
+              <strong>{{ rule.title }}:</strong>
+            {% endif %}
+            {{ rule.body or "" }}
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p>Rules will appear here once the admins post them.</p>
+    {% endif %}
+  </div>
+  <div>
+    <h2>Prizes</h2>
+    {% if prizes %}
+      <ul>
+        {% for prize in prizes %}
+          <li><strong>Place {{ prize.placement }}:</strong> {{ prize.description }}</li>
+        {% endfor %}
+      </ul>
+    {% elif tournament.prize_summary %}
+      <p>{{ tournament.prize_summary }}</p>
+    {% else %}
+      <p>Prizes are being finalised. Keep training!</p>
+    {% endif %}
+  </div>
+</section>
+
+<form method="post" class="pvp-team-form">
+  <div class="team-grid">
+    {% for slot in team_slots %}
+      {% set idx = loop.index %}
+      <fieldset class="team-slot">
+        <legend>Pokémon {{ idx }}</legend>
+        <label>Species Name
+          <input type="text" name="pokemon_{{ idx }}" value="{{ slot.species_name }}" placeholder="e.g. Azumarill">
+        </label>
+        <label>Form / Variant
+          <input type="text" name="pokemon_form_{{ idx }}" value="{{ slot.species_form }}" placeholder="optional">
+        </label>
+        <label>Notes / Moves
+          <textarea name="pokemon_notes_{{ idx }}" rows="2" placeholder="Fast + Charged moves, or special notes">{{ slot.moves.notes if slot.moves else slot.notes or "" }}</textarea>
+        </label>
+      </fieldset>
+    {% endfor %}
+  </div>
+
+  <div class="form-actions">
+    <a class="btn-secondary" href="{{ url_for('leagues', pvp_id=tournament.id) }}">Cancel</a>
+    <button class="btn" type="submit">Save Team</button>
+  </div>
+</form>
+
+<style>
+.pvp-team-header {
+  margin-bottom:18px;
+}
+.pvp-team-info {
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:20px;
+  background:#fff;
+  border-radius:16px;
+  padding:22px;
+  box-shadow:0 12px 28px rgba(15,23,42,0.12);
+  margin-bottom:24px;
+}
+.pvp-team-info ul {
+  margin:12px 0 0;
+  padding-left:18px;
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+.pvp-team-form .team-grid {
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:16px;
+}
+.team-slot {
+  background:#fff;
+  border-radius:16px;
+  padding:16px;
+  box-shadow:0 12px 24px rgba(15,23,42,0.1);
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  min-height:230px;
+}
+.team-slot legend {
+  font-weight:700;
+  color:#3a8dde;
+  margin-bottom:4px;
+}
+.team-slot label {
+  font-weight:600;
+  color:#1f2937;
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+.team-slot input,
+.team-slot textarea {
+  padding:8px 10px;
+  border-radius:10px;
+  border:1px solid #d0d7e6;
+  font-size:0.95em;
+}
+.form-actions {
+  margin-top:22px;
+  display:flex;
+  gap:12px;
+}
+.btn-secondary {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:10px 16px;
+  border-radius:12px;
+  background:#e2e8f0;
+  color:#1f2937;
+  text-decoration:none;
+  font-weight:600;
+}
+.btn {
+  padding:10px 16px;
+}
+@media (max-width: 960px) {
+  .pvp-team-info {
+    grid-template-columns:repeat(1,minmax(0,1fr));
+  }
+  .pvp-team-form .team-grid {
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+}
+@media (max-width: 640px) {
+  .pvp-team-form .team-grid {
+    grid-template-columns:repeat(1,minmax(0,1fr));
+  }
+  .form-actions {
+    flex-direction:column;
+    align-items:stretch;
+  }
+}
+</style>
+
+{% endblock %}

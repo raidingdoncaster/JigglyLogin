@@ -1,0 +1,272 @@
+{% extends "base.html" %}
+
+{% block page_settings %}
+  {% set container_class = 'is-wide' %}
+{% endblock %}
+
+{% block content %}
+
+<div class="admin-header">
+  <h1>🏆 PvP Tournament Manager</h1>
+  <p>Create tournaments, manage registration, and control live brackets.</p>
+</div>
+
+<div class="pvp-admin-layout">
+  <section class="admin-card">
+    <h2>All Tournaments</h2>
+    <ul class="tournament-list">
+      {% for tourney in tournaments %}
+        <li>
+          <div>
+            <strong>{{ tourney.name }}</strong>
+            <span class="badge badge--light">{{ tourney.status|replace('_', ' ')|title }}</span>
+            <div class="meta">
+              {% if tourney.start_at %}
+                Starts {{ tourney.start_at.strftime('%d %b %Y %H:%M') }} UTC ·
+              {% endif %}
+              {{ tourney.bracket_type|replace('_', ' ')|title }}
+            </div>
+          </div>
+          <div class="actions">
+            <a class="btn-small" href="{{ url_for('admin_leagues_pvp', tournament_id=tourney.id) }}">Open</a>
+            <form method="post">
+              <input type="hidden" name="tournament_id" value="{{ tourney.id }}">
+              <input type="hidden" name="action" value="status">
+              <input type="hidden" name="status_value" value="REGISTRATION">
+              <button type="submit" class="btn-small">Open Registration</button>
+            </form>
+          </div>
+        </li>
+      {% endfor %}
+    </ul>
+  </section>
+
+  <section class="admin-card">
+    <h2>{% if selected %}Edit Tournament{% else %}Create Tournament{% endif %}</h2>
+    <form method="post" class="admin-form">
+      <input type="hidden" name="action" value="save">
+      <input type="hidden" name="tournament_id" value="{{ selected.tournament.id if selected }}">
+      <label>Tournament Name
+        <input type="text" name="name" value="{{ selected.tournament.name if selected }}" required>
+      </label>
+      <label>Description
+        <textarea name="description" rows="3" placeholder="Optional description">{{ selected.tournament.description if selected }}</textarea>
+      </label>
+      <label>Bracket Type
+        <select name="bracket_type">
+          {% set bracket = selected.tournament.bracket_type if selected else 'SWISS' %}
+          {% for key, label in [('SWISS','Swiss'),('ROUND_ROBIN','Round Robin'),('SINGLE_ELIMINATION','Single Elimination')] %}
+            <option value="{{ key }}" {% if bracket == key %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>Status
+        <select name="status">
+          {% set status = selected.tournament.status if selected else 'DRAFT' %}
+          {% for key in ['DRAFT','REGISTRATION','LIVE','COMPLETED','ARCHIVED'] %}
+            <option value="{{ key }}" {% if status == key %}selected{% endif %}>{{ key|replace('_',' ')|title }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>Meetup Info
+        <input type="text" name="location_text" value="{{ selected.tournament.location_text if selected }}" placeholder="City, venue, or meetup link">
+      </label>
+      <label>Meta Notes
+        <textarea name="meta_notes" rows="2" placeholder="Optional meta commentary">{{ selected.tournament.meta_notes if selected }}</textarea>
+      </label>
+      <label>Prize Summary
+        <textarea name="prize_summary" rows="2" placeholder="Headline prize">{{ selected.tournament.prize_summary if selected }}</textarea>
+      </label>
+      <div class="datetime-grid">
+        <label>Registration Opens
+          <input type="datetime-local" name="registration_open_at" value="{{ selected.tournament.registration_open_at.strftime('%Y-%m-%dT%H:%M') if selected and selected.tournament.registration_open_at }}">
+        </label>
+        <label>Registration Closes
+          <input type="datetime-local" name="registration_close_at" value="{{ selected.tournament.registration_close_at.strftime('%Y-%m-%dT%H:%M') if selected and selected.tournament.registration_close_at }}">
+        </label>
+        <label>Start Time
+          <input type="datetime-local" name="start_at" value="{{ selected.tournament.start_at.strftime('%Y-%m-%dT%H:%M') if selected and selected.tournament.start_at }}">
+        </label>
+      </div>
+      <label>Rules (one per line, prefix with “Title: detail” for headings)
+        <textarea name="rules_block" rows="6">{{ rules_text }}</textarea>
+      </label>
+      <label>Prizes (one per line, in placement order)
+        <textarea name="prizes_block" rows="4">{{ prizes_text }}</textarea>
+      </label>
+      <div class="form-actions">
+        <button type="submit" class="btn">Save Tournament</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="admin-card">
+    <h2>Tournament Snapshot</h2>
+    {% if selected %}
+      <p><strong>{{ selected.tournament.name }}</strong></p>
+      <p>Status: {{ selected.tournament.status|replace('_',' ')|title }}</p>
+      <p>Confirmed Registrations: {{ selected.registrations|length }}</p>
+      <p>Matches Scheduled: {{ selected.matches|length }}</p>
+      <div class="admin-buttons">
+        <form method="post">
+          <input type="hidden" name="action" value="status">
+          <input type="hidden" name="tournament_id" value="{{ selected.tournament.id }}">
+          <input type="hidden" name="status_value" value="REGISTRATION">
+          <button type="submit" class="btn-small">Open Registration</button>
+        </form>
+        <form method="post">
+          <input type="hidden" name="action" value="status">
+          <input type="hidden" name="tournament_id" value="{{ selected.tournament.id }}">
+          <input type="hidden" name="status_value" value="LIVE">
+          <button type="submit" class="btn-small">Begin Tournament</button>
+        </form>
+        <form method="post">
+          <input type="hidden" name="action" value="status">
+          <input type="hidden" name="tournament_id" value="{{ selected.tournament.id }}">
+          <input type="hidden" name="status_value" value="COMPLETED">
+          <button type="submit" class="btn-small">Conclude</button>
+        </form>
+      </div>
+      {% if selected.registrations %}
+        <h3>Registrations</h3>
+        <ul class="admin-roster">
+          {% for reg in selected.registrations %}
+            <li>
+              <strong>{{ reg.notes or reg.trainer_id[:8] }}</strong>
+              <span>{{ reg.status|title }}</span>
+            </li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    {% else %}
+      <p>Select a tournament on the left to see its details.</p>
+    {% endif %}
+  </section>
+</div>
+
+<style>
+.admin-header {
+  margin-bottom:20px;
+}
+.pvp-admin-layout {
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:18px;
+}
+.admin-card {
+  background:#fff;
+  border-radius:16px;
+  padding:20px;
+  box-shadow:0 12px 28px rgba(15,23,42,0.12);
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+}
+.tournament-list {
+  list-style:none;
+  margin:0;
+  padding:0;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+.tournament-list li {
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  align-items:flex-start;
+  padding:12px;
+  border-radius:12px;
+  background:#f8fafc;
+}
+.tournament-list .meta {
+  font-size:0.85em;
+  color:#475569;
+  margin-top:4px;
+}
+.tournament-list .actions {
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+.admin-form {
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+.admin-form label {
+  font-weight:600;
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+.admin-form input,
+.admin-form textarea,
+.admin-form select {
+  padding:8px 10px;
+  border-radius:10px;
+  border:1px solid #d0d7e6;
+  font-size:0.95em;
+}
+.datetime-grid {
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:12px;
+}
+.form-actions {
+  display:flex;
+  justify-content:flex-end;
+}
+.admin-buttons {
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+}
+.admin-roster {
+  list-style:none;
+  padding:0;
+  margin:0;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+.admin-roster li {
+  display:flex;
+  justify-content:space-between;
+  padding:8px 10px;
+  border-radius:10px;
+  background:#f8fafc;
+}
+.btn-small {
+  padding:6px 10px;
+  border-radius:10px;
+  border:none;
+  background:#3a8dde;
+  color:#fff;
+  font-size:0.8em;
+  cursor:pointer;
+}
+.badge {
+  display:inline-flex;
+  align-items:center;
+  padding:4px 8px;
+  border-radius:999px;
+  background:#e2e8f0;
+  color:#1f2937;
+  font-size:0.75em;
+  font-weight:600;
+}
+.badge--light {
+  background:#cbd5f5;
+}
+@media (max-width: 1024px) {
+  .pvp-admin-layout {
+    grid-template-columns:repeat(1,minmax(0,1fr));
+  }
+  .datetime-grid {
+    grid-template-columns:repeat(1,minmax(0,1fr));
+  }
+}
+</style>
+
+{% endblock %}

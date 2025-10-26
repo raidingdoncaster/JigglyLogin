@@ -192,6 +192,399 @@ def build_league_content():
     return league_modes, live_event_settings
 
 
+def _trainer_uuid_from_name(trainer_name: str) -> str:
+    """Derive a stable UUID for trainers for PvP tables until auth IDs are wired in."""
+    cleaned = (trainer_name or "").strip().lower()
+    if not cleaned:
+        cleaned = f"unknown-{uuid.uuid4().hex}"
+    return str(uuid.uuid5(uuid.NAMESPACE_URL, f"trainer:{cleaned}"))
+
+
+def _supabase_execute(query, fallback=None):
+    """Execute a Supabase query and swallow errors with logging."""
+    if not supabase:
+        return fallback
+    try:
+        resp = query.execute()
+        return getattr(resp, "data", fallback) or fallback
+    except Exception as exc:
+        print("⚠️ Supabase query failed:", exc)
+        try:
+            g.supabase_last_error = str(exc)
+        except RuntimeError:
+            pass
+        return fallback
+
+
+def fetch_pvp_tournaments(statuses: list[str] | None = None, limit: int | None = None):
+    """Return tournaments filtered by status (default: upcoming & live)."""
+    if statuses is None:
+        statuses = ["REGISTRATION", "LIVE"]
+    rows = _supabase_execute(
+        supabase.table("pvp_tournament_summary")
+        .select("*")
+        .in_("status", statuses)
+        .order("start_at", desc=False)
+    , [])
+    tournaments: list[dict] = []
+    for row in rows:
+        start_at = parse_dt_safe(row.get("start_at"))
+        reg_open = parse_dt_safe(row.get("registration_open_at"))
+        reg_close = parse_dt_safe(row.get("registration_close_at"))
+        tournaments.append({
+            "id": row.get("id"),
+            "name": row.get("name"),
+            "status": row.get("status"),
+            "bracket_type": row.get("bracket_type"),
+            "start_at": start_at if start_at.year > 1900 else None,
+            "registration_open_at": reg_open if reg_open.year > 1900 else None,
+            "registration_close_at": reg_close if reg_close.year > 1900 else None,
+            "registrant_count": row.get("registrant_count", 0),
+        })
+    if limit is not None:
+        tournaments = tournaments[:limit]
+    return tournaments
+
+
+def fetch_pvp_tournament_archive(limit: int = 10):
+    """Return recently completed tournaments for archive listings."""
+    return fetch_pvp_tournaments(statuses=["COMPLETED", "ARCHIVED"], limit=limit)
+
+
+def fetch_pvp_tournaments_for_admin():
+    """Fetch all tournaments for admin dashboard."""
+    rows = _supabase_execute(
+        supabase.table("pvp_tournaments")
+        .select("*")
+        .order("created_at", desc=True)
+    , [])
+    tournaments: list[dict] = []
+    for row in rows:
+        record = dict(row)
+        for field in ("start_at", "registration_open_at", "registration_close_at", "conclude_at", "created_at", "updated_at"):
+            dt_val = parse_dt_safe(record.get(field))
+            record[field] = dt_val if dt_val.year > 1900 else None
+        tournaments.append(record)
+    return tournaments
+
+
+def fetch_pvp_tournament_detail(tournament_id: str):
+    """Load tournament detail including rules, prizes, registrations, and matches."""
+    if not (supabase and tournament_id):
+        return None
+
+    tournament_rows = _supabase_execute(
+        supabase.table("pvp_tournaments")
+        .select("*")
+        .eq("id", tournament_id)
+        .limit(1)
+    , [])
+    if not tournament_rows:
+        return None
+    tournament = tournament_rows[0]
+    for field in ("start_at", "registration_open_at", "registration_close_at", "conclude_at"):
+        dt_val = parse_dt_safe(tournament.get(field))
+        tournament[field] = dt_val if dt_val.year > 1900 else None
+
+    rules = _supabase_execute(
+        supabase.table("pvp_rules")
+        .select("*")
+        .eq("tournament_id", tournament_id)
+        .order("rule_order", desc=False)
+    , [])
+    prizes = _supabase_execute(
+        supabase.table("pvp_prizes")
+        .select("*")
+        .eq("tournament_id", tournament_id)
+        .order("placement", desc=False)
+    , [])
+    registrations = _supabase_execute(
+        supabase.table("pvp_registrations")
+        .select("*")
+        .eq("tournament_id", tournament_id)
+        .order("created_at", desc=True)
+    , [])
+
+    teams_map: dict[str, list[dict]] = {}
+    team_rows = _supabase_execute(
+        supabase.table("pvp_teams")
+        .select("*")
+        .in_("registration_id", [r["id"] for r in registrations] or ["00000000-0000-0000-0000-000000000000"])
+        .order("pokemon_slot", desc=False)
+    , [])
+    for row in team_rows or []:
+        teams_map.setdefault(row["registration_id"], []).append({
+            "slot": row.get("pokemon_slot"),
+            "species_name": row.get("species_name"),
+            "species_form": row.get("species_form") or "",
+            "moves": row.get("moves") or {},
+        })
+
+    matches = _supabase_execute(
+        supabase.table("pvp_matches")
+        .select("*")
+        .eq("tournament_id", tournament_id)
+        .order("round_no", desc=False)
+    , [])
+    leaderboard = _supabase_execute(
+        supabase.table("pvp_leaderboards")
+        .select("*")
+        .eq("tournament_id", tournament_id)
+        .order("rank", desc=False)
+    , [])
+
+    detail = {
+        "tournament": tournament,
+        "rules": rules or [],
+        "prizes": prizes or [],
+        "registrations": [],
+        "matches": matches or [],
+        "leaderboard": leaderboard or [],
+    }
+
+    for reg in registrations or []:
+        detail["registrations"].append({
+            **reg,
+            "teams": teams_map.get(reg["id"], []),
+        })
+    return detail
+
+
+def find_pvp_registration(tournament_id: str, trainer_name: str):
+    """Lookup an existing registration handle for a trainer."""
+    if not (supabase and tournament_id and trainer_name):
+        return None
+    trainer_uuid = _trainer_uuid_from_name(trainer_name)
+    rows = _supabase_execute(
+        supabase.table("pvp_registrations")
+        .select("*")
+        .eq("tournament_id", tournament_id)
+        .eq("trainer_id", trainer_uuid)
+        .limit(1)
+    , [])
+    if rows:
+        reg = rows[0]
+        team_rows = _supabase_execute(
+            supabase.table("pvp_teams")
+            .select("*")
+            .eq("registration_id", reg["id"])
+            .order("pokemon_slot", desc=False)
+        , [])
+        reg["teams"] = [
+            {
+                "slot": row.get("pokemon_slot"),
+                "species_name": row.get("species_name"),
+                "species_form": row.get("species_form") or "",
+                "moves": row.get("moves") or {},
+            }
+            for row in team_rows or []
+        ]
+        return reg
+    return None
+
+
+def register_trainer_for_pvp(tournament_id: str, trainer_name: str, notes: str | None = None):
+    """Create or confirm a PvP registration."""
+    if not (supabase and tournament_id and trainer_name):
+        return None, "Supabase not available."
+
+    trainer_uuid = _trainer_uuid_from_name(trainer_name)
+    payload = {
+        "tournament_id": tournament_id,
+        "trainer_id": trainer_uuid,
+        "status": "CONFIRMED",
+        "confirmed_at": datetime.utcnow().isoformat(),
+        "notes": notes or trainer_name,
+    }
+    try:
+        resp = supabase.table("pvp_registrations").upsert(payload, on_conflict="tournament_id,trainer_id").execute()
+        data = getattr(resp, "data", None) or []
+        if data:
+            return data[0], None
+    except Exception as exc:
+        print("⚠️ PvP registration upsert failed:", exc)
+        try:
+            g.supabase_last_error = str(exc)
+        except RuntimeError:
+            pass
+        return None, "Unable to register for tournament right now."
+    return None, "Registration data not returned."
+
+
+def save_pvp_team(registration_id: str, team_slots: list[dict]):
+    """Replace the team for a registration."""
+    if not (supabase and registration_id):
+        return False, "Supabase not available."
+    try:
+        supabase.table("pvp_teams").delete().eq("registration_id", registration_id).execute()
+    except Exception as exc:
+        print("⚠️ PvP team clear failed:", exc)
+        return False, "Could not reset previous team."
+
+    entries = []
+    for idx, slot in enumerate(team_slots, start=1):
+        species = (slot.get("species_name") or "").strip()
+        if not species:
+            continue
+        entry = {
+            "registration_id": registration_id,
+            "pokemon_slot": idx,
+            "species_name": species,
+        }
+        form_value = (slot.get("species_form") or "").strip()
+        if form_value:
+            entry["species_form"] = form_value
+        moves = slot.get("moves") or {}
+        if moves:
+            entry["moves"] = moves
+        entries.append(entry)
+
+    if not entries:
+        return False, "Please provide at least one Pokemon."
+
+    try:
+        supabase.table("pvp_teams").insert(entries).execute()
+        supabase.table("pvp_registrations").update({
+            "team_locked_at": datetime.utcnow().isoformat(),
+        }).eq("id", registration_id).execute()
+        return True, None
+    except Exception as exc:
+        print("⚠️ PvP team save failed:", exc)
+        return False, "Unable to save team right now."
+
+
+def _slugify_tournament_name(name: str) -> str:
+    cleaned = re.sub(r"[^a-z0-9]+", "-", (name or "").lower()).strip("-")
+    if not cleaned:
+        cleaned = f"tournament-{uuid.uuid4().hex[:8]}"
+    return cleaned[:60]
+
+
+def save_pvp_rules(tournament_id: str, rules_lines: list[str]):
+    if not supabase:
+        return
+    supabase.table("pvp_rules").delete().eq("tournament_id", tournament_id).execute()
+    entries = []
+    for idx, line in enumerate(rules_lines, start=1):
+        text = (line or "").strip()
+        if not text:
+            continue
+        title = ""
+        body = text
+        if ": " in text:
+            title, body = text.split(": ", 1)
+        entries.append({
+            "tournament_id": tournament_id,
+            "rule_order": idx,
+            "title": title,
+            "body": body,
+        })
+    if entries:
+        supabase.table("pvp_rules").insert(entries).execute()
+
+
+def save_pvp_prizes(tournament_id: str, prize_lines: list[str]):
+    if not supabase:
+        return
+    supabase.table("pvp_prizes").delete().eq("tournament_id", tournament_id).execute()
+    entries = []
+    for idx, line in enumerate(prize_lines, start=1):
+        text = (line or "").strip()
+        if not text:
+            continue
+        entries.append({
+            "tournament_id": tournament_id,
+            "placement": idx,
+            "description": text,
+        })
+    if entries:
+        supabase.table("pvp_prizes").insert(entries).execute()
+
+
+def upsert_pvp_tournament(data: dict, actor: str):
+    """Create or update a tournament from admin form data."""
+    if not supabase:
+        return None, "Supabase not available."
+
+    tournament_id = data.get("tournament_id") or ""
+    name = (data.get("name") or "").strip()
+    if not name:
+        return None, "Tournament name is required."
+    bracket_type = (data.get("bracket_type") or "SWISS").upper()
+    if bracket_type not in {"SWISS", "ROUND_ROBIN", "SINGLE_ELIMINATION"}:
+        return None, "Unsupported bracket type."
+
+    payload = {
+        "name": name,
+        "slug": data.get("slug") or _slugify_tournament_name(name),
+        "description": (data.get("description") or "").strip(),
+        "bracket_type": bracket_type,
+        "status": data.get("status") or "DRAFT",
+        "location_text": (data.get("location_text") or "").strip(),
+        "meta_notes": (data.get("meta_notes") or "").strip(),
+        "prize_summary": (data.get("prize_summary") or "").strip(),
+    }
+
+    def _parse_dt(field_name):
+        raw = (data.get(field_name) or "").strip()
+        if not raw:
+            return None
+        try:
+            dt = parser.parse(raw)
+            if not dt.tzinfo:
+                dt = dt.replace(tzinfo=timezone.utc)
+            return dt.astimezone(timezone.utc).isoformat()
+        except Exception:
+            return None
+
+    payload["start_at"] = _parse_dt("start_at")
+    payload["registration_open_at"] = _parse_dt("registration_open_at")
+    payload["registration_close_at"] = _parse_dt("registration_close_at")
+    payload["conclude_at"] = _parse_dt("conclude_at")
+    meetup_id = (data.get("meetup_id") or "").strip()
+    if meetup_id:
+        payload["meetup_id"] = meetup_id
+
+    try:
+        if tournament_id:
+            supabase.table("pvp_tournaments").update(payload).eq("id", tournament_id).execute()
+            saved_id = tournament_id
+        else:
+            payload["created_by"] = actor or None
+            resp = supabase.table("pvp_tournaments").insert(payload).execute()
+            rows = getattr(resp, "data", None) or []
+            if not rows:
+                return None, "Failed to create tournament."
+            saved_id = rows[0]["id"]
+    except Exception as exc:
+        print("⚠️ PvP tournament save failed:", exc)
+        return None, "Unable to save tournament."
+
+    rules_lines = data.get("rules_block", "").splitlines()
+    prizes_lines = data.get("prizes_block", "").splitlines()
+    try:
+        save_pvp_rules(saved_id, rules_lines)
+        save_pvp_prizes(saved_id, prizes_lines)
+    except Exception as exc:
+        print("⚠️ PvP ancillary save failed:", exc)
+
+    return saved_id, None
+
+
+def update_pvp_tournament_status(tournament_id: str, status: str):
+    if not (supabase and tournament_id and status):
+        return False
+    try:
+        supabase.table("pvp_tournaments").update({
+            "status": status,
+        }).eq("id", tournament_id).execute()
+        return True
+    except Exception as exc:
+        print("⚠️ PvP status update failed:", exc)
+        return False
+
+
+
 def fetch_upcoming_events(limit: int | None = None):
     """Fetch upcoming meetup events ordered by start time in London timezone."""
     if not (USE_SUPABASE and supabase):
@@ -511,6 +904,10 @@ def about_rdab():
     return render_template(
         "about.html",
         title="About RDAB",
+        header_back_action={
+            "href": url_for("home"),
+            "label": "Back to RDAB",
+        },
         show_back=False,
     )
 
@@ -1408,6 +1805,66 @@ def admin_leagues():
     )
 
 
+@app.route("/admin/leagues/pvp", methods=["GET", "POST"])
+def admin_leagues_pvp():
+    session["last_page"] = request.path
+    if "trainer" not in session:
+        flash("Please log in to access admin tools.", "warning")
+        return redirect(url_for("home"))
+
+    _, user = find_user(session["trainer"])
+    if not user or normalize_account_type(user.get("account_type")) != "Admin":
+        flash("⛔ Admin access required.", "error")
+        return redirect(url_for("dashboard"))
+
+    selected_id = request.args.get("tournament_id", "").strip()
+
+    if request.method == "POST":
+        action = request.form.get("action")
+        if action == "save":
+            form_data = request.form.to_dict()
+            saved_id, error = upsert_pvp_tournament(form_data, _current_actor())
+            if error:
+                flash(error, "error")
+                selected_id = form_data.get("tournament_id", "")
+            else:
+                flash("Tournament saved.", "success")
+                selected_id = saved_id
+                return redirect(url_for("admin_leagues_pvp", tournament_id=saved_id))
+        elif action == "status":
+            tid = request.form.get("tournament_id")
+            status_value = request.form.get("status_value")
+            if tid and status_value:
+                if update_pvp_tournament_status(tid, status_value):
+                    flash(f"Tournament moved to {status_value.title()} status.", "success")
+                else:
+                    flash("Could not update tournament status.", "error")
+                return redirect(url_for("admin_leagues_pvp", tournament_id=tid))
+
+    tournaments = fetch_pvp_tournaments_for_admin()
+    selected_detail = fetch_pvp_tournament_detail(selected_id) if selected_id else None
+
+    rules_text = ""
+    prizes_text = ""
+    if selected_detail:
+        rules_text = "\n".join(
+            f"{(rule.get('title') + ': ') if rule.get('title') else ''}{rule.get('body', '')}"
+            for rule in selected_detail.get("rules", [])
+        )
+        prizes_text = "\n".join(
+            prize.get("description", "")
+            for prize in selected_detail.get("prizes", [])
+        )
+
+    return render_template(
+        "admin_leagues_pvp.html",
+        tournaments=tournaments,
+        selected=selected_detail,
+        rules_text=rules_text,
+        prizes_text=prizes_text,
+    )
+
+
 @app.route("/leagues")
 def leagues():
     session["last_page"] = request.path
@@ -1441,6 +1898,12 @@ def leagues():
     if live_event_settings.get("active"):
         league_card["stamp_bonus"] = f"Earn event bonuses during {live_event_settings.get('theme')}"
 
+    pvp_tournaments = fetch_pvp_tournaments()
+    pvp_archive = fetch_pvp_tournament_archive()
+    selected_pvp_id = request.args.get("pvp_id") or (pvp_tournaments[0]["id"] if pvp_tournaments else "")
+    selected_pvp = fetch_pvp_tournament_detail(selected_pvp_id) if selected_pvp_id else None
+    player_registration = find_pvp_registration(selected_pvp_id, trainer_name) if selected_pvp else None
+
     return render_template(
         "leagues.html",
         trainer=trainer_name,
@@ -1451,6 +1914,113 @@ def leagues():
         avatar=avatar,
         background=background,
         league_card=league_card,
+        pvp_tournaments=pvp_tournaments,
+        pvp_selected=selected_pvp,
+        pvp_selected_id=selected_pvp_id,
+        pvp_registration=player_registration,
+        pvp_archive=pvp_archive,
+    )
+
+
+@app.route("/leagues/pvp/<tournament_id>/join", methods=["GET", "POST"])
+def leagues_pvp_join(tournament_id):
+    if "trainer" not in session:
+        flash("Please log in to continue.", "warning")
+        return redirect(url_for("home"))
+
+    detail = fetch_pvp_tournament_detail(tournament_id)
+    if not detail:
+        flash("Tournament not found.", "error")
+        return redirect(url_for("leagues", pvp_id=""))
+
+    tournament = detail["tournament"]
+    if tournament.get("status") != "REGISTRATION":
+        flash("Registration for this tournament is not open.", "info")
+        return redirect(url_for("leagues", pvp_id=tournament.get("id")))
+
+    trainer_name = session["trainer"]
+    existing = find_pvp_registration(tournament_id, trainer_name)
+    if existing:
+        flash("You already registered for this tournament.", "info")
+        return redirect(url_for("leagues_pvp_team", tournament_id=tournament_id))
+
+    if request.method == "POST":
+        if request.form.get("confirm_attendance") != "yes":
+            flash("Please confirm that you will attend the meetup.", "warning")
+        else:
+            registration, error = register_trainer_for_pvp(tournament_id, trainer_name)
+            if error:
+                flash(error, "error")
+            else:
+                flash("🎉 You are registered! Let's build your team.", "success")
+                return redirect(url_for("leagues_pvp_team", tournament_id=tournament_id))
+
+    return render_template(
+        "leagues_pvp_join.html",
+        tournament=tournament,
+        rules=detail.get("rules", []),
+        prizes=detail.get("prizes", []),
+    )
+
+
+def _empty_team_slots():
+    return [{"species_name": "", "species_form": "", "notes": ""} for _ in range(6)]
+
+
+@app.route("/leagues/pvp/<tournament_id>/team", methods=["GET", "POST"])
+def leagues_pvp_team(tournament_id):
+    if "trainer" not in session:
+        flash("Please log in to continue.", "warning")
+        return redirect(url_for("home"))
+
+    detail = fetch_pvp_tournament_detail(tournament_id)
+    if not detail:
+        flash("Tournament not found.", "error")
+        return redirect(url_for("leagues"))
+    tournament = detail["tournament"]
+
+    trainer_name = session["trainer"]
+    registration = find_pvp_registration(tournament_id, trainer_name)
+    if not registration:
+        flash("Please register before submitting a team.", "warning")
+        return redirect(url_for("leagues_pvp_join", tournament_id=tournament_id))
+
+    existing_team = registration.get("teams") or []
+    team_slots = _empty_team_slots()
+    for idx, slot in enumerate(existing_team):
+        if idx >= len(team_slots):
+            break
+        team_slots[idx]["species_name"] = slot.get("species_name", "")
+        team_slots[idx]["species_form"] = slot.get("species_form", "")
+        team_slots[idx]["notes"] = (slot.get("moves") or {}).get("notes", "")
+
+    if request.method == "POST":
+        submitted = []
+        for idx in range(1, 7):
+            name = request.form.get(f"pokemon_{idx}", "").strip()
+            form_label = request.form.get(f"pokemon_form_{idx}", "").strip()
+            extra = request.form.get(f"pokemon_notes_{idx}", "").strip()
+        submitted.append({
+            "species_name": name,
+            "species_form": form_label,
+            "notes": extra,
+            "moves": {"notes": extra} if extra else {},
+        })
+        success, error = save_pvp_team(registration["id"], submitted)
+        if success:
+            flash("Team saved! See you at the tournament.", "success")
+            return redirect(url_for("leagues", pvp_id=tournament_id))
+        if error:
+            flash(error, "error")
+        team_slots = submitted
+
+    return render_template(
+        "leagues_pvp_team.html",
+        tournament=tournament,
+        registration=registration,
+        rules=detail.get("rules", []),
+        prizes=detail.get("prizes", []),
+        team_slots=team_slots,
     )
 
 @app.route("/admin_login", methods=["GET", "POST"])
