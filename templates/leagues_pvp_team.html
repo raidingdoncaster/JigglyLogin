@@ -6,91 +6,177 @@
 
 {% block content %}
 
-<div class="pvp-team-header">
-  <a href="{{ url_for('leagues', pvp_id=tournament.id) }}" class="back-link">← Back to Leagues</a>
-  <h1>{{ tournament.name }} · Team Registration</h1>
-  <p>Lock in up to six Pokémon for this tournament. You can edit until registration closes.</p>
+<div class="pvp-team-wrapper">
+  <div class="pvp-team-hero">
+    <div class="pvp-team-hero__gradient"></div>
+    <div class="pvp-team-hero__content">
+      <a href="{{ url_for('leagues', pvp_id=tournament.id) }}" class="pvp-back">← Back to Leagues</a>
+      <h1>{{ tournament.name }} · Team Builder</h1>
+      <p>Lock in six Pokémon for this bracket. You can tweak your roster while registration stays open.</p>
+      <div class="pvp-team-tags">
+        <span class="pvp-chip">{{ tournament.bracket_type|replace('_',' ')|title }}</span>
+        <span class="pvp-chip pvp-chip--status">{{ tournament.status|replace('_',' ')|title }}</span>
+        {% if registration.team_locked_at %}
+          <span class="pvp-chip pvp-chip--ghost">Last saved {{ registration.team_locked_at }}</span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <section class="pvp-team-info">
+    <article>
+      <header><h2>Rules Snapshot</h2></header>
+      {% if rules %}
+        <ul>
+          {% for rule in rules[:8] %}
+            <li>
+              {% if rule.title %}
+                <strong>{{ rule.title }}:</strong>
+              {% endif %}
+              {{ rule.body or "" }}
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p>Rules will appear here as soon as the admins publish the meta briefing.</p>
+      {% endif %}
+    </article>
+    <article>
+      <header><h2>Prizes</h2></header>
+      {% if prizes %}
+        <ol class="pvp-prize-list">
+          {% for prize in prizes %}
+            <li>
+              <span class="placement">#{{ prize.placement }}</span>
+              <span class="prize-copy">{{ prize.description }}</span>
+            </li>
+          {% endfor %}
+        </ol>
+      {% elif tournament.prize_summary %}
+        <p>{{ tournament.prize_summary }}</p>
+      {% else %}
+        <p>The prize pool is still being curated—expect hero badges, stamps, and surprise goodies.</p>
+      {% endif %}
+    </article>
+  </section>
+
+  <form method="post" class="pvp-team-form">
+    <div class="team-grid">
+      {% for slot in team_slots %}
+        {% set idx = loop.index %}
+        <fieldset class="team-slot">
+          <legend>Pokémon {{ idx }}</legend>
+          <label>Species Name
+            <input type="text" name="pokemon_{{ idx }}" value="{{ slot.species_name }}" placeholder="e.g. Azumarill">
+          </label>
+          <label>Form / Variant
+            <input type="text" name="pokemon_form_{{ idx }}" value="{{ slot.species_form }}" placeholder="optional">
+          </label>
+          <label>Notes / Moves
+            <textarea name="pokemon_notes_{{ idx }}" rows="2" placeholder="Fast + Charged moves, or special notes">{{ slot.moves.notes if slot.moves else slot.notes or "" }}</textarea>
+          </label>
+        </fieldset>
+      {% endfor %}
+    </div>
+
+    <div class="form-actions">
+      <a class="btn-secondary" href="{{ url_for('leagues', pvp_id=tournament.id) }}">Cancel</a>
+      <button class="btn-primary" type="submit">Save Team</button>
+    </div>
+  </form>
 </div>
 
-<section class="pvp-team-info">
-  <div>
-    <h2>Rules Snapshot</h2>
-    {% if rules %}
-      <ul>
-        {% for rule in rules[:8] %}
-          <li>
-            {% if rule.title %}
-              <strong>{{ rule.title }}:</strong>
-            {% endif %}
-            {{ rule.body or "" }}
-          </li>
-        {% endfor %}
-      </ul>
-    {% else %}
-      <p>Rules will appear here once the admins post them.</p>
-    {% endif %}
-  </div>
-  <div>
-    <h2>Prizes</h2>
-    {% if prizes %}
-      <ul>
-        {% for prize in prizes %}
-          <li><strong>Place {{ prize.placement }}:</strong> {{ prize.description }}</li>
-        {% endfor %}
-      </ul>
-    {% elif tournament.prize_summary %}
-      <p>{{ tournament.prize_summary }}</p>
-    {% else %}
-      <p>Prizes are being finalised. Keep training!</p>
-    {% endif %}
-  </div>
-</section>
-
-<form method="post" class="pvp-team-form">
-  <div class="team-grid">
-    {% for slot in team_slots %}
-      {% set idx = loop.index %}
-      <fieldset class="team-slot">
-        <legend>Pokémon {{ idx }}</legend>
-        <label>Species Name
-          <input type="text" name="pokemon_{{ idx }}" value="{{ slot.species_name }}" placeholder="e.g. Azumarill">
-        </label>
-        <label>Form / Variant
-          <input type="text" name="pokemon_form_{{ idx }}" value="{{ slot.species_form }}" placeholder="optional">
-        </label>
-        <label>Notes / Moves
-          <textarea name="pokemon_notes_{{ idx }}" rows="2" placeholder="Fast + Charged moves, or special notes">{{ slot.moves.notes if slot.moves else slot.notes or "" }}</textarea>
-        </label>
-      </fieldset>
-    {% endfor %}
-  </div>
-
-  <div class="form-actions">
-    <a class="btn-secondary" href="{{ url_for('leagues', pvp_id=tournament.id) }}">Cancel</a>
-    <button class="btn" type="submit">Save Team</button>
-  </div>
-</form>
-
 <style>
-.pvp-team-header {
-  margin-bottom:18px;
+.pvp-team-wrapper {
+  display:flex;
+  flex-direction:column;
+  gap:20px;
+}
+.pvp-team-hero {
+  position:relative;
+  overflow:hidden;
+  border-radius:20px;
+  color:#fff;
+}
+.pvp-team-hero__gradient {
+  position:absolute;
+  inset:0;
+  background:linear-gradient(135deg,#0ea5e9,#7c3aed);
+  opacity:0.94;
+}
+.pvp-team-hero__content {
+  position:relative;
+  z-index:1;
+  padding:28px;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+.pvp-team-tags {
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+}
+.pvp-chip {
+  display:inline-flex;
+  align-items:center;
+  padding:6px 12px;
+  border-radius:999px;
+  background:rgba(255,255,255,0.2);
+  font-weight:600;
+  font-size:0.8em;
+}
+.pvp-chip--status {
+  background:rgba(250,204,21,0.28);
+}
+.pvp-chip--ghost {
+  background:rgba(15,23,42,0.3);
 }
 .pvp-team-info {
   display:grid;
   grid-template-columns:repeat(2,minmax(0,1fr));
-  gap:20px;
-  background:#fff;
-  border-radius:16px;
-  padding:22px;
-  box-shadow:0 12px 28px rgba(15,23,42,0.12);
-  margin-bottom:24px;
+  gap:16px;
 }
-.pvp-team-info ul {
-  margin:12px 0 0;
+.pvp-team-info article {
+  background:#fff;
+  border-radius:18px;
+  padding:20px;
+  box-shadow:0 12px 28px rgba(15,23,42,0.12);
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+.pvp-team-info ul,
+.pvp-prize-list {
+  margin:0;
   padding-left:18px;
   display:flex;
   flex-direction:column;
   gap:6px;
+}
+.pvp-prize-list {
+  list-style:none;
+  padding:0;
+}
+.pvp-prize-list li {
+  display:flex;
+  gap:12px;
+  align-items:center;
+}
+.pvp-prize-list .placement {
+  width:32px;
+  height:32px;
+  border-radius:12px;
+  background:#2563eb;
+  color:#fff;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-weight:700;
+}
+.pvp-prize-list .prize-copy {
+  font-weight:600;
+  color:#1f2937;
 }
 .pvp-team-form .team-grid {
   display:grid;
@@ -131,21 +217,27 @@
   display:flex;
   gap:12px;
 }
+.btn-primary,
 .btn-secondary {
   display:inline-flex;
   align-items:center;
   justify-content:center;
   padding:10px 16px;
   border-radius:12px;
+  font-weight:600;
+  text-decoration:none;
+}
+.btn-primary {
+  background:#1e3a8a;
+  color:#fff;
+  border:none;
+  box-shadow:0 10px 20px rgba(30,58,138,0.25);
+}
+.btn-secondary {
   background:#e2e8f0;
   color:#1f2937;
-  text-decoration:none;
-  font-weight:600;
 }
-.btn {
-  padding:10px 16px;
-}
-@media (max-width: 960px) {
+@media (max-width: 1024px) {
   .pvp-team-info {
     grid-template-columns:repeat(1,minmax(0,1fr));
   }
@@ -154,6 +246,9 @@
   }
 }
 @media (max-width: 640px) {
+  .pvp-team-hero__content {
+    padding:22px;
+  }
   .pvp-team-form .team-grid {
     grid-template-columns:repeat(1,minmax(0,1fr));
   }

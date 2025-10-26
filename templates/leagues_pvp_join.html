@@ -6,128 +6,249 @@
 
 {% block content %}
 
-<div class="pvp-join-header">
-  <a href="{{ url_for('leagues', pvp_id=tournament.id) }}" class="back-link">← Back to Leagues</a>
-  <h1>Join {{ tournament.name }}</h1>
-  <p>This tournament takes place alongside an in-person meetup. Please only register if you can attend.</p>
+<div class="pvp-join-wrapper">
+  <div class="pvp-join-hero">
+    <div class="pvp-join-hero__gradient"></div>
+    <div class="pvp-join-hero__content">
+      <a href="{{ url_for('leagues', pvp_id=tournament.id) }}" class="pvp-back">← Back to Leagues</a>
+      <h1>Join {{ tournament.name }}</h1>
+      <p>This showdown is linked to an in-person meetup. Register only if you can attend on the day.</p>
+      <div class="pvp-join-tags">
+        <span class="pvp-chip">{{ tournament.bracket_type|replace('_', ' ')|title }}</span>
+        <span class="pvp-chip pvp-chip--status">{{ tournament.status|replace('_',' ')|title }}</span>
+        {% if tournament.location_text %}
+          <span class="pvp-chip pvp-chip--ghost">{{ tournament.location_text }}</span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <section class="pvp-join-grid">
+    <div class="pvp-join-card">
+      <header>
+        <h2>Tournament Snapshot</h2>
+      </header>
+      <dl>
+        <div>
+          <dt>Bracket</dt>
+          <dd>{{ tournament.bracket_type|replace('_', ' ')|title }}</dd>
+        </div>
+        <div>
+          <dt>Status</dt>
+          <dd>{{ tournament.status|replace('_', ' ')|title }}</dd>
+        </div>
+        {% if tournament.start_at %}
+          <div>
+            <dt>Kick-off</dt>
+            <dd>{{ tournament.start_at.strftime('%d %b %Y %H:%M') }} UTC</dd>
+          </div>
+        {% endif %}
+        {% if tournament.registration_close_at %}
+          <div>
+            <dt>Registration closes</dt>
+            <dd>{{ tournament.registration_close_at.strftime('%d %b %Y %H:%M') }} UTC</dd>
+          </div>
+        {% endif %}
+        {% if tournament.location_text %}
+          <div>
+            <dt>Meetup</dt>
+            <dd>{{ tournament.location_text }}</dd>
+          </div>
+        {% endif %}
+      </dl>
+    </div>
+
+    <div class="pvp-join-card">
+      <header>
+        <h2>Rules Highlight</h2>
+      </header>
+      {% if rules %}
+        <ul>
+          {% for rule in rules[:6] %}
+            <li>
+              {% if rule.title %}
+                <strong>{{ rule.title }}:</strong>
+              {% endif %}
+              {{ rule.body or "" }}
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p>Rules will appear here as soon as the admin team posts the meta briefing.</p>
+      {% endif %}
+    </div>
+
+    <div class="pvp-join-card">
+      <header>
+        <h2>Prizes</h2>
+      </header>
+      {% if prizes %}
+        <ol class="pvp-prize-list">
+          {% for prize in prizes %}
+            <li>
+              <span class="placement">#{{ prize.placement }}</span>
+              <span class="prize-copy">{{ prize.description }}</span>
+            </li>
+          {% endfor %}
+        </ol>
+      {% elif tournament.prize_summary %}
+        <p>{{ tournament.prize_summary }}</p>
+      {% else %}
+        <p>The reward pool is being curated — expect stamps, merch, and more.</p>
+      {% endif %}
+    </div>
+  </section>
+
+  <form method="post" class="pvp-join-form">
+    <div class="pvp-warning">
+      <h3>Meetup Attendance Required</h3>
+      <p>By registering, you confirm you will attend the meetup in person at the scheduled time and location.</p>
+    </div>
+
+    <label class="confirm-checkbox">
+      <input type="checkbox" name="confirm_attendance" value="yes" required>
+      I understand this tournament is tied to an in-person meetup and I will be there.
+    </label>
+
+    <div class="form-actions">
+      <a class="btn-secondary" href="{{ url_for('leagues', pvp_id=tournament.id) }}">Cancel</a>
+      <button type="submit" class="btn-primary">Lock Me In</button>
+    </div>
+  </form>
 </div>
 
-<section class="pvp-join-card">
-  <h2>Tournament Details</h2>
-  <dl>
-    <div>
-      <dt>Status</dt>
-      <dd>{{ tournament.status|replace('_', ' ')|title }}</dd>
-    </div>
-    {% if tournament.start_at %}
-      <div>
-        <dt>Start Time</dt>
-        <dd>{{ tournament.start_at.strftime('%d %b %Y %H:%M') }} (UTC)</dd>
-      </div>
-    {% endif %}
-    {% if tournament.location_text %}
-      <div>
-        <dt>Meetup</dt>
-        <dd>{{ tournament.location_text }}</dd>
-      </div>
-    {% endif %}
-    <div>
-      <dt>Bracket</dt>
-      <dd>{{ tournament.bracket_type|replace('_', ' ')|title }}</dd>
-    </div>
-  </dl>
-
-  {% if rules %}
-    <h3>Rules Highlight</h3>
-    <ul>
-      {% for rule in rules[:5] %}
-        <li>
-          {% if rule.title %}
-            <strong>{{ rule.title }}:</strong>
-          {% endif %}
-          {{ rule.body or "" }}
-        </li>
-      {% endfor %}
-    </ul>
-  {% endif %}
-
-  {% if prizes %}
-    <h3>Prizes</h3>
-    <ul>
-      {% for prize in prizes %}
-        <li><strong>Place {{ prize.placement }}:</strong> {{ prize.description }}</li>
-      {% endfor %}
-    </ul>
-  {% elif tournament.prize_summary %}
-    <p><strong>Prize:</strong> {{ tournament.prize_summary }}</p>
-  {% endif %}
-</section>
-
-<form method="post" class="pvp-join-form">
-  <div class="warning-box">
-    <h3>Meetup Attendance Required</h3>
-    <p>By joining this tournament you confirm that you will attend the meetup at the scheduled time and location.</p>
-  </div>
-
-  <label class="confirm-checkbox">
-    <input type="checkbox" name="confirm_attendance" value="yes" required>
-    I understand this tournament is tied to an in-person meetup and I will be there.
-  </label>
-
-  <div class="form-actions">
-    <a class="btn-secondary" href="{{ url_for('leagues', pvp_id=tournament.id) }}">Cancel</a>
-    <button type="submit" class="btn">Confirm Registration</button>
-  </div>
-</form>
-
 <style>
-.pvp-join-header {
-  margin-bottom:18px;
+.pvp-join-wrapper {
+  display:flex;
+  flex-direction:column;
+  gap:20px;
 }
-.pvp-join-header h1 {
-  margin:6px 0;
+.pvp-join-hero {
+  position:relative;
+  overflow:hidden;
+  border-radius:20px;
+  color:#fff;
+}
+.pvp-join-hero__gradient {
+  position:absolute;
+  inset:0;
+  background:linear-gradient(135deg,#1d4ed8,#9333ea);
+  opacity:0.92;
+}
+.pvp-join-hero__content {
+  position:relative;
+  z-index:1;
+  padding:28px;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+.pvp-back {
+  color:rgba(255,255,255,0.85);
+  text-decoration:none;
+  font-weight:600;
+  font-size:0.9em;
+}
+.pvp-join-tags {
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+}
+.pvp-chip {
+  display:inline-flex;
+  align-items:center;
+  padding:6px 12px;
+  border-radius:999px;
+  background:rgba(255,255,255,0.18);
+  font-weight:600;
+  font-size:0.8em;
+}
+.pvp-chip--status {
+  background:rgba(251,191,36,0.3);
+}
+.pvp-chip--ghost {
+  background:rgba(15,23,42,0.3);
+}
+.pvp-join-grid {
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:16px;
 }
 .pvp-join-card {
   background:#fff;
-  border-radius:16px;
-  padding:22px;
+  border-radius:18px;
+  padding:20px;
   box-shadow:0 12px 28px rgba(15,23,42,0.12);
-  margin-bottom:20px;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+.pvp-join-card header h2 {
+  margin:0;
 }
 .pvp-join-card dl {
   display:grid;
   grid-template-columns:repeat(2,minmax(0,1fr));
   gap:14px;
-  margin:0 0 16px;
+  margin:0;
 }
 .pvp-join-card dt {
-  font-weight:600;
-  color:#3a8dde;
+  text-transform:uppercase;
+  font-size:0.75em;
+  letter-spacing:0.08em;
+  color:#6366f1;
 }
 .pvp-join-card dd {
   margin:4px 0 0;
   color:#1f2937;
+  font-weight:600;
 }
-.pvp-join-card ul {
-  margin:12px 0 0;
+.pvp-join-card ul,
+.pvp-prize-list {
+  margin:0;
   padding-left:18px;
   display:flex;
   flex-direction:column;
   gap:6px;
 }
-.warning-box {
-  background:#fef08a;
-  border:1px solid #facc15;
+.pvp-prize-list {
+  list-style:none;
+  padding:0;
+}
+.pvp-prize-list li {
+  display:flex;
+  gap:12px;
+  align-items:center;
+}
+.pvp-prize-list .placement {
+  width:32px;
+  height:32px;
   border-radius:12px;
+  background:#1d4ed8;
+  color:#fff;
+  font-weight:700;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.pvp-prize-list .prize-copy {
+  font-weight:600;
+  color:#1f2937;
+}
+.pvp-warning {
+  background:linear-gradient(135deg,#f97316,#facc15);
+  color:#fff;
+  border-radius:14px;
   padding:16px;
-  margin-bottom:16px;
+  box-shadow:0 12px 24px rgba(249,115,22,0.3);
 }
 .confirm-checkbox {
   display:flex;
   align-items:flex-start;
   gap:10px;
   font-weight:600;
-  margin-bottom:18px;
+  margin:18px 0;
+  color:#1f2937;
 }
 .confirm-checkbox input {
   margin-top:4px;
@@ -136,23 +257,37 @@
   display:flex;
   gap:12px;
 }
+.btn-primary,
 .btn-secondary {
   display:inline-flex;
   align-items:center;
   justify-content:center;
   padding:10px 16px;
   border-radius:12px;
+  font-weight:600;
+  text-decoration:none;
+}
+.btn-primary {
+  background:#1e3a8a;
+  color:#fff;
+  box-shadow:0 10px 20px rgba(30,58,138,0.25);
+  border:none;
+}
+.btn-secondary {
   background:#e2e8f0;
   color:#1f2937;
-  text-decoration:none;
-  font-weight:600;
 }
-.btn {
-  padding:10px 16px;
-}
-@media (max-width: 640px) {
+@media (max-width: 1024px) {
+  .pvp-join-grid {
+    grid-template-columns:repeat(1,minmax(0,1fr));
+  }
   .pvp-join-card dl {
     grid-template-columns:repeat(1,minmax(0,1fr));
+  }
+}
+@media (max-width: 640px) {
+  .pvp-join-hero__content {
+    padding:22px;
   }
   .form-actions {
     flex-direction:column;
