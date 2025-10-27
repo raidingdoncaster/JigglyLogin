@@ -19,6 +19,7 @@ from zoneinfo import ZoneInfo
 from urllib.parse import urlencode, quote_plus
 import bleach
 from bleach.linkifier import DEFAULT_CALLBACKS
+from typing import Any
 
 # ====== Feature toggle ======
 USE_SUPABASE = True  # ✅ Supabase for stamps/meetups
@@ -29,6 +30,10 @@ SHOW_CATALOG_APP = True
 SHOW_CITY_PERKS_APP = False
 SHOW_CITY_GUIDES_APP = False
 SHOW_LEAGUES_APP = True
+
+ABOUT_SOURCE_URL = "https://pogoprizes.my.canva.site/"
+ABOUT_CACHE_SECONDS = 60 * 15  # 15 minutes cache window
+_about_page_cache: dict[str, Any] = {"html": None, "timestamp": 0.0}
 
 # Try to import Supabase client
 try:
@@ -946,6 +951,52 @@ def session_check():
     """Quick JSON endpoint for PWA reload logic."""
     return jsonify({"logged_in": "trainer" in session})
 
+
+def _inject_base_href(document: str, base_url: str) -> str:
+    lowered = document.lower()
+    if "<base" in lowered:
+        return document
+
+    head_index = lowered.find("<head")
+    if head_index == -1:
+        return f'<base href="{base_url}">{document}'
+
+    head_close = document.find(">", head_index)
+    if head_close == -1:
+        return document
+
+    insertion = head_close + 1
+    return document[:insertion] + f'<base href="{base_url}">' + document[insertion:]
+
+
+def _load_about_page_html() -> str | None:
+    now = time.time()
+    cached_html = _about_page_cache.get("html")
+    cached_timestamp = _about_page_cache.get("timestamp") or 0
+
+    if cached_html is not None and now - float(cached_timestamp) < ABOUT_CACHE_SECONDS:
+        return cached_html
+
+    try:
+        response = requests.get(
+            ABOUT_SOURCE_URL,
+            timeout=6,
+            headers={
+                "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+                "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"
+            },
+        )
+        response.raise_for_status()
+    except requests.RequestException as exc:
+        app.logger.warning("About page fetch failed: %s", exc)
+        return cached_html
+
+    html = _inject_base_href(response.text, ABOUT_SOURCE_URL)
+    _about_page_cache["html"] = html
+    _about_page_cache["timestamp"] = now
+    return html
+
+
 @app.route("/about")
 def about_rdab():
     """Public-facing About page embedding external overview content."""
@@ -956,8 +1007,23 @@ def about_rdab():
             "href": url_for("home"),
             "label": "Back to RDAB",
         },
+        about_embed_url=url_for("about_rdab_embed"),
+        about_source_url=ABOUT_SOURCE_URL,
+        has_cached_embed=_about_page_cache.get("html") is not None,
         show_back=False,
     )
+
+
+@app.route("/about/embed")
+def about_rdab_embed():
+    html = _load_about_page_html()
+    if not html:
+        abort(503)
+
+    response = make_response(html)
+    response.headers["Content-Type"] = "text/html; charset=utf-8"
+    response.headers["Cache-Control"] = "public, max-age=300"
+    return response
 
 
 # ===== Policies =====

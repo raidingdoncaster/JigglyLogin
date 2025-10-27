@@ -10,13 +10,23 @@
 
   <div class="about-frame">
     <iframe
-      src="https://pogoprizes.my.canva.site/#about"
+      src="{{ about_embed_url }}#about"
       title="About RDAB overview"
       loading="lazy"
       allow="fullscreen"
       referrerpolicy="no-referrer"
     ></iframe>
   </div>
+
+  <p class="about-fallback">
+    {% if not has_cached_embed %}
+      Loading the RDAB overview… If it doesn’t appear, 
+      <a href="{{ about_source_url }}" target="_blank" rel="noopener">open the full site in a new tab</a>.
+    {% else %}
+      If the embed doesn’t load, 
+      <a href="{{ about_source_url }}" target="_blank" rel="noopener">open the full site in a new tab</a>.
+    {% endif %}
+  </p>
 </div>
 
 <button type="button" class="about-scroll-top" id="about-scroll-top" aria-label="Back to top">
@@ -44,6 +54,15 @@
   height:min(88vh,920px);
   min-height:520px;
   border:0;
+}
+.about-fallback{
+  margin:10px 0 0;
+  font-size:0.9rem;
+  color:#475569;
+}
+.about-fallback a{
+  color:#1d4ed8;
+  font-weight:600;
 }
 .about-scroll-top{
   position:fixed;
@@ -74,6 +93,9 @@
   .about-frame iframe{
     height:min(90vh,800px);
     min-height:480px;
+  }
+  .about-fallback{
+    font-size:0.85rem;
   }
 }
 </style>

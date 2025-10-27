@@ -81,9 +81,6 @@
     {% if mode.key == "pvp" %}
       <section class="leagues-section" data-section="{{ mode.key }}" id="leagues-tabpanel-{{ mode.key }}" role="tabpanel" aria-labelledby="leagues-tab-{{ mode.key }}" aria-hidden="true" hidden>
         <div class="pvp-pane">
-          <div class="under-construction-banner under-construction-banner--pvp">
-            Gyms are under construction.
-          </div>
           <div class="pvp-toolbar">
             <div class="pvp-toolbar__meta">
               <h2>Player vs Player</h2>
@@ -324,9 +321,6 @@
       </section>
     {% else %}
       <section class="leagues-section" data-section="{{ mode.key }}" id="leagues-tabpanel-{{ mode.key }}" role="tabpanel" aria-labelledby="leagues-tab-{{ mode.key }}" aria-hidden="true" hidden>
-        <div class="under-construction-banner">
-          Gyms are under construction.
-        </div>
         <div class="mode-panel">
           <header class="mode-header">
             <h2>{{ mode.title }}</h2>
@@ -691,23 +685,6 @@
   border-radius:16px;
   padding:22px;
   box-shadow:0 12px 28px rgba(15,23,42,0.12);
-}
-.under-construction-banner {
-  background:#fef08a;
-  color:#1f2937;
-  border-radius:12px;
-  padding:12px 16px;
-  margin-bottom:16px;
-  font-weight:600;
-  text-align:center;
-  border:1px solid #facc15;
-  box-shadow:0 8px 16px rgba(250,204,21,0.22);
-}
-.under-construction-banner--pvp {
-  background:linear-gradient(135deg,#f472b6,#facc15);
-  color:#fff;
-  border:none;
-  box-shadow:0 12px 24px rgba(244,114,182,0.25);
 }
 .mode-header h2 {
   margin:0 0 6px;
@@ -1201,8 +1178,7 @@
   color:#3a8dde;
 }
 .leagues-footer-nav {
-  position:sticky;
-  bottom:0;
+  position:relative;
   display:flex;
   gap:10px;
   background:rgba(255,255,255,0.95);
