@@ -81,12 +81,8 @@
     {% if mode.key == "pvp" %}
       <section class="leagues-section" data-section="{{ mode.key }}" id="leagues-tabpanel-{{ mode.key }}" role="tabpanel" aria-labelledby="leagues-tab-{{ mode.key }}" aria-hidden="true" hidden>
         <div class="pvp-pane">
-          <div class="pvp-toolbar">
-            <div class="pvp-toolbar__meta">
-              <h2>Player vs Player</h2>
-              <p>Compete in live brackets, track your rivals, and revisit legendary showdowns.</p>
-            </div>
-            {% if pvp_tournaments %}
+          {% if pvp_tournaments %}
+            <div class="pvp-toolbar">
               <form method="get" action="{{ url_for('leagues') }}" class="pvp-toolbar__switcher">
                 <input type="hidden" name="tab" value="pvp">
                 <label for="pvp-selector" class="sr-only">Select tournament</label>
@@ -98,8 +94,8 @@
                   {% endfor %}
                 </select>
               </form>
-            {% endif %}
-          </div>
+            </div>
+          {% endif %}
 
           {% set tournament = pvp_selected.tournament if pvp_selected else None %}
 
@@ -287,34 +283,42 @@
           {% endif %}
 
           <div class="pvp-bottom-grid">
-            {% if pvp_archive %}
-              <section class="pvp-card">
-                <header>
-                  <h4>Previous Tournaments</h4>
-                  <span class="pvp-card__tag">Hall of fame preview</span>
-                </header>
+            <section class="pvp-card pvp-card--archive">
+              <header>
+                <h4>Previous Tournaments</h4>
+                <span class="pvp-card__tag">Tap to view final standings</span>
+              </header>
+              {% if pvp_archive %}
                 <ul class="pvp-archive">
                   {% for history in pvp_archive %}
                     <li>
-                      <div>
+                      <div class="pvp-archive__info">
                         <strong>{{ history.name }}</strong>
-                        <span class="archive-meta">{{ history.bracket_type|replace('_', ' ')|title }}</span>
+                        <div class="archive-meta">
+                          <span>{{ history.bracket_type|replace('_', ' ')|title }}</span>
+                          {% if history.start_at %}
+                            <span aria-hidden="true">•</span>
+                            <span>{{ history.start_at.strftime('%d %b %Y') }}</span>
+                          {% endif %}
+                        </div>
                       </div>
-                      <span class="archive-status">{{ history.status|title }}</span>
+                      <div class="pvp-archive__actions">
+                        <span class="archive-status">{{ history.status|replace('_', ' ')|title }}</span>
+                        <button
+                          type="button"
+                          class="archive-view"
+                          data-archive-id="{{ history.id }}"
+                          data-archive-name="{{ history.name }}"
+                        >
+                          View Rankings
+                        </button>
+                      </div>
                     </li>
                   {% endfor %}
                 </ul>
-              </section>
-            {% endif %}
-
-            <section class="pvp-card pvp-card--gradient">
-              <h4>Season Playbook</h4>
-              <p>We’re building tooling so admins can launch pop-up leagues at meetups, auto-generate pairings, and spotlight champions with a hall of fame.</p>
-              <ul class="playbook-highlights">
-                <li>Season timeline with rounds and match checkpoints.</li>
-                <li>Live brackets that refresh as scores are entered on-site.</li>
-                <li>Rulesets and featured Pokémon surfaced for every cup.</li>
-              </ul>
+              {% else %}
+                <p class="archive-empty">We’ll showcase completed leagues here once the first brackets wrap up.</p>
+              {% endif %}
             </section>
           </div>
         </div>
@@ -322,77 +326,15 @@
     {% else %}
       <section class="leagues-section" data-section="{{ mode.key }}" id="leagues-tabpanel-{{ mode.key }}" role="tabpanel" aria-labelledby="leagues-tab-{{ mode.key }}" aria-hidden="true" hidden>
         <div class="mode-panel">
-          <header class="mode-header">
-            <h2>{{ mode.title }}</h2>
-            <p>{{ mode.summary }}</p>
-          </header>
-
-          <div class="mode-grid">
-            <div class="mode-card">
-              <h3>What To Expect</h3>
-              <ul>
-                {% for feature in mode.features %}
-                  <li>{{ feature }}</li>
-                {% endfor %}
-              </ul>
-            </div>
-            <div class="mode-card">
-              <h3>Future Goals</h3>
-              <ul>
-                {% for feature in mode.future %}
-                  <li>{{ feature }}</li>
-                {% endfor %}
-              </ul>
-            </div>
-          </div>
-
           {% if mode.key == "cdl" %}
             <div class="mode-card mode-card--wide">
-              <h3>CDL Scorecard</h3>
-              <p>Your CDL card will show ranking, match history, and personal highlights at a glance. Historic cups will move into an archive so you never lose track of past performances.</p>
-              <div class="placeholder-scorecard">
-                <div>
-                  <span class="label">Current Rank</span>
-                  <span class="value">TBD</span>
-                </div>
-                <div>
-                  <span class="label">Season Record</span>
-                  <span class="value">0W - 0L</span>
-                </div>
-                <div>
-                  <span class="label">Next Event</span>
-                  <span class="value">Launching soon</span>
-                </div>
-              </div>
+              <h3>Coming Soon</h3>
+              <p>CDL leagues are coming soon.</p>
             </div>
           {% elif mode.key == "limited" %}
             <div class="mode-card mode-card--wide">
-              <h3>Limited-Time Events</h3>
-              {% if live_event_settings.active %}
-                <p>Welcome to the <strong>{{ live_event_settings.theme }}</strong> hub! Look out for themed visuals, limited quests, and exclusive stamp bonuses.</p>
-              {% else %}
-                <p>{{ live_event_settings.inactive_copy }}</p>
-              {% endif %}
-              <div class="activity-grid">
-                {% for activity in live_event_settings.activities %}
-                  <section class="activity-card">
-                    <h4>{{ activity.title }}</h4>
-                    <ul>
-                      {% for detail in activity.details %}
-                        <li>{{ detail }}</li>
-                      {% endfor %}
-                    </ul>
-                  </section>
-                {% endfor %}
-                <section class="activity-card">
-                  <h4>More Event Ideas</h4>
-                  <ul>
-                    <li>City scavenger hunts with snap-and-upload proof.</li>
-                    <li>Story-driven missions with NFC or QR check-ins.</li>
-                    <li>Bonus stamps for streaks or challenge completions.</li>
-                  </ul>
-                </section>
-              </div>
+              <h3>Coming Soon</h3>
+              <p>Limited-time events are coming soon.</p>
             </div>
           {% endif %}
         </div>
@@ -416,20 +358,36 @@
   </div>
 </div>
 
-<nav class="leagues-footer-nav" role="tablist" aria-label="Leagues navigation">
-  <button type="button" class="nav-button is-active" data-section-target="profile" id="leagues-tab-profile" role="tab" aria-controls="leagues-tabpanel-profile" aria-selected="true" tabindex="0">
-    Leagues Profile
-  </button>
-  <button type="button" class="nav-button" data-section-target="cdl" id="leagues-tab-cdl" role="tab" aria-controls="leagues-tabpanel-cdl" aria-selected="false" tabindex="-1">
-    CDL
-  </button>
-  <button type="button" class="nav-button" data-section-target="pvp" id="leagues-tab-pvp" role="tab" aria-controls="leagues-tabpanel-pvp" aria-selected="false" tabindex="-1">
-    PvP
-  </button>
-  <button type="button" class="nav-button" data-section-target="limited" id="leagues-tab-limited" role="tab" aria-controls="leagues-tabpanel-limited" aria-selected="false" tabindex="-1">
-    Limited Time
-  </button>
-</nav>
+<div class="team-modal archive-modal" id="archive-modal" hidden aria-hidden="true">
+  <div class="team-modal-backdrop"></div>
+  <div class="team-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="archive-modal-title">
+    <header class="team-modal-header">
+      <h2 id="archive-modal-title">Tournament Standings</h2>
+      <button type="button" class="archive-modal-close" aria-label="Close standings">✕</button>
+    </header>
+    <p class="archive-modal-subtitle"></p>
+    <div class="archive-modal-body">
+      <ol class="archive-modal-list"></ol>
+    </div>
+  </div>
+</div>
+
+<div class="leagues-footer-nav-rail">
+  <nav class="leagues-footer-nav" role="tablist" aria-label="Leagues navigation">
+    <button type="button" class="nav-button is-active" data-section-target="profile" id="leagues-tab-profile" role="tab" aria-controls="leagues-tabpanel-profile" aria-selected="true" tabindex="0">
+      Leagues Profile
+    </button>
+    <button type="button" class="nav-button" data-section-target="cdl" id="leagues-tab-cdl" role="tab" aria-controls="leagues-tabpanel-cdl" aria-selected="false" tabindex="-1">
+      CDL
+    </button>
+    <button type="button" class="nav-button" data-section-target="pvp" id="leagues-tab-pvp" role="tab" aria-controls="leagues-tabpanel-pvp" aria-selected="false" tabindex="-1">
+      PvP
+    </button>
+    <button type="button" class="nav-button" data-section-target="limited" id="leagues-tab-limited" role="tab" aria-controls="leagues-tabpanel-limited" aria-selected="false" tabindex="-1">
+      Limited Time
+    </button>
+  </nav>
+</div>
 
 <script>
 (function () {
@@ -533,6 +491,143 @@
       modal.removeAttribute("hidden");
       modal.setAttribute("aria-hidden", "false");
       modal.classList.add("is-open");
+    });
+  });
+
+  const archiveModal = document.getElementById("archive-modal");
+  const archiveList = archiveModal?.querySelector(".archive-modal-list");
+  const archiveSubtitle = archiveModal?.querySelector(".archive-modal-subtitle");
+  const archiveTitle = document.getElementById("archive-modal-title");
+
+  const closeArchiveModal = () => {
+    if (!archiveModal) return;
+    archiveModal.setAttribute("hidden", "hidden");
+    archiveModal.setAttribute("aria-hidden", "true");
+    archiveModal.classList.remove("is-open");
+  };
+
+  const renderArchiveStandings = (rows) => {
+    if (!archiveList) {
+      return;
+    }
+    archiveList.innerHTML = "";
+    if (!rows || !rows.length) {
+      const empty = document.createElement("li");
+      empty.className = "archive-modal-placeholder";
+      empty.textContent = "No standings posted for this tournament yet.";
+      archiveList.appendChild(empty);
+      return;
+    }
+
+    rows.forEach((row, index) => {
+      const li = document.createElement("li");
+
+      const rank = document.createElement("span");
+      rank.className = "archive-rank";
+      const rankValue = row.rank ?? index + 1;
+      rank.textContent = typeof rankValue === "number" ? String(rankValue) : (rankValue || `${index + 1}`);
+
+      const body = document.createElement("div");
+      body.className = "archive-entry";
+
+      const trainer = document.createElement("strong");
+      const trainerName = row.trainer || `Registration ${index + 1}`;
+      trainer.textContent = trainerName;
+
+      const facts = document.createElement("p");
+      const wins = row.wins ?? 0;
+      const losses = row.losses ?? 0;
+      const draws = row.draws ?? 0;
+      const points = row.points ?? 0;
+      const wlParts = [`${wins}W`, `${losses}L`];
+      if (draws) {
+        wlParts.push(`${draws}D`);
+      }
+      facts.textContent = `${points} pts • ${wlParts.join(" / ")}`;
+
+      body.appendChild(trainer);
+      body.appendChild(facts);
+
+      li.appendChild(rank);
+      li.appendChild(body);
+      archiveList.appendChild(li);
+    });
+  };
+
+  const showArchiveModal = () => {
+    if (!archiveModal) {
+      return;
+    }
+    archiveModal.removeAttribute("hidden");
+    archiveModal.setAttribute("aria-hidden", "false");
+    archiveModal.classList.add("is-open");
+  };
+
+  archiveModal?.querySelector(".archive-modal-close")?.addEventListener("click", closeArchiveModal);
+  archiveModal?.querySelector(".team-modal-backdrop")?.addEventListener("click", closeArchiveModal);
+
+  document.addEventListener("keydown", (evt) => {
+    if (evt.key === "Escape" && archiveModal?.classList.contains("is-open")) {
+      closeArchiveModal();
+    }
+  });
+
+  document.querySelectorAll(".archive-view").forEach((button) => {
+    button.addEventListener("click", async () => {
+      if (!archiveModal || !archiveList || !archiveSubtitle) return;
+      const tournamentId = button.getAttribute("data-archive-id");
+      if (!tournamentId) return;
+
+      const fetchUrl = `/leagues/pvp/${encodeURIComponent(tournamentId)}/archive`;
+      if (archiveTitle) {
+        archiveTitle.textContent = button.getAttribute("data-archive-name") || "Tournament Standings";
+      }
+      archiveSubtitle.textContent = "Loading standings…";
+      archiveList.innerHTML = "";
+      const loading = document.createElement("li");
+      loading.className = "archive-modal-placeholder";
+      loading.textContent = "Loading standings…";
+      archiveList.appendChild(loading);
+
+      showArchiveModal();
+
+      try {
+        const response = await fetch(fetchUrl, { headers: { Accept: "application/json" } });
+        if (!response.ok) {
+          throw new Error(`Failed to load standings (${response.status})`);
+        }
+        const payload = await response.json();
+        const tournament = payload?.tournament || {};
+        if (archiveTitle && tournament.name) {
+          archiveTitle.textContent = tournament.name;
+        }
+        const metaBits = [];
+        if (tournament.bracket_type) {
+          metaBits.push(tournament.bracket_type.replace(/_/g, " "));
+        }
+        if (tournament.status) {
+          metaBits.push(tournament.status.replace(/_/g, " "));
+        }
+        const eventDate = tournament.conclude_at || tournament.start_at;
+        if (eventDate) {
+          const parsed = new Date(eventDate);
+          if (!Number.isNaN(parsed.valueOf())) {
+            metaBits.push(parsed.toLocaleDateString(undefined, { day: "2-digit", month: "short", year: "numeric" }));
+          }
+        }
+        archiveSubtitle.textContent = metaBits.join(" • ");
+        renderArchiveStandings(Array.isArray(payload?.leaderboard) ? payload.leaderboard : []);
+      } catch (err) {
+        console.error(err);
+        archiveSubtitle.textContent = "";
+        if (archiveList) {
+          archiveList.innerHTML = "";
+          const errorItem = document.createElement("li");
+          errorItem.className = "archive-modal-placeholder";
+          errorItem.textContent = "We couldn’t load the standings right now. Please try again later.";
+          archiveList.appendChild(errorItem);
+        }
+      }
     });
   });
 
@@ -875,6 +970,10 @@
   flex-direction:column;
   gap:12px;
 }
+.pvp-card--archive {
+  background:linear-gradient(135deg,rgba(59,130,246,0.08),rgba(14,165,233,0.1));
+  box-shadow:0 16px 32px rgba(14,116,181,0.2);
+}
 .pvp-card header {
   display:flex;
   justify-content:space-between;
@@ -926,6 +1025,44 @@
 .pvp-prize-list .prize-copy {
   font-weight:600;
   color:#1f2937;
+}
+.pvp-archive__info {
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+.pvp-archive__info strong {
+  font-size:1em;
+  color:#0f172a;
+}
+.pvp-archive__actions {
+  display:flex;
+  flex-direction:column;
+  align-items:flex-end;
+  gap:6px;
+}
+.archive-view {
+  padding:8px 12px;
+  border-radius:10px;
+  border:none;
+  background:#1d4ed8;
+  color:#fff;
+  font-size:0.85em;
+  font-weight:600;
+  cursor:pointer;
+  box-shadow:0 8px 16px rgba(29,78,216,0.25);
+}
+.archive-view:hover {
+  background:#2563eb;
+}
+.archive-empty {
+  margin:0;
+  padding:22px;
+  border-radius:14px;
+  background:#eef2ff;
+  color:#1d4ed8;
+  font-weight:600;
+  text-align:center;
 }
 .pvp-columns {
   display:grid;
@@ -1041,19 +1178,23 @@
   font-weight:700;
 }
 .pvp-archive li {
-  align-items:flex-start;
-  flex-direction:column;
-  gap:6px;
+  align-items:center;
+  flex-direction:row;
+  gap:16px;
 }
 .archive-meta {
   font-size:0.85em;
   color:#475569;
+  display:flex;
+  align-items:center;
+  gap:6px;
 }
 .archive-status {
-  align-self:flex-end;
-  font-size:0.8em;
-  color:#0f172a;
-  font-weight:600;
+  font-size:0.75em;
+  color:#2563eb;
+  font-weight:700;
+  text-transform:uppercase;
+  letter-spacing:0.05em;
 }
 .pvp-empty-card {
   margin:0;
@@ -1177,6 +1318,16 @@
   margin:0 0 6px;
   color:#3a8dde;
 }
+.leagues-footer-nav-rail {
+  position:sticky;
+  bottom:0;
+  margin-top:32px;
+  padding:16px 0 calc(env(safe-area-inset-bottom, 0) + 12px);
+  display:flex;
+  justify-content:center;
+  background:linear-gradient(180deg, rgba(244,247,250,0), rgba(244,247,250,0.9) 60%, rgba(244,247,250,1));
+  z-index:19;
+}
 .leagues-footer-nav {
   position:relative;
   display:flex;
@@ -1187,6 +1338,8 @@
   border:1px solid #dbe0ea;
   box-shadow:0 -8px 20px rgba(15,23,42,0.12);
   backdrop-filter:blur(12px);
+  width:min(100%,720px);
+  margin:0 auto;
   z-index:20;
 }
 .nav-button {
@@ -1215,7 +1368,7 @@
   display:flex;
   justify-content:center;
   align-items:center;
-  z-index:50;
+  z-index:2000;
 }
 .team-modal[hidden] {
   display:none;
@@ -1278,6 +1431,64 @@
   margin:4px 0 0;
   color:#475569;
   font-size:0.9em;
+}
+.archive-modal .team-modal-dialog {
+  width:min(420px, 92vw);
+}
+.archive-modal-subtitle {
+  margin:0 0 16px;
+  color:#475569;
+  font-weight:600;
+}
+.archive-modal-body {
+  max-height:60vh;
+  overflow:auto;
+}
+.archive-modal-list {
+  list-style:none;
+  padding:0;
+  margin:0;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+.archive-modal-list li {
+  display:flex;
+  align-items:center;
+  gap:12px;
+  background:#f8fafc;
+  border-radius:12px;
+  padding:12px;
+  box-shadow:inset 0 0 0 1px rgba(148,163,184,0.14);
+}
+.archive-modal-placeholder {
+  justify-content:center;
+  font-style:italic;
+  color:#475569;
+}
+.archive-rank {
+  width:32px;
+  height:32px;
+  border-radius:10px;
+  background:#1d4ed8;
+  color:#fff;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-weight:700;
+}
+.archive-entry {
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+}
+.archive-entry strong {
+  color:#0f172a;
+}
+.archive-entry p {
+  margin:0;
+  font-size:0.85em;
+  color:#475569;
 }
 
 @media (max-width: 960px) {

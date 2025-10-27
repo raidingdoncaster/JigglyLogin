@@ -11,10 +11,9 @@
   <div class="hero-content">
     <div class="hero-copy">
       <h1>🏆 Leagues Control Center</h1>
-      <p>Coordinate CDL pipelines, PvP tournaments, and live event quests from a single hub. Use these playbooks as you ship new modules.</p>
+      <p>Coordinate CDL pipelines, PvP tournaments, and live event quests from a single hub. Review trainer profiles and keep tabs on live brackets in one place.</p>
       <div class="hero-actions">
         <a href="{{ url_for('admin_leagues_pvp') }}" class="btn-primary">Open PvP Tournament Manager</a>
-        <a href="#leagues-roadmap" class="btn-secondary">View Roadmap</a>
       </div>
     </div>
     <div class="hero-highlights">
@@ -30,148 +29,83 @@
   </div>
 </section>
 
-<nav class="leagues-tabs" aria-label="Leagues sections">
-  {% for mode in league_modes %}
-    <button class="leagues-tab {% if loop.first %}is-active{% endif %}" data-tab="{{ mode.key }}">
-      {{ mode.title }}
-    </button>
-  {% endfor %}
-</nav>
-
-<div class="leagues-panels">
-  {% for mode in league_modes %}
-    <section class="league-panel {% if loop.first %}is-active{% endif %}" data-panel="{{ mode.key }}">
-      <header class="panel-header">
-        <div>
-          <h2>{{ mode.title }}</h2>
-          <p>{{ mode.summary }}</p>
-        </div>
-        <span class="panel-pill">Phase: Discovery</span>
-      </header>
-
-      <div class="panel-grid">
-        <article class="panel-card">
-          <h3>Core Features</h3>
-          <ul>
-            {% for item in mode.features %}
-              <li>{{ item }}</li>
-            {% endfor %}
-          </ul>
-        </article>
-        <article class="panel-card">
-          <h3>Future Vision</h3>
-          <ul>
-            {% for item in mode.future %}
-              <li>{{ item }}</li>
-            {% endfor %}
-          </ul>
-        </article>
+<section class="admin-leagues-grid">
+  <article class="admin-card">
+    <header class="admin-card__header">
+      <div>
+        <h2>League Profiles</h2>
+        <p>Search for a trainer to inspect their league profile.</p>
       </div>
-
-      {% if mode.key == "cdl" %}
-        <div class="panel-card panel-card--wide">
-          <h3>Data Pipeline Checklist</h3>
-          <ol>
-            <li>Confirm Supabase sync for the CDL Google Sheet (live standings + archive tables).</li>
-            <li>Design trainer-facing scorecards with headline metrics, win/loss charts, and placement badges.</li>
-            <li>Surface historical seasons with filters by cup, region, and featured Pokémon.</li>
-          </ol>
-        </div>
-      {% elif mode.key == "pvp" %}
-        <div class="panel-card panel-card--wide">
-          <h3>Live Operations Notes</h3>
-          <p>When a meetup league goes live, admins should be able to flip the league status to “Live” so players begin submitting rounds immediately. Consider on-the-spot updates for:</p>
-          <ul>
-            <li>Cup rules and restricted Pokémon lists.</li>
-            <li>Round pairings with real-time progression.</li>
-            <li>Live leaderboard refreshes while the meetup runs.</li>
-          </ul>
-        </div>
-      {% elif mode.key == "limited" %}
-        <div class="limited-state-grid">
-          <article class="panel-card">
-            <h3>Inactive State</h3>
-            <p>{{ live_event_settings.inactive_copy }}</p>
-            <p class="muted">Keep this message as the default when no event is running.</p>
-          </article>
-          <article class="panel-card">
-            <h3>Active Theme Preview</h3>
-            <p>Next test event: <strong>{{ live_event_settings.theme }}</strong></p>
-            <p>Switching the hub to active mode reveals themed visuals, live activities, and call-to-actions for attendees.</p>
-          </article>
-        </div>
-        <div class="panel-card panel-card--wide">
-          <h3>Live Event Activities</h3>
-          <div class="activity-grid">
-            {% for activity in live_event_settings.activities %}
-              <section class="activity-card">
-                <h4>{{ activity.title }}</h4>
-                <ul>
-                  {% for detail in activity.details %}
-                    <li>{{ detail }}</li>
-                  {% endfor %}
-                </ul>
-              </section>
+    </header>
+    <form method="get" action="{{ url_for('admin_leagues') }}" class="search-form">
+      <label for="trainer-search" class="sr-only">Search trainer username</label>
+      <input
+        id="trainer-search"
+        type="text"
+        name="q"
+        value="{{ search_term }}"
+        placeholder="Search trainer username"
+        class="search-input"
+      >
+      <button type="submit" class="btn-secondary">Search</button>
+    </form>
+    {% if search_term %}
+      <div class="search-feedback">
+        <h3>Results for “{{ search_term }}”</h3>
+        {% if search_results %}
+          <ul class="search-results">
+            {% for trainer in search_results %}
+              <li>
+                <div>
+                  <strong>{{ trainer.display_name }}</strong>
+                  <p class="search-meta">{{ trainer.username }} · {{ trainer.account_type }}</p>
+                </div>
+                <a class="btn-link" href="{{ url_for('leagues') }}?trainer={{ trainer.username }}">View Profile</a>
+              </li>
             {% endfor %}
-            <section class="activity-card">
-              <h4>More Ideas</h4>
-              <ul>
-                <li>Add scavenger hunts, city photo missions, or mini quizzes.</li>
-                <li>Plan stamp verification via QR, NFC, or proof-of-task uploads.</li>
-                <li>Track stamp payouts directly from the final leaderboard.</li>
-              </ul>
-            </section>
-          </div>
-        </div>
-      {% endif %}
-    </section>
-  {% endfor %}
-</div>
+          </ul>
+        {% else %}
+          <p class="search-empty">No trainers matched that search. Try another username.</p>
+        {% endif %}
+      </div>
+    {% else %}
+      <p class="search-hint">Tip: search by a trainer’s username to open their public league profile.</p>
+    {% endif %}
+  </article>
 
-<section class="leagues-roadmap">
-  <h2>Implementation Roadmap</h2>
-  <div class="roadmap-grid">
-    <article>
-      <h3>Phase 1 · Foundations</h3>
-      <ul>
-        <li>Finalize Supabase schemas for leagues, scorecards, matches, and event activities.</li>
-        <li>Import legacy CDL and PvP season data for reference leaderboards.</li>
-        <li>Design MVP trainer views for scorecards and live brackets.</li>
+  <article class="admin-card">
+    <header class="admin-card__header">
+      <div>
+        <h2>Live Ops</h2>
+        <p>Monitor tournaments currently open for registration or live play.</p>
+      </div>
+    </header>
+    {% if active_tournaments %}
+      <ul class="tournament-list">
+        {% for tournament in active_tournaments %}
+          <li>
+            <div class="tournament-info">
+              <strong>{{ tournament.name }}</strong>
+              <p class="tournament-meta">
+                {{ tournament.bracket_type|replace('_', ' ')|title }}
+                {% if tournament.start_at %}
+                  • Starts {{ tournament.start_at.strftime('%d %b %Y %H:%M') }} UTC
+                {% endif %}
+              </p>
+            </div>
+            {% set status_key = tournament.status|lower %}
+            <div class="tournament-actions">
+              <span class="status-pill {{ 'status-pill--' ~ status_key if status_key in ['registration', 'live'] else 'status-pill--other' }}">{{ tournament.status|replace('_', ' ')|title }}</span>
+              <a class="btn-link" href="{{ url_for('admin_leagues_pvp', tournament_id=tournament.id) }}">Manage</a>
+            </div>
+          </li>
+        {% endfor %}
       </ul>
-    </article>
-    <article>
-      <h3>Phase 2 · Live Ops</h3>
-      <ul>
-        <li>Build admin workflows to open, pause, or close leagues in real time.</li>
-        <li>Launch quiz tooling with host dashboards and instant leaderboard updates.</li>
-        <li>Ship the first themed limited-time event (Sinistea Halloween party test).</li>
-      </ul>
-    </article>
-    <article>
-      <h3>Phase 3 · Automation</h3>
-      <ul>
-        <li>Enable automatic stamp payouts from leaderboards and completed activities.</li>
-        <li>Introduce Hall of Fame and lifetime achievement tracking.</li>
-        <li>Expand verification (QR scans, NFC taps, uploads) before awarding stamps.</li>
-      </ul>
-    </article>
-  </div>
+    {% else %}
+      <p class="search-empty">No tournaments are in registration or live mode right now.</p>
+    {% endif %}
+  </article>
 </section>
-
-<script>
-(function () {
-  const tabs = document.querySelectorAll(".leagues-tab");
-  const panels = document.querySelectorAll(".league-panel");
-
-  tabs.forEach((tab) => {
-    tab.addEventListener("click", () => {
-      const target = tab.dataset.tab;
-      tabs.forEach((t) => t.classList.toggle("is-active", t === tab));
-      panels.forEach((panel) => panel.classList.toggle("is-active", panel.dataset.panel === target));
-    });
-  });
-})();
-</script>
 
 <style>
 .admin-leagues-hero {
@@ -217,6 +151,8 @@
   font-weight:600;
   text-decoration:none;
   transition:transform 0.15s ease;
+  border:none;
+  cursor:pointer;
 }
 .btn-primary {
   background:#facc15;
@@ -251,176 +187,174 @@
   letter-spacing:0.08em;
   color:rgba(255,255,255,0.75);
 }
-.leagues-tabs {
-  display:flex;
-  gap:10px;
-  margin-bottom:16px;
-  position:sticky;
-  top:70px;
-  z-index:5;
+.admin-leagues-grid {
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:20px;
+  margin-top:24px;
 }
-.leagues-tab {
-  flex:1;
-  padding:10px 14px;
-  border:none;
-  border-radius:999px;
-  background:#e2e8f0;
-  font-weight:600;
-  cursor:pointer;
-  transition:background 0.2s ease, transform 0.15s ease;
-}
-.leagues-tab.is-active {
-  background:#2563eb;
-  color:#fff;
-  transform:translateY(-1px);
-  box-shadow:0 8px 18px rgba(37,99,235,0.28);
-}
-.leagues-panels {
-  position:relative;
-}
-.league-panel {
-  display:none;
+.admin-card {
   background:#fff;
   border-radius:18px;
   padding:24px;
   box-shadow:0 14px 32px rgba(15,23,42,0.12);
-  margin-bottom:22px;
-}
-.league-panel.is-active {
-  display:block;
-}
-.panel-header {
   display:flex;
-  align-items:flex-start;
-  justify-content:space-between;
-  gap:20px;
-  margin-bottom:20px;
+  flex-direction:column;
+  gap:18px;
 }
-.panel-header h2 {
+.admin-card__header h2 {
   margin:0 0 6px;
 }
-.panel-pill {
-  background:#facc15;
-  color:#1f2937;
-  font-size:0.8em;
-  padding:6px 12px;
-  border-radius:999px;
+.admin-card__header p {
+  margin:0;
+  color:#64748b;
+}
+.search-form {
+  display:flex;
+  gap:12px;
+  flex-wrap:wrap;
+  align-items:center;
+}
+.search-input {
+  flex:1;
+  min-width:220px;
+  padding:10px 12px;
+  border-radius:12px;
+  border:1px solid #cbd5f5;
   font-weight:600;
-  white-space:nowrap;
-}
-.panel-grid {
-  display:grid;
-  grid-template-columns:repeat(2,minmax(0,1fr));
-  gap:16px;
-}
-.panel-card {
   background:#f8fafc;
-  border-radius:16px;
-  padding:18px;
-  box-shadow:inset 0 0 0 1px rgba(148,163,184,0.2);
+  color:#1f2937;
 }
-.panel-card h3 {
-  margin-top:0;
+.search-input:focus {
+  outline:3px solid rgba(59,130,246,0.25);
+  border-color:#3b82f6;
+  background:#fff;
 }
-.panel-card ul,
-.panel-card ol {
-  margin:12px 0 0;
-  padding-left:18px;
+.search-feedback h3 {
+  margin:0 0 12px;
+  font-size:1em;
+  color:#1f2937;
+}
+.search-results {
+  list-style:none;
+  padding:0;
+  margin:0;
   display:flex;
   flex-direction:column;
-  gap:6px;
+  gap:10px;
 }
-.panel-card--wide {
-  margin-top:18px;
-}
-.limited-state-grid {
-  display:grid;
-  grid-template-columns:repeat(2,minmax(0,1fr));
+.search-results li {
+  display:flex;
   gap:16px;
-  margin-top:20px;
+  align-items:flex-start;
+  justify-content:space-between;
+  background:#f8fafc;
+  border-radius:12px;
+  padding:12px 14px;
+  box-shadow:inset 0 0 0 1px rgba(148,163,184,0.18);
 }
-.muted {
+.search-meta {
+  margin:4px 0 0;
   color:#64748b;
+  font-size:0.85em;
+}
+.btn-link {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:8px 12px;
+  border-radius:999px;
+  background:#2563eb;
+  color:#fff;
+  font-weight:600;
+  text-decoration:none;
+  min-width:110px;
+  text-align:center;
+  cursor:pointer;
+}
+.btn-link:hover {
+  background:#1d4ed8;
+}
+.search-hint,
+.search-empty {
+  margin:0;
+  color:#475569;
   font-size:0.9em;
 }
-.activity-grid {
-  display:grid;
-  grid-template-columns:repeat(3,minmax(0,1fr));
-  gap:16px;
-  margin-top:14px;
-}
-.activity-card {
-  background:#fff;
-  border-radius:12px;
-  padding:16px;
-  box-shadow:0 10px 18px rgba(15,23,42,0.08);
-}
-.activity-card h4 {
-  margin:0 0 8px;
-}
-.activity-card ul {
+.tournament-list {
+  list-style:none;
+  padding:0;
   margin:0;
-  padding-left:18px;
   display:flex;
   flex-direction:column;
-  gap:6px;
+  gap:12px;
 }
-.leagues-roadmap {
-  margin-top:28px;
-  background:#fff;
-  border-radius:18px;
-  padding:24px;
-  box-shadow:0 14px 32px rgba(15,23,42,0.12);
-}
-.leagues-roadmap h2 {
-  margin:0 0 14px;
-}
-.roadmap-grid {
-  display:grid;
-  grid-template-columns:repeat(3,minmax(0,1fr));
+.tournament-list li {
+  display:flex;
+  justify-content:space-between;
   gap:16px;
-}
-.roadmap-grid article {
+  align-items:flex-start;
   background:#f8fafc;
-  border-radius:16px;
-  padding:20px;
-  box-shadow:inset 0 0 0 1px rgba(148,163,184,0.2);
+  border-radius:12px;
+  padding:14px;
+  box-shadow:inset 0 0 0 1px rgba(148,163,184,0.18);
 }
-.roadmap-grid h3 {
-  margin-top:0;
-  color:#3a8dde;
+.tournament-info strong {
+  font-size:1em;
+  color:#0f172a;
 }
-.roadmap-grid ul {
-  margin:10px 0 0;
-  padding-left:18px;
+.tournament-meta {
+  margin:4px 0 0;
+  color:#475569;
+  font-size:0.9em;
+}
+.tournament-actions {
   display:flex;
-  flex-direction:column;
-  gap:6px;
+  align-items:center;
+  gap:12px;
+}
+.status-pill {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:6px 12px;
+  border-radius:999px;
+  font-size:0.75em;
+  font-weight:700;
+  text-transform:uppercase;
+  letter-spacing:0.05em;
+}
+.status-pill--registration {
+  background:#fef3c7;
+  color:#b45309;
+}
+.status-pill--live {
+  background:#dcfce7;
+  color:#166534;
+}
+.status-pill--other {
+  background:#e2e8f0;
+  color:#1f2937;
+}
+.sr-only {
+  position:absolute;
+  width:1px;
+  height:1px;
+  padding:0;
+  margin:-1px;
+  overflow:hidden;
+  clip:rect(0,0,0,0);
+  white-space:nowrap;
+  border:0;
 }
 
 @media (max-width: 960px) {
-  .league-profile-callout {
-    max-width:none;
-  }
-  .panel-grid,
-  .limited-state-grid,
-  .activity-grid,
-  .roadmap-grid {
+  .admin-leagues-grid {
     grid-template-columns:repeat(1,minmax(0,1fr));
   }
 }
 
 @media (max-width: 640px) {
-  .leagues-tabs {
-    flex-direction:column;
-  }
-  .panel-header {
-    flex-direction:column;
-    align-items:flex-start;
-  }
-  .panel-pill {
-    margin-top:8px;
-  }
   .hero-content {
     flex-direction:column;
   }

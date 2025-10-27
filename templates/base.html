@@ -32,6 +32,7 @@
     :root{
       --brand:#3a8dde;
       --brand2:#5eb8ff;
+      --header-height:56px;
     }
     *,*::before,*::after{box-sizing:border-box;}
     body{
@@ -40,6 +41,8 @@
       background:#f4f7fa url('/static/hex-bg.png') repeat;
       background-size:200px;
       color:#333;
+      padding-top:var(--header-height);
+      padding-top:calc(var(--header-height) + env(safe-area-inset-top));
     }
 
     /* Loading screen */
@@ -54,11 +57,12 @@
 
     /* Header */
     header{
-      position:sticky; top:0; z-index:1000;
+      position:fixed; top:0; left:0; right:0; z-index:6000;
       background:linear-gradient(135deg,var(--brand),var(--brand2));
       padding:6px 12px;
       display:flex; align-items:center; justify-content:space-between;
       color:#fff;
+      width:100%;
     }
     .header-left{display:flex;align-items:center;gap:12px;}
     .logo{
@@ -301,6 +305,7 @@
 
     /* Mobile */
     @media(max-width:480px){
+      :root{ --header-height:64px; }
       header{ padding:8px 12px; }
       .nav-icons{ gap:10px; }
       .nav-item{ width:40px; height:40px; }

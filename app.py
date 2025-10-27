@@ -366,6 +366,48 @@ def fetch_pvp_tournament_detail(tournament_id: str):
     return detail
 
 
+@app.route("/leagues/pvp/<tournament_id>/archive", methods=["GET"])
+def leagues_pvp_archive_detail(tournament_id):
+    if "trainer" not in session:
+        return jsonify({"error": "auth required"}), 403
+
+    detail = fetch_pvp_tournament_detail(tournament_id)
+    if not detail:
+        return jsonify({"error": "tournament not found"}), 404
+
+    tournament = detail.get("tournament") or {}
+    leaderboard = detail.get("leaderboard") or []
+    standings: list[dict] = []
+    for idx, row in enumerate(leaderboard, start=1):
+        trainer_label = (
+            row.get("trainer_name")
+            or row.get("notes")
+            or row.get("registration_label")
+            or (row.get("registration_id")[:8] if row.get("registration_id") else "")
+        )
+        standings.append({
+            "rank": row.get("rank") or idx,
+            "trainer": trainer_label,
+            "points": row.get("points") or 0,
+            "wins": row.get("wins") or 0,
+            "losses": row.get("losses") or 0,
+            "draws": row.get("draws") or 0,
+        })
+
+    payload = {
+        "tournament": {
+            "id": tournament.get("id"),
+            "name": tournament.get("name"),
+            "status": tournament.get("status"),
+            "bracket_type": tournament.get("bracket_type"),
+            "start_at": tournament.get("start_at").isoformat() if isinstance(tournament.get("start_at"), datetime) else None,
+            "conclude_at": tournament.get("conclude_at").isoformat() if isinstance(tournament.get("conclude_at"), datetime) else None,
+        },
+        "leaderboard": standings,
+    }
+    return jsonify(payload)
+
+
 def find_pvp_registration(tournament_id: str, trainer_name: str):
     """Lookup an existing registration handle for a trainer."""
     if not (supabase and tournament_id and trainer_name):
@@ -1266,6 +1308,40 @@ def find_user(username):
         print("⚠️ Supabase find_user failed:", e)
         return None, None
 
+
+def search_trainers(query, limit=10):
+    """Fuzzy search trainers by username for admin tooling."""
+    if not (supabase and query):
+        return []
+    pattern = f"%{query.strip()}%"
+    try:
+        resp = (
+            supabase.table("sheet1")
+            .select("id, trainer_username, trainer_name, account_type")
+            .ilike("trainer_username", pattern)
+            .order("trainer_username", desc=False)
+            .limit(limit)
+            .execute()
+        )
+        rows = resp.data or []
+        results = []
+        for row in rows:
+            results.append(
+                {
+                    "username": row.get("trainer_username") or "",
+                    "display_name": row.get("trainer_name") or row.get("trainer_username") or "",
+                    "account_type": normalize_account_type(row.get("account_type")),
+                }
+            )
+        return results
+    except Exception as exc:
+        print("⚠️ Trainer search failed:", exc)
+        try:
+            g.supabase_last_error = str(exc)
+        except RuntimeError:
+            pass
+        return []
+
 def extract_trainer_name(image_path):
     try:
         img = Image.open(image_path)
@@ -1910,12 +1986,15 @@ def admin_leagues():
         flash("Leagues are under construction.", "info")
         return redirect(url_for("dashboard"))
 
-    league_modes, live_event_settings = build_league_content()
+    search_term = request.args.get("q", "").strip()
+    search_results = search_trainers(search_term, limit=8) if search_term else []
+    active_tournaments = fetch_pvp_tournaments(statuses=["REGISTRATION", "LIVE"])
 
     return render_template(
         "admin_leagues.html",
-        league_modes=league_modes,
-        live_event_settings=live_event_settings,
+        search_term=search_term,
+        search_results=search_results,
+        active_tournaments=active_tournaments,
     )
 
 
@@ -1935,6 +2014,9 @@ def admin_leagues_pvp():
 
     if request.method == "POST":
         action = request.form.get("action")
+        next_focus = (request.form.get("next_focus") or "").lower()
+        if next_focus not in {"overview", "editor", "snapshot"}:
+            next_focus = None
         if action == "save":
             form_data = request.form.to_dict()
             saved_id, error = upsert_pvp_tournament(form_data, _current_actor())
@@ -1947,7 +2029,13 @@ def admin_leagues_pvp():
             else:
                 flash("Tournament saved.", "success")
                 selected_id = saved_id
-                return redirect(url_for("admin_leagues_pvp", tournament_id=saved_id))
+                return redirect(
+                    url_for(
+                        "admin_leagues_pvp",
+                        tournament_id=saved_id,
+                        focus=next_focus or "snapshot",
+                    )
+                )
         elif action == "status":
             tid = request.form.get("tournament_id")
             status_value = request.form.get("status_value")
@@ -1956,7 +2044,13 @@ def admin_leagues_pvp():
                     flash(f"Tournament moved to {status_value.title()} status.", "success")
                 else:
                     flash("Could not update tournament status.", "error")
-                return redirect(url_for("admin_leagues_pvp", tournament_id=tid))
+                return redirect(
+                    url_for(
+                        "admin_leagues_pvp",
+                        tournament_id=tid,
+                        focus=next_focus or "snapshot",
+                    )
+                )
 
     tournaments = fetch_pvp_tournaments_for_admin()
     selected_detail = fetch_pvp_tournament_detail(selected_id) if selected_id else None
@@ -1973,12 +2067,18 @@ def admin_leagues_pvp():
             for prize in selected_detail.get("prizes", [])
         )
 
+    focus_param = (request.args.get("focus") or "").lower()
+    allowed_focus = {"overview", "editor", "snapshot"}
+    if focus_param not in allowed_focus:
+        focus_param = "snapshot" if selected_detail else "overview"
+
     return render_template(
         "admin_leagues_pvp.html",
         tournaments=tournaments,
         selected=selected_detail,
         rules_text=rules_text,
         prizes_text=prizes_text,
+        focus_tab=focus_param,
     )
 
 
@@ -1989,11 +2089,27 @@ def leagues():
         flash("Please log in to explore leagues.", "warning")
         return redirect(url_for("home"))
 
-    trainer_name = session["trainer"]
-    _, user = find_user(trainer_name)
-    if not user:
+    session_trainer = session["trainer"]
+    _, viewer_user = find_user(session_trainer)
+    if not viewer_user:
         flash("We could not load your trainer profile.", "error")
         return redirect(url_for("dashboard"))
+
+    viewer_account_type = normalize_account_type(viewer_user.get("account_type"))
+
+    target_trainer = request.args.get("trainer", "").strip()
+    user = viewer_user
+    trainer_name = session_trainer
+    if target_trainer:
+        if viewer_account_type == "Admin":
+            _, target_user = find_user(target_trainer)
+            if target_user:
+                user = target_user
+                trainer_name = target_user.get("trainer_username") or target_trainer
+            else:
+                flash(f"We couldn't find a trainer named {target_trainer}. Showing your profile instead.", "warning")
+        else:
+            flash("Only admins can inspect other trainer profiles.", "warning")
 
     league_modes, live_event_settings = build_league_content()
     avatar = user.get("avatar_icon", "avatar1.png")
@@ -2027,7 +2143,6 @@ def leagues():
         account_type=normalize_account_type(user.get("account_type")),
         league_modes=league_modes,
         live_event_settings=live_event_settings,
-        show_back=True,
         avatar=avatar,
         background=background,
         league_card=league_card,
@@ -2112,18 +2227,28 @@ def leagues_pvp_team(tournament_id):
         team_slots[idx]["notes"] = (slot.get("moves") or {}).get("notes", "")
 
     if request.method == "POST":
-        submitted = []
-        for idx in range(1, 7):
-            name = request.form.get(f"pokemon_{idx}", "").strip()
-            form_label = request.form.get(f"pokemon_form_{idx}", "").strip()
-            extra = request.form.get(f"pokemon_notes_{idx}", "").strip()
-        submitted.append({
-            "species_name": name,
-            "species_form": form_label,
-            "notes": extra,
-            "moves": {"notes": extra} if extra else {},
-        })
-        success, error = save_pvp_team(registration["id"], submitted)
+        submitted = _empty_team_slots()
+        payload = []
+        for idx in range(6):
+            name = request.form.get(f"pokemon_{idx + 1}", "").strip()
+            form_label = request.form.get(f"pokemon_form_{idx + 1}", "").strip()
+            extra = request.form.get(f"pokemon_notes_{idx + 1}", "").strip()
+
+            submitted[idx]["species_name"] = name
+            submitted[idx]["species_form"] = form_label
+            submitted[idx]["notes"] = extra
+
+            if not name:
+                continue
+            entry = {
+                "species_name": name,
+                "species_form": form_label,
+                "notes": extra,
+                "moves": {"notes": extra} if extra else {},
+            }
+            payload.append(entry)
+
+        success, error = save_pvp_team(registration["id"], payload)
         if success:
             flash("Team saved! See you at the tournament.", "success")
             return redirect(url_for("leagues", pvp_id=tournament_id))

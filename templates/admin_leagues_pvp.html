@@ -6,163 +6,535 @@
 
 {% block content %}
 
-<div class="admin-header">
-  <h1>🏆 PvP Tournament Manager</h1>
-  <p>Create tournaments, manage registration, and control live brackets.</p>
-</div>
+{% set total_tournaments = tournaments | length %}
+{% set registration_count = tournaments | selectattr('status', 'equalto', 'REGISTRATION') | list | length %}
+{% set live_count = tournaments | selectattr('status', 'equalto', 'LIVE') | list | length %}
+{% set draft_count = tournaments | selectattr('status', 'equalto', 'DRAFT') | list | length %}
+{% set completed_count = tournaments | selectattr('status', 'equalto', 'COMPLETED') | list | length %}
 
-<div class="pvp-admin-layout">
-  <section class="admin-card">
-    <h2>All Tournaments</h2>
-    <ul class="tournament-list">
-      {% for tourney in tournaments %}
-        <li>
+<section class="pvp-admin-hero">
+  <div class="hero-overlay"></div>
+  <div class="hero-content">
+    <div class="hero-copy">
+      <h1>🏆 PvP Tournament Command</h1>
+      <p>Launch new brackets, manage registrations, and control live operations from one streamlined hub.</p>
+      <div class="hero-actions">
+        <a href="{{ url_for('admin_leagues_pvp', focus='editor') }}" class="btn-primary">Create Tournament</a>
+        {% if selected %}
+          <a href="{{ url_for('admin_leagues_pvp', tournament_id=selected.tournament.id, focus='editor') }}" class="btn-secondary">Edit Selected</a>
+        {% endif %}
+      </div>
+    </div>
+    <div class="hero-stats">
+      <div class="stat-card">
+        <span class="stat-label">Total</span>
+        <strong class="stat-value">{{ total_tournaments }}</strong>
+        <span class="stat-caption">tournaments</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Registration</span>
+        <strong class="stat-value">{{ registration_count }}</strong>
+        <span class="stat-caption">open sign-ups</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Live</span>
+        <strong class="stat-value">{{ live_count }}</strong>
+        <span class="stat-caption">active brackets</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<nav class="pvp-tabs" data-default-tab="{{ focus_tab }}">
+  <button class="pvp-tab{% if focus_tab == 'overview' %} is-active{% endif %}" data-tab="overview">
+    Overview
+  </button>
+  <button class="pvp-tab{% if focus_tab == 'editor' %} is-active{% endif %}" data-tab="editor">
+    Editor
+  </button>
+  <button class="pvp-tab{% if focus_tab == 'snapshot' %} is-active{% endif %}" data-tab="snapshot">
+    Snapshot
+  </button>
+</nav>
+
+<div class="pvp-panels">
+  <section class="pvp-panel{% if focus_tab == 'overview' %} is-active{% endif %}" data-panel="overview">
+    <div class="overview-grid">
+      <article class="overview-card">
+        <header>
+          <h2>Status at a Glance</h2>
+          <p>Recent tournament pipeline metrics</p>
+        </header>
+        <div class="status-grid">
           <div>
-            <strong>{{ tourney.name }}</strong>
-            <span class="badge badge--light">{{ tourney.status|replace('_', ' ')|title }}</span>
-            <div class="meta">
-              {% if tourney.start_at %}
-                Starts {{ tourney.start_at.strftime('%d %b %Y %H:%M') }} UTC ·
-              {% endif %}
-              {{ tourney.bracket_type|replace('_', ' ')|title }}
-            </div>
+            <span class="status-label">Draft</span>
+            <strong class="status-value">{{ draft_count }}</strong>
           </div>
-          <div class="actions">
-            <a class="btn-small" href="{{ url_for('admin_leagues_pvp', tournament_id=tourney.id) }}">Open</a>
-            <form method="post">
-              <input type="hidden" name="tournament_id" value="{{ tourney.id }}">
-              <input type="hidden" name="action" value="status">
-              <input type="hidden" name="status_value" value="REGISTRATION">
-              <button type="submit" class="btn-small">Open Registration</button>
-            </form>
+          <div>
+            <span class="status-label">Registration</span>
+            <strong class="status-value">{{ registration_count }}</strong>
           </div>
-        </li>
-      {% endfor %}
-    </ul>
-  </section>
+          <div>
+            <span class="status-label">Live</span>
+            <strong class="status-value">{{ live_count }}</strong>
+          </div>
+          <div>
+            <span class="status-label">Completed</span>
+            <strong class="status-value">{{ completed_count }}</strong>
+          </div>
+        </div>
+      </article>
 
-  <section class="admin-card">
-    <h2>{% if selected %}Edit Tournament{% else %}Create Tournament{% endif %}</h2>
-    <form method="post" class="admin-form">
-      <input type="hidden" name="action" value="save">
-      <input type="hidden" name="tournament_id" value="{{ selected.tournament.id if selected }}">
-      <label>Tournament Name
-        <input type="text" name="name" value="{{ selected.tournament.name if selected }}" required>
-      </label>
-      <label>Description
-        <textarea name="description" rows="3" placeholder="Optional description">{{ selected.tournament.description if selected }}</textarea>
-      </label>
-      <label>Bracket Type
-        <select name="bracket_type">
-          {% set bracket = selected.tournament.bracket_type if selected else 'SWISS' %}
-          {% for key, label in [('SWISS','Swiss'),('ROUND_ROBIN','Round Robin'),('SINGLE_ELIMINATION','Single Elimination')] %}
-            <option value="{{ key }}" {% if bracket == key %}selected{% endif %}>{{ label }}</option>
-          {% endfor %}
-        </select>
-      </label>
-      <label>Status
-        <select name="status">
-          {% set status = selected.tournament.status if selected else 'DRAFT' %}
-          {% for key in ['DRAFT','REGISTRATION','LIVE','COMPLETED','ARCHIVED'] %}
-            <option value="{{ key }}" {% if status == key %}selected{% endif %}>{{ key|replace('_',' ')|title }}</option>
-          {% endfor %}
-        </select>
-      </label>
-      <label>Meetup Info
-        <input type="text" name="location_text" value="{{ selected.tournament.location_text if selected }}" placeholder="City, venue, or meetup link">
-      </label>
-      <label>Meta Notes
-        <textarea name="meta_notes" rows="2" placeholder="Optional meta commentary">{{ selected.tournament.meta_notes if selected }}</textarea>
-      </label>
-      <label>Prize Summary
-        <textarea name="prize_summary" rows="2" placeholder="Headline prize">{{ selected.tournament.prize_summary if selected }}</textarea>
-      </label>
-      <div class="datetime-grid">
-        <label>Registration Opens
-          <input type="datetime-local" name="registration_open_at" value="{{ selected.tournament.registration_open_at.strftime('%Y-%m-%dT%H:%M') if selected and selected.tournament.registration_open_at }}">
-        </label>
-        <label>Registration Closes
-          <input type="datetime-local" name="registration_close_at" value="{{ selected.tournament.registration_close_at.strftime('%Y-%m-%dT%H:%M') if selected and selected.tournament.registration_close_at }}">
-        </label>
-        <label>Start Time
-          <input type="datetime-local" name="start_at" value="{{ selected.tournament.start_at.strftime('%Y-%m-%dT%H:%M') if selected and selected.tournament.start_at }}">
-        </label>
-      </div>
-      <label>Rules (one per line, prefix with “Title: detail” for headings)
-        <textarea name="rules_block" rows="6">{{ rules_text }}</textarea>
-      </label>
-      <label>Prizes (one per line, in placement order)
-        <textarea name="prizes_block" rows="4">{{ prizes_text }}</textarea>
-      </label>
-      <div class="form-actions">
-        <button type="submit" class="btn">Save Tournament</button>
-      </div>
-    </form>
-  </section>
-
-  <section class="admin-card">
-    <h2>Tournament Snapshot</h2>
-    {% if selected %}
-      <p><strong>{{ selected.tournament.name }}</strong></p>
-      <p>Status: {{ selected.tournament.status|replace('_',' ')|title }}</p>
-      <p>Confirmed Registrations: {{ selected.registrations|length }}</p>
-      <p>Matches Scheduled: {{ selected.matches|length }}</p>
-      <div class="admin-buttons">
-        <form method="post">
-          <input type="hidden" name="action" value="status">
-          <input type="hidden" name="tournament_id" value="{{ selected.tournament.id }}">
-          <input type="hidden" name="status_value" value="REGISTRATION">
-          <button type="submit" class="btn-small">Open Registration</button>
-        </form>
-        <form method="post">
-          <input type="hidden" name="action" value="status">
-          <input type="hidden" name="tournament_id" value="{{ selected.tournament.id }}">
-          <input type="hidden" name="status_value" value="LIVE">
-          <button type="submit" class="btn-small">Begin Tournament</button>
-        </form>
-        <form method="post">
-          <input type="hidden" name="action" value="status">
-          <input type="hidden" name="tournament_id" value="{{ selected.tournament.id }}">
-          <input type="hidden" name="status_value" value="COMPLETED">
-          <button type="submit" class="btn-small">Conclude</button>
-        </form>
-      </div>
-      {% if selected.registrations %}
-        <h3>Registrations</h3>
-        <ul class="admin-roster">
-          {% for reg in selected.registrations %}
-            <li>
-              <strong>{{ reg.notes or reg.trainer_id[:8] }}</strong>
-              <span>{{ reg.status|title }}</span>
+      <article class="overview-card">
+        <header class="overview-card__header">
+          <div>
+            <h2>All Tournaments</h2>
+            <p>Most recent first · {{ total_tournaments }} total</p>
+          </div>
+          <a href="{{ url_for('admin_leagues_pvp', focus='editor') }}" class="btn-link">Create</a>
+        </header>
+        <ul class="overview-list">
+          {% for tourney in tournaments %}
+            <li class="overview-row{% if selected and selected.tournament.id == tourney.id %} is-selected{% endif %}">
+              <div class="row-body">
+                <div class="row-heading">
+                  <strong>{{ tourney.name }}</strong>
+                  <span class="status-pill status-pill--{{ tourney.status|lower }}">{{ tourney.status|replace('_', ' ')|title }}</span>
+                </div>
+                <p class="row-meta">
+                  {{ tourney.bracket_type|replace('_', ' ')|title }}
+                  {% if tourney.start_at %}
+                    • Starts {{ tourney.start_at.strftime('%d %b %Y %H:%M') }} UTC
+                  {% endif %}
+                  {% if tourney.registration_open_at %}
+                    • Reg opens {{ tourney.registration_open_at.strftime('%d %b %Y %H:%M') }} UTC
+                  {% endif %}
+                </p>
+              </div>
+              <div class="row-actions">
+                <a class="btn-chip" href="{{ url_for('admin_leagues_pvp', tournament_id=tourney.id, focus='snapshot') }}">Snapshot</a>
+                <a class="btn-chip btn-chip--ghost" href="{{ url_for('admin_leagues_pvp', tournament_id=tourney.id, focus='editor') }}">Edit</a>
+                {% if tourney.status != 'REGISTRATION' %}
+                  <form method="post" class="inline-form">
+                    <input type="hidden" name="action" value="status">
+                    <input type="hidden" name="tournament_id" value="{{ tourney.id }}">
+                    <input type="hidden" name="status_value" value="REGISTRATION">
+                    <input type="hidden" name="next_focus" value="overview">
+                    <button type="submit" class="btn-chip btn-chip--outline">Open Registration</button>
+                  </form>
+                {% endif %}
+                {% if tourney.status != 'LIVE' %}
+                  <form method="post" class="inline-form">
+                    <input type="hidden" name="action" value="status">
+                    <input type="hidden" name="tournament_id" value="{{ tourney.id }}">
+                    <input type="hidden" name="status_value" value="LIVE">
+                    <input type="hidden" name="next_focus" value="overview">
+                    <button type="submit" class="btn-chip btn-chip--outline">Go Live</button>
+                  </form>
+                {% endif %}
+              </div>
             </li>
+          {% else %}
+            <li class="overview-empty">No tournaments created yet — start with the editor tab.</li>
           {% endfor %}
         </ul>
-      {% endif %}
+      </article>
+    </div>
+  </section>
+
+  <section class="pvp-panel{% if focus_tab == 'editor' %} is-active{% endif %}" data-panel="editor">
+    <article class="editor-card">
+      <header class="editor-header">
+        <div>
+          <h2>{% if selected %}Edit Tournament{% else %}Create Tournament{% endif %}</h2>
+          <p>{% if selected %}Updating {{ selected.tournament.name }}{% else %}Draft a new meetup tournament{% endif %}</p>
+        </div>
+        {% if selected %}
+          <span class="editor-status status-pill status-pill--{{ selected.tournament.status|lower }}">{{ selected.tournament.status|replace('_', ' ')|title }}</span>
+        {% endif %}
+      </header>
+      <form method="post" class="editor-form">
+        <input type="hidden" name="action" value="save">
+        <input type="hidden" name="next_focus" value="snapshot">
+        <input type="hidden" name="tournament_id" value="{{ selected.tournament.id if selected }}">
+        <div class="editor-grid">
+          <div class="editor-column">
+            <label>Tournament Name
+              <input type="text" name="name" value="{{ selected.tournament.name if selected }}" required>
+            </label>
+            <label>Description
+              <textarea name="description" rows="3" placeholder="Optional description">{{ selected.tournament.description if selected }}</textarea>
+            </label>
+            <label>Bracket Type
+              {% set bracket = selected.tournament.bracket_type if selected else 'SWISS' %}
+              <select name="bracket_type">
+                {% for key, label in [('SWISS','Swiss'),('ROUND_ROBIN','Round Robin'),('SINGLE_ELIMINATION','Single Elimination')] %}
+                  <option value="{{ key }}" {% if bracket == key %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+            </label>
+            <label>Status
+              {% set status = selected.tournament.status if selected else 'DRAFT' %}
+              <select name="status">
+                {% for key in ['DRAFT','REGISTRATION','LIVE','COMPLETED','ARCHIVED'] %}
+                  <option value="{{ key }}" {% if status == key %}selected{% endif %}>{{ key|replace('_',' ')|title }}</option>
+                {% endfor %}
+              </select>
+            </label>
+            <label>Meetup Info
+              <input type="text" name="location_text" value="{{ selected.tournament.location_text if selected }}" placeholder="City, venue, or meetup link">
+            </label>
+            <label>Meta Notes
+              <textarea name="meta_notes" rows="2" placeholder="Optional meta commentary">{{ selected.tournament.meta_notes if selected }}</textarea>
+            </label>
+          </div>
+
+          <div class="editor-column">
+            <div class="datetime-grid">
+              <label>Registration Opens
+                <input type="datetime-local" name="registration_open_at" value="{{ selected.tournament.registration_open_at.strftime('%Y-%m-%dT%H:%M') if selected and selected.tournament.registration_open_at }}">
+              </label>
+              <label>Registration Closes
+                <input type="datetime-local" name="registration_close_at" value="{{ selected.tournament.registration_close_at.strftime('%Y-%m-%dT%H:%M') if selected and selected.tournament.registration_close_at }}">
+              </label>
+              <label>Start Time
+                <input type="datetime-local" name="start_at" value="{{ selected.tournament.start_at.strftime('%Y-%m-%dT%H:%M') if selected and selected.tournament.start_at }}">
+              </label>
+            </div>
+            <label>Prize Summary
+              <textarea name="prize_summary" rows="2" placeholder="Headline prize">{{ selected.tournament.prize_summary if selected }}</textarea>
+            </label>
+            <label>Rules (one per line, prefix with “Title: detail” for headings)
+              <textarea name="rules_block" rows="6">{{ rules_text }}</textarea>
+            </label>
+            <label>Prizes (one per line, in placement order)
+              <textarea name="prizes_block" rows="4">{{ prizes_text }}</textarea>
+            </label>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn-primary">Save Tournament</button>
+        </div>
+      </form>
+    </article>
+  </section>
+
+  <section class="pvp-panel{% if focus_tab == 'snapshot' %} is-active{% endif %}" data-panel="snapshot">
+    {% if selected %}
+      <article class="snapshot-card">
+        <header class="snapshot-header">
+          <div>
+            <h2>{{ selected.tournament.name }}</h2>
+            <p>{{ selected.tournament.bracket_type|replace('_',' ')|title }} • {{ selected.tournament.status|replace('_',' ')|title }}</p>
+          </div>
+          <div class="snapshot-actions">
+            <form method="post">
+              <input type="hidden" name="action" value="status">
+              <input type="hidden" name="tournament_id" value="{{ selected.tournament.id }}">
+              <input type="hidden" name="status_value" value="REGISTRATION">
+              <input type="hidden" name="next_focus" value="snapshot">
+              <button type="submit" class="btn-chip btn-chip--outline">Open Registration</button>
+            </form>
+            <form method="post">
+              <input type="hidden" name="action" value="status">
+              <input type="hidden" name="tournament_id" value="{{ selected.tournament.id }}">
+              <input type="hidden" name="status_value" value="LIVE">
+              <input type="hidden" name="next_focus" value="snapshot">
+              <button type="submit" class="btn-chip btn-chip--outline">Go Live</button>
+            </form>
+            <form method="post">
+              <input type="hidden" name="action" value="status">
+              <input type="hidden" name="tournament_id" value="{{ selected.tournament.id }}">
+              <input type="hidden" name="status_value" value="COMPLETED">
+              <input type="hidden" name="next_focus" value="snapshot">
+              <button type="submit" class="btn-chip btn-chip--outline">Conclude</button>
+            </form>
+          </div>
+        </header>
+
+        <div class="snapshot-grid">
+          <div class="snapshot-metric">
+            <span class="stat-label">Confirmed Registrations</span>
+            <strong class="stat-value">{{ selected.registrations|length }}</strong>
+          </div>
+          <div class="snapshot-metric">
+            <span class="stat-label">Matches Scheduled</span>
+            <strong class="stat-value">{{ selected.matches|length }}</strong>
+          </div>
+          <div class="snapshot-metric">
+            <span class="stat-label">Leaderboards Rows</span>
+            <strong class="stat-value">{{ selected.leaderboard|length }}</strong>
+          </div>
+        </div>
+
+        <div class="snapshot-meta">
+          {% if selected.tournament.registration_open_at %}
+            <p><span>Registration Opens:</span> {{ selected.tournament.registration_open_at.strftime('%d %b %Y %H:%M') }} UTC</p>
+          {% endif %}
+          {% if selected.tournament.registration_close_at %}
+            <p><span>Registration Closes:</span> {{ selected.tournament.registration_close_at.strftime('%d %b %Y %H:%M') }} UTC</p>
+          {% endif %}
+          {% if selected.tournament.start_at %}
+            <p><span>Start Time:</span> {{ selected.tournament.start_at.strftime('%d %b %Y %H:%M') }} UTC</p>
+          {% endif %}
+          {% if selected.tournament.location_text %}
+            <p><span>Meetup Info:</span> {{ selected.tournament.location_text }}</p>
+          {% endif %}
+        </div>
+
+        {% if selected.registrations %}
+          <section class="snapshot-section">
+            <header>
+              <h3>Registrations</h3>
+              <span>{{ selected.registrations|length }} players</span>
+            </header>
+            <ul class="snapshot-list">
+              {% for reg in selected.registrations %}
+                <li>
+                  <div>
+                    <strong>{{ reg.notes or reg.trainer_id[:8] }}</strong>
+                    <p class="row-meta">Registered {{ reg.created_at.strftime('%d %b %Y %H:%M') if reg.created_at }}</p>
+                  </div>
+                  <span class="status-pill status-pill--{{ reg.status|lower if reg.status else 'other' }}">{{ reg.status|title if reg.status else 'Pending' }}</span>
+                </li>
+              {% endfor %}
+            </ul>
+          </section>
+        {% endif %}
+
+        {% if selected.leaderboard %}
+          <section class="snapshot-section">
+            <header>
+              <h3>Leaderboard Preview</h3>
+              <span>Top performers</span>
+            </header>
+            <ul class="snapshot-list snapshot-list--compact">
+              {% for row in selected.leaderboard[:5] %}
+                <li>
+                  <div>
+                    <strong>#{{ row.rank or loop.index }} · {{ row.registration_id[:8] }}</strong>
+                    <p class="row-meta">{{ row.points or 0 }} pts · {{ row.wins or 0 }}W / {{ row.losses or 0 }}L{% if row.draws %} / {{ row.draws }}D{% endif %}</p>
+                  </div>
+                </li>
+              {% endfor %}
+            </ul>
+          </section>
+        {% endif %}
+      </article>
     {% else %}
-      <p>Select a tournament on the left to see its details.</p>
+      <div class="snapshot-empty">
+        <h2>Select a tournament to view its live snapshot.</h2>
+        <p>Use the overview tab to choose a tournament, or create a new one from the editor.</p>
+      </div>
     {% endif %}
   </section>
 </div>
 
+<script>
+(function () {
+  const tabContainer = document.querySelector(".pvp-tabs");
+  if (!tabContainer) return;
+  const tabs = tabContainer.querySelectorAll(".pvp-tab");
+  const panels = document.querySelectorAll(".pvp-panel");
+  const defaultKey = tabContainer.dataset.defaultTab || "overview";
+
+  const activate = (key) => {
+    tabs.forEach((tab) => tab.classList.toggle("is-active", tab.dataset.tab === key));
+    panels.forEach((panel) => panel.classList.toggle("is-active", panel.dataset.panel === key));
+  };
+
+  let initial = defaultKey;
+  if (!Array.from(tabs).some((tab) => tab.dataset.tab === initial)) {
+    initial = "overview";
+  }
+  activate(initial);
+
+  tabs.forEach((tab) => {
+    tab.addEventListener("click", () => {
+      activate(tab.dataset.tab);
+    });
+  });
+})();
+</script>
+
 <style>
-.admin-header {
-  margin-bottom:20px;
+.pvp-admin-hero {
+  position:relative;
+  overflow:hidden;
+  border-radius:20px;
+  margin-bottom:24px;
+  color:#fff;
 }
-.pvp-admin-layout {
+.pvp-admin-hero .hero-overlay {
+  position:absolute;
+  inset:0;
+  background:linear-gradient(135deg,#1e3a8a,#312e81 45%,#6366f1);
+  opacity:0.94;
+}
+.pvp-admin-hero .hero-content {
+  position:relative;
+  z-index:1;
+  display:flex;
+  justify-content:space-between;
+  gap:24px;
+  padding:28px;
+  align-items:flex-start;
+}
+.hero-copy h1 {
+  margin:0 0 8px;
+}
+.hero-copy p {
+  margin:0 0 18px;
+  max-width:520px;
+}
+.hero-actions {
+  display:flex;
+  gap:12px;
+  flex-wrap:wrap;
+}
+.btn-primary,
+.btn-secondary {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:10px 18px;
+  border-radius:12px;
+  font-weight:600;
+  text-decoration:none;
+  transition:transform 0.15s ease;
+  border:none;
+  cursor:pointer;
+}
+.btn-primary {
+  background:#facc15;
+  color:#0f172a;
+  box-shadow:0 12px 28px rgba(250,204,21,0.35);
+}
+.btn-secondary {
+  background:rgba(15,23,42,0.25);
+  color:#fff;
+}
+.btn-primary:hover,
+.btn-secondary:hover {
+  transform:translateY(-1px);
+}
+.hero-stats {
   display:grid;
   grid-template-columns:repeat(3,minmax(0,1fr));
-  gap:18px;
+  gap:16px;
+  min-width:260px;
 }
-.admin-card {
-  background:#fff;
+.stat-card {
+  background:rgba(15,23,42,0.28);
   border-radius:16px;
-  padding:20px;
-  box-shadow:0 12px 28px rgba(15,23,42,0.12);
+  padding:16px;
+  box-shadow:0 12px 30px rgba(15,23,42,0.35);
   display:flex;
   flex-direction:column;
-  gap:14px;
+  gap:6px;
 }
-.tournament-list {
+.stat-label {
+  font-size:0.75em;
+  text-transform:uppercase;
+  letter-spacing:0.08em;
+  color:rgba(255,255,255,0.75);
+}
+.stat-value {
+  font-size:1.8em;
+  font-weight:700;
+}
+.stat-caption {
+  font-size:0.85em;
+  color:rgba(255,255,255,0.75);
+}
+
+.pvp-tabs {
+  display:flex;
+  gap:10px;
+  margin-bottom:18px;
+}
+.pvp-tab {
+  flex:1;
+  padding:10px 16px;
+  border-radius:999px;
+  border:none;
+  background:#e2e8f0;
+  color:#1f2937;
+  font-weight:600;
+  cursor:pointer;
+  transition:background 0.2s ease, transform 0.15s ease;
+}
+.pvp-tab.is-active {
+  background:#2563eb;
+  color:#fff;
+  transform:translateY(-1px);
+  box-shadow:0 10px 22px rgba(37,99,235,0.28);
+}
+
+.pvp-panels {
+  position:relative;
+}
+.pvp-panel {
+  display:none;
+}
+.pvp-panel.is-active {
+  display:block;
+}
+
+.overview-grid {
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:20px;
+}
+.overview-card {
+  background:#fff;
+  border-radius:18px;
+  padding:22px;
+  box-shadow:0 12px 32px rgba(15,23,42,0.12);
+  display:flex;
+  flex-direction:column;
+  gap:18px;
+}
+.overview-card header h2 {
+  margin:0 0 6px;
+}
+.overview-card header p {
+  margin:0;
+  color:#64748b;
+}
+.overview-card__header {
+  display:flex;
+  justify-content:space-between;
+  gap:16px;
+  align-items:flex-start;
+}
+.status-grid {
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:16px;
+}
+.status-grid div {
+  background:#f8fafc;
+  border-radius:12px;
+  padding:16px;
+  box-shadow:inset 0 0 0 1px rgba(148,163,184,0.18);
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+.status-label {
+  font-size:0.75em;
+  text-transform:uppercase;
+  letter-spacing:0.08em;
+  color:#475569;
+}
+.status-value {
+  font-size:1.4em;
+  font-weight:700;
+  color:#0f172a;
+}
+
+.overview-list {
   list-style:none;
   margin:0;
   padding:0;
@@ -170,100 +542,361 @@
   flex-direction:column;
   gap:12px;
 }
-.tournament-list li {
+.overview-row {
   display:flex;
   justify-content:space-between;
-  gap:12px;
+  gap:16px;
   align-items:flex-start;
-  padding:12px;
+  background:#f8fafc;
+  border-radius:14px;
+  padding:14px 16px;
+  box-shadow:inset 0 0 0 1px rgba(148,163,184,0.16);
+}
+.overview-row.is-selected {
+  box-shadow:0 0 0 2px #2563eb;
+}
+.row-heading {
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex-wrap:wrap;
+}
+.row-heading strong {
+  font-size:1.05em;
+}
+.row-meta {
+  margin:6px 0 0;
+  color:#475569;
+  font-size:0.9em;
+}
+.row-actions {
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  align-items:center;
+  justify-content:flex-end;
+}
+.inline-form {
+  margin:0;
+}
+.inline-form button {
+  border:none;
+}
+.btn-link {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:8px 12px;
+  border-radius:999px;
+  background:#2563eb;
+  color:#fff;
+  font-weight:600;
+  text-decoration:none;
+  min-width:96px;
+  text-align:center;
+}
+.btn-link:hover {
+  background:#1d4ed8;
+}
+.btn-chip {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:8px 12px;
+  border-radius:999px;
+  background:#2563eb;
+  color:#fff;
+  font-weight:600;
+  font-size:0.85em;
+  text-decoration:none;
+  border:none;
+  cursor:pointer;
+  transition:background 0.2s ease;
+}
+.btn-chip:hover {
+  background:#1d4ed8;
+}
+.btn-chip--ghost {
+  background:#f1f5f9;
+  color:#2563eb;
+}
+.btn-chip--ghost:hover {
+  background:#dbeafe;
+}
+.btn-chip--outline {
+  background:transparent;
+  color:#2563eb;
+  border:1px solid rgba(37,99,235,0.4);
+  padding:7px 12px;
+}
+.btn-chip--outline:hover {
+  background:rgba(37,99,235,0.08);
+}
+.status-pill {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:4px 10px;
+  border-radius:999px;
+  font-size:0.75em;
+  font-weight:700;
+  text-transform:uppercase;
+  letter-spacing:0.05em;
+}
+.status-pill--draft {
+  background:#f8fafc;
+  color:#475569;
+}
+.status-pill--registration {
+  background:#fef3c7;
+  color:#b45309;
+}
+.status-pill--live {
+  background:#dcfce7;
+  color:#166534;
+}
+.status-pill--completed {
+  background:#e0f2fe;
+  color:#0c4a6e;
+}
+.status-pill--archived {
+  background:#e2e8f0;
+  color:#475569;
+}
+.status-pill--other {
+  background:#e2e8f0;
+  color:#475569;
+}
+.overview-empty {
+  margin:0;
+  padding:24px;
   border-radius:12px;
   background:#f8fafc;
-}
-.tournament-list .meta {
-  font-size:0.85em;
   color:#475569;
-  margin-top:4px;
+  text-align:center;
 }
-.tournament-list .actions {
+
+.editor-card {
+  background:#fff;
+  border-radius:18px;
+  padding:24px;
+  box-shadow:0 14px 32px rgba(15,23,42,0.12);
   display:flex;
   flex-direction:column;
-  gap:8px;
+  gap:18px;
 }
-.admin-form {
+.editor-header {
+  display:flex;
+  justify-content:space-between;
+  gap:16px;
+  align-items:flex-start;
+}
+.editor-header h2 {
+  margin:0 0 6px;
+}
+.editor-header p {
+  margin:0;
+  color:#64748b;
+}
+.editor-form {
   display:flex;
   flex-direction:column;
-  gap:12px;
+  gap:18px;
 }
-.admin-form label {
+.editor-grid {
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:20px;
+}
+.editor-column {
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+}
+.editor-form label {
   font-weight:600;
   display:flex;
   flex-direction:column;
   gap:6px;
 }
-.admin-form input,
-.admin-form textarea,
-.admin-form select {
-  padding:8px 10px;
-  border-radius:10px;
-  border:1px solid #d0d7e6;
+.editor-form input,
+.editor-form textarea,
+.editor-form select {
+  padding:10px 12px;
+  border-radius:12px;
+  border:1px solid #cbd5f5;
   font-size:0.95em;
+  background:#f8fafc;
+  color:#1f2937;
+}
+.editor-form input:focus,
+.editor-form textarea:focus,
+.editor-form select:focus {
+  outline:3px solid rgba(37,99,235,0.18);
+  border-color:#2563eb;
+  background:#fff;
 }
 .datetime-grid {
   display:grid;
-  grid-template-columns:repeat(3,minmax(0,1fr));
-  gap:12px;
+  grid-template-columns:repeat(1,minmax(0,1fr));
+  gap:14px;
 }
 .form-actions {
   display:flex;
   justify-content:flex-end;
 }
-.admin-buttons {
-  display:flex;
-  gap:8px;
-  flex-wrap:wrap;
-}
-.admin-roster {
-  list-style:none;
-  padding:0;
-  margin:0;
+
+.snapshot-card {
+  background:#fff;
+  border-radius:18px;
+  padding:24px;
+  box-shadow:0 14px 32px rgba(15,23,42,0.12);
   display:flex;
   flex-direction:column;
-  gap:8px;
+  gap:18px;
 }
-.admin-roster li {
+.snapshot-header {
   display:flex;
   justify-content:space-between;
-  padding:8px 10px;
-  border-radius:10px;
+  gap:16px;
+  align-items:flex-start;
+}
+.snapshot-header h2 {
+  margin:0 0 6px;
+}
+.snapshot-header p {
+  margin:0;
+  color:#475569;
+}
+.snapshot-actions {
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+}
+.snapshot-grid {
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:16px;
+}
+.snapshot-metric {
   background:#f8fafc;
+  border-radius:14px;
+  padding:16px;
+  box-shadow:inset 0 0 0 1px rgba(148,163,184,0.16);
+  display:flex;
+  flex-direction:column;
+  gap:6px;
 }
-.btn-small {
-  padding:6px 10px;
-  border-radius:10px;
-  border:none;
-  background:#3a8dde;
-  color:#fff;
-  font-size:0.8em;
-  cursor:pointer;
+.snapshot-meta {
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:12px;
 }
-.badge {
-  display:inline-flex;
-  align-items:center;
-  padding:4px 8px;
-  border-radius:999px;
-  background:#e2e8f0;
-  color:#1f2937;
-  font-size:0.75em;
+.snapshot-meta p {
+  margin:0;
+  background:#f8fafc;
+  border-radius:12px;
+  padding:12px;
+  box-shadow:inset 0 0 0 1px rgba(148,163,184,0.16);
+  font-size:0.9em;
+  color:#475569;
+}
+.snapshot-meta span {
+  display:block;
   font-weight:600;
+  color:#0f172a;
+  margin-bottom:4px;
 }
-.badge--light {
-  background:#cbd5f5;
+.snapshot-section {
+  display:flex;
+  flex-direction:column;
+  gap:12px;
 }
-@media (max-width: 1024px) {
-  .pvp-admin-layout {
+.snapshot-section header {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:10px;
+}
+.snapshot-section header h3 {
+  margin:0;
+}
+.snapshot-section header span {
+  font-size:0.85em;
+  color:#64748b;
+}
+.snapshot-list {
+  list-style:none;
+  margin:0;
+  padding:0;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+.snapshot-list li {
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  align-items:flex-start;
+  background:#f8fafc;
+  border-radius:12px;
+  padding:12px 14px;
+  box-shadow:inset 0 0 0 1px rgba(148,163,184,0.16);
+}
+.snapshot-list--compact li {
+  align-items:center;
+}
+.snapshot-empty {
+  background:#fff;
+  border-radius:18px;
+  padding:40px 24px;
+  text-align:center;
+  box-shadow:0 14px 32px rgba(15,23,42,0.12);
+}
+.snapshot-empty h2 {
+  margin:0 0 10px;
+}
+.snapshot-empty p {
+  margin:0;
+  color:#475569;
+}
+
+@media (max-width: 1040px) {
+  .hero-stats {
     grid-template-columns:repeat(1,minmax(0,1fr));
   }
-  .datetime-grid {
+  .overview-grid {
+    grid-template-columns:repeat(1,minmax(0,1fr));
+  }
+  .snapshot-grid {
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+  .snapshot-meta {
+    grid-template-columns:repeat(1,minmax(0,1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .pvp-admin-hero .hero-content {
+    flex-direction:column;
+  }
+  .hero-stats {
+    width:100%;
+  }
+  .pvp-tabs {
+    flex-direction:column;
+  }
+  .overview-row {
+    flex-direction:column;
+    align-items:flex-start;
+  }
+  .row-actions {
+    justify-content:flex-start;
+  }
+  .editor-grid {
+    grid-template-columns:repeat(1,minmax(0,1fr));
+  }
+  .snapshot-grid {
     grid-template-columns:repeat(1,minmax(0,1fr));
   }
 }
