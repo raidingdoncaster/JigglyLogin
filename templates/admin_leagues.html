@@ -6,26 +6,37 @@
 
 {% block content %}
 
-<div class="leagues-header">
-  <div>
-    <h1>🏆 Leagues Control Center</h1>
-    <p>Preview the upcoming Leagues experience. Use these panels to plan CDL pipelines, PvP seasons, and live event activities while the build is underway.</p>
+<section class="admin-leagues-hero">
+  <div class="hero-overlay"></div>
+  <div class="hero-content">
+    <div class="hero-copy">
+      <h1>🏆 Leagues Control Center</h1>
+      <p>Coordinate CDL pipelines, PvP tournaments, and live event quests from a single hub. Use these playbooks as you ship new modules.</p>
+      <div class="hero-actions">
+        <a href="{{ url_for('admin_leagues_pvp') }}" class="btn-primary">Open PvP Tournament Manager</a>
+        <a href="#leagues-roadmap" class="btn-secondary">View Roadmap</a>
+      </div>
+    </div>
+    <div class="hero-highlights">
+      <div class="highlight-card">
+        <span class="highlight-label">League Profile</span>
+        <p>Build a unified profile with standings, streaks, and reward history across every league.</p>
+      </div>
+      <div class="highlight-card">
+        <span class="highlight-label">Live Ops</span>
+        <p>Flip tournaments into live mode, manage brackets, and broadcast results in real time.</p>
+      </div>
+    </div>
   </div>
-  <div class="league-profile-callout">
-    <h3>League Profile</h3>
-    <p>A unified profile will surface each trainer’s standings, streaks, and rewards across CDL, PvP, and limited-time events.</p>
-  </div>
-</div>
+</section>
 
-<div class="leagues-admin-links">
-  <a href="{{ url_for('admin_leagues_pvp') }}" class="btn">Open PvP Tournament Manager</a>
-</div>
-
-<div class="leagues-tabs">
+<nav class="leagues-tabs" aria-label="Leagues sections">
   {% for mode in league_modes %}
-    <button class="leagues-tab {% if loop.first %}is-active{% endif %}" data-tab="{{ mode.key }}">{{ mode.title }}</button>
+    <button class="leagues-tab {% if loop.first %}is-active{% endif %}" data-tab="{{ mode.key }}">
+      {{ mode.title }}
+    </button>
   {% endfor %}
-</div>
+</nav>
 
 <div class="leagues-panels">
   {% for mode in league_modes %}
@@ -163,52 +174,106 @@
 </script>
 
 <style>
-.leagues-header {
+.admin-leagues-hero {
+  position:relative;
+  overflow:hidden;
+  border-radius:20px;
+  margin-bottom:22px;
+  color:#fff;
+}
+.hero-overlay {
+  position:absolute;
+  inset:0;
+  background:linear-gradient(135deg,#1e3a8a,#9333ea);
+  opacity:0.92;
+}
+.hero-content {
+  position:relative;
+  z-index:1;
   display:flex;
-  align-items:flex-start;
   justify-content:space-between;
   gap:24px;
-  margin-bottom:24px;
+  padding:28px;
 }
-.leagues-admin-links {
-  margin-bottom:20px;
-}
-.leagues-admin-links .btn {
-  padding:10px 18px;
-}
-.leagues-header h1 {
+.hero-copy h1 {
   margin:0 0 8px;
 }
-.league-profile-callout {
-  background:#0ea5e9;
-  color:#fff;
-  padding:16px;
-  border-radius:14px;
-  box-shadow:0 10px 24px rgba(14,165,233,0.35);
-  max-width:280px;
+.hero-copy p {
+  margin:0 0 16px;
+  max-width:520px;
 }
-.league-profile-callout h3 {
-  margin:0 0 6px;
+.hero-actions {
+  display:flex;
+  gap:12px;
+  flex-wrap:wrap;
+}
+.btn-primary,
+.btn-secondary {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:10px 18px;
+  border-radius:12px;
+  font-weight:600;
+  text-decoration:none;
+  transition:transform 0.15s ease;
+}
+.btn-primary {
+  background:#facc15;
+  color:#0f172a;
+  box-shadow:0 12px 28px rgba(250,204,21,0.35);
+}
+.btn-secondary {
+  background:rgba(15,23,42,0.25);
+  color:#fff;
+}
+.btn-primary:hover,
+.btn-secondary:hover {
+  transform:translateY(-1px);
+}
+.hero-highlights {
+  display:grid;
+  gap:12px;
+  min-width:260px;
+}
+.highlight-card {
+  background:rgba(15,23,42,0.32);
+  border-radius:14px;
+  padding:16px;
+  box-shadow:0 12px 24px rgba(15,23,42,0.35);
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+.highlight-label {
+  font-size:0.75em;
+  text-transform:uppercase;
+  letter-spacing:0.08em;
+  color:rgba(255,255,255,0.75);
 }
 .leagues-tabs {
   display:flex;
-  gap:12px;
-  margin-bottom:18px;
+  gap:10px;
+  margin-bottom:16px;
+  position:sticky;
+  top:70px;
+  z-index:5;
 }
 .leagues-tab {
   flex:1;
-  padding:12px;
+  padding:10px 14px;
   border:none;
-  border-radius:12px;
+  border-radius:999px;
   background:#e2e8f0;
   font-weight:600;
   cursor:pointer;
   transition:background 0.2s ease, transform 0.15s ease;
 }
 .leagues-tab.is-active {
-  background:#3a8dde;
+  background:#2563eb;
   color:#fff;
-  transform:translateY(-2px);
+  transform:translateY(-1px);
+  box-shadow:0 8px 18px rgba(37,99,235,0.28);
 }
 .leagues-panels {
   position:relative;
@@ -216,9 +281,10 @@
 .league-panel {
   display:none;
   background:#fff;
-  border-radius:16px;
-  padding:22px;
-  box-shadow:0 12px 28px rgba(15,23,42,0.12);
+  border-radius:18px;
+  padding:24px;
+  box-shadow:0 14px 32px rgba(15,23,42,0.12);
+  margin-bottom:22px;
 }
 .league-panel.is-active {
   display:block;
@@ -249,9 +315,9 @@
 }
 .panel-card {
   background:#f8fafc;
-  border-radius:14px;
+  border-radius:16px;
   padding:18px;
-  box-shadow:inset 0 0 0 1px rgba(148,163,184,0.25);
+  box-shadow:inset 0 0 0 1px rgba(148,163,184,0.2);
 }
 .panel-card h3 {
   margin-top:0;
@@ -302,9 +368,9 @@
 .leagues-roadmap {
   margin-top:28px;
   background:#fff;
-  border-radius:16px;
-  padding:22px;
-  box-shadow:0 12px 28px rgba(15,23,42,0.12);
+  border-radius:18px;
+  padding:24px;
+  box-shadow:0 14px 32px rgba(15,23,42,0.12);
 }
 .leagues-roadmap h2 {
   margin:0 0 14px;
@@ -316,9 +382,9 @@
 }
 .roadmap-grid article {
   background:#f8fafc;
-  border-radius:14px;
-  padding:18px;
-  box-shadow:inset 0 0 0 1px rgba(148,163,184,0.25);
+  border-radius:16px;
+  padding:20px;
+  box-shadow:inset 0 0 0 1px rgba(148,163,184,0.2);
 }
 .roadmap-grid h3 {
   margin-top:0;
@@ -345,9 +411,6 @@
 }
 
 @media (max-width: 640px) {
-  .leagues-header {
-    flex-direction:column;
-  }
   .leagues-tabs {
     flex-direction:column;
   }
@@ -357,6 +420,13 @@
   }
   .panel-pill {
     margin-top:8px;
+  }
+  .hero-content {
+    flex-direction:column;
+  }
+  .hero-highlights {
+    width:100%;
+    grid-template-columns:repeat(1,minmax(0,1fr));
   }
 }
 </style>

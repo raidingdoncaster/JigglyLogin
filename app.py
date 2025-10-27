@@ -454,14 +454,19 @@ def save_pvp_team(registration_id: str, team_slots: list[dict]):
         return False, "Please provide at least one Pokemon."
 
     try:
-        for entry in entries:
-            supabase.table("pvp_teams").upsert(entry, on_conflict="registration_id,pokemon_slot").execute()
+        resp = supabase.table("pvp_teams").insert(entries, returning="representation").execute()
+        if not getattr(resp, "data", None):
+            print("⚠️ PvP team save returned no rows:", getattr(resp, "data", None))
         supabase.table("pvp_registrations").update({
             "team_locked_at": datetime.utcnow().isoformat(),
         }).eq("id", registration_id).execute()
         return True, None
     except Exception as exc:
         print("⚠️ PvP team save failed:", exc)
+        try:
+            g.supabase_last_error = str(exc)
+        except RuntimeError:
+            pass
         return False, "Unable to save team right now."
 
 
