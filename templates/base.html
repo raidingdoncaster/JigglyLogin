@@ -322,6 +322,20 @@
     });
 
     window.addEventListener("DOMContentLoaded",()=>{
+      const headerEl=document.querySelector("header");
+      const setHeaderOffset=()=>{
+        if(!headerEl) return;
+        const height=headerEl.offsetHeight;
+        document.documentElement.style.setProperty("--header-height", `${height}px`);
+      };
+      setHeaderOffset();
+      window.addEventListener("resize", setHeaderOffset);
+      if(window.ResizeObserver && headerEl){
+        const ro=new ResizeObserver(()=>setHeaderOffset());
+        ro.observe(headerEl);
+      }
+      window.addEventListener("load", setHeaderOffset);
+
       // Auto-hide flashes
       setTimeout(()=>{
         document.querySelectorAll(".flash").forEach(el=>{
