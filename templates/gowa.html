@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Doncaster GO Wild Area 2025</title>
+  <link rel="canonical" href="{{ gowa_external_url }}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600&family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --night-sky:#0b1b2f;
+      --dawn:#2f6b99;
+      --accent:#f9e98d;
+      --accent-soft:rgba(249,233,141,0.18);
+      --glade:#78c8a4;
+      --moon:#fef6d8;
+      --text-light:#f7f9ff;
+      --text-soft:rgba(247,249,255,0.78);
+    }
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{
+      min-height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background:radial-gradient(circle at 20% 20%, rgba(120,200,164,0.08), transparent 45%),
+                 radial-gradient(circle at 80% 15%, rgba(249,233,141,0.25), transparent 55%),
+                 linear-gradient(180deg, #081121 0%, #132b49 40%, #07101f 100%);
+      font-family:'Montserrat',sans-serif;
+      color:var(--text-light);
+      overflow:hidden;
+    }
+    .gowa-sparkles{
+      position:fixed;
+      inset:0;
+      pointer-events:none;
+      background-image:
+        radial-gradient(2px 2px at 20% 30%, rgba(255,255,255,0.6), transparent 55%),
+        radial-gradient(1.5px 1.5px at 60% 20%, rgba(255,255,255,0.55), transparent 55%),
+        radial-gradient(2px 2px at 85% 45%, rgba(255,255,255,0.4), transparent 55%),
+        radial-gradient(1px 1px at 35% 70%, rgba(255,255,255,0.35), transparent 55%);
+      animation:twinkle 14s ease-in-out infinite alternate;
+      opacity:0.85;
+    }
+    @keyframes twinkle{
+      0%{transform:translate3d(0,0,0) scale(1);opacity:0.9;}
+      50%{transform:translate3d(0,-10px,0) scale(1.02);opacity:0.7;}
+      100%{transform:translate3d(0,6px,0) scale(1.04);opacity:0.95;}
+    }
+    .gowa-shell{
+      position:relative;
+      width:min(94vw,720px);
+      background:linear-gradient(180deg, rgba(255,255,255,0.09) 0%, rgba(4,16,29,0.65) 100%);
+      border:1px solid rgba(255,255,255,0.18);
+      border-radius:34px;
+      box-shadow:0 28px 70px rgba(3,10,22,0.55);
+      padding:48px clamp(28px,5vw,48px) 40px;
+      backdrop-filter:blur(18px);
+      overflow:hidden;
+    }
+    .gowa-shell::before{
+      content:"";
+      position:absolute;
+      inset:22px;
+      border-radius:28px;
+      border:1px solid rgba(255,255,255,0.18);
+      pointer-events:none;
+    }
+    .gowa-header{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      margin-bottom:32px;
+    }
+    .gowa-logo{
+      width:min(220px,46vw);
+      aspect-ratio:1/1;
+      border-radius:50%;
+      border:3px solid rgba(249,233,141,0.65);
+      background:radial-gradient(circle at 40% 35%, rgba(249,233,141,0.85), rgba(249,233,141,0.18) 65%, rgba(249,233,141,0.08) 100%);
+      box-shadow:0 0 28px rgba(249,233,141,0.25);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:18px;
+    }
+    .gowa-logo img{
+      width:100%;
+      height:100%;
+      object-fit:contain;
+      filter:drop-shadow(0 8px 16px rgba(0,0,0,0.35));
+    }
+    .gowa-logo-placeholder{
+      font-family:'Cinzel',serif;
+      font-size:clamp(1.6rem,4vw,2.4rem);
+      color:var(--night-sky);
+      text-transform:uppercase;
+      letter-spacing:0.32em;
+    }
+    .gowa-title{
+      text-align:center;
+      display:flex;
+      flex-direction:column;
+      gap:14px;
+      margin-bottom:40px;
+    }
+    .gowa-title h1{
+      font-family:'Cinzel',serif;
+      font-size:clamp(2.4rem,4vw,3.1rem);
+      font-weight:600;
+      letter-spacing:0.14em;
+      text-transform:uppercase;
+      color:var(--moon);
+      text-shadow:0 6px 18px rgba(0,0,0,0.45);
+    }
+    .gowa-title p{
+      font-size:clamp(1rem,2.2vw,1.2rem);
+      color:var(--text-soft);
+      line-height:1.6;
+      max-width:520px;
+      margin:0 auto;
+    }
+    .gowa-actions{
+      margin-top:46px;
+      display:flex;
+      flex-wrap:wrap;
+      gap:16px;
+      justify-content:center;
+      align-items:stretch;
+    }
+    .gowa-button{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      padding:16px 22px;
+      border-radius:999px;
+      background:linear-gradient(145deg, rgba(249,233,141,0.95), rgba(249,233,141,0.75));
+      color:#182135;
+      font-weight:600;
+      font-size:1rem;
+      letter-spacing:0.05em;
+      text-decoration:none;
+      text-transform:uppercase;
+      box-shadow:0 16px 32px rgba(10,34,52,0.45);
+      transition:transform .25s ease, box-shadow .25s ease;
+      min-width:200px;
+    }
+    .gowa-button:hover{
+      transform:translateY(-4px);
+      box-shadow:0 22px 40px rgba(10,34,52,0.5);
+    }
+    .gowa-button--outline{
+      background:rgba(15,33,52,0.35);
+      border:2px solid rgba(249,233,141,0.45);
+      color:var(--text-light);
+      backdrop-filter:blur(6px);
+    }
+    .gowa-button--social{
+      flex-direction:column;
+      gap:8px;
+      padding:14px 18px;
+    }
+    .gowa-button--social span{
+      font-size:0.95rem;
+      letter-spacing:0.12em;
+    }
+    .gowa-social-links{
+      display:flex;
+      gap:10px;
+    }
+    .gowa-social-link{
+      padding:8px 14px;
+      border-radius:999px;
+      background:rgba(7,17,31,0.7);
+      color:var(--text-light);
+      text-decoration:none;
+      font-size:0.85rem;
+      letter-spacing:0.08em;
+      transition:background .25s ease, transform .25s ease;
+    }
+    .gowa-social-link:hover{
+      background:rgba(7,17,31,0.85);
+      transform:translateY(-2px);
+    }
+    @media(max-width:640px){
+      .gowa-shell{padding:38px 22px 36px;}
+      .gowa-actions{gap:14px;}
+      .gowa-button{width:100%;min-width:0;}
+      .gowa-button--social{align-items:center;}
+    }
+  </style>
+</head>
+<body>
+  <div class="gowa-sparkles" aria-hidden="true"></div>
+  <main class="gowa-shell">
+    <header class="gowa-header">
+      <div class="gowa-logo">
+        {% if gowa_logo_url %}
+          <img src="{{ gowa_logo_url }}" alt="GO Wild Area emblem">
+        {% else %}
+          <span class="gowa-logo-placeholder">GOWA</span>
+        {% endif %}
+      </div>
+    </header>
+
+    <section class="gowa-title">
+      <h1>Doncaster GO Wild Area 2025</h1>
+      <p>
+        Whispered among the trees of the wild area, a new chapter awaits brave Trainers.
+        Follow the shimmering lights and discover encounters spun from folklore and stardust.
+      </p>
+    </section>
+
+    <footer class="gowa-actions">
+      <a href="{{ url_for('home') }}" class="gowa-button gowa-button--outline">back to RDAB</a>
+      <a href="https://pokemongolive.com/events" target="_blank" rel="noopener" class="gowa-button">View details on Pokemon GO</a>
+      <div class="gowa-button gowa-button--social">
+        <span>Stay Connected</span>
+        <div class="gowa-social-links">
+          <a href="https://www.instagram.com/raidingdoncaster" target="_blank" rel="noopener" class="gowa-social-link">RDAB Instagram</a>
+          <a href="https://www.tiktok.com/@raidingdoncaster" target="_blank" rel="noopener" class="gowa-social-link">RDAB TikTok</a>
+        </div>
+      </div>
+    </footer>
+  </main>
+</body>
+</html>

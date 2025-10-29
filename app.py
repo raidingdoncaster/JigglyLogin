@@ -23,7 +23,14 @@ from typing import Any
 
 # ====== Feature toggle ======
 USE_SUPABASE = True  # ✅ Supabase for stamps/meetups
-MAINTENANCE_MODE = False  # ⛔️ Change to True to enable maintenance mode
+MAINTENANCE_MODE = True  # ⛔️ Change to True to enable maintenance mode
+
+# ====== GOWA secret event toggle ======
+GOWA_ENABLED = True  # 🌿 Flip to True to unlock the Doncaster GO Wild Area experience
+GOWA_STATIC_PREFIX = "gowa"
+GOWA_BANNER_ASSET = f"{GOWA_STATIC_PREFIX}/banner.png"
+GOWA_LOGO_ASSET = f"{GOWA_STATIC_PREFIX}/logo.png"
+GOWA_EXTERNAL_URL = "https://rdab.app/wild"
 
 # ====== Dashboard feature visibility toggles ======
 SHOW_CATALOG_APP = True
@@ -37,7 +44,7 @@ ABOUT_SOURCE_URL = (
     "view?utm_content=DAGxH_O6jbA&utm_campaign=designshare&utm_medium=embeds&utm_source=link"
 )
 ABOUT_CREDIT_TITLE = "Raiding Doncaster and Beyond"
-ABOUT_CREDIT_AUTHOR = "tylaetylae"
+ABOUT_CREDIT_AUTHOR = "admin"
 
 # Try to import Supabase client
 try:
@@ -126,6 +133,25 @@ def save_custom_events(events: list[dict]) -> None:
             json.dump(events, fh, indent=2)
     except Exception as exc:
         print("⚠️ Failed to save custom calendar events:", exc)
+
+
+def _ensure_gowa_enabled():
+    if not GOWA_ENABLED:
+        abort(404)
+
+
+def _gowa_banner():
+    if not GOWA_ENABLED:
+        return None
+    try:
+        return {
+            "href": GOWA_EXTERNAL_URL,
+            "image_url": url_for("static", filename=GOWA_BANNER_ASSET),
+            "alt": "Doncaster GO Wild Area 2025",
+        }
+    except RuntimeError:
+        # Called outside of a request context; treat as disabled.
+        return None
 
 
 def build_league_content():
@@ -987,10 +1013,28 @@ def home():
 
     # 🔹 Otherwise show normal landing page (for browsers only)
     if not is_pwa:
-        return render_template("landing.html", show_back=False)
+        return render_template("landing.html", show_back=False, gowa_banner=_gowa_banner())
 
     # Default fallback
     return redirect(url_for("login"))
+
+
+@app.route("/wild")
+def gowa_portal():
+    _ensure_gowa_enabled()
+    return render_template(
+        "gowa.html",
+        gowa_logo_url=url_for("static", filename=GOWA_LOGO_ASSET),
+        gowa_external_url=GOWA_EXTERNAL_URL,
+    )
+
+
+@app.route("/gowa")
+@app.route("/gowild")
+@app.route("/nowild")
+def gowa_alias_redirect():
+    _ensure_gowa_enabled()
+    return redirect(url_for("gowa_portal"))
 
 @app.route("/session-check")
 def session_check():
@@ -3579,7 +3623,7 @@ def login():
             return redirect(url_for("home"))
 
     # GET request — just show login form
-    return render_template("login.html")
+    return render_template("login.html", gowa_banner=_gowa_banner())
 
 # ====== Sign Up ======
 def _trainer_exists(trainer_name: str) -> bool:
@@ -3882,6 +3926,7 @@ def dashboard():
         show_city_perks_app=SHOW_CITY_PERKS_APP,
         show_city_guides_app=SHOW_CITY_GUIDES_APP,
         show_leagues_app=SHOW_LEAGUES_APP,
+        gowa_banner=_gowa_banner(),
     )
 
 @app.route("/calendar")
