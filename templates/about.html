@@ -8,10 +8,10 @@
 <div class="about-shell">
   <h1 class="about-heading">About RDAB</h1>
 
-  <div class="about-frame">
+  <div class="about-embed">
     <iframe
-      src="{{ about_embed_url }}#about"
-      title="About RDAB overview"
+      src="{{ about_embed_url }}"
+      title="Raiding Doncaster and Beyond presentation"
       loading="lazy"
       allow="fullscreen"
       referrerpolicy="no-referrer"
@@ -19,13 +19,16 @@
   </div>
 
   <p class="about-fallback">
-    {% if not has_cached_embed %}
-      Loading the RDAB overview… If it doesn’t appear, 
-      <a href="{{ about_source_url }}" target="_blank" rel="noopener">open the full site in a new tab</a>.
-    {% else %}
-      If the embed doesn’t load, 
-      <a href="{{ about_source_url }}" target="_blank" rel="noopener">open the full site in a new tab</a>.
-    {% endif %}
+    If the embed doesn’t load,
+    <a href="{{ about_source_url }}" target="_blank" rel="noopener">
+      open "{{ about_credit_title }}" on Canva
+    </a>.
+  </p>
+
+  <p class="about-credit">
+    <a href="{{ about_source_url }}" target="_blank" rel="noopener">
+      {{ about_credit_title }}
+    </a> by {{ about_credit_author }}
   </p>
 </div>
 
@@ -42,25 +45,40 @@
   color:#0f172a;
 }
 .about-heading{margin:0;font-size:1.6rem;text-align:left;}
-.about-frame{
-  background:#fff;
-  border-radius:22px;
-  box-shadow:0 16px 36px rgba(15,23,42,0.18);
-  overflow:hidden;
-}
-.about-frame iframe{
-  display:block;
+.about-embed{
+  position:relative;
   width:100%;
-  height:min(88vh,920px);
-  min-height:520px;
+  height:0;
+  padding-top:261.9327%;
+  background:#fff;
+  border-radius:8px;
+  box-shadow:0 2px 8px rgba(63,69,81,0.16);
+  overflow:hidden;
+  will-change:transform;
+}
+.about-embed iframe{
+  position:absolute;
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
   border:0;
 }
 .about-fallback{
-  margin:10px 0 0;
+  margin:8px 0 0;
   font-size:0.9rem;
   color:#475569;
 }
 .about-fallback a{
+  color:#1d4ed8;
+  font-weight:600;
+}
+.about-credit{
+  margin:0;
+  font-size:0.85rem;
+  color:#64748b;
+}
+.about-credit a{
   color:#1d4ed8;
   font-weight:600;
 }
@@ -90,12 +108,11 @@
   .about-shell{
     padding:0 14px 20px;
   }
-  .about-frame iframe{
-    height:min(90vh,800px);
-    min-height:480px;
-  }
   .about-fallback{
     font-size:0.85rem;
+  }
+  .about-credit{
+    font-size:0.8rem;
   }
 }
 </style>
