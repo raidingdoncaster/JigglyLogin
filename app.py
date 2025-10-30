@@ -24,14 +24,14 @@ from typing import Any
 
 # ====== Feature toggle ======
 USE_SUPABASE = True  # ✅ Supabase for stamps/meetups
-MAINTENANCE_MODE = True  # ⛔️ Change to True to enable maintenance mode
+MAINTENANCE_MODE = False  # ⛔️ Change to True to enable maintenance mode
 
 # ====== GOWA secret event toggle ======
 GOWA_ENABLED = True  # 🌿 Flip to True to unlock the Doncaster GO Wild Area experience
 GOWA_STATIC_PREFIX = "gowa"
 GOWA_BANNER_ASSET = f"{GOWA_STATIC_PREFIX}/banner.png"
 GOWA_LOGO_ASSET = f"{GOWA_STATIC_PREFIX}/logo.png"
-GOWA_EXTERNAL_URL = "https://rdab.app/wild"
+GOWA_EXTERNAL_URL = "https://rdab.app/gowa"
 
 # ====== Dashboard feature visibility toggles ======
 SHOW_CATALOG_APP = True
@@ -1713,7 +1713,7 @@ def home():
     return redirect(url_for("login"))
 
 
-@app.route("/wild")
+@app.route("/gowa")
 def gowa_portal():
     _ensure_gowa_enabled()
     gowa_content = _prepare_gowa_content()
@@ -1727,10 +1727,15 @@ def gowa_portal():
     )
 
 
-@app.route("/gowa")
 @app.route("/gowild")
 @app.route("/nowild")
 def gowa_alias_redirect():
+    _ensure_gowa_enabled()
+    return redirect(url_for("gowa_portal"))
+
+
+@app.route("/wild")
+def gowa_legacy_redirect():
     _ensure_gowa_enabled()
     return redirect(url_for("gowa_portal"))
 
