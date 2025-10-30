@@ -24,7 +24,7 @@ from typing import Any
 
 # ====== Feature toggle ======
 USE_SUPABASE = True  # ✅ Supabase for stamps/meetups
-MAINTENANCE_MODE = False  # ⛔️ Change to True to enable maintenance mode
+MAINTENANCE_MODE = True  # ⛔️ Change to True to enable maintenance mode
 
 # ====== GOWA secret event toggle ======
 GOWA_ENABLED = True  # 🌿 Flip to True to unlock the Doncaster GO Wild Area experience
@@ -65,23 +65,20 @@ def show_custom_error_page(err):
 
 @app.before_request
 def check_maintenance_mode():
-    from flask import request, redirect, url_for, render_template, session
+    from flask import request, render_template
 
-    # Allow admins through even during maintenance
-    if session.get("account_type") == "Admin":
-        return
-
-    # Skip maintenance mode for static files, manifest, and login
-    allowed_endpoints = (
+    endpoint = request.endpoint or ""
+    allowed_when_locked = {
         "static",
         "manifest",
         "service_worker",
         "maintenance",
-        "admin_login",
-        "calendar_public",
-        "event_ics_file",
-    )
-    if app.view_functions.get(request.endpoint) and request.endpoint.startswith(allowed_endpoints):
+        "home",
+        "gowa_portal",
+        "gowa_alias_redirect",
+        "gowa_legacy_redirect",
+    }
+    if endpoint in allowed_when_locked:
         return
 
     # If maintenance mode is on, show maintenance page
@@ -1693,6 +1690,9 @@ def pwa_flag():
 @app.route("/")
 def home():
     """Smart home redirect — PWA-safe."""
+    if MAINTENANCE_MODE:
+        return redirect(url_for("gowa_portal"))
+
     ua = request.user_agent.string.lower()
     is_mobile = bool(re.search("iphone|ipad|android|mobile", ua))
     is_pwa = session.get("is_pwa", False)
