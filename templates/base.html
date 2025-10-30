@@ -52,7 +52,9 @@
     }
     .gowa-banner{
       display:block;
-      width:100%;
+      width:480px;
+      max-width:100%;
+      aspect-ratio:1 / 1;
       border-radius:20px;
       overflow:hidden;
       box-shadow:0 18px 44px rgba(15,23,42,0.18);
@@ -61,7 +63,8 @@
     .gowa-banner img{
       display:block;
       width:100%;
-      height:auto;
+      height:100%;
+      object-fit:cover;
     }
     .gowa-banner:hover{
       transform:translateY(-2px);

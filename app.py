@@ -1,4 +1,5 @@
 import os
+import copy
 import hashlib
 import json
 import requests
@@ -97,6 +98,200 @@ CLASSIC_SUBMISSION_STATUSES = {"PENDING", "AWARDED", "REJECTED"}
 DATA_DIR = Path(app.root_path) / "data"
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 CUSTOM_EVENTS_PATH = DATA_DIR / "custom_events.json"
+GOWA_CONTENT_PATH = DATA_DIR / "gowa_page.json"
+GOWA_DEFAULT_CONTENT = {
+    "title": "Doncaster GO Wild Area 2025",
+    "description": (
+        "Whispered among the trees of the wild area, a new chapter awaits brave Trainers. "
+        "Follow the shimmering lights and discover encounters spun from folklore and stardust."
+    ),
+    "logo_alt": "GO Wild Area emblem",
+    "meta": {
+        "canonical": GOWA_EXTERNAL_URL,
+    },
+    "buttons": [
+        {
+            "label": "back to RDAB",
+            "endpoint": "home",
+            "variant": "outline",
+        },
+        {
+            "label": "View details on Pokemon GO",
+            "href": "https://pokemongolive.com/events",
+            "variant": "primary",
+            "new_tab": True,
+        },
+    ],
+    "social": {
+        "label": "Stay Connected",
+        "links": [
+            {
+                "label": "RDAB Instagram",
+                "href": "https://www.instagram.com/raidingdoncaster",
+                "new_tab": True,
+            },
+            {
+                "label": "RDAB TikTok",
+                "href": "https://www.tiktok.com/@raidingdoncaster",
+                "new_tab": True,
+            },
+        ],
+    },
+    "events": {
+        "heading": "2 Days. 1 Wild Adventure.",
+        "body": (
+            "Gather your friends, your team, and your courage. The Wild Area calls! "
+            "From a local meet-up to a grand community celebration, every moment counts."
+        ),
+        "cards": [
+            {
+                "title": "GO Wild Area: Doncaster Meet-up",
+                "date": "15 November · 10:00 – 18:00",
+                "location": "Elmfield Park, Doncaster",
+                "logo": None,
+                "logo_alt": "GO Wild Area: Doncaster Meet-up logo",
+                "button": {
+                    "label": "RSVP",
+                    "href": "",
+                    "variant": "primary",
+                    "new_tab": True,
+                },
+            },
+            {
+                "title": "Pokémon GO: Wild Area Community Celebration – Doncaster",
+                "date": "16 November · 10:00 – 18:00",
+                "location": "Doncaster Market",
+                "logo": None,
+                "logo_alt": "Wild Area Community Celebration logo",
+                "button": {
+                    "label": "Find out more",
+                    "href": "#wild-area-details",
+                    "variant": "outline",
+                    "new_tab": False,
+                },
+            },
+        ],
+    },
+    "narrative": {
+        "heading": "Wait… an Official Pokémon GO Event?!",
+        "lede": (
+            "Yes, Niantic are delivering an in-person Community Celebration event — "
+            "right here in Doncaster."
+        ),
+        "paragraphs": [
+            "Raiding Doncaster and Beyond and Community Ambassador teams from across the north of England have teamed up to help deliver Europe's first ever official Pokémon GO: Community Celebration event.",
+            "This is where community passion meets official gameplay. Expect a true in-person experience both on the ground in the City of Doncaster and in-game. From official route tours and raid trains, to geocache adventures and competitive challenges, to live activities and celebrations across the city.",
+            "On Sunday, 16th November, the Wild Area comes alive at Doncaster Market and Corn Exchange from 10am till 6pm.",
+            "This is not just an event. It's a milestone — where the communities of the North unite to deliver something truly world-class. Join us. Be a part of Pokémon GO history.",
+        ],
+        "breaker": {
+            "image": "gowa/section-breaker.png",
+            "alt": "Golden sparkle divider",
+        },
+        "button": {
+            "label": "Learn More about Pokémon GO: Wild Area 2025",
+            "href": "",
+            "variant": "primary",
+            "new_tab": True,
+        },
+    },
+    "expectations": {
+        "heading": "What to Expect?",
+        "quote": "“The Wild Awakens”",
+        "disclaimer": (
+            "The Wild Awakens is a community-run creative experience designed, developed and organised by Community Ambassadors. "
+            "This experience is not sponsored by or affiliated with Niantic, Scopely, The Pokémon Company, Game Freak or The Pokémon Company International."
+        ),
+        "paragraphs": [
+            "The ancient Fairy Council has stirred from their slumber, and a mysterious energy is spreading across Doncaster.",
+            "In its wake rises a protest movement calling themselves Team NO Wild — a group claiming to “protect” nature by driving Trainers from the city. But their motives may not be as pure as they seem.",
+            "This original storyline has been developed by the Raiding Doncaster and Beyond Community Ambassadors as an independent, fan-made experience, created to celebrate the spirit of exploration and community that Pokémon GO inspires.",
+            "On 16 November, during the Doncaster Community Celebrations, Trainers can take part in activities inspired by this story in live in-person activities exclusive to the day.",
+            "Will you side with the Fairy Council, restoring balance to the Wild? Or align with Team NO Wild, seeking to control its growing power?",
+        ],
+    },
+    "factions": {
+        "heading": "Choose Your Side",
+        "intro": "On November 16th, your choices will shape the fate of Doncaster’s wilds.",
+        "cards": [
+            {
+                "title": "The Fairy Council",
+                "body": "Guardians of harmony and ancient nature magic. The Fairy Council seeks to calm the rising chaos and restore balance.",
+            },
+            {
+                "title": "Team NO Wild",
+                "body": "A radical movement claiming to protect the “Natural Order” by driving Trainers out of the city. But their true motives remain hidden in the shadows.",
+            },
+        ],
+    },
+    "activities": {
+        "heading": "Core Activities",
+        "disclaimer": (
+            "The Wild Awakens is a community-run creative experience designed, developed and organised by Community Ambassadors. "
+            "This experience is not sponsored by or affiliated with Niantic, Scopely, The Pokémon Company, Game Freak or The Pokémon Company International."
+        ),
+        "intro": "These four feature events run throughout the day led by your Community Ambassadors, and shape the fate of Doncaster’s wilds.",
+        "cards": [
+            {
+                "title": "Join a City Route Tour",
+                "body": "Embark on Route Tours led by local guides! Explore Doncaster’s landmarks, tackle raids, battles, and uncover Wild secrets.",
+                "image": "gowa/activity-route-tour.png",
+                "image_alt": "Community Ambassadors leading a city route tour",
+            },
+            {
+                "title": "Digital Geocache Quest",
+                "body": "Join the Fairy Council in a secret investigation to uncover Team NO Wild’s true plans. Complete puzzles and uncover hidden clues to gain power, then use your power for good — or bad!",
+                "image": "gowa/activity-geocache.png",
+                "image_alt": "Digital geocache quest illustration",
+            },
+            {
+                "title": "Take on Team NO Wild",
+                "body": "Team NO Wild Grunts are scattered across the city. Find them, battle them, and earn your stamps — or… help them spread their message.",
+                "image": "gowa/activity-team-nowild.png",
+                "image_alt": "Team NO Wild battle scene",
+            },
+            {
+                "title": "GOWA Doncaster Community Day League (10AM–5PM)",
+                "body": "Battle alongside your chosen faction! Every match helps your side control more of the city. Compete, climb the ranks, and prove your strength.",
+                "image": "gowa/activity-league.png",
+                "image_alt": "Competitive Pokémon GO league battles",
+            },
+        ],
+    },
+    "agenda": {
+        "heading": "Community Celebration: Doncaster Agenda",
+        "note": "Route tours will be available throughout the day. Timings will be shared closer to the event.",
+        "events": [
+            {
+                "time": "10:00",
+                "label": "Community Celebration Opening Ceremony @ Doncaster Corn Exchange",
+            },
+            {
+                "time": "13:00 – 14:00",
+                "label": "Trading Post @ Doncaster Markets",
+            },
+            {
+                "time": "17:50",
+                "label": "Community Celebration Closing Ceremony @ Doncaster Corn Exchange",
+            },
+            {
+                "time": "18:00 onwards",
+                "label": "Social Events @ The Market Square — \"Get ready to throw it down! There ain’t no party like an RDAB party!!!\"",
+            },
+        ],
+    },
+    "footer": {
+        "heading": "Pokémon GO: Community Celebration – Doncaster is brought to you by Community Ambassadors from the following communities",
+        "banner": {
+            "image": "gowa/footer-banner.png",
+            "alt": "Community Ambassador collective banner",
+        },
+        "disclaimer": (
+            "The Wild Awakens storyline and community programming are independently created by Community Ambassadors. "
+            "They are not sponsored by or affiliated with Niantic, Scopely, The Pokémon Company, Game Freak, or The Pokémon Company International."
+        ),
+    },
+}
 
 try:
     LONDON_TZ = ZoneInfo("Europe/London")
@@ -152,6 +347,505 @@ def _gowa_banner():
     except RuntimeError:
         # Called outside of a request context; treat as disabled.
         return None
+
+
+def load_gowa_content() -> dict:
+    content = copy.deepcopy(GOWA_DEFAULT_CONTENT)
+    if not GOWA_CONTENT_PATH.exists():
+        return content
+    try:
+        with GOWA_CONTENT_PATH.open("r", encoding="utf-8") as fh:
+            raw = json.load(fh)
+    except Exception as exc:
+        print("⚠️ Failed to load GOWA content:", exc)
+        return content
+    if not isinstance(raw, dict):
+        return content
+
+    for field in ("title", "description", "logo_alt"):
+        value = raw.get(field)
+        if isinstance(value, str) and value.strip():
+            content[field] = value
+
+    meta = raw.get("meta")
+    if isinstance(meta, dict):
+        content.setdefault("meta", {}).update({k: v for k, v in meta.items() if v})
+
+    buttons = raw.get("buttons")
+    if isinstance(buttons, list):
+        filtered_buttons = [btn for btn in buttons if isinstance(btn, dict)]
+        if filtered_buttons:
+            content["buttons"] = filtered_buttons
+
+    social = raw.get("social")
+    if isinstance(social, dict):
+        existing_social = content.get("social") or {}
+        merged_social = {
+            "label": social.get("label") or existing_social.get("label"),
+            "links": existing_social.get("links", []),
+        }
+        links = social.get("links")
+        if isinstance(links, list):
+            merged_social["links"] = [link for link in links if isinstance(link, dict)]
+        content["social"] = merged_social
+
+    events = raw.get("events")
+    if isinstance(events, dict):
+        existing_events = content.get("events") or {}
+        merged_events = {
+            "heading": events.get("heading") or existing_events.get("heading"),
+            "body": events.get("body") or existing_events.get("body"),
+            "cards": existing_events.get("cards", []),
+        }
+        cards = events.get("cards")
+        if isinstance(cards, list):
+            merged_events["cards"] = [card for card in cards if isinstance(card, dict)]
+        content["events"] = merged_events
+
+    narrative = raw.get("narrative")
+    if isinstance(narrative, dict):
+        existing_narrative = content.get("narrative") or {}
+        merged_narrative = {
+            "heading": narrative.get("heading") or existing_narrative.get("heading"),
+            "lede": narrative.get("lede") or existing_narrative.get("lede"),
+            "paragraphs": existing_narrative.get("paragraphs", []),
+            "breaker": narrative.get("breaker") or existing_narrative.get("breaker"),
+            "button": narrative.get("button") or existing_narrative.get("button"),
+        }
+        paragraphs = narrative.get("paragraphs")
+        if isinstance(paragraphs, list):
+            merged_narrative["paragraphs"] = [p for p in paragraphs if isinstance(p, str)]
+        content["narrative"] = merged_narrative
+
+    expectations = raw.get("expectations")
+    if isinstance(expectations, dict):
+        existing_expectations = content.get("expectations") or {}
+        merged_expectations = {
+            "heading": expectations.get("heading") or existing_expectations.get("heading"),
+            "quote": expectations.get("quote") or existing_expectations.get("quote"),
+            "disclaimer": expectations.get("disclaimer") or existing_expectations.get("disclaimer"),
+            "paragraphs": existing_expectations.get("paragraphs", []),
+        }
+        exp_paragraphs = expectations.get("paragraphs")
+        if isinstance(exp_paragraphs, list):
+            merged_expectations["paragraphs"] = [p for p in exp_paragraphs if isinstance(p, str)]
+        content["expectations"] = merged_expectations
+
+    factions = raw.get("factions")
+    if isinstance(factions, dict):
+        existing_factions = content.get("factions") or {}
+        merged_factions = {
+            "heading": factions.get("heading") or existing_factions.get("heading"),
+            "intro": factions.get("intro") or existing_factions.get("intro"),
+            "cards": existing_factions.get("cards", []),
+        }
+        faction_cards = factions.get("cards")
+        if isinstance(faction_cards, list):
+            merged_factions["cards"] = [card for card in faction_cards if isinstance(card, dict)]
+        content["factions"] = merged_factions
+    
+    activities = raw.get("activities")
+    if isinstance(activities, dict):
+        existing_activities = content.get("activities") or {}
+        merged_activities = {
+            "heading": activities.get("heading") or existing_activities.get("heading"),
+            "intro": activities.get("intro") or existing_activities.get("intro"),
+            "disclaimer": activities.get("disclaimer") or existing_activities.get("disclaimer"),
+            "cards": existing_activities.get("cards", []),
+        }
+        activity_cards = activities.get("cards")
+        if isinstance(activity_cards, list):
+            merged_activities["cards"] = [card for card in activity_cards if isinstance(card, dict)]
+        content["activities"] = merged_activities
+
+    agenda = raw.get("agenda")
+    if isinstance(agenda, dict):
+        existing_agenda = content.get("agenda") or {}
+        merged_agenda = {
+            "heading": agenda.get("heading") or existing_agenda.get("heading"),
+            "note": agenda.get("note") or existing_agenda.get("note"),
+            "events": existing_agenda.get("events", []),
+        }
+        agenda_events = agenda.get("events")
+        if isinstance(agenda_events, list):
+            merged_agenda["events"] = [item for item in agenda_events if isinstance(item, dict)]
+        content["agenda"] = merged_agenda
+
+    footer = raw.get("footer")
+    if isinstance(footer, dict):
+        existing_footer = content.get("footer") or {}
+        merged_footer = {
+            "heading": footer.get("heading") or existing_footer.get("heading"),
+            "banner": footer.get("banner") or existing_footer.get("banner"),
+            "disclaimer": footer.get("disclaimer") or existing_footer.get("disclaimer"),
+        }
+        content["footer"] = merged_footer
+
+    return content
+
+
+def _prepare_gowa_content() -> dict:
+    content = copy.deepcopy(load_gowa_content())
+    resolved_buttons: list[dict] = []
+    for button in content.get("buttons", []):
+        if not isinstance(button, dict):
+            continue
+        item = button.copy()
+        endpoint = item.pop("endpoint", None)
+        href = item.get("href")
+        if endpoint:
+            try:
+                href = url_for(endpoint)
+            except Exception as exc:
+                print(f"⚠️ Invalid GOWA button endpoint '{endpoint}':", exc)
+                href = None
+        if not href:
+            continue
+        label = item.get("label")
+        if not isinstance(label, str) or not label.strip():
+            continue
+        item["label"] = label.strip()
+        item["href"] = href
+        if item.get("new_tab") is None:
+            item["new_tab"] = bool(item.get("external") or str(href).startswith("http"))
+        else:
+            item["new_tab"] = bool(item.get("new_tab"))
+        item["variant"] = item.get("variant") or "primary"
+        resolved_buttons.append(item)
+    content["buttons"] = resolved_buttons
+
+    social = content.get("social") or {}
+    links_resolved: list[dict] = []
+    for link in social.get("links", []):
+        if not isinstance(link, dict):
+            continue
+        item = link.copy()
+        endpoint = item.pop("endpoint", None)
+        href = item.get("href")
+        if endpoint:
+            try:
+                href = url_for(endpoint)
+            except Exception as exc:
+                print(f"⚠️ Invalid GOWA social endpoint '{endpoint}':", exc)
+                href = None
+        if not href:
+            continue
+        label = item.get("label")
+        if not isinstance(label, str) or not label.strip():
+            continue
+        item["label"] = label.strip()
+        item["href"] = href
+        if item.get("new_tab") is None:
+            item["new_tab"] = str(href).startswith("http")
+        else:
+            item["new_tab"] = bool(item.get("new_tab"))
+        links_resolved.append(item)
+    social["links"] = links_resolved
+    content["social"] = social
+
+    events = content.get("events") or {}
+    cards_resolved: list[dict] = []
+    for card in events.get("cards", []):
+        if not isinstance(card, dict):
+            continue
+        item = card.copy()
+        title = item.get("title")
+        if not isinstance(title, str) or not title.strip():
+            continue
+        item["title"] = title.strip()
+
+        for key in ("date", "location", "body"):
+            value = item.get(key)
+            if isinstance(value, str):
+                item[key] = value.strip()
+
+        button_data = item.get("button")
+        button_prepared: dict | None = None
+        if isinstance(button_data, dict):
+            btn = button_data.copy()
+            endpoint = btn.pop("endpoint", None)
+            href = btn.get("href")
+            if endpoint:
+                try:
+                    href = url_for(endpoint)
+                except Exception as exc:
+                    print(f"⚠️ Invalid GOWA event button endpoint '{endpoint}':", exc)
+                    href = None
+            label = btn.get("label")
+            if isinstance(label, str):
+                label = label.strip()
+            if href and label:
+                btn["label"] = label
+                btn["href"] = href
+                if btn.get("new_tab") is None:
+                    btn["new_tab"] = bool(btn.get("external") or str(href).startswith("http"))
+                else:
+                    btn["new_tab"] = bool(btn.get("new_tab"))
+                btn["variant"] = btn.get("variant") or "primary"
+                button_prepared = btn
+        item["button"] = button_prepared
+
+        logo = item.get("logo")
+        logo_url = None
+        if isinstance(logo, str):
+            logo_path = logo.strip()
+            if logo_path:
+                if logo_path.startswith(("http://", "https://", "//")):
+                    logo_url = logo_path
+                else:
+                    try:
+                        logo_url = url_for("static", filename=logo_path.lstrip("/"))
+                    except Exception as exc:
+                        print(f"⚠️ Invalid GOWA event logo '{logo_path}':", exc)
+                        logo_url = None
+        item["logo_url"] = logo_url
+        logo_alt = item.get("logo_alt")
+        if not isinstance(logo_alt, str) or not logo_alt.strip():
+            item["logo_alt"] = item["title"]
+        else:
+            item["logo_alt"] = logo_alt.strip()
+
+        cards_resolved.append(item)
+    events["cards"] = cards_resolved
+    content["events"] = events
+    
+    narrative = content.get("narrative") or {}
+    heading = narrative.get("heading")
+    if isinstance(heading, str):
+        narrative["heading"] = heading.strip()
+    lede = narrative.get("lede")
+    if isinstance(lede, str):
+        narrative["lede"] = lede.strip()
+    paragraphs_resolved: list[str] = []
+    for para in narrative.get("paragraphs", []):
+        if isinstance(para, str):
+            clean_para = para.strip()
+            if clean_para:
+                paragraphs_resolved.append(clean_para)
+    narrative["paragraphs"] = paragraphs_resolved
+    breaker = narrative.get("breaker")
+    if isinstance(breaker, dict):
+        breaker_copy = breaker.copy()
+        image = breaker_copy.get("image")
+        breaker_url = None
+        if isinstance(image, str):
+            image_path = image.strip()
+            if image_path:
+                if image_path.startswith(("http://", "https://", "//")):
+                    breaker_url = image_path
+                else:
+                    try:
+                        breaker_url = url_for("static", filename=image_path.lstrip("/"))
+                    except Exception as exc:
+                        print(f"⚠️ Invalid GOWA breaker image '{image_path}':", exc)
+                        breaker_url = None
+        breaker_copy["image_url"] = breaker_url
+        alt_text = breaker_copy.get("alt")
+        if isinstance(alt_text, str) and alt_text.strip():
+            breaker_copy["alt"] = alt_text.strip()
+        else:
+            breaker_copy["alt"] = "Section divider"
+        narrative["breaker"] = breaker_copy
+    button_data = narrative.get("button")
+    narrative_button: dict | None = None
+    if isinstance(button_data, dict):
+        btn = button_data.copy()
+        endpoint = btn.pop("endpoint", None)
+        href = btn.get("href")
+        if endpoint:
+            try:
+                href = url_for(endpoint)
+            except Exception as exc:
+                print(f"⚠️ Invalid GOWA narrative button endpoint '{endpoint}':", exc)
+                href = None
+        label = btn.get("label")
+        if isinstance(label, str):
+            label = label.strip()
+        if href and label:
+            btn["label"] = label
+            btn["href"] = href
+            if btn.get("new_tab") is None:
+                btn["new_tab"] = bool(btn.get("external") or str(href).startswith("http"))
+            else:
+                btn["new_tab"] = bool(btn.get("new_tab"))
+            btn["variant"] = btn.get("variant") or "primary"
+            narrative_button = btn
+    narrative["button"] = narrative_button
+    content["narrative"] = narrative
+
+    expectations = content.get("expectations") or {}
+    heading = expectations.get("heading")
+    if isinstance(heading, str):
+        expectations["heading"] = heading.strip()
+    quote = expectations.get("quote")
+    if isinstance(quote, str):
+        expectations["quote"] = quote.strip()
+    disclaimer = expectations.get("disclaimer")
+    if isinstance(disclaimer, str):
+        expectations["disclaimer"] = disclaimer.strip()
+    expectations_paragraphs: list[str] = []
+    for para in expectations.get("paragraphs", []):
+        if isinstance(para, str):
+            clean_para = para.strip()
+            if clean_para:
+                expectations_paragraphs.append(clean_para)
+    expectations["paragraphs"] = expectations_paragraphs
+    content["expectations"] = expectations
+
+    factions = content.get("factions") or {}
+    heading = factions.get("heading")
+    if isinstance(heading, str):
+        factions["heading"] = heading.strip()
+    intro = factions.get("intro")
+    if isinstance(intro, str):
+        factions["intro"] = intro.strip()
+    faction_cards_resolved: list[dict] = []
+    for card in factions.get("cards", []):
+        if not isinstance(card, dict):
+            continue
+        item = card.copy()
+        title = item.get("title")
+        body = item.get("body")
+        if not isinstance(title, str) or not title.strip():
+            continue
+        item["title"] = title.strip()
+        if isinstance(body, str):
+            item["body"] = body.strip()
+        else:
+            item["body"] = ""
+        sigil = item.get("sigil")
+        sigil_url = None
+        if isinstance(sigil, str):
+            sigil_path = sigil.strip()
+            if sigil_path:
+                if sigil_path.startswith(("http://", "https://", "//")):
+                    sigil_url = sigil_path
+                else:
+                    try:
+                        sigil_url = url_for("static", filename=sigil_path.lstrip("/"))
+                    except Exception as exc:
+                        print(f"⚠️ Invalid GOWA faction sigil '{sigil_path}':", exc)
+                        sigil_url = None
+        item["sigil_url"] = sigil_url
+        sigil_alt = item.get("sigil_alt")
+        if isinstance(sigil_alt, str) and sigil_alt.strip():
+            item["sigil_alt"] = sigil_alt.strip()
+        else:
+            item["sigil_alt"] = item["title"]
+        faction_cards_resolved.append(item)
+    factions["cards"] = faction_cards_resolved
+    content["factions"] = factions
+
+    activities = content.get("activities") or {}
+    heading = activities.get("heading")
+    if isinstance(heading, str):
+        activities["heading"] = heading.strip()
+    intro = activities.get("intro")
+    if isinstance(intro, str):
+        activities["intro"] = intro.strip()
+    disclaimer = activities.get("disclaimer")
+    if isinstance(disclaimer, str):
+        activities["disclaimer"] = disclaimer.strip()
+    activities_cards_resolved: list[dict] = []
+    for card in activities.get("cards", []):
+        if not isinstance(card, dict):
+            continue
+        item = card.copy()
+        title = item.get("title")
+        body = item.get("body")
+        if not isinstance(title, str) or not title.strip():
+            continue
+        item["title"] = title.strip()
+        if isinstance(body, str):
+            item["body"] = body.strip()
+        else:
+            item["body"] = ""
+        image = item.get("image")
+        image_url = None
+        if isinstance(image, str):
+            image_path = image.strip()
+            if image_path:
+                if image_path.startswith(("http://", "https://", "//")):
+                    image_url = image_path
+                else:
+                    try:
+                        image_url = url_for("static", filename=image_path.lstrip("/"))
+                    except Exception as exc:
+                        print(f"⚠️ Invalid GOWA activity image '{image_path}':", exc)
+                        image_url = None
+        item["image_url"] = image_url
+        image_alt = item.get("image_alt")
+        if isinstance(image_alt, str) and image_alt.strip():
+            item["image_alt"] = image_alt.strip()
+        else:
+            item["image_alt"] = item["title"]
+        activities_cards_resolved.append(item)
+    activities["cards"] = activities_cards_resolved
+    content["activities"] = activities
+
+    agenda = content.get("agenda") or {}
+    heading = agenda.get("heading")
+    if isinstance(heading, str):
+        agenda["heading"] = heading.strip()
+    note = agenda.get("note")
+    if isinstance(note, str):
+        agenda["note"] = note.strip()
+    agenda_events_resolved: list[dict] = []
+    for item in agenda.get("events", []):
+        if not isinstance(item, dict):
+            continue
+        event = item.copy()
+        time_val = event.get("time")
+        label = event.get("label")
+        if isinstance(time_val, str):
+            time_val = time_val.strip()
+        else:
+            time_val = ""
+        if isinstance(label, str):
+            label = label.strip()
+        else:
+            label = ""
+        if not (time_val or label):
+            continue
+        event["time"] = time_val
+        event["label"] = label
+        agenda_events_resolved.append(event)
+    agenda["events"] = agenda_events_resolved
+    content["agenda"] = agenda
+
+    footer = content.get("footer") or {}
+    heading = footer.get("heading")
+    if isinstance(heading, str):
+        footer["heading"] = heading.strip()
+    disclaimer = footer.get("disclaimer")
+    if isinstance(disclaimer, str):
+        footer["disclaimer"] = disclaimer.strip()
+    banner = footer.get("banner")
+    if isinstance(banner, dict):
+        banner_copy = banner.copy()
+        image = banner_copy.get("image")
+        banner_url = None
+        if isinstance(image, str):
+            image_path = image.strip()
+            if image_path:
+                if image_path.startswith(("http://", "https://", "//")):
+                    banner_url = image_path
+                else:
+                    try:
+                        banner_url = url_for("static", filename=image_path.lstrip("/"))
+                    except Exception as exc:
+                        print(f"⚠️ Invalid GOWA footer banner '{image_path}':", exc)
+                        banner_url = None
+        banner_copy["image_url"] = banner_url
+        alt_text = banner_copy.get("alt")
+        if isinstance(alt_text, str) and alt_text.strip():
+            banner_copy["alt"] = alt_text.strip()
+        else:
+            banner_copy["alt"] = "Community Ambassador banner"
+        footer["banner"] = banner_copy
+    content["footer"] = footer
+
+    return content
 
 
 def build_league_content():
@@ -1022,10 +1716,14 @@ def home():
 @app.route("/wild")
 def gowa_portal():
     _ensure_gowa_enabled()
+    gowa_content = _prepare_gowa_content()
+    canonical_url = (gowa_content.get("meta") or {}).get("canonical") or GOWA_EXTERNAL_URL
     return render_template(
         "gowa.html",
         gowa_logo_url=url_for("static", filename=GOWA_LOGO_ASSET),
-        gowa_external_url=GOWA_EXTERNAL_URL,
+        gowa_logo_alt=gowa_content.get("logo_alt", "GO Wild Area emblem"),
+        gowa_content=gowa_content,
+        canonical_url=canonical_url,
     )
 
 
@@ -1072,11 +1770,7 @@ def _policy_back_action(is_pwa: bool, source: str | None):
             "label": "⬅ Go back to the dashboard",
             "href": url_for("dashboard"),
         }, True
-    return {
-        "label": "⬅ Back to rdab.app",
-        "href": "https://rdab.app",
-        "external": True,
-    }, False
+    return None, False
 
 
 @app.route("/policies")

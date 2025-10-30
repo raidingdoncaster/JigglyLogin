@@ -37,6 +37,7 @@ pogo-passport-key.json
 # --- Allow manifest.json but ignore other JSON files ---
 *.json
 !static/manifest.json
+!data/gowa_page.json
 
 # --- Google SDK (don’t commit the whole SDK!) ---
 google-cloud-sdk/
