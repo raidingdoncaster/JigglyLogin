@@ -28,7 +28,7 @@
       },
       {
         "label": "RDAB TikTok",
-        "href": "https://www.tiktok.com/@rdab_pokemongo",
+        "href": "https://www.tiktok.com/@pokemongodoncaster",
         "new_tab": true
       }
     ]
@@ -69,7 +69,7 @@
     "heading": "Wait\u2026 an Official Pok\u00e9mon GO Event?!",
     "lede": "Yes, Niantic are delivering an in-person Community Celebration event \u2014 right here in Doncaster.",
     "paragraphs": [
-      "Raiding Doncaster and Beyond and Community Ambassador teams from across the north of England have teamed up to help deliver Europe's first ever official Pok\u00e9mon GO: Community Celebration event.",
+      "Niantic, Raiding Doncaster and Beyond along with Community Ambassador teams from across the north of England have teamed up to help deliver Europe's first ever official Pok\u00e9mon GO: Community Celebration event.",
       "This is where community passion meets official gameplay. Expect a true in-person experience both on the ground in the City of Doncaster and in-game. From official route tours and raid trains, to geocache adventures and competitive challenges, to live activities and celebrations across the city.",
       "On Sunday, 16th November, the Wild Area comes alive at Doncaster Market and Corn Exchange from 10am till 6pm.",
       "This is not just an event. It's a milestone \u2014 where the communities of the North unite to deliver something truly world-class. Join us. Be a part of Pok\u00e9mon GO history."
@@ -79,7 +79,7 @@
       "alt": "Golden sparkle divider"
     },
     "button": {
-      "label": "Learn More about Pok\u00e9mon GO: Wild Area 2025",
+      "label": "Learn More about Wild Area 2025",
       "href": "https://pokemongo.com/gowildarea/global",
       "variant": "outline",
       "new_tab": true
@@ -147,8 +147,8 @@
     ]
   },
   "agenda": {
-    "heading": "Community Celebration: Doncaster Agenda (Sunday November 16th)",
-    "note": "Route tours, NO Wild PVP battles and more will be available throughout the day. Timings will be shared closer to the event.",
+    "heading": "Community Celebration: Doncaster Agenda",
+    "note": "Route tours, NO Wild PVP battles and more will be available throughout the day. Timings will be shared closer to the event. This agenda is for the event on Sunday 16th November. For details regarding meet-ups on Saturday 15th November, please check Campfire.",
     "events": [
       {
         "time": "10:00",
