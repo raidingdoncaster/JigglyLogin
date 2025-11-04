@@ -12,29 +12,126 @@
   <p>View and manage all registered trainers.</p>
 </div>
 
-<!-- Live Search Bar -->
-<div class="search-bar">
-  <input type="text" id="trainerSearch" placeholder="Search by Trainer or Campfire Username…">
+<!-- Toolbar -->
+<div class="trainer-toolbar">
+  <div class="toolbar-search">
+    <input type="search" id="trainerSearch" placeholder="Search by Trainer or Campfire Username…" aria-label="Search Trainers">
+  </div>
+  <div class="toolbar-actions">
+    <div class="toolbar-select">
+      <label for="trainerSort">Sort</label>
+      <select id="trainerSort">
+        <option value="name-asc">Trainer (A → Z)</option>
+        <option value="name-desc">Trainer (Z → A)</option>
+        <option value="stamps-desc">Stamps (High → Low)</option>
+        <option value="stamps-asc">Stamps (Low → High)</option>
+      </select>
+    </div>
+    <div class="toolbar-select">
+      <label for="trainerFilter">Account Type</label>
+      <select id="trainerFilter">
+        <option value="all">All</option>
+        {% for account_type in account_types or [] %}
+          <option value="{{ account_type | lower }}">{{ account_type }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button type="button" class="btn btn-secondary" id="massStampBtn">✨ Mass Stamp</button>
+  </div>
 </div>
 
 <!-- All Trainers -->
 <div class="trainer-grid" id="trainerGrid">
   {% for t in all_trainers %}
-    <a href="{{ url_for('admin_trainer_detail', username=t.trainer_username) }}" 
-       class="trainer-card" 
-       data-username="{{ t.trainer_username | lower }}" 
-       data-campfire="{{ (t.campfire_username or '') | lower }}">
+    {% set stamp_total = t.stamps or 0 %}
+    <a href="{{ url_for('admin_trainer_detail', username=t.trainer_username) }}"
+       class="trainer-card"
+       data-username="{{ t.trainer_username | lower }}"
+       data-campfire="{{ (t.campfire_username or '') | lower }}"
+       data-account-type="{{ (t.account_type or '') | lower }}"
+       data-stamps="{{ stamp_total }}">
       <img src="{{ url_for('static', filename='avatars/' ~ t.avatar_icon) }}"
            alt="Avatar" class="avatar">
       <h4>{{ t.trainer_username }}</h4>
-      <p>{{ 'Standard' if t.account_type|lower == 'standard' else t.account_type }}</p>
-      <p>Stamps: {{ t.stamps }}</p>
+      <p class="trainer-account">{{ 'Standard' if t.account_type|lower == 'standard' else t.account_type }}</p>
+      <p class="trainer-stamps">Stamps: {{ stamp_total }}</p>
+      {% if t.campfire_username %}
+        <p class="trainer-campfire">Campfire: {{ t.campfire_username }}</p>
+      {% endif %}
     </a>
   {% endfor %}
 </div>
 
-<div style="margin-top:20px; text-align:center;">
+<div class="admin-footer-link">
   <a href="{{ url_for('admin_dashboard') }}" class="btn">⬅ Back to Admin Dashboard</a>
+</div>
+
+<!-- Mass Stamp Modal -->
+<div id="massStampOverlay" class="mass-stamp-overlay" hidden>
+  <div class="mass-stamp-modal" role="dialog" aria-modal="true" aria-labelledby="massStampTitle">
+    <div class="mass-stamp-header">
+      <h3 id="massStampTitle">✨ Mass Stamp</h3>
+      <button type="button" class="modal-close" data-close aria-label="Close">&times;</button>
+    </div>
+    <form id="massStampForm" class="mass-stamp-form" action="{{ url_for('admin_mass_stamp') }}">
+      <div class="mass-stamp-body">
+        <p class="mass-stamp-description">
+          Choose the trainers to award, confirm the stamp amount, and note why the award is being issued.
+        </p>
+
+        <div class="mass-stamp-controls">
+          <input type="search" id="massStampSearch" placeholder="Search trainers…" aria-label="Search trainers to award">
+          <div class="mass-stamp-quick">
+            <button type="button" class="chip" data-select="all">Select All</button>
+            <button type="button" class="chip" data-select="none">Clear</button>
+            {% for account_type in account_types or [] %}
+              <button type="button" class="chip" data-select-group="{{ account_type | lower }}">{{ account_type }}</button>
+            {% endfor %}
+          </div>
+        </div>
+
+        <div class="mass-stamp-list" aria-live="polite">
+          {% for t in all_trainers %}
+            {% set stamp_total = t.stamps or 0 %}
+            <label class="mass-stamp-option" data-option="{{ t.trainer_username | lower }}">
+              <input type="checkbox"
+                     name="usernames"
+                     value="{{ t.trainer_username }}"
+                     data-username="{{ t.trainer_username | lower }}"
+                     data-campfire="{{ (t.campfire_username or '') | lower }}"
+                     data-account-type="{{ (t.account_type or '') | lower }}">
+              <div class="option-details">
+                <span class="option-name">{{ t.trainer_username }}</span>
+                <span class="option-meta">
+                  {{ t.account_type or 'Unknown' }} • {{ stamp_total }} stamp{{ '' if stamp_total == 1 else 's' }}
+                  {% if t.campfire_username %}
+                    • Campfire: {{ t.campfire_username }}
+                  {% endif %}
+                </span>
+              </div>
+            </label>
+          {% endfor %}
+        </div>
+
+        <div class="mass-stamp-grid">
+          <label>
+            <span>Stamps to award</span>
+            <input type="number" id="massStampAmount" min="1" required>
+          </label>
+          <label>
+            <span>Reason</span>
+            <textarea id="massStampReason" rows="3" placeholder="Example: Outreach event participation" required></textarea>
+          </label>
+        </div>
+
+        <div class="mass-stamp-alert" id="massStampAlert" hidden></div>
+      </div>
+      <div class="mass-stamp-actions">
+        <button type="button" class="btn btn-secondary" data-close>Cancel</button>
+        <button type="submit" class="btn">Award Stamps</button>
+      </div>
+    </form>
+  </div>
 </div>
 
 <style>
@@ -45,16 +142,88 @@
 .admin-header h1 { margin:0; }
 .admin-header p { color:#666; font-size:0.95em; }
 
-/* Search Bar */
-.search-bar { display:flex; justify-content:center; margin:18px 0 28px; }
-.search-bar input {
-  width:100%; max-width:420px; padding:12px 18px; border:1px solid #d7dbe6; border-radius:999px;
-  font-size:0.95em; box-shadow:0 6px 14px rgba(15,23,42,0.1); transition:border-color .2s ease, box-shadow .2s ease;
+.trainer-toolbar {
+  display:flex;
+  flex-direction:column;
+  gap:16px;
+  margin:18px 0 28px;
 }
-.search-bar input:focus { outline:none; border-color:#3a8dde; box-shadow:0 0 0 3px rgba(58,141,222,0.2); }
+.toolbar-search input {
+  width:100%;
+  padding:12px 18px;
+  border:1px solid #d7dbe6;
+  border-radius:999px;
+  font-size:0.95em;
+  box-shadow:0 6px 14px rgba(15,23,42,0.1);
+  transition:border-color .2s ease, box-shadow .2s ease;
+}
+.toolbar-search input:focus {
+  outline:none;
+  border-color:#3a8dde;
+  box-shadow:0 0 0 3px rgba(58,141,222,0.2);
+}
+.toolbar-actions {
+  display:flex;
+  flex-wrap:wrap;
+  gap:12px;
+  align-items:flex-end;
+}
+.toolbar-select {
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  min-width:150px;
+}
+.toolbar-select label {
+  font-size:0.85em;
+  font-weight:600;
+  color:#3a4a68;
+}
+.toolbar-select select {
+  padding:10px 14px;
+  border-radius:12px;
+  border:1px solid #d7dbe6;
+  font-size:0.9em;
+  background:#fff;
+  box-shadow:0 6px 12px rgba(15,23,42,0.08);
+}
+.toolbar-select select:focus {
+  outline:none;
+  border-color:#3a8dde;
+  box-shadow:0 0 0 3px rgba(58,141,222,0.2);
+}
+.btn {
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:10px 18px;
+  background:#3a8dde;
+  color:#fff;
+  border-radius:999px;
+  text-decoration:none;
+  font-weight:600;
+  box-shadow:0 8px 20px rgba(58,141,222,0.25);
+  border:0;
+  cursor:pointer;
+}
+.btn:hover {
+  filter:brightness(1.05);
+}
+.btn-secondary {
+  background:#fff;
+  color:#3a8dde;
+  border:1px solid #3a8dde;
+  box-shadow:none;
+}
+.btn-secondary:hover {
+  background:#3a8dde10;
+}
 
-/* Trainer Grid */
-.trainer-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:16px; }
+.trainer-grid {
+  display:grid;
+  grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));
+  gap:16px;
+}
 .trainer-card {
   background:#fff;
   border-radius:16px;
@@ -70,7 +239,7 @@
   gap:8px;
 }
 .trainer-card:hover {
-  transform: translateY(-3px);
+  transform:translateY(-3px);
   box-shadow:0 16px 30px rgba(15,23,42,0.16);
 }
 .trainer-card img.avatar {
@@ -90,35 +259,526 @@
   font-size:0.85em;
   color:#444;
 }
+.trainer-campfire {
+  font-size:0.8em;
+  color:#5a6a84;
+}
 
-.btn {
-  display:inline-flex;
+.admin-footer-link {
+  margin-top:24px;
+  text-align:center;
+}
+
+.mass-stamp-overlay {
+  position:fixed;
+  inset:0;
+  background:rgba(15,23,42,0.45);
+  display:flex;
   align-items:center;
-  gap:6px;
-  padding:10px 18px;
-  background:#3a8dde;
-  color:#fff;
+  justify-content:center;
+  padding:16px;
+  z-index:9000;
+}
+.mass-stamp-overlay[hidden] {
+  display:none;
+}
+.mass-stamp-modal {
+  background:#fff;
+  width:min(720px, 100%);
+  max-height:90vh;
+  border-radius:18px;
+  box-shadow:0 28px 48px rgba(15,23,42,0.3);
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+}
+.mass-stamp-header {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:18px 24px;
+  border-bottom:1px solid #e2e7f2;
+}
+.mass-stamp-header h3 {
+  margin:0;
+  font-size:1.2em;
+  color:#1f2a44;
+}
+.modal-close {
+  background:transparent;
+  border:0;
+  font-size:1.6em;
+  line-height:1;
+  cursor:pointer;
+  color:#6b7a99;
+}
+.mass-stamp-form {
+  display:flex;
+  flex-direction:column;
+  height:100%;
+}
+.mass-stamp-body {
+  padding:20px 24px;
+  overflow:auto;
+  flex:1;
+}
+.mass-stamp-description {
+  margin:0 0 16px;
+  font-size:0.9em;
+  color:#4a5a78;
+}
+.mass-stamp-controls {
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+.mass-stamp-controls input[type="search"] {
+  width:100%;
+  padding:10px 14px;
+  border-radius:12px;
+  border:1px solid #d7dbe6;
+}
+.mass-stamp-controls input[type="search"]:focus {
+  outline:none;
+  border-color:#3a8dde;
+  box-shadow:0 0 0 3px rgba(58,141,222,0.2);
+}
+.mass-stamp-quick {
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+}
+.chip {
+  padding:6px 12px;
   border-radius:999px;
-  text-decoration:none;
+  border:1px solid #d7dbe6;
+  background:#fff;
+  font-size:0.8em;
+  cursor:pointer;
+  transition:background 0.2s;
+}
+.chip:hover {
+  background:#f0f4ff;
+}
+.mass-stamp-list {
+  display:grid;
+  gap:8px;
+  margin-top:12px;
+  max-height:220px;
+  overflow:auto;
+  padding-right:4px;
+}
+.mass-stamp-option {
+  display:flex;
+  gap:12px;
+  padding:10px 12px;
+  border:1px solid #d7dbe6;
+  border-radius:12px;
+  background:#f8f9fd;
+  cursor:pointer;
+}
+.mass-stamp-option input[type="checkbox"] {
+  margin-top:4px;
+}
+.option-details {
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+}
+.option-name {
   font-weight:600;
-  box-shadow:0 8px 20px rgba(58,141,222,0.25);
+  color:#27406d;
+}
+.option-meta {
+  font-size:0.8em;
+  color:#5f6e88;
+}
+.mass-stamp-grid {
+  display:grid;
+  gap:12px;
+  margin-top:18px;
+}
+.mass-stamp-grid label {
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  font-size:0.85em;
+  color:#3a4a68;
+}
+.mass-stamp-grid input,
+.mass-stamp-grid textarea {
+  border:1px solid #d7dbe6;
+  border-radius:12px;
+  padding:10px 12px;
+  font-size:0.95em;
+  resize:vertical;
+}
+.mass-stamp-grid input:focus,
+.mass-stamp-grid textarea:focus {
+  outline:none;
+  border-color:#3a8dde;
+  box-shadow:0 0 0 3px rgba(58,141,222,0.2);
+}
+.mass-stamp-alert {
+  margin-top:16px;
+  padding:10px 14px;
+  border-radius:12px;
+  font-size:0.85em;
+  display:flex;
+  gap:8px;
+  align-items:flex-start;
+}
+.mass-stamp-alert[hidden] {
+  display:none;
+}
+.mass-stamp-alert.is-success {
+  background:#e6f6ed;
+  color:#207b4d;
+  border:1px solid #b2e0c5;
+}
+.mass-stamp-alert.is-error {
+  background:#fdeaea;
+  color:#b82929;
+  border:1px solid #f4bcbc;
+}
+.mass-stamp-alert.is-warning {
+  background:#fff8e6;
+  color:#8a5800;
+  border:1px solid #f2d197;
+}
+.mass-stamp-alert.is-info {
+  background:#e8f1ff;
+  color:#254b82;
+  border:1px solid #c1d8ff;
+}
+.mass-stamp-actions {
+  display:flex;
+  justify-content:flex-end;
+  gap:12px;
+  padding:16px 24px;
+  border-top:1px solid #e2e7f2;
+}
+
+@media (min-width: 720px) {
+  .trainer-toolbar {
+    flex-direction:row;
+    align-items:flex-end;
+    justify-content:space-between;
+  }
+  .toolbar-search {
+    flex:1;
+  }
+  .toolbar-actions {
+    justify-content:flex-end;
+  }
+  .mass-stamp-grid {
+    grid-template-columns:1fr 1fr;
+  }
+}
+
+@media (max-width: 520px) {
+  .trainer-grid {
+    grid-template-columns:repeat(auto-fit, minmax(150px, 1fr));
+  }
+}
+
+body.modal-open {
+  overflow:hidden;
 }
 </style>
 
 <script>
-// 🔎 Live filter for trainers
 document.addEventListener("DOMContentLoaded", () => {
+  const trainerGrid = document.getElementById("trainerGrid");
+  const cards = Array.from(trainerGrid.querySelectorAll(".trainer-card"));
   const searchInput = document.getElementById("trainerSearch");
-  const cards = document.querySelectorAll("#trainerGrid .trainer-card");
+  const sortSelect = document.getElementById("trainerSort");
+  const filterSelect = document.getElementById("trainerFilter");
 
-  searchInput.addEventListener("input", () => {
-    const query = searchInput.value.toLowerCase();
-    cards.forEach(card => {
-      const username = card.dataset.username || "";
-      const campfire = card.dataset.campfire || "";
-      card.style.display = (username.includes(query) || campfire.includes(query)) ? "" : "none";
+  const normalize = (value) => (value || "").toString().trim().toLowerCase();
+
+  const sortCards = (list) => {
+    const sortValue = sortSelect ? sortSelect.value : "name-asc";
+    const sorted = list.slice();
+    const compareByName = (a, b) => {
+      const nameA = normalize(a.dataset.username);
+      const nameB = normalize(b.dataset.username);
+      return nameA.localeCompare(nameB);
+    };
+    const compareByStamps = (a, b) => {
+      const stampsA = Number(a.dataset.stamps || 0);
+      const stampsB = Number(b.dataset.stamps || 0);
+      return stampsA - stampsB;
+    };
+
+    switch (sortValue) {
+      case "name-desc":
+        sorted.sort((a, b) => compareByName(b, a));
+        break;
+      case "stamps-desc":
+        sorted.sort((a, b) => compareByStamps(b, a) || compareByName(a, b));
+        break;
+      case "stamps-asc":
+        sorted.sort((a, b) => compareByStamps(a, b) || compareByName(a, b));
+        break;
+      case "name-asc":
+      default:
+        sorted.sort(compareByName);
+        break;
+    }
+    return sorted;
+  };
+
+  const applyFilters = () => {
+    const query = normalize(searchInput ? searchInput.value : "");
+    const accountFilter = normalize(filterSelect ? filterSelect.value : "all");
+    const matches = [];
+
+    cards.forEach((card) => {
+      const username = normalize(card.dataset.username);
+      const campfire = normalize(card.dataset.campfire);
+      const accountType = normalize(card.dataset.accountType);
+      const matchesSearch = !query || username.includes(query) || campfire.includes(query);
+      const matchesAccount = accountFilter === "all" || accountType === accountFilter;
+      const show = matchesSearch && matchesAccount;
+      card.style.display = show ? "" : "none";
+      if (show) {
+        matches.push(card);
+      }
+    });
+
+    const sorted = sortCards(matches);
+    sorted.forEach((card) => trainerGrid.appendChild(card));
+  };
+
+  if (searchInput) {
+    searchInput.addEventListener("input", applyFilters);
+  }
+  if (sortSelect) {
+    sortSelect.addEventListener("change", applyFilters);
+  }
+  if (filterSelect) {
+    filterSelect.addEventListener("change", applyFilters);
+  }
+  applyFilters();
+
+  // Mass stamp modal logic
+  const overlay = document.getElementById("massStampOverlay");
+  const openBtn = document.getElementById("massStampBtn");
+  const form = document.getElementById("massStampForm");
+  const amountInput = document.getElementById("massStampAmount");
+  const reasonInput = document.getElementById("massStampReason");
+  const searchModalInput = document.getElementById("massStampSearch");
+  const alertBox = document.getElementById("massStampAlert");
+  const submitBtn = form ? form.querySelector("button[type='submit']") : null;
+  const defaultSubmitLabel = submitBtn ? submitBtn.textContent : "";
+
+  const checkboxEls = form
+    ? Array.from(form.querySelectorAll("input[type='checkbox'][name='usernames']"))
+    : [];
+
+  const setAlert = (message, tone) => {
+    if (!alertBox) return;
+    alertBox.textContent = message;
+    alertBox.className = "mass-stamp-alert" + (tone ? ` is-${tone}` : "");
+    if (message) {
+      alertBox.removeAttribute("hidden");
+    } else {
+      alertBox.setAttribute("hidden", "");
+    }
+  };
+
+  const openModal = () => {
+    if (!overlay) return;
+    overlay.removeAttribute("hidden");
+    document.body.classList.add("modal-open");
+    setAlert("", "");
+    if (searchModalInput) {
+      searchModalInput.value = "";
+    }
+  };
+
+  const closeModal = () => {
+    if (!overlay) return;
+    overlay.setAttribute("hidden", "");
+    document.body.classList.remove("modal-open");
+    if (form) {
+      form.reset();
+    }
+    checkboxEls.forEach((cb) => {
+      cb.checked = false;
+      const label = cb.closest("label");
+      if (label) label.style.display = "";
+    });
+    if (alertBox) {
+      alertBox.setAttribute("hidden", "");
+      alertBox.className = "mass-stamp-alert";
+      alertBox.textContent = "";
+    }
+  };
+
+  if (openBtn) {
+    openBtn.addEventListener("click", openModal);
+  }
+
+  if (overlay) {
+    overlay.addEventListener("click", (evt) => {
+      if (evt.target === overlay) {
+        closeModal();
+      }
+    });
+    const closeButtons = overlay.querySelectorAll("[data-close]");
+    closeButtons.forEach((btn) => {
+      btn.addEventListener("click", closeModal);
+    });
+  }
+
+  document.addEventListener("keydown", (evt) => {
+    if (evt.key === "Escape" && overlay && !overlay.hasAttribute("hidden")) {
+      closeModal();
+    }
+  });
+
+  const selectAllBtn = overlay ? overlay.querySelector("[data-select='all']") : null;
+  const clearBtn = overlay ? overlay.querySelector("[data-select='none']") : null;
+  const groupButtons = overlay
+    ? Array.from(overlay.querySelectorAll("[data-select-group]"))
+    : [];
+
+  if (selectAllBtn) {
+    selectAllBtn.addEventListener("click", () => {
+      checkboxEls.forEach((cb) => {
+        cb.checked = true;
+      });
+    });
+  }
+
+  if (clearBtn) {
+    clearBtn.addEventListener("click", () => {
+      checkboxEls.forEach((cb) => {
+        cb.checked = false;
+      });
+    });
+  }
+
+  groupButtons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const group = normalize(btn.dataset.selectGroup);
+      if (!group) return;
+      const groupBoxes = checkboxEls.filter(
+        (cb) => normalize(cb.dataset.accountType) === group
+      );
+      if (!groupBoxes.length) return;
+      const shouldUncheck = groupBoxes.every((cb) => cb.checked);
+      groupBoxes.forEach((cb) => {
+        cb.checked = !shouldUncheck;
+      });
     });
   });
+
+  if (searchModalInput) {
+    searchModalInput.addEventListener("input", () => {
+      const query = normalize(searchModalInput.value);
+      checkboxEls.forEach((cb) => {
+        const label = cb.closest("label");
+        if (!label) return;
+        const haystack = `${normalize(cb.dataset.username)} ${normalize(cb.dataset.campfire)}`;
+        label.style.display = !query || haystack.includes(query) ? "" : "none";
+      });
+    });
+  }
+
+  if (form) {
+    form.addEventListener("submit", async (evt) => {
+      evt.preventDefault();
+      const selected = checkboxEls.filter((cb) => cb.checked).map((cb) => cb.value);
+      if (!selected.length) {
+        setAlert("Select at least one trainer.", "warning");
+        return;
+      }
+      const amount = amountInput ? Number(amountInput.value) : NaN;
+      if (!Number.isFinite(amount) || amount <= 0) {
+        setAlert("Enter a stamp amount greater than zero.", "warning");
+        if (amountInput) amountInput.focus();
+        return;
+      }
+      const reason = reasonInput ? reasonInput.value.trim() : "";
+      if (!reason) {
+        setAlert("Provide a reason for the stamp award.", "warning");
+        if (reasonInput) reasonInput.focus();
+        return;
+      }
+
+      const payload = {
+        usernames: selected,
+        amount: amount,
+        reason: reason,
+      };
+
+      try {
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.textContent = "Awarding…";
+        }
+        setAlert("Submitting stamp awards…", "info");
+        const response = await fetch(form.action, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const data = await response.json();
+
+        if (!response.ok || data.success === false) {
+          const message =
+            data.error || data.message || "Failed to award stamps. Please try again.";
+          setAlert(message, "error");
+          if (Array.isArray(data.failed) && data.failed.length) {
+            console.warn("Mass stamp failures:", data.failed);
+          }
+          return;
+        }
+
+        setAlert(data.message || "Stamps awarded successfully.", "success");
+
+        if (Array.isArray(data.awarded)) {
+          data.awarded.forEach((item) => {
+            const username = normalize(item.username);
+            if (!username) return;
+            const card = trainerGrid.querySelector(
+              `.trainer-card[data-username='${username}']`
+            );
+            if (!card) return;
+            if (typeof item.message === "string") {
+              const match = item.message.match(/New total:\s*(\d+)/i);
+              if (match) {
+                const total = match[1];
+                const stampLabel = card.querySelector(".trainer-stamps");
+                if (stampLabel) {
+                  stampLabel.textContent = `Stamps: ${total}`;
+                }
+                card.dataset.stamps = total;
+              }
+            }
+          });
+          applyFilters();
+        }
+
+        checkboxEls.forEach((cb) => {
+          cb.checked = false;
+        });
+        if (amountInput) amountInput.value = "";
+        if (reasonInput) reasonInput.value = "";
+      } catch (err) {
+        console.error("Mass stamp error:", err);
+        setAlert("Unexpected error awarding stamps.", "error");
+      } finally {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = defaultSubmitLabel || "Award Stamps";
+        }
+      }
+    });
+  }
 });
 </script>
 

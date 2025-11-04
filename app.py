@@ -2131,7 +2131,7 @@ def adjust_stamps(trainer_username: str, count: int, reason: str, action: str, a
 @app.route("/admin/trainers/<username>/adjust-stamps", methods=["POST"], endpoint="admin_adjust_stamps_v2")
 @app.route("/admin/trainers/<username>/adjust_stamps", methods=["POST"], endpoint="admin_adjust_stamps_legacy")
 def admin_adjust_stamps_route(username):
-    count  = request.form.get("count", "0")
+    count = request.form.get("count", "0")
     action = request.form.get("action", "award")
     reason = request.form.get("reason", "")
 
@@ -2145,6 +2145,70 @@ def admin_adjust_stamps_route(username):
     ok, msg = adjust_stamps(username, count, reason, action, actor)  # ← pass actor
     flash(msg, "success" if ok else "error")
     return redirect(url_for("admin_trainer_detail", username=username))
+
+@app.route("/admin/trainers/mass-stamp", methods=["POST"])
+def admin_mass_stamp():
+    if "trainer" not in session:
+        return jsonify({"success": False, "error": "Please log in."}), 401
+
+    _, user = find_user(session["trainer"])
+    if not user or user.get("account_type") != "Admin":
+        return jsonify({"success": False, "error": "Admins only."}), 403
+
+    payload = request.get_json(silent=True) or {}
+    usernames = payload.get("usernames") or []
+    amount = payload.get("amount")
+    reason = (payload.get("reason") or "").strip()
+
+    if not usernames:
+        return jsonify({"success": False, "error": "Select at least one trainer."}), 400
+
+    if not reason:
+        return jsonify({"success": False, "error": "Provide a reason for the stamp."}), 400
+
+    try:
+        count = int(amount)
+        if count <= 0:
+            raise ValueError
+    except (TypeError, ValueError):
+        return jsonify({"success": False, "error": "Amount must be a positive integer."}), 400
+
+    actor = (
+        session.get("trainer_username")
+        or session.get("username")
+        or session.get("admin_username")
+        or "Admin"
+    )
+
+    successes = []
+    failures = []
+
+    for username in dict.fromkeys(usernames):  # dedupe while preserving order
+        ok, message = adjust_stamps(username, count, reason, "award", actor)
+        entry = {"username": username, "message": message}
+        if ok:
+            successes.append(entry)
+        else:
+            failures.append(entry)
+
+    response = {
+        "success": not failures,
+        "awarded": successes,
+        "failed": failures,
+        "summary": {
+            "total_requested": len(usernames),
+            "awarded": len(successes),
+            "failed": len(failures),
+        },
+    }
+
+    if not failures:
+        response["message"] = f"✅ Awarded {count} stamp{'s' if count != 1 else ''} to {len(successes)} trainer{'s' if len(successes) != 1 else ''}."
+    else:
+        response["message"] = "⚠️ Some awards failed. Check details."
+
+    status = 200 if not failures else 207  # multi-status style response
+    return jsonify(response), status
 
 def get_classic_submissions_for_trainer(trainer_username: str) -> list[dict]:
     if not (supabase and trainer_username):
@@ -3903,6 +3967,7 @@ def admin_trainers():
 
     trainer_data = None
     all_trainers = []
+    account_types = set()
 
     # 🔎 Search
     if request.method == "POST":
@@ -3921,13 +3986,16 @@ def admin_trainers():
         for entry in all_trainers:
             entry["account_type"] = normalize_account_type(entry.get("account_type"))
             entry.setdefault("avatar_icon", "avatar1.png")
+            if entry["account_type"]:
+                account_types.add(entry["account_type"])
     except Exception as e:
         print("⚠️ Failed fetching all trainers:", e)
 
     return render_template(
         "admin_trainers.html",
         trainer_data=trainer_data,
-        all_trainers=all_trainers
+        all_trainers=all_trainers,
+        account_types=sorted(account_types),
     )
 
 @app.route("/admin/trainers/<username>")
