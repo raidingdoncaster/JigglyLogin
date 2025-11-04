@@ -28,7 +28,7 @@
       },
       {
         "label": "RDAB TikTok",
-        "href": "https://www.tiktok.com/@pokemongodoncaster",
+        "href": "https://www.tiktok.com/@rdab_pokemongo?_r=1&_t=ZN-917Sg0FhqLO",
         "new_tab": true
       }
     ]
@@ -57,10 +57,10 @@
         "logo": "gowa/communitycel.png",
         "logo_alt": "Wild Area Community Celebration logo",
         "button": {
-          "label": "Find out more",
-          "href": "#wild-area-details",
-          "variant": "outline",
-          "new_tab": false
+          "label": "RSVP",
+          "href": "https://cmpf.re/ALTYox",
+          "variant": "primary",
+          "new_tab": true
         }
       }
     ]
@@ -140,7 +140,7 @@
       },
       {
         "title": "GOWA Doncaster Community Day League (10AM\u20135PM)",
-        "body": "Battle alongside your chosen faction! Every match helps your side control more of the city. Compete, climb the ranks, and prove your strength.",
+        "body": "Battle alongside your chosen faction in this very special edition of the Community Day League! Every catch helps your side control more of the city. Compete, climb the ranks, and prove your strength in this catching competition. Trainers will be invited to begin the CDL by sharing their starting screenshots from 9am onwards, and will be required to finish the CDL at 4:30pm by uploading their ending screenshots by the latest 5pm. Trainers will be invited back to the Corn Exchange as ambassadors announce the winning division, and the top 10 of each team's leaderboards.",
         "image": "gowa/activity-league.png",
         "image_alt": "Competitive Pok\u00e9mon GO league battles"
       }

@@ -26,6 +26,47 @@ from typing import Any
 USE_SUPABASE = True  # ✅ Supabase for stamps/meetups
 MAINTENANCE_MODE = False  # ⛔️ Change to True to enable maintenance mode
 
+# ====== Auth security settings ======
+LOGIN_MAX_ATTEMPTS = 5
+LOGIN_LOCKOUT_SECONDS = 1800
+
+# ====== Admin dashboard security ======
+HARD_CODED_ADMIN_DASHBOARD_PASSWORD = "shinypsyduck"
+
+ADMIN_DASHBOARD_PASSWORD = os.environ.get("ADMIN_DASHBOARD_PASSWORD")
+if ADMIN_DASHBOARD_PASSWORD is not None:
+    ADMIN_DASHBOARD_PASSWORD = ADMIN_DASHBOARD_PASSWORD.strip() or None
+if not ADMIN_DASHBOARD_PASSWORD:
+    ADMIN_DASHBOARD_PASSWORD = HARD_CODED_ADMIN_DASHBOARD_PASSWORD
+
+ADMIN_DASHBOARD_PASSWORD_HASH = os.environ.get("ADMIN_DASHBOARD_PASSWORD_HASH")
+if ADMIN_DASHBOARD_PASSWORD_HASH is not None:
+    ADMIN_DASHBOARD_PASSWORD_HASH = ADMIN_DASHBOARD_PASSWORD_HASH.strip() or None
+
+ADMIN_DASHBOARD_GATE_MAX_ATTEMPTS = 5
+_gate_attempts_env = os.environ.get("ADMIN_DASHBOARD_GATE_MAX_ATTEMPTS")
+if _gate_attempts_env:
+    try:
+        ADMIN_DASHBOARD_GATE_MAX_ATTEMPTS = max(1, int(_gate_attempts_env))
+    except ValueError:
+        print(f"⚠️ Invalid ADMIN_DASHBOARD_GATE_MAX_ATTEMPTS value: {_gate_attempts_env!r}. Using default {ADMIN_DASHBOARD_GATE_MAX_ATTEMPTS}.")
+
+ADMIN_DASHBOARD_GATE_LOCK_SECONDS = 900
+_gate_lock_env = os.environ.get("ADMIN_DASHBOARD_GATE_LOCK_SECONDS")
+if _gate_lock_env:
+    try:
+        ADMIN_DASHBOARD_GATE_LOCK_SECONDS = max(30, int(_gate_lock_env))
+    except ValueError:
+        print(f"⚠️ Invalid ADMIN_DASHBOARD_GATE_LOCK_SECONDS value: {_gate_lock_env!r}. Using default {ADMIN_DASHBOARD_GATE_LOCK_SECONDS}.")
+
+ADMIN_DASHBOARD_GATE_TTL_SECONDS = 4200
+_gate_ttl_env = os.environ.get("ADMIN_DASHBOARD_GATE_TTL_SECONDS")
+if _gate_ttl_env:
+    try:
+        ADMIN_DASHBOARD_GATE_TTL_SECONDS = max(0, int(_gate_ttl_env))
+    except ValueError:
+        print(f"⚠️ Invalid ADMIN_DASHBOARD_GATE_TTL_SECONDS value: {_gate_ttl_env!r}. Using default {ADMIN_DASHBOARD_GATE_TTL_SECONDS}.")
+
 # ====== GOWA secret event toggle ======
 GOWA_ENABLED = True  # 🌿 Flip to True to unlock the Doncaster GO Wild Area experience
 GOWA_STATIC_PREFIX = "gowa"
@@ -2461,6 +2502,42 @@ def reset_pin(trainer_username: str, new_pin: str, actor: str = "Admin"):
     except Exception as e:
         return False, f"❌ Failed to reset PIN: {e}"
 
+def _admin_dashboard_gate_enabled() -> bool:
+    return bool(ADMIN_DASHBOARD_PASSWORD_HASH or ADMIN_DASHBOARD_PASSWORD)
+
+
+def _admin_dashboard_gate_verified() -> bool:
+    gate_state = session.get("admin_dashboard_gate") or {}
+    verified_at = gate_state.get("verified_at")
+    if verified_at is None:
+        return False
+    try:
+        verified_ts = float(verified_at)
+    except (TypeError, ValueError):
+        session.pop("admin_dashboard_gate", None)
+        return False
+
+    ttl = ADMIN_DASHBOARD_GATE_TTL_SECONDS
+    if ttl <= 0:
+        return True
+
+    if time.time() - verified_ts < ttl:
+        return True
+
+    session.pop("admin_dashboard_gate", None)
+    return False
+
+
+def _admin_dashboard_gate_check(password: str) -> bool:
+    if not password:
+        return False
+    if ADMIN_DASHBOARD_PASSWORD_HASH:
+        return hash_value(password) == ADMIN_DASHBOARD_PASSWORD_HASH
+    if ADMIN_DASHBOARD_PASSWORD:
+        return password == ADMIN_DASHBOARD_PASSWORD
+    return False
+
+
 def _require_admin():
     trainer_username = session.get("trainer")
     if not trainer_username:
@@ -2611,7 +2688,7 @@ def admin_required(f):
     return wrapper
 
 # ===== Admin Dashboard =====
-@app.route("/admin/dashboard")
+@app.route("/admin/dashboard", methods=["GET", "POST"])
 def admin_dashboard():
     session["last_page"] = request.path
     if "trainer" not in session:
@@ -2622,6 +2699,76 @@ def admin_dashboard():
     if not user or user.get("account_type") != "Admin":
         flash("⛔ Access denied. Admins only.", "error")
         return redirect(url_for("dashboard"))
+
+    gate_required = _admin_dashboard_gate_enabled()
+    if gate_required and not _admin_dashboard_gate_verified():
+        security_state = session.get("admin_dashboard_security") or {}
+        try:
+            remaining = int(security_state.get("remaining", ADMIN_DASHBOARD_GATE_MAX_ATTEMPTS))
+        except (TypeError, ValueError):
+            remaining = ADMIN_DASHBOARD_GATE_MAX_ATTEMPTS
+        remaining = max(0, remaining)
+
+        now_ts = time.time()
+        lock_until_ts = None
+        lock_until_raw = security_state.get("lock_until")
+        if lock_until_raw is not None:
+            try:
+                lock_until_ts = float(lock_until_raw)
+            except (TypeError, ValueError):
+                security_state["lock_until"] = None
+                lock_until_ts = None
+
+        if lock_until_ts and now_ts < lock_until_ts:
+            wait_seconds = max(int(lock_until_ts - now_ts), 1)
+            flash(f"Too many incorrect attempts. Try again in {wait_seconds} seconds.", "error")
+            security_state["remaining"] = ADMIN_DASHBOARD_GATE_MAX_ATTEMPTS
+            session["admin_dashboard_security"] = security_state
+            return (
+                render_template(
+                    "admin_dashboard_password.html",
+                    remaining_attempts=ADMIN_DASHBOARD_GATE_MAX_ATTEMPTS,
+                    locked=True,
+                    lockout_seconds=wait_seconds,
+                ),
+                403,
+            )
+
+        if request.method == "POST":
+            submitted_password = request.form.get("admin_password", "")
+            if _admin_dashboard_gate_check(submitted_password):
+                session["admin_dashboard_gate"] = {"verified_at": time.time()}
+                security_state["remaining"] = ADMIN_DASHBOARD_GATE_MAX_ATTEMPTS
+                security_state["lock_until"] = None
+                session["admin_dashboard_security"] = security_state
+                flash("Admin dashboard unlocked.", "success")
+                return redirect(url_for("admin_dashboard"))
+
+            remaining = max(remaining - 1, 0)
+            security_state["remaining"] = remaining
+            if remaining <= 0:
+                security_state["lock_until"] = now_ts + ADMIN_DASHBOARD_GATE_LOCK_SECONDS
+                security_state["remaining"] = ADMIN_DASHBOARD_GATE_MAX_ATTEMPTS
+                flash(f"Too many incorrect attempts. Try again in {ADMIN_DASHBOARD_GATE_LOCK_SECONDS} seconds.", "error")
+            else:
+                security_state["lock_until"] = None
+                attempt_word = "attempt" if remaining == 1 else "attempts"
+                flash(f"Incorrect admin password. {remaining} {attempt_word} remaining.", "error")
+
+            session["admin_dashboard_security"] = security_state
+        else:
+            security_state["remaining"] = min(remaining, ADMIN_DASHBOARD_GATE_MAX_ATTEMPTS)
+            session["admin_dashboard_security"] = security_state
+
+        return render_template(
+            "admin_dashboard_password.html",
+            remaining_attempts=security_state.get("remaining", ADMIN_DASHBOARD_GATE_MAX_ATTEMPTS),
+            locked=False,
+            lockout_seconds=None,
+        )
+
+    if gate_required:
+        session.pop("admin_dashboard_security", None)
 
     active_catalog_items = 0
     pending_redemptions = 0
@@ -4292,15 +4439,24 @@ def login():
         except:
             return redirect(url_for("dashboard"))
     if request.method == "POST":
-        username = request.form["username"]
-        pin = request.form["pin"]
+        security_state = session.get("login_security") or {
+            "remaining": LOGIN_MAX_ATTEMPTS,
+            "lock_until": None,
+        }
+        session["login_security"] = security_state
+
+        now = time.time()
+        lock_until = security_state.get("lock_until")
+        if lock_until and now < lock_until:
+            wait_seconds = max(int(lock_until - now), 1)
+            flash(f"Too many incorrect attempts. Try again in {wait_seconds} seconds.", "error")
+            return redirect(url_for("login"))
+
+        username = request.form.get("username", "").strip()
+        pin = request.form.get("pin", "")
 
         _, user = find_user(username)
-        if not user:
-            flash("No trainer found!", "error")
-            return redirect(url_for("home"))
-
-        if user.get("pin_hash") == hash_value(pin):
+        if user and user.get("pin_hash") == hash_value(pin):
             session["trainer"] = user.get("trainer_username")
             session["account_type"] = normalize_account_type(user.get("account_type"))
             session.permanent = True
@@ -4312,14 +4468,31 @@ def login():
             except Exception as e:
                 print("⚠️ Supabase last_login update failed:", e)
 
+            security_state["remaining"] = LOGIN_MAX_ATTEMPTS
+            security_state["lock_until"] = None
+            session["login_security"] = security_state
+
             flash(f"Welcome back, {user.get('trainer_username')}!", "success")
             last_page = session.pop("last_page", None)
             if last_page:
                 return redirect(last_page)
             return redirect(url_for("dashboard"))
         else:
-            flash("Incorrect PIN!", "error")
-            return redirect(url_for("home"))
+            remaining = max(security_state.get("remaining", LOGIN_MAX_ATTEMPTS) - 1, 0)
+            security_state["remaining"] = remaining
+
+            if remaining <= 0:
+                security_state["lock_until"] = now + LOGIN_LOCKOUT_SECONDS
+                security_state["remaining"] = LOGIN_MAX_ATTEMPTS
+                session["login_security"] = security_state
+                flash(f"Too many incorrect attempts. Try again in {LOGIN_LOCKOUT_SECONDS} seconds.", "error")
+            else:
+                security_state["lock_until"] = None
+                attempt_word = "attempt" if remaining == 1 else "attempts"
+                session["login_security"] = security_state
+                flash(f"Wrong PIN. {remaining} {attempt_word} remaining.", "error")
+
+            return redirect(url_for("login"))
 
     # GET request — just show login form
     return render_template("login.html", gowa_banner=_gowa_banner())
