@@ -24,7 +24,7 @@ from typing import Any
 
 # ====== Feature toggle ======
 USE_SUPABASE = True  # ✅ Supabase for stamps/meetups
-MAINTENANCE_MODE = True  # ⛔️ Change to True to enable maintenance mode
+MAINTENANCE_MODE = False  # ⛔️ Change to True to enable maintenance mode
 
 # ====== GOWA secret event toggle ======
 GOWA_ENABLED = True  # 🌿 Flip to True to unlock the Doncaster GO Wild Area experience
