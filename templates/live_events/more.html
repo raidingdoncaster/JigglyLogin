@@ -1,0 +1,29 @@
+{% extends "live_events/base.html" %}
+
+{% block content %}
+  {% set more = content.get("more") or {} %}
+  <section>
+    {% set banner = more.get("banner") %}
+    {% if banner and banner.image %}
+      <div class="banner">
+        <img src="{{ url_for('static', filename=banner.image) }}" alt="{{ banner.alt or '' }}">
+      </div>
+    {% endif %}
+
+    <h1>{{ more.heading or "More to explore" }}</h1>
+    {% if more.body %}
+      <p class="lead">{{ more.body }}</p>
+    {% endif %}
+
+    {% set links = more.get("links") or [] %}
+    {% if links %}
+      <div class="links-list">
+        {% for link in links if link %}
+          <a href="{{ link.href or '#' }}" {% if link.new_tab %}target="_blank" rel="noopener"{% endif %}>
+            {{ link.label or "Open link" }}
+          </a>
+        {% endfor %}
+      </div>
+    {% endif %}
+  </section>
+{% endblock %}

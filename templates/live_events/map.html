@@ -1,0 +1,32 @@
+{% extends "live_events/base.html" %}
+
+{% block content %}
+  {% set map_data = content.get("map") or {} %}
+  <section>
+    {% set banner = map_data.get("banner") %}
+    {% if banner and banner.image %}
+      <div class="banner">
+        <img src="{{ url_for('static', filename=banner.image) }}" alt="{{ banner.alt or '' }}">
+      </div>
+    {% endif %}
+
+    <h1>{{ map_data.heading or "Map & logistics" }}</h1>
+    {% if map_data.body %}
+      <p class="lead">{{ map_data.body }}</p>
+    {% endif %}
+
+    {% if map_data.notes %}
+      <ul class="note-list">
+        {% for note in map_data.notes %}
+          <li>{{ note }}</li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+
+    {% if map_data.embed_html %}
+      <div class="welcome-card__image" style="margin-top:28px;">
+        {{ map_data.embed_html | safe }}
+      </div>
+    {% endif %}
+  </section>
+{% endblock %}

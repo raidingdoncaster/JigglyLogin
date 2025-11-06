@@ -76,6 +76,16 @@
   </div>
 </div>
 
+<div class="live-events-cta">
+  <div class="live-events-card">
+    <h3>🎉 Community Celebrations</h3>
+    <p>Preview the live events microsite experience.</p>
+    <a class="live-events-button" href="{{ url_for('live_events_page') }}" target="_blank" rel="noopener">
+      Open live events hub
+    </a>
+  </div>
+</div>
+
 <style>
 .admin-header { text-align:center; margin-bottom:20px; }
 .admin-header h1 { margin:0; }
@@ -128,6 +138,42 @@
   font-size:0.9em;
   font-weight:600;
   text-shadow:0 6px 12px rgba(15,23,42,0.1);
+}
+.live-events-cta{
+  margin:32px auto 0;
+  max-width:380px;
+}
+.live-events-card{
+  background:linear-gradient(135deg,rgba(90,173,255,0.12),rgba(255,159,178,0.16));
+  border:1px solid rgba(58,141,222,0.2);
+  border-radius:16px;
+  padding:22px;
+  text-align:center;
+  box-shadow:0 12px 26px rgba(58,141,222,0.12);
+}
+.live-events-card h3{
+  margin:0 0 6px;
+  font-size:1.2em;
+}
+.live-events-card p{
+  margin:0 0 16px;
+  color:#4a5880;
+  font-size:0.95em;
+}
+.live-events-button{
+  display:inline-block;
+  padding:10px 20px;
+  border-radius:999px;
+  text-decoration:none;
+  font-weight:600;
+  color:#fff;
+  background:linear-gradient(135deg,#3a8dde,#9c6bff);
+  box-shadow:0 12px 22px rgba(58,141,222,0.26);
+  transition:transform .2s ease, box-shadow .2s ease;
+}
+.live-events-button:hover{
+  transform:translateY(-2px);
+  box-shadow:0 16px 30px rgba(58,141,222,0.3);
 }
 
 @media(max-width:720px){

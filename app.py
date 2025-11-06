@@ -74,6 +74,10 @@ GOWA_BANNER_ASSET = f"{GOWA_STATIC_PREFIX}/banner.png"
 GOWA_LOGO_ASSET = f"{GOWA_STATIC_PREFIX}/logo.png"
 GOWA_EXTERNAL_URL = "https://rdab.app/gowa"
 
+# ====== Live events hub ======
+LIVE_EVENTS_ENABLED = True  # Toggle to enable the live events microsite
+LIVE_EVENTS_EXTERNAL_URL = "https://rdab.app/live-events"
+
 # ====== Dashboard feature visibility toggles ======
 SHOW_CATALOG_APP = True
 SHOW_CITY_PERKS_APP = False
@@ -115,6 +119,7 @@ def check_maintenance_mode():
         "service_worker",
         "maintenance",
         "home",
+        "live_events_page",
         "gowa_portal",
         "gowa_alias_redirect",
         "gowa_legacy_redirect",
@@ -137,6 +142,7 @@ DATA_DIR = Path(app.root_path) / "data"
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 CUSTOM_EVENTS_PATH = DATA_DIR / "custom_events.json"
 GOWA_CONTENT_PATH = DATA_DIR / "gowa_page.json"
+LIVE_EVENTS_CONTENT_PATH = DATA_DIR / "live_events_page.json"
 GOWA_DEFAULT_CONTENT = {
     "title": "Doncaster GO Wild Area 2025",
     "description": (
@@ -331,6 +337,175 @@ GOWA_DEFAULT_CONTENT = {
     },
 }
 
+LIVE_EVENTS_DEFAULT_CONTENT = {
+    "meta": {
+        "title": "Community Celebrations Live",
+        "description": (
+            "Your colourful hub for live events, story moments, and community surprises across Doncaster."
+        ),
+        "canonical": LIVE_EVENTS_EXTERNAL_URL,
+    },
+    "navigation": [
+        {"view": "agenda", "label": "Agenda", "icon": "📅"},
+        {"view": "activities", "label": "Activities", "icon": "🎯"},
+        {"view": "map", "label": "Map", "icon": "🗺️"},
+        {"view": "more", "label": "More", "icon": "✨"},
+    ],
+    "agenda": {
+        "banner": {
+            "image": "gowa/banner.png",
+            "alt": "Community celebrations banner with pastel confetti",
+        },
+        "welcome": {
+            "eyebrow": "Welcome to Doncaster",
+            "title": "Community Celebrations Hub",
+            "subtitle": "Drop into the hub, plan your day, and discover the key moments we have lined up.",
+            "image": "gowa/communitycel.png",
+            "alt": "Trainers celebrating together in Doncaster",
+        },
+        "highlights_heading": "Agenda highlights",
+        "cards": [
+            {
+                "image": "gowa/activity-route-tour.png",
+                "time": "10:00 AM",
+                "title": "Event hub opens",
+                "body": "Collect your wristband, grab a welcome drink, and meet the celebrations team.",
+            },
+            {
+                "image": "gowa/activity-geocache.png",
+                "time": "1:00 – 2:00 PM",
+                "title": "Trading Post & market",
+                "body": "Swap stickers, pins, and postcards while catching featured spawns around the market.",
+            },
+            {
+                "image": "gowa/activity-league.png",
+                "time": "5:50 PM",
+                "title": "Closing ceremony",
+                "body": "Gather by the main stage for the big wrap-up, shout-outs, and prize reveals.",
+            },
+            {
+                "image": "gowa/footer-banner.png",
+                "time": "6:00 PM →",
+                "title": "After-hours social",
+                "body": "RSVP to keep the celebrations going with food, music, and late-night vibes.",
+                "cta": {
+                    "label": "Social RSVP",
+                    "href": "#",
+                    "new_tab": False,
+                },
+            },
+        ],
+        "route_tours": {
+            "heading": "Route tours",
+            "description": (
+                "Join guided walks that uncover Doncaster lore, raid hotspots, and hidden challenges. "
+                "Arrive five minutes early at the welcome arch to secure your spot."
+            ),
+            "times_left": ["10:30 AM", "11:00 AM", "11:30 AM", "12:00 PM"],
+            "times_right": ["1:00 PM", "2:00 PM", "3:00 PM", "4:00 PM"],
+        },
+    },
+    "activities": {
+        "banner": {
+            "image": "gowa/section-breaker.png",
+            "alt": "Pastel ribbon divider",
+        },
+        "story": {
+            "eyebrow": "The Wild Awakens",
+            "title": "Story brief",
+            "body": (
+                "A mysterious energy is rippling through Doncaster. The Fairy Council needs allies, but "
+                "Team NO Wild have their own plans."
+            ),
+            "image": "gowa/activity-team-nowild.png",
+            "alt": "Illustration of Team NO Wild characters",
+        },
+        "mission": {
+            "title": "Your mission",
+            "body": (
+                "Choose your path, complete featured activities, and collect stamps to unlock celebratory rewards."
+            ),
+        },
+        "prizes_intro": "You can earn up to two prizes today.",
+        "rewards": [
+            {
+                "title": "Earn 4 stamps",
+                "image": "gowa/activity-league.png",
+                "description": "Play through the headline activities to claim an exclusive celebrations patch.",
+                "info": "Stamp cards available from the welcome desk.",
+            },
+            {
+                "title": "Complete the geocache",
+                "image": "gowa/activity-geocache.png",
+                "description": "Crack the riddles around town to unlock the holographic postcard set.",
+                "info": "Check in with the Fairy Council booth for your first clue.",
+            },
+        ],
+        "prizes_showcase": {
+            "heading": "Prizes include…",
+            "image": "gowa/logo.png",
+            "alt": "Community celebrations prize bundle",
+            "caption": "Collect prizes at the Community Desk beside the Corn Exchange entrance.",
+        },
+        "cta_grid": {
+            "heading": "Get started",
+            "tiles": [
+                {
+                    "image": "gowa/activity-route-tour.png",
+                    "label": "City tours",
+                    "href": "#",
+                },
+                {
+                    "image": "gowa/activity-league.png",
+                    "label": "CDL Arena",
+                    "href": "#",
+                },
+                {
+                    "image": "gowa/activity-team-nowild.png",
+                    "label": "Team NO Wild",
+                    "href": "#",
+                },
+                {
+                    "image": "gowa/activity-geocache.png",
+                    "label": "Geocache",
+                    "href": "#",
+                },
+            ],
+        },
+    },
+    "map": {
+        "banner": {
+            "image": "gowa/banner.png",
+            "alt": "Doncaster skyline banner",
+        },
+        "heading": "Map & logistics",
+        "body": (
+            "Drop a static map, Google My Maps embed, or quick directions here. Use this placeholder to plan the layout."
+        ),
+        "notes": [
+            "Venue hub: Doncaster Market Square",
+            "Registration: Welcome arch beside Corn Exchange",
+            "Rest zones: Corn Exchange mezzanine & Elmfield Park",
+        ],
+    },
+    "more": {
+        "banner": {
+            "image": "gowa/section-breaker.png",
+            "alt": "Sparkle banner",
+        },
+        "heading": "More to explore",
+        "body": (
+            "Use this space for FAQ links, volunteer sign-ups, accessibility info, or anything else you need on the day."
+        ),
+        "links": [
+            {"label": "Volunteer briefing", "href": "#"},
+            {"label": "Emergency contact sheet", "href": "#"},
+            {"label": "Social media toolkit", "href": "#"},
+        ],
+    },
+}
+
+
 try:
     LONDON_TZ = ZoneInfo("Europe/London")
 except Exception:
@@ -366,6 +541,40 @@ def save_custom_events(events: list[dict]) -> None:
             json.dump(events, fh, indent=2)
     except Exception as exc:
         print("⚠️ Failed to save custom calendar events:", exc)
+
+
+def _merge_nested_content(base: dict, overrides: dict) -> dict:
+    result = copy.deepcopy(base)
+    for key, value in overrides.items():
+        if isinstance(value, dict) and isinstance(result.get(key), dict):
+            result[key] = _merge_nested_content(result[key], value)
+        elif isinstance(value, list) and isinstance(result.get(key), list):
+            sanitized = [item for item in value if item is not None]
+            if sanitized:
+                result[key] = sanitized
+        elif value is not None:
+            result[key] = value
+    return result
+
+
+def load_live_events_content() -> dict:
+    content = copy.deepcopy(LIVE_EVENTS_DEFAULT_CONTENT)
+    if not LIVE_EVENTS_CONTENT_PATH.exists():
+        return content
+    try:
+        with LIVE_EVENTS_CONTENT_PATH.open("r", encoding="utf-8") as fh:
+            raw = json.load(fh)
+    except Exception as exc:
+        print("⚠️ Failed to load live events content:", exc)
+        return content
+    if isinstance(raw, dict):
+        return _merge_nested_content(content, raw)
+    return content
+
+
+def _ensure_live_events_enabled():
+    if not LIVE_EVENTS_ENABLED:
+        abort(404)
 
 
 def _ensure_gowa_enabled():
@@ -1752,6 +1961,31 @@ def home():
 
     # Default fallback
     return redirect(url_for("login"))
+
+
+@app.route("/live-events")
+def live_events_page():
+    _ensure_live_events_enabled()
+    content = load_live_events_content()
+    page_meta = content.get("meta") or {}
+    canonical_url = page_meta.get("canonical") or LIVE_EVENTS_EXTERNAL_URL
+    view = request.args.get("view", "agenda").lower()
+    templates = {
+        "agenda": "live_events/agenda.html",
+        "activities": "live_events/activities.html",
+        "map": "live_events/map.html",
+        "more": "live_events/more.html",
+    }
+    if view not in templates:
+        view = "agenda"
+    return render_template(
+        templates[view],
+        content=content,
+        page_meta=page_meta,
+        canonical_url=canonical_url,
+        active_view=view,
+        navigation=content.get("navigation") or [],
+    )
 
 
 @app.route("/gowa")

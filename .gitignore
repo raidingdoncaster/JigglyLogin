@@ -38,6 +38,7 @@ pogo-passport-key.json
 *.json
 !static/manifest.json
 !data/gowa_page.json
+!data/live_events.json
 
 # --- Google SDK (don’t commit the whole SDK!) ---
 google-cloud-sdk/

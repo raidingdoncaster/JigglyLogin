@@ -1,0 +1,104 @@
+{% extends "live_events/base.html" %}
+
+{% block content %}
+  {% set activities = content.get("activities") or {} %}
+  <section>
+    {% set banner = activities.get("banner") %}
+    {% if banner and banner.image %}
+      <div class="banner">
+        <img src="{{ url_for('static', filename=banner.image) }}" alt="{{ banner.alt or '' }}">
+      </div>
+    {% endif %}
+
+    <div class="story-brief">
+      {% set story = activities.get("story") or {} %}
+      <div>
+        {% if story.eyebrow %}
+          <div class="eyebrow">{{ story.eyebrow }}</div>
+        {% endif %}
+        <h1>{{ story.title or "Story brief" }}</h1>
+        {% if story.body %}
+          <p class="lead">{{ story.body }}</p>
+        {% endif %}
+      </div>
+      {% if story.image %}
+        <div class="agenda-card__image">
+          <img src="{{ url_for('static', filename=story.image) }}" alt="{{ story.alt or '' }}">
+        </div>
+      {% endif %}
+    </div>
+
+    {% set mission = activities.get("mission") or {} %}
+    {% if mission %}
+      <div class="mission-card">
+        {% if mission.title %}
+          <h2>{{ mission.title }}</h2>
+        {% endif %}
+        {% if mission.body %}
+          <p class="lead">{{ mission.body }}</p>
+        {% endif %}
+      </div>
+    {% endif %}
+
+    {% if activities.prizes_intro %}
+      <p style="margin-top:24px;" class="lead">{{ activities.prizes_intro }}</p>
+    {% endif %}
+
+    {% set rewards = activities.get("rewards") or [] %}
+    {% if rewards %}
+      <div class="rewards-grid">
+        {% for reward in rewards if reward %}
+          <article class="reward-card">
+            {% if reward.image %}
+              <img src="{{ url_for('static', filename=reward.image) }}" alt="{{ reward.alt or reward.title }}">
+            {% endif %}
+            <div>
+              <h3>{{ reward.title }}</h3>
+              {% if reward.description %}
+                <p class="agenda-card__body">{{ reward.description }}</p>
+              {% endif %}
+              {% if reward.info %}
+                <small>{{ reward.info }}</small>
+              {% endif %}
+            </div>
+          </article>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    {% set showcase = activities.get("prizes_showcase") or {} %}
+    {% if showcase %}
+      <div class="prize-showcase">
+        {% if showcase.heading %}
+          <h2>{{ showcase.heading }}</h2>
+        {% endif %}
+        {% if showcase.image %}
+          <img src="{{ url_for('static', filename=showcase.image) }}" alt="{{ showcase.alt or '' }}">
+        {% endif %}
+        {% if showcase.caption %}
+          <p class="agenda-card__body" style="margin-top:16px;">{{ showcase.caption }}</p>
+        {% endif %}
+      </div>
+    {% endif %}
+
+    {% set grid = activities.get("cta_grid") or {} %}
+    {% if grid %}
+      {% if grid.heading %}
+        <h2 style="margin-top:32px;">{{ grid.heading }}</h2>
+      {% endif %}
+      {% set tiles = grid.get("tiles") or [] %}
+      {% if tiles %}
+        <div class="tile-grid">
+          {% for tile in tiles if tile %}
+            <a class="tile" href="{{ tile.href or '#' }}">
+              {% if tile.image %}
+                <img src="{{ url_for('static', filename=tile.image) }}" alt="{{ tile.alt or tile.label }}">
+              {% endif %}
+              <strong>{{ tile.label or "Explore" }}</strong>
+            </a>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endif %}
+  </section>
+{% endblock %}
