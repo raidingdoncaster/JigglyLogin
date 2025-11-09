@@ -399,6 +399,10 @@ def _resolve_config_path(key: str) -> Path:
     path = Path(value)
     if not path.is_absolute():
         path = Path(current_app.root_path) / path
+    if not path.exists():
+        fallback = Path(__file__).resolve().parent.parent / "data" / Path(path.name)
+        if fallback.exists():
+            return fallback
     return path
 
 

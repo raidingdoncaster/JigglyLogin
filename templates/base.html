@@ -71,16 +71,6 @@
       box-shadow:0 24px 52px rgba(15,23,42,0.2);
     }
 
-    /* Loading screen */
-    #loading-screen{
-      position:fixed; inset:0;
-      background:linear-gradient(135deg,var(--brand),var(--brand2));
-      display:flex; flex-direction:column; align-items:center; justify-content:center;
-      z-index:9999; color:#fff; font-size:1.2em;
-    }
-    #loading-screen img{ width:120px; margin-bottom:1em; }
-    .hidden{ opacity:0; visibility:hidden; transition:opacity .8s, visibility .8s; }
-
     /* Header */
     header{
       position:fixed; top:0; left:0; right:0; z-index:6000;
@@ -342,11 +332,6 @@
   </style>
 
   <script>
-    window.addEventListener("load",()=>{
-      const ls=document.getElementById("loading-screen");
-      if(ls) ls.classList.add("hidden");
-    });
-
     window.addEventListener("DOMContentLoaded",()=>{
       const headerEl=document.querySelector("header");
       const setHeaderOffset=()=>{
@@ -424,11 +409,6 @@
   </script>
 </head>
 <body>
-  <!-- Loading Splash -->
-  <div id="loading-screen">
-    <img src="/static/logo.png" alt="Logo"> Loading JigglyLogin…
-  </div>
-
   <!-- Header -->
   <header>
     <div class="header-left">
