@@ -419,7 +419,12 @@ def get_assets_path() -> Path:
 
 def _load_story_locations() -> Dict[str, Dict[str, float]]:
     story_path = get_assets_path()
-    mtime = story_path.stat().st_mtime
+    try:
+        mtime = story_path.stat().st_mtime
+    except FileNotFoundError:
+        current_app.logger.warning("Geocache assets file missing at %s", story_path)
+        _location_cache.update({"path": str(story_path), "mtime": 0, "locations": {}})
+        return {}
     cache_path = _location_cache.get("path")
     if cache_path != str(story_path) or _location_cache.get("mtime", 0) < mtime:
         try:
@@ -462,7 +467,12 @@ def _get_location_spec(location_id: str) -> Optional[Dict[str, float]]:
 
 def _load_story_artifacts() -> Dict[str, Dict[str, Any]]:
     story_path = get_assets_path()
-    mtime = story_path.stat().st_mtime
+    try:
+        mtime = story_path.stat().st_mtime
+    except FileNotFoundError:
+        current_app.logger.warning("Geocache assets file missing at %s", story_path)
+        _artifact_cache.update({"path": str(story_path), "mtime": 0, "artifacts": {}})
+        return {}
     cache_path = _artifact_cache.get("path")
     if cache_path != str(story_path) or _artifact_cache.get("mtime", 0) < mtime:
         try:
