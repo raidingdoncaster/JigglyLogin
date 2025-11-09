@@ -1,6 +1,5 @@
-# Geocache Quest – Supabase Setup
+# Geocache Quest – SB SQL -- internal only
 
-Copy the SQL below into the Supabase SQL editor (or your migration tool) to create the tables, indexes, triggers, and policies required for the geocache quest feature.
 
 ```sql
 -- 0. Extensions (uuid + hashing helpers)
@@ -202,4 +201,35 @@ from public.geocache_sessions s
 join public.geocache_profiles p on p.id = s.profile_id;
 ```
 
-Happy quest building!
+## Act II Data Seeds
+
+Populate these Supabase rows so the new minigames function:
+
+- Technical assets (locations, artifact codes/NFC) are baked into `data/geocache_assets.json`; edit that file for any on-site changes. Supabase rows are optional if you prefer database management.
+- Location IDs referenced in the story (`doncaster_minster`, `mansion_house_trail`, `lovers_statue`) should stay consistent across front-end and any admin tooling. The backend stores rounded coordinates from the browser check-in, so you only need a separate table if you plan on validating ranges server-side later.
+- Additional Act III locations: `pink_bike_stage`, `sir_nigel_square`.
+- Act VI location: `market_hub` (market return check-in).
+  - The final battle is handled in-app; no extra artifact rows required.
+
+> ℹ️ Location checks now enforce the latitude/longitude and `radius_m` configured in `data/geocache_story.json`. Keep the coordinates up to date for each venue to avoid “location_out_of_range” errors during live events.
+
+## Manual Testing Checklist
+
+1. **Feature flag** – export `USE_GEOCACHE_QUEST=1` (plus Supabase creds) and restart the Flask app. Visit `/geocache` to confirm the quest shell loads.
+2. **Account creation/login** – from the quest start screen create a profile (trainer + PIN + optional campfire). Verify:
+   - New row in `sheet1` (trainer, pin_hash).
+   - New row in `geocache_profiles` (metadata contains last_session_id after first sync).
+3. **Act I progression** – scan compass, mark puzzle complete, accept mission:
+   - `geocache_sessions.progress_flags` contains `compass_found` and `compass_repaired`.
+   - Act advance to II only allowed once flags exist.
+4. **Act II path** – perform location check-ins (Minster, Mansion, Lovers), solve riddle, focus test, sigils:
+   - Each flag appears in `progress_flags`.
+   - Attempting to jump to Act III without required flags returns a 409 from `/geocache/session`.
+5. **Act III path** – location/tap tasks at Pink Bike, defeat Eldarni, recover Sigil of Might:
+   - `illusion_battle_won` recorded with `hits`.
+   - Act advance to VI only when all flags present.
+6. **Act VI finale** – check in at market, defeat Dr Order, choose ending:
+   - Combat mini-game updates `order_defeated`.
+   - Ending selection writes `ending_choice` and epilogue data into `progress_flags.ending_selected`.
+7. **Resume flow** – refresh, use “Reload save”, enter PIN, confirm state hydrates.
+8. **Admin link** – log into `/admin_dashboard` and use the “Geocache Quest” card to open `/geocache` in a new tab.

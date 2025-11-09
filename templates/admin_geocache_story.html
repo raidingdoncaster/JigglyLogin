@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+
+{% block page_settings %}
+  {% set container_class = 'is-wide' %}
+{% endblock %}
+
+{% block content %}
+  <div class="story-header">
+    <h1>🌿 Geocache Quest Story</h1>
+    <p>Review acts, scenes, and progression flags. Update <code>data/geocache_story.json</code> for content changes.</p>
+    <a class="button" href="{{ url_for('geocache.quest_shell') }}" target="_blank" rel="noopener">Open quest shell</a>
+  </div>
+
+  {% for act in acts %}
+    <section class="act-card">
+      <header>
+        <h2>{{ act.id|capitalize }} – {{ act.title }}</h2>
+        <p class="act-intro">{{ act.intro }}</p>
+        {% if act.objectives %}
+          <h3>Objectives</h3>
+          <ul>
+            {% for objective in act.objectives %}
+              <li>{{ objective }}</li>
+            {% endfor %}
+          </ul>
+        {% endif %}
+        {% if act.required_flags %}
+          <p class="act-required"><strong>Required flags:</strong> {{ act.required_flags|join(', ') }}</p>
+        {% endif %}
+        <p class="act-next"><strong>Next act:</strong> {{ act.next_act or 'End' }}</p>
+      </header>
+
+      <div class="scene-grid">
+        {% for scene_id, scene in act.scenes %}
+          <article class="scene-card">
+            <h4>{{ scene_id }}</h4>
+            <p class="scene-type">Type: {{ scene.type or 'narration' }}</p>
+            {% if scene.speaker %}
+              <p class="scene-speaker">Speaker: {{ scene.speaker }}</p>
+            {% endif %}
+            {% if scene.text %}
+              <div class="scene-text">
+                {% for line in scene.text %}
+                  <p>{{ line }}</p>
+                {% endfor %}
+              </div>
+            {% endif %}
+
+            {% if scene.minigame %}
+              <div class="scene-minigame">
+                <div><strong>Minigame:</strong> {{ scene.minigame.kind }}</div>
+                {% if scene.minigame.success_flag %}
+                  <div><strong>Flag:</strong> {{ scene.minigame.success_flag }}</div>
+                {% endif %}
+                {% for key, value in scene.minigame.items() %}
+                  {% if key not in ['kind', 'success_flag'] %}
+                    <div><strong>{{ key }}:</strong> {{ value }}</div>
+                  {% endif %}
+                {% endfor %}
+              </div>
+            {% endif %}
+
+            {% if scene.choices %}
+              <div class="scene-choices">
+                <strong>Choices:</strong>
+                <ul>
+                  {% for choice in scene.choices %}
+                    <li>{{ choice.id }} → {{ choice.next or 'End' }} ({{ choice.label }})</li>
+                  {% endfor %}
+                </ul>
+              </div>
+            {% elif scene.cta %}
+              <p class="scene-cta"><strong>CTA:</strong> {{ scene.cta.label }} → {{ scene.cta.next or 'End' }}</p>
+            {% endif %}
+          </article>
+        {% endfor %}
+      </div>
+    </section>
+  {% endfor %}
+
+  <section class="story-meta">
+    <h2>Metadata</h2>
+    <pre>{{ story.metadata | tojson(indent=2) }}</pre>
+  </section>
+
+  <section class="raw-json">
+    <details>
+      <summary>View raw JSON</summary>
+      <pre>{{ story | tojson(indent=2) }}</pre>
+    </details>
+  </section>
+
+  <style>
+    .story-header {
+      display:flex;
+      flex-wrap:wrap;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      margin-bottom:24px;
+    }
+    .story-header h1 { margin:0; }
+    .story-header p { flex:1 1 320px; margin:0; color:#466; }
+    .story-header .button {
+      padding:10px 18px;
+      border-radius:999px;
+      text-decoration:none;
+      color:#fff;
+      background:linear-gradient(135deg,#3a8dde,#9c6bff);
+      font-weight:600;
+    }
+
+    .act-card {
+      background:#fff;
+      border-radius:18px;
+      padding:24px;
+      margin-bottom:24px;
+      box-shadow:0 16px 32px rgba(15,23,42,0.08);
+    }
+    .act-card header h2 { margin-top:0; }
+    .act-intro { color:#455; margin-bottom:8px; }
+    .act-card ul { margin:0 0 8px 18px; }
+    .act-required { color:#924; }
+    .act-next { color:#476; }
+
+    .scene-grid {
+      display:grid;
+      gap:18px;
+      margin-top:16px;
+      grid-template-columns:repeat(auto-fill, minmax(260px,1fr));
+    }
+    .scene-card {
+      border:1px solid rgba(15,23,42,0.08);
+      border-radius:14px;
+      padding:16px;
+      background:rgba(245,248,255,0.5);
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+    }
+    .scene-card h4 { margin:0; font-size:1.05em; }
+    .scene-type, .scene-speaker, .scene-cta { margin:0; color:#566; font-size:0.9em; }
+    .scene-text p { margin:0 0 6px; }
+    .scene-minigame { font-size:0.9em; background:rgba(58,141,222,0.08); padding:8px; border-radius:10px; }
+    .scene-choices ul { margin:6px 0 0 18px; font-size:0.9em; }
+
+    .story-meta pre, .raw-json pre {
+      background:#0f172a;
+      color:#f8fafc;
+      padding:16px;
+      border-radius:12px;
+      overflow:auto;
+    }
+    .raw-json summary {
+      cursor:pointer;
+      font-weight:600;
+      margin-bottom:8px;
+    }
+  </style>
+{% endblock %}

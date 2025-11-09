@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>Whispers of the Wild Court</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='geocache/styles.css') }}">
+  </head>
+  <body>
+    <main id="scene-root" data-initial-state='{{ initial_state | tojson | safe }}'>
+      <noscript>
+        <p>This quest requires JavaScript to run. Please enable JavaScript and reload.</p>
+      </noscript>
+    </main>
+    <script src="{{ url_for('static', filename='geocache/app.js') }}" type="module"></script>
+  </body>
+</html>
