@@ -63,7 +63,7 @@ def quest_shell():
 @geocache_bp.get("/status")
 def quest_status():
     enabled = feature_gate.enabled()
-    story = _load_story_payload()
+    story = services.load_story(include_assets=False)
     return jsonify(
         {
             "enabled": enabled,
@@ -76,12 +76,8 @@ def quest_status():
 @geocache_bp.get("/story")
 def quest_story():
     feature_gate.guard()
-    try:
-        payload = services.enrich_story_with_assets(_load_story_payload())
-    except services.GeocacheServiceError as exc:
-        current_app.logger.error("Failed to enrich story: %s", exc)
-        return jsonify({"error": "story_assets_unavailable"}), 500
-    return jsonify(payload)
+    story = services.load_story(include_assets=True)
+    return jsonify(story)
 
 
 @geocache_bp.post("/profile")

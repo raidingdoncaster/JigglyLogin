@@ -3508,26 +3508,10 @@ def admin_catalog():
 def admin_geocache_story():
     _require_admin()
     try:
-        story_path = services.get_story_path()
-    except services.GeocacheServiceError as exc:
-        flash(f"Story path misconfigured: {exc}", "error")
+        story = services.load_story(include_assets=True)
+    except Exception as exc:
+        flash(f"Unable to load geocache story: {exc}", "error")
         return redirect(url_for("admin_dashboard"))
-
-    try:
-        with story_path.open("r", encoding="utf-8") as handle:
-            raw_story = json.load(handle)
-    except FileNotFoundError:
-        flash("Geocache story file is missing.", "error")
-        return redirect(url_for("admin_dashboard"))
-    except json.JSONDecodeError as exc:
-        flash(f"Geocache story JSON invalid: {exc}", "error")
-        return redirect(url_for("admin_dashboard"))
-
-    try:
-        story = services.enrich_story_with_assets(raw_story)
-    except services.GeocacheServiceError as exc:
-        flash(f"Geocache assets missing: {exc}", "error")
-        story = raw_story
 
     scenes = story.get("scenes", {})
     acts_raw = story.get("acts", [])

@@ -388,13 +388,16 @@ def _distance_m(lat_a: float, lng_a: float, lat_b: float, lng_b: float) -> float
     return radius * c
 
 
+_DEFAULT_STORY = {"title": "Whispers of the Wild Court", "version": 1, "acts": [], "scenes": {}}
 _location_cache: Dict[str, Any] = {"path": None, "mtime": 0, "locations": {}}
 _artifact_cache: Dict[str, Any] = {"path": None, "mtime": 0, "artifacts": {}}
 
 
-def _resolve_config_path(key: str) -> Path:
+def _resolve_config_path(key: str, default_filename: Optional[str] = None) -> Path:
     value = current_app.config.get(key)
     if not value:
+        if default_filename:
+            return Path(current_app.root_path) / "data" / default_filename
         raise GeocacheServiceError(f"{key} is not configured", status_code=500, payload={"error": "config_missing"})
     path = Path(value)
     if not path.is_absolute():
@@ -407,17 +410,11 @@ def _resolve_config_path(key: str) -> Path:
 
 
 def get_story_path() -> Path:
-    try:
-        return _resolve_config_path("GEOCACHE_STORY_PATH")
-    except GeocacheServiceError:
-        return Path(__file__).resolve().parent.parent / "data" / "geocache_story.json"
+    return _resolve_config_path("GEOCACHE_STORY_PATH", "geocache_story.json")
 
 
 def get_assets_path() -> Path:
-    try:
-        return _resolve_config_path("GEOCACHE_ASSETS_PATH")
-    except GeocacheServiceError:
-        return Path(__file__).resolve().parent.parent / "data" / "geocache_assets.json"
+    return _resolve_config_path("GEOCACHE_ASSETS_PATH", "geocache_assets.json")
 
 
 def _load_story_locations() -> Dict[str, Dict[str, float]]:
@@ -509,6 +506,23 @@ def get_asset_locations() -> Dict[str, Dict[str, Any]]:
 
 def get_asset_artifacts() -> Dict[str, Dict[str, Any]]:
     return _load_story_artifacts()
+
+
+def load_story(include_assets: bool = True) -> Dict[str, Any]:
+    try:
+        story_path = get_story_path()
+        with story_path.open("r", encoding="utf-8") as handle:
+            story = json.load(handle)
+    except Exception as exc:
+        current_app.logger.warning("Using default geocache story (%s)", exc)
+        story = dict(_DEFAULT_STORY)
+
+    if include_assets:
+        try:
+            story = enrich_story_with_assets(story)
+        except GeocacheServiceError as exc:
+            current_app.logger.warning("Geocache assets unavailable: %s", exc)
+    return story
 
 
 def enrich_story_with_assets(story: Dict[str, Any]) -> Dict[str, Any]:
