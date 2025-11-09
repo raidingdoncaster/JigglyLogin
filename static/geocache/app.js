@@ -2366,6 +2366,27 @@ const initialPayload = (() => {
 
     const context = buildQuestContext();
 
+    if (
+      !busy &&
+      !quest.state.busy &&
+      context.scenes.length > 0 &&
+      !context.currentScene &&
+      context.activeActId
+    ) {
+      const firstScene = context.scenes[0];
+      const actNumber = parseActNumber(context.activeActId) || 1;
+      postSessionUpdate(
+        {
+          state: {
+            current_act: actNumber,
+            last_scene: firstScene.id,
+          },
+        },
+        { keepView: true }
+      );
+      return;
+    }
+
     updateHudTopBar(context);
     renderOverviewContent(context);
     renderSettingsActions();
