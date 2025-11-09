@@ -47,6 +47,10 @@
       <img src="{{ url_for('static', filename='icons/admin/rdab-stats.png') }}" alt="RDAB Stats">
       <span>RDAB Stats</span>
     </a>
+    <a class="explore-card" href="{{ url_for('geocache.quest_shell') }}" target="_blank" rel="noopener">
+      <img src="{{ url_for('static', filename='icons/admin/catalog-manager.png') }}" alt="Geocache Quest">
+      <span>Run Geocache Quest</span>
+    </a>
     {% if show_leagues_app %}
       <a class="explore-card" href="{{ url_for('admin_leagues') }}">
         <img src="{{ url_for('static', filename='icons/leagues-app.png') }}" alt="Leagues Hub">
@@ -62,8 +66,8 @@
       <span>Catalog Manager</span>
     </a>
     <a class="explore-card" href="{{ url_for('admin_geocache_story') }}">
-      <img src="{{ url_for('static', filename='icons/admin/catalog-manager.png') }}" alt="Geocache Quest">
-      <span>Geocache Quest</span>
+      <img src="{{ url_for('static', filename='icons/admin/catalog-manager.png') }}" alt="Geocache Story">
+      <span>Story & Assets</span>
     </a>
     <a class="explore-card" href="{{ url_for('admin_meetups') }}">
       <img src="{{ url_for('static', filename='icons/admin/meetups-manager.png') }}" alt="Meetup Manager">

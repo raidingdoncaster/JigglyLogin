@@ -407,11 +407,17 @@ def _resolve_config_path(key: str) -> Path:
 
 
 def get_story_path() -> Path:
-    return _resolve_config_path("GEOCACHE_STORY_PATH")
+    try:
+        return _resolve_config_path("GEOCACHE_STORY_PATH")
+    except GeocacheServiceError:
+        return Path(__file__).resolve().parent.parent / "data" / "geocache_story.json"
 
 
 def get_assets_path() -> Path:
-    return _resolve_config_path("GEOCACHE_ASSETS_PATH")
+    try:
+        return _resolve_config_path("GEOCACHE_ASSETS_PATH")
+    except GeocacheServiceError:
+        return Path(__file__).resolve().parent.parent / "data" / "geocache_assets.json"
 
 
 def _load_story_locations() -> Dict[str, Dict[str, float]]:
