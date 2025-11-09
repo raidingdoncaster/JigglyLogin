@@ -478,6 +478,30 @@ _location_cache: Dict[str, Any] = {"path": None, "mtime": 0, "locations": {}}
 _artifact_cache: Dict[str, Any] = {"path": None, "mtime": 0, "artifacts": {}}
 
 
+def _ensure_json_file(path: Path, default_payload: Dict[str, Any]) -> Path:
+    if path.exists():
+        return path
+    logger = None
+    try:
+        logger = current_app.logger
+    except RuntimeError:
+        logger = None
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(default_payload, indent=2), encoding="utf-8")
+        message = f"Scaffolded geocache config at {path}"
+        if logger:
+            logger.info(message)
+        else:
+            print(message)
+    except Exception as exc:
+        if logger:
+            logger.warning("Unable to scaffold geocache file at %s: %s", path, exc)
+        else:
+            print(f"Unable to scaffold geocache file at {path}: {exc}")
+    return path
+
+
 def _resolve_config_path(key: str, default_filename: Optional[str] = None) -> Path:
     value = current_app.config.get(key)
     if not value:
@@ -495,11 +519,23 @@ def _resolve_config_path(key: str, default_filename: Optional[str] = None) -> Pa
 
 
 def get_story_path() -> Path:
-    return _resolve_config_path("GEOCACHE_STORY_PATH", "geocache_story.json")
+    path = _resolve_config_path("GEOCACHE_STORY_PATH", "geocache_story.json")
+    if not path.exists():
+        ensured = _ensure_json_file(path, _DEFAULT_STORY)
+        if ensured.exists():
+            return ensured
+        return _RESOURCE_DIR / "geocache_story.json"
+    return path
 
 
 def get_assets_path() -> Path:
-    return _resolve_config_path("GEOCACHE_ASSETS_PATH", "geocache_assets.json")
+    path = _resolve_config_path("GEOCACHE_ASSETS_PATH", "geocache_assets.json")
+    if not path.exists():
+        ensured = _ensure_json_file(path, _DEFAULT_ASSETS)
+        if ensured.exists():
+            return ensured
+        return _RESOURCE_DIR / "geocache_assets.json"
+    return path
 
 
 def _load_story_locations() -> Dict[str, Dict[str, float]]:

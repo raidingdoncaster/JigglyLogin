@@ -305,6 +305,17 @@ if (!root) {
     return String(error);
   };
 
+  const resolveAssetUrl = (path) => {
+    if (!path || typeof path !== "string") {
+      return null;
+    }
+    if (/^https?:\/\//i.test(path)) {
+      return path;
+    }
+    const normalized = path.replace(/^\/+/, "");
+    return `/static/${normalized}`;
+  };
+
   const saved = storage.load();
   const savedPin = pinVault.get();
 
@@ -490,7 +501,7 @@ if (!root) {
     state: {
       view: "loading",
       status: null,
-      story: null,
+      story: initialPayload.story || null,
       profile: saved.profile || null,
       session: saved.session || null,
       pin: savedPin || null,
@@ -511,8 +522,2030 @@ if (!root) {
     },
   };
 
+  const hud = {
+    container: null,
+    header: null,
+    overviewButton: null,
+    settingsButton: null,
+    actTitle: null,
+    actStatus: null,
+    progressFill: null,
+    canvas: null,
+    canvasLayer: null,
+    canvasCharacter: null,
+    canvasContent: null,
+    actions: null,
+    overview: null,
+    overviewBody: null,
+    overviewClose: null,
+    settingsSheet: null,
+    settingsClose: null,
+    settingsActions: null,
+  };
+
+  const resetHudRefs = () => {
+    Object.keys(hud).forEach((key) => {
+      hud[key] = null;
+    });
+  };
+
+  const teardownHud = () => {
+    resetHudRefs();
+  };
+
+  const ensureHudStructure = () => {
+    if (hud.container) {
+      return;
+    }
+
+    teardownHud();
+    root.innerHTML = "";
+
+    const container = document.createElement("div");
+    container.className = "hud";
+
+    const header = document.createElement("header");
+    header.className = "hud__top";
+
+    const overviewButton = document.createElement("button");
+    overviewButton.type = "button";
+    overviewButton.className = "hud__top-button hud__top-button--overview";
+    overviewButton.setAttribute("aria-label", "Quest overview");
+    overviewButton.textContent = "☰";
+
+    const actMeta = document.createElement("div");
+    actMeta.className = "hud__act-meta";
+
+    const actTitle = document.createElement("h1");
+    actTitle.className = "hud__act-title";
+    actTitle.textContent = "Quest";
+
+    const actStatus = document.createElement("p");
+    actStatus.className = "hud__act-status";
+    actStatus.textContent = "Act progress";
+
+    const progressBar = document.createElement("div");
+    progressBar.className = "hud__progress-bar";
+
+    const progressFill = document.createElement("span");
+    progressFill.className = "hud__progress-fill";
+    progressBar.appendChild(progressFill);
+
+    actMeta.appendChild(actTitle);
+    actMeta.appendChild(actStatus);
+    actMeta.appendChild(progressBar);
+
+    const settingsButton = document.createElement("button");
+    settingsButton.type = "button";
+    settingsButton.className = "hud__top-button hud__top-button--settings";
+    settingsButton.setAttribute("aria-label", "Quest settings");
+    settingsButton.textContent = "⚙";
+
+    header.appendChild(overviewButton);
+    header.appendChild(actMeta);
+    header.appendChild(settingsButton);
+
+    const canvas = document.createElement("div");
+    canvas.className = "hud__canvas";
+
+    const canvasLayer = document.createElement("div");
+    canvasLayer.className = "hud__canvas-layer";
+    canvasLayer.dataset.layer = "background";
+    canvasLayer.dataset.asset = "";
+
+    const canvasCharacter = document.createElement("div");
+    canvasCharacter.className = "hud__canvas-character";
+    canvasCharacter.dataset.layer = "character";
+    canvasCharacter.dataset.asset = "";
+
+    const canvasContent = document.createElement("div");
+    canvasContent.className = "hud__canvas-content";
+
+    canvas.appendChild(canvasLayer);
+    canvas.appendChild(canvasCharacter);
+    canvas.appendChild(canvasContent);
+
+    const actions = document.createElement("footer");
+    actions.className = "hud__actions";
+
+    const overviewOverlay = document.createElement("div");
+    overviewOverlay.className = "hud__overlay";
+    overviewOverlay.dataset.overlay = "overview";
+
+    const overlayPanel = document.createElement("div");
+    overlayPanel.className = "hud__overlay-panel";
+
+    const overlayClose = document.createElement("button");
+    overlayClose.type = "button";
+    overlayClose.className = "hud__overlay-close";
+    overlayClose.setAttribute("aria-label", "Close overview");
+    overlayClose.textContent = "×";
+
+    const overlayBody = document.createElement("div");
+    overlayBody.className = "hud__overlay-body";
+
+    overlayPanel.appendChild(overlayClose);
+    overlayPanel.appendChild(overlayBody);
+    overviewOverlay.appendChild(overlayPanel);
+
+    const settingsSheet = document.createElement("div");
+    settingsSheet.className = "hud__sheet";
+    settingsSheet.dataset.sheet = "settings";
+
+    const sheetHeader = document.createElement("div");
+    sheetHeader.className = "hud__sheet-header";
+
+    const sheetTitle = document.createElement("h2");
+    sheetTitle.className = "hud__sheet-title";
+    sheetTitle.textContent = "Quest Settings";
+
+    const sheetClose = document.createElement("button");
+    sheetClose.type = "button";
+    sheetClose.className = "hud__overlay-close hud__overlay-close--sheet";
+    sheetClose.setAttribute("aria-label", "Close settings");
+    sheetClose.textContent = "×";
+
+    sheetHeader.appendChild(sheetTitle);
+    sheetHeader.appendChild(sheetClose);
+
+    const sheetActions = document.createElement("div");
+    sheetActions.className = "hud__sheet-actions";
+
+    settingsSheet.appendChild(sheetHeader);
+    settingsSheet.appendChild(sheetActions);
+
+    container.appendChild(header);
+    container.appendChild(canvas);
+    container.appendChild(actions);
+    container.appendChild(overviewOverlay);
+    container.appendChild(settingsSheet);
+
+    root.appendChild(container);
+
+    hud.container = container;
+    hud.header = header;
+    hud.overviewButton = overviewButton;
+    hud.settingsButton = settingsButton;
+    hud.actTitle = actTitle;
+    hud.actStatus = actStatus;
+    hud.progressFill = progressFill;
+    hud.canvas = canvas;
+    hud.canvasLayer = canvasLayer;
+    hud.canvasCharacter = canvasCharacter;
+    hud.canvasContent = canvasContent;
+    hud.actions = actions;
+    hud.overview = overviewOverlay;
+    hud.overviewBody = overlayBody;
+    hud.overviewClose = overlayClose;
+    hud.settingsSheet = settingsSheet;
+    hud.settingsClose = sheetClose;
+    hud.settingsActions = sheetActions;
+
+    const closeOverview = () => {
+      overviewOverlay.classList.remove("is-open");
+    };
+
+    const openOverview = () => {
+      overviewOverlay.classList.add("is-open");
+    };
+
+    const closeSettings = () => {
+      settingsSheet.classList.remove("is-open");
+    };
+
+    const openSettings = () => {
+      settingsSheet.classList.add("is-open");
+    };
+
+    overviewButton.addEventListener("click", () => {
+      if (overviewOverlay.classList.contains("is-open")) {
+        closeOverview();
+      } else {
+        openOverview();
+      }
+    });
+
+    overlayClose.addEventListener("click", closeOverview);
+    overviewOverlay.addEventListener("click", (event) => {
+      if (event.target === overviewOverlay) {
+        closeOverview();
+      }
+    });
+
+    settingsButton.addEventListener("click", () => {
+      if (settingsSheet.classList.contains("is-open")) {
+        closeSettings();
+      } else {
+        openSettings();
+      }
+    });
+
+    sheetClose.addEventListener("click", closeSettings);
+  };
+
+  const setHudActions = (nodes = [], { align = "space-between" } = {}) => {
+    if (!hud.actions) {
+      return;
+    }
+    hud.actions.innerHTML = "";
+    hud.actions.classList.toggle("hud__actions--center", align === "center");
+    nodes.forEach((node) => {
+      hud.actions.appendChild(node);
+    });
+  };
+
+  const createHexButton = (label, onClick, { disabled = false } = {}) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "hud__hex-button";
+    btn.textContent = label;
+    btn.disabled = disabled || Boolean(quest.state.busy);
+    btn.addEventListener("click", () => {
+      if (btn.disabled || quest.state.busy) {
+        return;
+      }
+      if (typeof onClick === "function") {
+        onClick();
+      }
+    });
+    return btn;
+  };
+
+  const createPrimaryButton = (label, onClick, { disabled = false } = {}) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "hud__primary-button";
+    btn.textContent = label;
+    btn.disabled = disabled || Boolean(quest.state.busy);
+    btn.addEventListener("click", () => {
+      if (btn.disabled || quest.state.busy) {
+        return;
+      }
+      if (typeof onClick === "function") {
+        onClick();
+      }
+    });
+    return btn;
+  };
+
+  const updateHudTopBar = (context) => {
+    if (!hud.actTitle) {
+      return;
+    }
+
+    const ctx = context || buildQuestContext();
+    const story = ctx.story || {};
+    const acts = ctx.acts || [];
+    const activeAct = ctx.activeAct || acts[ctx.actIndex] || acts[0] || null;
+
+    hud.actTitle.textContent = activeAct?.title || story.title || "Quest";
+
+    if (hud.actStatus) {
+      hud.actStatus.textContent =
+        acts.length > 0
+          ? `Act ${Math.min(ctx.actIndex + 1, acts.length)} of ${acts.length}`
+          : "Act progress";
+    }
+
+    if (hud.progressFill) {
+      const completedActs = Math.max(ctx.actIndex, 0);
+      const progress =
+        acts.length > 0
+          ? ((completedActs + (ctx.currentScene ? 1 : 0)) / acts.length) * 100
+          : 0;
+      hud.progressFill.style.width = `${Math.min(100, Math.max(8, progress))}%`;
+    }
+  };
+
+  const renderOverviewContent = (context) => {
+    if (!hud.overviewBody) {
+      return;
+    }
+    const body = hud.overviewBody;
+    body.innerHTML = "";
+
+    const ctx = context || buildQuestContext();
+    const story = ctx.story || {};
+    const profile = ctx.profile || {};
+    const session = ctx.session || {};
+    const acts = ctx.acts || [];
+    const activeActId = ctx.activeActId;
+
+    const heading = document.createElement("h2");
+    heading.textContent = "Quest Progress";
+    body.appendChild(heading);
+
+    const stats = document.createElement("div");
+    stats.className = "hud-overview-stats";
+    stats.innerHTML = `
+      <p><strong>Trainer:</strong> ${profile.trainer_name || "Unknown"}</p>
+      <p><strong>Campfire:</strong> ${
+        profile.campfire_name && profile.campfire_name !== "Not on Campfire"
+          ? profile.campfire_name
+          : "Not linked"
+      }</p>
+      <p><strong>Last Act Update:</strong> ${
+        session.updated_at
+          ? new Date(session.updated_at).toLocaleString()
+          : "Not started"
+      }</p>
+    `;
+    body.appendChild(stats);
+
+    if (acts.length) {
+      const list = document.createElement("ul");
+      list.className = "hud-overview-acts";
+      acts.forEach((act, idx) => {
+        const item = document.createElement("li");
+        item.className = "hud-overview-act";
+        if (act.id === activeActId) {
+          item.classList.add("is-active");
+        } else if (ctx.actIndex >= 0 && idx < ctx.actIndex) {
+          item.classList.add("is-complete");
+        }
+        item.innerHTML = `
+          <span class="hud-overview-act__index">Act ${idx + 1}</span>
+          <span class="hud-overview-act__title">${act.title}</span>
+        `;
+        list.appendChild(item);
+      });
+      body.appendChild(list);
+    }
+  };
+
+  const renderSettingsActions = () => {
+    if (!hud.settingsActions) {
+      return;
+    }
+    const busy = Boolean(quest.state.busy);
+    hud.settingsActions.innerHTML = "";
+
+    const makeButton = (label, onClick) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.textContent = label;
+      btn.disabled = busy;
+      btn.addEventListener("click", onClick);
+      return btn;
+    };
+
+    const closeSheet = () => {
+      if (hud.settingsSheet) {
+        hud.settingsSheet.classList.remove("is-open");
+      }
+    };
+
+    const reloadBtn = makeButton("Reload save slot", () => {
+      closeSheet();
+      quest.set({
+        view: quest.state.profile ? "resume" : "landing",
+        error: null,
+      });
+    });
+
+    const refreshBtn = makeButton("Check for quest updates", () => {
+      closeSheet();
+      refreshSession();
+    });
+
+    const logoutBtn = makeButton("Log out", () => {
+      closeSheet();
+      storage.clear();
+      pinVault.clear();
+      quest.set({
+        profile: null,
+        session: null,
+        pin: null,
+        view: "landing",
+        error: null,
+      });
+    });
+
+    hud.settingsActions.appendChild(reloadBtn);
+    hud.settingsActions.appendChild(refreshBtn);
+    hud.settingsActions.appendChild(logoutBtn);
+  };
+
+  const parseActNumber = (actId) => {
+    if (!actId) {
+      return null;
+    }
+    const match = String(actId).match(/act\s*(\d+)/i);
+    if (!match) {
+      return null;
+    }
+    const value = parseInt(match[1], 10);
+    return Number.isNaN(value) ? null : value;
+  };
+
+  const buildQuestContext = () => {
+    const story = quest.state.story || {};
+    const session = quest.state.session || {};
+    const profile = quest.state.profile || null;
+
+    const acts = Array.isArray(story.acts) ? story.acts : [];
+    const sceneMap = story.scenes || {};
+
+    let activeActId = null;
+    if (session.current_act) {
+      activeActId = `act${session.current_act}`;
+    } else if (acts.length) {
+      activeActId = acts[0]?.id || null;
+    }
+
+    let actIndex = 0;
+    if (activeActId) {
+      const matched = acts.findIndex((act) => act.id === activeActId);
+      if (matched >= 0) {
+        actIndex = matched;
+      }
+    }
+
+    const activeAct = acts[actIndex] || null;
+    const sceneIds = Array.isArray(activeAct?.scenes) ? activeAct.scenes : [];
+
+    const scenes = sceneIds
+      .map((id) => {
+        const source = sceneMap[id];
+        if (!source) {
+          return null;
+        }
+        return {
+          id,
+          act_id: activeAct?.id || null,
+          ...source,
+        };
+      })
+      .filter(Boolean);
+
+    let sceneIndex = 0;
+    if (session.last_scene) {
+      const matched = scenes.findIndex((scene) => scene.id === session.last_scene);
+      if (matched >= 0) {
+        sceneIndex = matched;
+      }
+    }
+
+    const currentScene = scenes[sceneIndex] || null;
+    const prevScene = sceneIndex > 0 ? scenes[sceneIndex - 1] : null;
+    const nextScene = sceneIndex < scenes.length - 1 ? scenes[sceneIndex + 1] : null;
+    const nextAct = actIndex < acts.length - 1 ? acts[actIndex + 1] : null;
+
+    return {
+      story,
+      session,
+      profile,
+      acts,
+      activeAct,
+      activeActId,
+      actIndex,
+      scenes,
+      sceneIndex,
+      currentScene,
+      prevScene,
+      nextScene,
+      nextAct,
+    };
+  };
+
+  const navigateToScene = (context, targetScene, options = {}) => {
+    if (!targetScene) {
+      return;
+    }
+    const updates = {
+      last_scene: targetScene.id,
+    };
+    const targetActId = options.actId || targetScene.act_id || context.activeActId;
+    const actNumber = parseActNumber(targetActId);
+    if (
+      actNumber &&
+      quest.state.session &&
+      quest.state.session.current_act !== actNumber
+    ) {
+      updates.current_act = actNumber;
+    }
+    postSessionUpdate(
+      {
+        state: updates,
+      },
+      { keepView: true }
+    );
+  };
+
+  const navigateToActStart = (context, targetAct) => {
+    if (!targetAct) {
+      return;
+    }
+    const actNumber = parseActNumber(targetAct.id);
+    const sceneIds = Array.isArray(targetAct.scenes) ? targetAct.scenes : [];
+    const firstSceneId = sceneIds[0];
+    const updates = {};
+    if (firstSceneId) {
+      updates.last_scene = firstSceneId;
+    }
+    if (actNumber) {
+      updates.current_act = actNumber;
+    }
+    if (Object.keys(updates).length === 0) {
+      return;
+    }
+    postSessionUpdate(
+      {
+        state: updates,
+      },
+      { keepView: true }
+    );
+  };
+
+  const getSceneMode = (scene) => {
+    if (!scene) {
+      return "empty";
+    }
+    const sceneType = (scene.type || "").toLowerCase();
+    if (sceneType === "minigame") {
+      const kind = (scene.minigame?.kind || scene.kind || "").toLowerCase();
+      if (["location", "checkin"].includes(kind)) {
+        return "location";
+      }
+      if (["artifact_scan", "sigil", "scan"].includes(kind)) {
+        return "artifact";
+      }
+      if (["quiz", "riddle", "focus", "mosaic"].includes(kind)) {
+        return "activity";
+      }
+      return "activity";
+    }
+    if (sceneType === "celebration" || sceneType === "reward") {
+      return "celebration";
+    }
+    return "dialogue";
+  };
+
+  const applySceneBackground = (scene, fallbackAct) => {
+    if (!hud.canvasLayer) {
+      return;
+    }
+    const backgroundAsset =
+      scene?.background ||
+      scene?.art ||
+      scene?.backdrop ||
+      fallbackAct?.background ||
+      fallbackAct?.art ||
+      null;
+    const imageUrl = resolveAssetUrl(backgroundAsset);
+    const current = hud.canvasLayer.dataset.asset || "";
+
+    if (imageUrl) {
+      if (imageUrl !== current) {
+        hud.canvasLayer.classList.remove("is-visible");
+        window.requestAnimationFrame(() => {
+          hud.canvasLayer.style.backgroundImage = `url(${imageUrl})`;
+          hud.canvasLayer.dataset.asset = imageUrl;
+          window.requestAnimationFrame(() => {
+            hud.canvasLayer.classList.add("is-visible");
+          });
+        });
+      } else if (!hud.canvasLayer.classList.contains("is-visible")) {
+        hud.canvasLayer.classList.add("is-visible");
+      }
+    } else {
+      hud.canvasLayer.dataset.asset = "";
+      hud.canvasLayer.style.backgroundImage = "none";
+      hud.canvasLayer.classList.remove("is-visible");
+    }
+  };
+
+  const applySceneCharacter = (context) => {
+    if (!hud.canvasCharacter) {
+      return;
+    }
+    const scene = context.currentScene;
+    const scene = context.currentScene;
+    const minigame = scene?.minigame || {};
+
+    const characterConfig =
+      scene?.character ||
+      minigame?.character ||
+      context.activeAct?.character ||
+      {};
+
+    const sources = [
+      characterConfig.asset,
+      characterConfig.image,
+      characterConfig.src,
+      characterConfig.url,
+      scene?.character_asset,
+      scene?.character_image,
+      minigame?.character_asset,
+      minigame?.character_image,
+      context.activeAct?.character_asset,
+      context.activeAct?.character_image,
+    ];
+
+    const asset = sources.find((value) => typeof value === "string" && value.trim()) || null;
+    const side =
+      (characterConfig.side ||
+        scene?.character_side ||
+        minigame?.character_side ||
+        context.activeAct?.character_side ||
+        "right")
+        .toString()
+        .toLowerCase();
+
+    const imageUrl = resolveAssetUrl(asset);
+    const element = hud.canvasCharacter;
+    const current = element.dataset.asset || "";
+
+    if (imageUrl) {
+      if (imageUrl !== current) {
+        element.classList.remove("is-visible");
+        window.requestAnimationFrame(() => {
+          element.style.backgroundImage = `url(${imageUrl})`;
+          element.dataset.asset = imageUrl;
+          window.requestAnimationFrame(() => {
+            element.classList.add("is-visible");
+          });
+        });
+      } else if (!element.classList.contains("is-visible")) {
+        element.classList.add("is-visible");
+      }
+      element.classList.toggle("is-left", side === "left" || side === "west");
+    } else {
+      element.dataset.asset = "";
+      element.style.backgroundImage = "none";
+      element.classList.remove("is-visible");
+      element.classList.remove("is-left");
+    }
+  };
+
+  const buildEmptyScene = (context) => {
+    const container = document.createElement("div");
+    container.className = "hud-scene hud-scene--empty";
+
+    const message = document.createElement("p");
+    message.className = "hud-scene__placeholder";
+    if (context.activeAct?.intro) {
+      message.textContent = context.activeAct.intro;
+    } else {
+      message.textContent =
+        "Trainer, the Wild Court is preparing the next chapter. Check for quest updates soon.";
+    }
+    container.appendChild(message);
+
+    return container;
+  };
+
+  const renderDialogueScene = (context) => {
+    const scene = context.currentScene;
+    const container = document.createElement("div");
+    container.className = "hud-scene hud-scene--dialogue";
+
+    if (scene.subtitle) {
+      const subtitle = document.createElement("p");
+      subtitle.className = "hud-scene__subtitle";
+      subtitle.textContent = scene.subtitle;
+      container.appendChild(subtitle);
+    }
+
+    const dialogueBox = document.createElement("div");
+    dialogueBox.className = "hud-dialogue";
+
+    const speakerLabel = document.createElement("div");
+    speakerLabel.className = "hud-dialogue__speaker";
+    speakerLabel.textContent = scene.speaker || "Narrator";
+    dialogueBox.appendChild(speakerLabel);
+
+    const textWrapper = document.createElement("div");
+    textWrapper.className = "hud-dialogue__text";
+    const lines = Array.isArray(scene.text) ? scene.text : [scene.text || ""];
+    lines
+      .filter((line) => Boolean(line && line.trim()))
+      .forEach((line) => {
+        const paragraph = document.createElement("p");
+        paragraph.textContent = line;
+        textWrapper.appendChild(paragraph);
+      });
+    if (!textWrapper.children.length) {
+      const paragraph = document.createElement("p");
+      paragraph.textContent =
+        "The Wild Court observes in silence, awaiting your next move.";
+      textWrapper.appendChild(paragraph);
+    }
+    dialogueBox.appendChild(textWrapper);
+    container.appendChild(dialogueBox);
+
+    const actions = [];
+    if (context.prevScene) {
+      actions.push(
+        createHexButton("←", () => navigateToScene(context, context.prevScene))
+      );
+    }
+
+    if (context.nextScene) {
+      actions.push(
+        createHexButton("→", () => navigateToScene(context, context.nextScene))
+      );
+    } else if (context.nextAct) {
+      actions.push(
+        createPrimaryButton("Continue", () => navigateToActStart(context, context.nextAct))
+      );
+    } else {
+      actions.push(
+        createPrimaryButton("Check for updates", () => {
+          refreshSession();
+        })
+      );
+    }
+
+    return {
+      node: container,
+      actions,
+      actionsAlign: actions.length === 1 ? "center" : "space-between",
+    };
+  };
+
+  const renderActivityScene = (context) => {
+    const scene = context.currentScene;
+    const minigame = scene?.minigame || {};
+    const kind = (minigame.kind || scene?.kind || "").toLowerCase();
+    const flagKey = minigame.success_flag || scene?.success_flag || scene?.id;
+
+    if (!flagKey) {
+      return null;
+    }
+
+    if (!["quiz", "riddle", "mosaic"].includes(kind)) {
+      return null;
+    }
+
+    const container = document.createElement("div");
+    container.className = "hud-scene hud-scene--activity";
+
+    const card = document.createElement("div");
+    card.className = "hud-card hud-card--activity";
+
+    const title = document.createElement("h2");
+    title.className = "hud-card__title";
+    title.textContent =
+      scene.title || minigame.title || (kind === "mosaic" ? "Puzzle challenge" : "Quest activity");
+    card.appendChild(title);
+
+    if (minigame.question) {
+      const subtitle = document.createElement("p");
+      subtitle.className = "hud-card__subtitle";
+      subtitle.textContent = minigame.question;
+      card.appendChild(subtitle);
+    }
+
+    const description = document.createElement("p");
+    description.className = "hud-card__body";
+    description.textContent =
+      (Array.isArray(scene.text) ? scene.text[0] : scene.text) ||
+      minigame.prompt ||
+      "Solve this to advance the quest.";
+    card.appendChild(description);
+
+    let statusLine = null;
+
+    if (kind === "mosaic") {
+      statusLine = document.createElement("p");
+      statusLine.className = "hud-card__meta";
+      statusLine.textContent = "Complete the on-site puzzle, then confirm below.";
+      card.appendChild(statusLine);
+
+      const submitButton = document.createElement("button");
+      submitButton.type = "button";
+      submitButton.className = "hud-card__cta";
+      submitButton.textContent = "Mark puzzle complete";
+      submitButton.addEventListener("click", async () => {
+        if (quest.state.busy) {
+          return;
+        }
+        submitButton.disabled = true;
+        try {
+          await postMinigame("/geocache/minigame/mosaic", {
+            puzzle_id: minigame.puzzle_id || scene.id,
+            success_flag: flagKey,
+            scene_id: scene.id,
+            success_token: crypto?.randomUUID
+              ? crypto.randomUUID()
+              : `token-${Date.now()}`,
+          });
+        } catch (_) {
+          submitButton.disabled = false;
+        }
+      });
+      card.appendChild(submitButton);
+    } else {
+      const choices = Array.isArray(minigame.choices) ? minigame.choices : [];
+      if (!choices.length) {
+        return null;
+      }
+
+      const choiceGrid = document.createElement("div");
+      choiceGrid.className = "hud-choice-grid";
+
+      statusLine = document.createElement("p");
+      statusLine.className = "hud-card__error";
+      statusLine.style.display = "none";
+
+      choices.forEach((choice, index) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "hud-choice-button";
+        button.textContent =
+          choice.label ||
+          choice.text ||
+          `${String.fromCharCode(65 + index)}. ${choice.id || "Option"}`;
+        button.addEventListener("click", async () => {
+          if (quest.state.busy) {
+            return;
+          }
+          if (!choice.correct) {
+            statusLine.textContent =
+              minigame.failure_message || "That answer doesn't unlock the cache. Try again.";
+            statusLine.style.display = "block";
+            return;
+          }
+
+          statusLine.style.display = "none";
+          button.disabled = true;
+          try {
+            await postSessionUpdate(
+              {
+                state: {
+                  progress_flags: {
+                    [flagKey]: {
+                      status: "solved",
+                      choice_id: choice.id || choice.value || `choice-${index}`,
+                      validated_at: new Date().toISOString(),
+                    },
+                  },
+                  last_scene: scene.id,
+                },
+                event: {
+                  event_type: "activity_solved",
+                  payload: {
+                    scene_id: scene.id,
+                    choice_id: choice.id || choice.value || `choice-${index}`,
+                    kind,
+                  },
+                },
+              },
+              { keepView: true }
+            );
+          } catch (_) {
+            button.disabled = false;
+          }
+        });
+        choiceGrid.appendChild(button);
+      });
+
+      card.appendChild(choiceGrid);
+      card.appendChild(statusLine);
+    }
+
+    container.appendChild(card);
+
+    const actions = [];
+    if (context.prevScene) {
+      actions.push(createHexButton("←", () => navigateToScene(context, context.prevScene)));
+    }
+    if (context.nextScene) {
+      actions.push(createHexButton("→", () => navigateToScene(context, context.nextScene)));
+    } else if (context.nextAct) {
+      actions.push(createPrimaryButton("Continue", () => navigateToActStart(context, context.nextAct)));
+    }
+
+    return {
+      node: container,
+      actions,
+      actionsAlign: actions.length === 1 ? "center" : "space-between",
+    };
+  };
+
+  const renderFocusScene = (context) => {
+    const scene = context.currentScene;
+    const minigame = scene?.minigame || {};
+    const flagKey = minigame.success_flag || scene?.success_flag || scene?.id;
+    if (!flagKey) {
+      return null;
+    }
+
+    const container = document.createElement("div");
+    container.className = "hud-scene hud-scene--focus";
+
+    const card = document.createElement("div");
+    card.className = "hud-card hud-card--focus";
+
+    const title = document.createElement("h2");
+    title.className = "hud-card__title";
+    title.textContent = scene.title || minigame.title || "Focus test";
+    card.appendChild(title);
+
+    const description = document.createElement("p");
+    description.className = "hud-card__body";
+    description.textContent =
+      (Array.isArray(scene.text) ? scene.text[0] : scene.text) ||
+      minigame.prompt ||
+      "Five orbs will appear. Tap each one before it fades to prove your focus.";
+    card.appendChild(description);
+
+    const statusLine = document.createElement("p");
+    statusLine.className = "hud-card__meta";
+    statusLine.style.display = "none";
+    card.appendChild(statusLine);
+
+    const orbArea = document.createElement("div");
+    orbArea.className = "focus-area";
+    card.appendChild(orbArea);
+
+    const startButton = document.createElement("button");
+    startButton.type = "button";
+    startButton.className = "hud-card__cta";
+    startButton.textContent = minigame.start_label || "Start focus test";
+
+    const totalOrbs = minigame.orbs || 5;
+    const windowMs = minigame.window_ms || 4000;
+
+    let hits = 0;
+    let active = false;
+    let timerId = null;
+
+    const cleanup = (message = null) => {
+      active = false;
+      hits = 0;
+      orbArea.innerHTML = "";
+      if (timerId) {
+        clearTimeout(timerId);
+        timerId = null;
+      }
+      startButton.disabled = false;
+      if (message) {
+        statusLine.textContent = message;
+        statusLine.style.display = "block";
+      }
+    };
+
+    const completeFocus = async () => {
+      try {
+        await postSessionUpdate(
+          {
+            state: {
+              progress_flags: {
+                [flagKey]: {
+                  status: "completed",
+                  hits: totalOrbs,
+                  validated_at: new Date().toISOString(),
+                },
+              },
+              last_scene: scene.id,
+            },
+            event: {
+              event_type: "focus_test",
+              payload: { scene_id: scene.id, hits: totalOrbs },
+            },
+          },
+          { keepView: true }
+        );
+      } catch (_) {
+        cleanup("Sync failed. Try again.");
+      }
+    };
+
+    const spawnOrb = () => {
+      if (!active) {
+        return;
+      }
+      orbArea.innerHTML = "";
+      const orb = document.createElement("button");
+      orb.type = "button";
+      orb.className = "focus-orb";
+      orb.textContent = minigame.orb_label || "Tap!";
+      orb.addEventListener("click", () => {
+        hits += 1;
+        if (hits >= totalOrbs) {
+          cleanup();
+          completeFocus();
+          return;
+        }
+        statusLine.textContent = `Great! ${totalOrbs - hits} to go.`;
+        statusLine.style.display = "block";
+        spawnOrb();
+      });
+      orbArea.appendChild(orb);
+      if (timerId) {
+        clearTimeout(timerId);
+      }
+      timerId = setTimeout(() => {
+        cleanup("The orb faded away. Try the focus test again.");
+      }, windowMs);
+    };
+
+    startButton.addEventListener("click", () => {
+      if (quest.state.busy) {
+        return;
+      }
+      cleanup();
+      statusLine.textContent = "Stay sharp!";
+      statusLine.style.display = "block";
+      startButton.disabled = true;
+      active = true;
+      hits = 0;
+      spawnOrb();
+    });
+
+    card.appendChild(startButton);
+    container.appendChild(card);
+
+    const actions = [];
+    if (context.prevScene) {
+      actions.push(createHexButton("←", () => navigateToScene(context, context.prevScene)));
+    }
+    if (context.nextScene) {
+      actions.push(createHexButton("→", () => navigateToScene(context, context.nextScene)));
+    } else if (context.nextAct) {
+      actions.push(createPrimaryButton("Continue", () => navigateToActStart(context, context.nextAct)));
+    }
+
+    return {
+      node: container,
+      actions,
+      actionsAlign: actions.length === 1 ? "center" : "space-between",
+    };
+  };
+
+  const renderIllusionScene = (context) => {
+    const scene = context.currentScene;
+    const minigame = scene?.minigame || {};
+    const flagKey = minigame.success_flag || scene?.success_flag || scene?.id;
+    if (!flagKey) {
+      return null;
+    }
+
+    const container = document.createElement("div");
+    container.className = "hud-scene hud-scene--illusion";
+
+    const card = document.createElement("div");
+    card.className = "hud-card hud-card--illusion";
+
+    const title = document.createElement("h2");
+    title.className = "hud-card__title";
+    title.textContent = scene.title || minigame.title || "Illusion duel";
+    card.appendChild(title);
+
+    const description = document.createElement("p");
+    description.className = "hud-card__body";
+    description.textContent =
+      (Array.isArray(scene.text) ? scene.text[0] : scene.text) ||
+      minigame.prompt ||
+      "Break Eldarni’s false lights by dispelling each illusion quickly.";
+    card.appendChild(description);
+
+    const dialogueLine = document.createElement("p");
+    dialogueLine.className = "hud-card__meta";
+    dialogueLine.style.display = "none";
+    card.appendChild(dialogueLine);
+
+    const orbArea = document.createElement("div");
+    orbArea.className = "focus-area";
+    card.appendChild(orbArea);
+
+    const startButton = document.createElement("button");
+    startButton.type = "button";
+    startButton.className = "hud-card__cta";
+    startButton.textContent = minigame.start_label || "Begin illusion duel";
+
+    const lines = Array.isArray(minigame.lines) ? minigame.lines : [];
+    const goal = minigame.orbs || 5;
+    const windowMs = minigame.window_ms || 3500;
+
+    let hits = 0;
+    let active = false;
+    let timerId = null;
+
+    const reset = (message = null) => {
+      active = false;
+      hits = 0;
+      orbArea.innerHTML = "";
+      if (timerId) {
+        clearTimeout(timerId);
+        timerId = null;
+      }
+      startButton.disabled = false;
+      if (message) {
+        dialogueLine.textContent = message;
+        dialogueLine.style.display = "block";
+      }
+    };
+
+    const completeIllusion = async () => {
+      try {
+        await postSessionUpdate(
+          {
+            state: {
+              progress_flags: {
+                [flagKey]: {
+                  status: "won",
+                  hits: goal,
+                  validated_at: new Date().toISOString(),
+                },
+              },
+              last_scene: scene.id,
+            },
+            event: {
+              event_type: "illusion_battle",
+              payload: {
+                scene_id: scene.id,
+                hits: goal,
+              },
+            },
+          },
+          { keepView: true }
+        );
+      } catch (_) {
+        reset("The illusion reformed. Try again.");
+      }
+    };
+
+    const spawnOrb = () => {
+      if (!active) {
+        return;
+      }
+      orbArea.innerHTML = "";
+      const orb = document.createElement("button");
+      orb.type = "button";
+      orb.className = "focus-orb focus-orb--illusion";
+      orb.textContent = minigame.orb_label || "Dispel!";
+      orb.addEventListener("click", () => {
+        hits += 1;
+        const line = lines[hits - 1];
+        if (line) {
+          dialogueLine.textContent = line;
+          dialogueLine.style.display = "block";
+        }
+        if (hits >= goal) {
+          reset();
+          completeIllusion();
+          return;
+        }
+        spawnOrb();
+      });
+      orbArea.appendChild(orb);
+      if (timerId) {
+        clearTimeout(timerId);
+      }
+      timerId = setTimeout(() => {
+        reset("The illusion slips away. Try again.");
+      }, windowMs);
+    };
+
+    startButton.addEventListener("click", () => {
+      if (quest.state.busy) {
+        return;
+      }
+      reset();
+      startButton.disabled = true;
+      active = true;
+      hits = 0;
+      dialogueLine.textContent = "Eldarni cackles. Break the lights!";
+      dialogueLine.style.display = "block";
+      spawnOrb();
+    });
+
+    card.appendChild(startButton);
+    container.appendChild(card);
+
+    const actions = [];
+    if (context.prevScene) {
+      actions.push(createHexButton("←", () => navigateToScene(context, context.prevScene)));
+    }
+    if (context.nextScene) {
+      actions.push(createHexButton("→", () => navigateToScene(context, context.nextScene)));
+    } else if (context.nextAct) {
+      actions.push(createPrimaryButton("Continue", () => navigateToActStart(context, context.nextAct)));
+    }
+
+    return {
+      node: container,
+      actions,
+      actionsAlign: actions.length === 1 ? "center" : "space-between",
+    };
+  };
+
+  const renderCombatScene = (context) => {
+    const scene = context.currentScene;
+    const minigame = scene?.minigame || {};
+    const flagKey = minigame.success_flag || scene?.success_flag || scene?.id;
+    if (!flagKey) {
+      return null;
+    }
+
+    const container = document.createElement("div");
+    container.className = "hud-scene hud-scene--combat";
+
+    const card = document.createElement("div");
+    card.className = "hud-card hud-card--combat";
+
+    const title = document.createElement("h2");
+    title.className = "hud-card__title";
+    title.textContent = scene.title || minigame.title || "Final battle";
+    card.appendChild(title);
+
+    const description = document.createElement("p");
+    description.className = "hud-card__body";
+    description.textContent =
+      (Array.isArray(scene.text) ? scene.text[0] : scene.text) ||
+      minigame.prompt ||
+      "Match the symbols as they appear to overwhelm Dr Nat L Order.";
+    card.appendChild(description);
+
+    const symbolDisplay = document.createElement("div");
+    symbolDisplay.className = "combat-symbol";
+    symbolDisplay.textContent = "—";
+
+    const buttonsWrapper = document.createElement("div");
+    buttonsWrapper.className = "combat-buttons";
+
+    const statusLine = document.createElement("p");
+    statusLine.className = "hud-card__meta";
+    statusLine.textContent = "";
+
+    const arena = document.createElement("div");
+    arena.className = "combat-area";
+    arena.appendChild(symbolDisplay);
+    arena.appendChild(buttonsWrapper);
+    card.appendChild(arena);
+    card.appendChild(statusLine);
+
+    const symbols = Array.isArray(minigame.symbols) && minigame.symbols.length
+      ? minigame.symbols
+      : ["⚡", "🌿", "🔥"];
+    const rounds = minigame.rounds || 5;
+    const lines = Array.isArray(minigame.lines) ? minigame.lines : [];
+
+    let sequence = [];
+    let index = 0;
+    let active = false;
+
+    const resetBattle = (message = null) => {
+      active = false;
+      sequence = [];
+      index = 0;
+      symbolDisplay.textContent = "—";
+      statusLine.textContent = message || "";
+      buttonsWrapper.querySelectorAll("button").forEach((btn) => {
+        btn.disabled = true;
+      });
+    };
+
+    const completeBattle = async () => {
+      try {
+        await postSessionUpdate(
+          {
+            state: {
+              progress_flags: {
+                [flagKey]: {
+                  status: "won",
+                  sequence,
+                  rounds,
+                  validated_at: new Date().toISOString(),
+                },
+              },
+              last_scene: scene.id,
+            },
+            event: {
+              event_type: "final_battle",
+              payload: {
+                scene_id: scene.id,
+                sequence,
+              },
+            },
+          },
+          { keepView: true }
+        );
+        statusLine.textContent = minigame.victory_line || "Dr Nat L Order’s illusion shatters!";
+      } catch (_) {
+        resetBattle("The illusion surges. Try again!");
+      }
+    };
+
+    const advance = () => {
+      if (index >= sequence.length) {
+        completeBattle();
+        return;
+      }
+      symbolDisplay.textContent = sequence[index];
+      buttonsWrapper.querySelectorAll("button").forEach((btn) => {
+        btn.disabled = false;
+      });
+    };
+
+    const handleChoice = (symbol) => {
+      if (!active) {
+        return;
+      }
+      if (symbol === sequence[index]) {
+        const line = lines[index];
+        statusLine.textContent = line || "";
+        index += 1;
+        buttonsWrapper.querySelectorAll("button").forEach((btn) => {
+          btn.disabled = true;
+        });
+        advance();
+      } else {
+        resetBattle(minigame.failure_line || "Dr Nat L Order grins. Try again!");
+      }
+    };
+
+    symbols.forEach((symbol) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "combat-button";
+      btn.textContent = symbol;
+      btn.disabled = true;
+      btn.addEventListener("click", () => handleChoice(symbol));
+      buttonsWrapper.appendChild(btn);
+    });
+
+    const startButton = document.createElement("button");
+    startButton.type = "button";
+    startButton.className = "hud-card__cta";
+    startButton.textContent = minigame.start_label || "Begin combat";
+    startButton.addEventListener("click", () => {
+      if (quest.state.busy) {
+        return;
+      }
+      sequence = Array.from({ length: rounds }, () => {
+        const idx = Math.floor(Math.random() * symbols.length);
+        return symbols[idx];
+      });
+      index = 0;
+      active = true;
+      statusLine.textContent = minigame.start_line || "Dr Nat L Order lunges!";
+      startButton.disabled = true;
+      buttonsWrapper.querySelectorAll("button").forEach((btn) => {
+        btn.disabled = true;
+      });
+      advance();
+    });
+
+    card.appendChild(startButton);
+    container.appendChild(card);
+
+    const actions = [];
+    if (context.prevScene) {
+      actions.push(createHexButton("←", () => navigateToScene(context, context.prevScene)));
+    }
+    if (context.nextScene) {
+      actions.push(createHexButton("→", () => navigateToScene(context, context.nextScene)));
+    } else if (context.nextAct) {
+      actions.push(createPrimaryButton("Continue", () => navigateToActStart(context, context.nextAct)));
+    }
+
+    return {
+      node: container,
+      actions,
+      actionsAlign: actions.length === 1 ? "center" : "space-between",
+    };
+  };
+
+  const renderLocationScene = (context) => {
+    const scene = context.currentScene;
+    const minigame = scene?.minigame || {};
+    const flagKey = minigame.success_flag || scene?.success_flag || scene?.id;
+    if (!flagKey) {
+      return null;
+    }
+
+    const flagStatus =
+      context.session?.progress_flags?.[flagKey] ||
+      context.session?.progress_flags?.[flagKey?.toUpperCase?.()] ||
+      null;
+    const isComplete = Boolean(flagStatus && (flagStatus.status || flagStatus.validated_at));
+
+    const container = document.createElement("div");
+    container.className = "hud-scene hud-scene--location";
+
+    const card = document.createElement("div");
+    card.className = "hud-card hud-card--location";
+
+    const title = document.createElement("h2");
+    title.className = "hud-card__title";
+    title.textContent = scene.title || minigame.title || "Objective";
+    card.appendChild(title);
+
+    if (!isComplete) {
+      const description = document.createElement("p");
+      description.className = "hud-card__body";
+      description.textContent =
+        (Array.isArray(scene.text) ? scene.text[0] : scene.text) ||
+        minigame.prompt ||
+        "Travel to the marked location and tap check-in.";
+      card.appendChild(description);
+
+      const metaBlock = document.createElement("div");
+      metaBlock.className = "hud-card__meta-block";
+
+      if (typeof minigame.radius_m === "number") {
+        const radius = document.createElement("p");
+        radius.className = "hud-card__meta";
+        radius.textContent = `Check-in radius: ${Math.round(minigame.radius_m)} m`;
+        metaBlock.appendChild(radius);
+      }
+
+      if (
+        typeof minigame.latitude === "number" &&
+        typeof minigame.longitude === "number" &&
+        (minigame.latitude !== 0 || minigame.longitude !== 0)
+      ) {
+        const coords = document.createElement("p");
+        coords.className = "hud-card__meta";
+        coords.textContent = `Target: ${minigame.latitude.toFixed(5)}, ${minigame.longitude.toFixed(5)}`;
+        metaBlock.appendChild(coords);
+      }
+
+      if (metaBlock.children.length) {
+        card.appendChild(metaBlock);
+      }
+
+      const statusLine = document.createElement("p");
+      statusLine.className = "hud-card__meta";
+      statusLine.style.display = "none";
+      card.appendChild(statusLine);
+
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "hud-card__cta";
+      button.textContent = minigame.cta_label || "I'm here!";
+      button.addEventListener("click", () => {
+        if (quest.state.busy || button.disabled) {
+          return;
+        }
+        if (!navigator.geolocation) {
+          quest.set({
+            error: "Location access not supported in this browser. Please enable GPS manually.",
+          });
+          return;
+        }
+        button.disabled = true;
+        statusLine.textContent = "Requesting location…";
+        statusLine.style.display = "block";
+
+        navigator.geolocation.getCurrentPosition(
+          async (pos) => {
+            try {
+              await postMinigame("/geocache/minigame/location", {
+                location_id: minigame.location_id || scene.id,
+                success_flag: flagKey,
+                scene_id: scene.id,
+                latitude: pos.coords.latitude,
+                longitude: pos.coords.longitude,
+                accuracy_m: pos.coords.accuracy,
+                precision: minigame.precision || 4,
+              });
+            } catch (_) {
+              statusLine.textContent = "Sync failed. Try again in a moment.";
+              button.disabled = false;
+            }
+          },
+          (error) => {
+            statusLine.textContent = error.message || "Unable to fetch location. Please grant permission.";
+            button.disabled = false;
+          },
+          {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 0,
+          }
+        );
+      });
+      card.appendChild(button);
+      container.appendChild(card);
+
+      const actions = [];
+      if (context.prevScene) {
+        actions.push(createHexButton("←", () => navigateToScene(context, context.prevScene)));
+      }
+      if (context.nextScene) {
+        actions.push(createHexButton("→", () => navigateToScene(context, context.nextScene)));
+      } else if (context.nextAct) {
+        actions.push(createPrimaryButton("Continue", () => navigateToActStart(context, context.nextAct)));
+      }
+
+      return {
+        node: container,
+        actions,
+        actionsAlign: actions.length === 1 ? "center" : "space-between",
+      };
+    }
+
+    // ✅ Success state
+    card.classList.add("hud-card--checkin");
+    container.classList.add("hud-scene--checkin");
+
+    const successDescription = document.createElement("p");
+    successDescription.className = "hud-card__body";
+    successDescription.textContent =
+      minigame.success_message ||
+      "Aligning with local resonance… The Wild Court feels your presence.";
+    card.appendChild(successDescription);
+
+    const compassWrapper = document.createElement("div");
+    compassWrapper.className = "hud-compass";
+
+    const compassFace = document.createElement("div");
+    compassFace.className = "hud-compass__face";
+    compassWrapper.appendChild(compassFace);
+
+    const compassNeedle = document.createElement("div");
+    compassNeedle.className = "hud-compass__needle";
+    compassWrapper.appendChild(compassNeedle);
+
+    card.appendChild(compassWrapper);
+
+    const resonanceLine = document.createElement("p");
+    resonanceLine.className = "hud-card__status";
+    resonanceLine.textContent =
+      minigame.success_status ||
+      "Resonance confirmed. Safe check-in recorded.";
+    card.appendChild(resonanceLine);
+
+    container.appendChild(card);
+
+    const continueButton = createPrimaryButton("Continue", () => {
+      if (context.nextScene) {
+        navigateToScene(context, context.nextScene);
+      } else if (context.nextAct) {
+        navigateToActStart(context, context.nextAct);
+      } else {
+        refreshSession();
+      }
+    });
+    continueButton.disabled = true;
+    continueButton.classList.add("is-waiting");
+    window.setTimeout(() => {
+      continueButton.disabled = false;
+      continueButton.classList.remove("is-waiting");
+      continueButton.classList.add("is-active");
+    }, minigame.success_delay_ms || 1400);
+
+    return {
+      node: container,
+      actions: [continueButton],
+      actionsAlign: "center",
+    };
+  };
+
+
+    const metaBlock = document.createElement("div");
+    metaBlock.className = "hud-card__meta-block";
+
+    if (typeof minigame.radius_m === "number") {
+      const radius = document.createElement("p");
+      radius.className = "hud-card__meta";
+      radius.textContent = `Check-in radius: ${Math.round(minigame.radius_m)} m`;
+      metaBlock.appendChild(radius);
+    }
+
+    if (
+      typeof minigame.latitude === "number" &&
+      typeof minigame.longitude === "number" &&
+      (minigame.latitude !== 0 || minigame.longitude !== 0)
+    ) {
+      const coords = document.createElement("p");
+      coords.className = "hud-card__meta";
+      coords.textContent = `Target: ${minigame.latitude.toFixed(5)}, ${minigame.longitude.toFixed(5)}`;
+      metaBlock.appendChild(coords);
+    }
+
+    if (metaBlock.children.length) {
+      card.appendChild(metaBlock);
+    }
+
+    const statusLine = document.createElement("p");
+    statusLine.className = "hud-card__status";
+    statusLine.style.display = "none";
+    card.appendChild(statusLine);
+
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "hud-card__cta";
+    button.textContent = minigame.cta_label || "I'm here!";
+    button.addEventListener("click", () => {
+      if (quest.state.busy || button.disabled) {
+        return;
+      }
+      if (!navigator.geolocation) {
+        quest.set({
+          error: "Location access not supported in this browser. Please enable GPS manually.",
+        });
+        return;
+      }
+      button.disabled = true;
+      statusLine.textContent = "Requesting location…";
+      statusLine.style.display = "block";
+
+      navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+          try {
+            await postMinigame("/geocache/minigame/location", {
+              location_id: minigame.location_id || scene.id,
+              success_flag: flagKey,
+              scene_id: scene.id,
+              latitude: pos.coords.latitude,
+              longitude: pos.coords.longitude,
+              accuracy_m: pos.coords.accuracy,
+              precision: minigame.precision || 4,
+            });
+          } catch (_) {
+            statusLine.textContent = "Sync failed. Try again in a moment.";
+            button.disabled = false;
+          }
+        },
+        (error) => {
+          statusLine.textContent = error.message || "Unable to fetch location. Please grant permission.";
+          button.disabled = false;
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0,
+        }
+      );
+    });
+    card.appendChild(button);
+
+    container.appendChild(card);
+
+    const actions = [];
+    if (context.prevScene) {
+      actions.push(createHexButton("←", () => navigateToScene(context, context.prevScene)));
+    }
+    if (context.nextScene) {
+      actions.push(createHexButton("→", () => navigateToScene(context, context.nextScene)));
+    } else if (context.nextAct) {
+      actions.push(createPrimaryButton("Continue", () => navigateToActStart(context, context.nextAct)));
+    }
+
+    return {
+      node: container,
+      actions,
+      actionsAlign: actions.length === 1 ? "center" : "space-between",
+    };
+  };
+
+  const renderArtifactScene = (context) => {
+    const scene = context.currentScene;
+    const minigame = scene?.minigame || {};
+    const flagKey = minigame.success_flag || scene?.success_flag || scene?.id;
+    if (!flagKey) {
+      return null;
+    }
+
+    const container = document.createElement("div");
+    container.className = "hud-scene hud-scene--artifact";
+
+    const card = document.createElement("div");
+    card.className = "hud-card hud-card--artifact";
+
+    const title = document.createElement("h2");
+    title.className = "hud-card__title";
+    title.textContent = scene.title || minigame.title || "Sigil hunt";
+    card.appendChild(title);
+
+    if (minigame.subtitle) {
+      const subtitle = document.createElement("p");
+      subtitle.className = "hud-card__subtitle";
+      subtitle.textContent = minigame.subtitle;
+      card.appendChild(subtitle);
+    }
+
+    if (scene.asset || minigame.asset || minigame.image) {
+      const assetUrl = resolveAssetUrl(scene.asset || minigame.asset || minigame.image);
+      if (assetUrl) {
+        const image = document.createElement("img");
+        image.className = "hud-card__image";
+        image.src = assetUrl;
+        image.alt = scene.title || "Artifact image";
+        card.appendChild(image);
+      }
+    }
+
+    const description = document.createElement("p");
+    description.className = "hud-card__body";
+    description.textContent =
+      (Array.isArray(scene.text) ? scene.text[0] : scene.text) ||
+      minigame.prompt ||
+      "Tap your phone to the artifact or enter the code below.";
+    card.appendChild(description);
+
+    const form = document.createElement("form");
+    form.className = "hud-form";
+
+    const input = document.createElement("input");
+    input.type = "text";
+    input.inputMode = "numeric";
+    input.pattern = "\\d{4,8}";
+    input.maxLength = 8;
+    input.placeholder = minigame.code_hint || "Enter 4-digit code";
+    input.className = "hud-form__input";
+    form.appendChild(input);
+
+    if (minigame.note) {
+      const note = document.createElement("p");
+      note.className = "hud-form__note";
+      note.textContent = minigame.note;
+      form.appendChild(note);
+    }
+
+    const submitButton = document.createElement("button");
+    submitButton.type = "submit";
+    submitButton.className = "hud-card__cta";
+    submitButton.textContent = minigame.submit_label || "Submit code";
+    form.appendChild(submitButton);
+
+    const errorLine = document.createElement("p");
+    errorLine.className = "hud-card__error";
+    errorLine.style.display = "none";
+    form.appendChild(errorLine);
+
+    if (minigame.clue) {
+      const clue = document.createElement("p");
+      clue.className = "hud-card__hint";
+      clue.textContent = minigame.clue;
+      clue.style.display = "none";
+
+      const clueToggle = document.createElement("button");
+      clueToggle.type = "button";
+      clueToggle.className = "hud-card__cta";
+      clueToggle.textContent = "Need a clue?";
+      clueToggle.addEventListener("click", () => {
+        const isHidden = clue.style.display === "none";
+        clue.style.display = isHidden ? "block" : "none";
+        clueToggle.textContent = isHidden ? "Hide clue" : "Need a clue?";
+      });
+
+      card.appendChild(clueToggle);
+      card.appendChild(clue);
+    }
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      if (quest.state.busy) {
+        return;
+      }
+      const codeValue = (input.value || "").trim();
+      if (!codeValue) {
+        errorLine.textContent = "Enter the artifact code before submitting.";
+        errorLine.style.display = "block";
+        return;
+      }
+      submitButton.disabled = true;
+      errorLine.style.display = "none";
+      try {
+        await postMinigame("/geocache/minigame/artifact", {
+          artifact_slug: minigame.artifact_slug || minigame.slug || scene.id,
+          success_flag: flagKey,
+          scene_id: scene.id,
+          code: codeValue,
+        });
+        input.value = "";
+      } catch (_) {
+        submitButton.disabled = false;
+        errorLine.textContent = "Invalid code. Try again.";
+        errorLine.style.display = "block";
+      }
+    });
+
+    card.appendChild(form);
+    container.appendChild(card);
+
+    const actions = [];
+    if (context.prevScene) {
+      actions.push(createHexButton("←", () => navigateToScene(context, context.prevScene)));
+    }
+    if (context.nextScene) {
+      actions.push(createHexButton("→", () => navigateToScene(context, context.nextScene)));
+    } else if (context.nextAct) {
+      actions.push(createPrimaryButton("Continue", () => navigateToActStart(context, context.nextAct)));
+    }
+
+    return {
+      node: container,
+      actions,
+      actionsAlign: actions.length === 1 ? "center" : "space-between",
+    };
+  };
+
+  const renderCelebrationScene = (context) => {
+    const scene = context.currentScene;
+
+    const container = document.createElement("div");
+    container.className = "hud-scene hud-scene--celebration";
+
+    const card = document.createElement("div");
+    card.className = "hud-card hud-card--celebration";
+
+    const icon = document.createElement("div");
+    icon.className = "hud-celebration__icon";
+    icon.textContent = scene.emoji || "✨";
+    card.appendChild(icon);
+
+    const title = document.createElement("h2");
+    title.className = "hud-celebration__title";
+    title.textContent = scene.title || "Objective complete";
+    card.appendChild(title);
+
+    const text = document.createElement("p");
+    text.className = "hud-celebration__text";
+    text.textContent =
+      (Array.isArray(scene.text) ? scene.text.join(" ") : scene.text) ||
+      "The Wild Court acknowledges your progress.";
+    card.appendChild(text);
+
+    container.appendChild(card);
+
+    const actions = [];
+
+    if (context.nextScene) {
+      actions.push(createPrimaryButton("Continue", () => navigateToScene(context, context.nextScene)));
+    } else if (context.nextAct) {
+      actions.push(createPrimaryButton("Continue", () => navigateToActStart(context, context.nextAct)));
+    } else {
+      actions.push(createPrimaryButton("Check for updates", () => refreshSession()));
+    }
+
+    return {
+      node: container,
+      actions,
+      actionsAlign: "center",
+    };
+  };
+
+  const renderSceneContent = (context) => {
+    const scene = context.currentScene;
+
+    if (!scene) {
+      return {
+        node: buildEmptyScene(context),
+        actions: [
+          createPrimaryButton("Check for quest updates", () => refreshSession()),
+        ],
+        actionsAlign: "center",
+      };
+    }
+
+    const mode = getSceneMode(scene);
+    const minigame = scene?.minigame || {};
+    const minigameKind = (minigame.kind || scene?.kind || "").toLowerCase();
+
+    if (minigameKind === "focus") {
+      const result = renderFocusScene(context);
+      if (result) {
+        return result;
+      }
+    }
+
+    if (minigameKind === "illusion") {
+      const result = renderIllusionScene(context);
+      if (result) {
+        return result;
+      }
+    }
+
+    if (minigameKind === "combat") {
+      const result = renderCombatScene(context);
+      if (result) {
+        return result;
+      }
+    }
+
+    if (mode === "dialogue") {
+      return renderDialogueScene(context);
+    }
+
+    if (mode === "activity") {
+      const result = renderActivityScene(context);
+      if (result) {
+        return result;
+      }
+    }
+
+    if (mode === "location") {
+      const result = renderLocationScene(context);
+      if (result) {
+        return result;
+      }
+    }
+
+    if (mode === "artifact") {
+      const result = renderArtifactScene(context);
+      if (result) {
+        return result;
+      }
+    }
+
+    if (mode === "celebration") {
+      const result = renderCelebrationScene(context);
+      if (result) {
+        return result;
+      }
+    }
+
+    return {
+      useLegacy: true,
+    };
+  };
+
+  const renderQuestHud = ({ busy, error }) => {
+    ensureHudStructure();
+
+    const context = buildQuestContext();
+
+    updateHudTopBar(context);
+    renderOverviewContent(context);
+    renderSettingsActions();
+    applySceneBackground(context.currentScene, context.activeAct);
+    applySceneCharacter(context);
+
+    if (!hud.canvasContent) {
+      return;
+    }
+
+    hud.overview?.classList.remove("is-open");
+    hud.settingsSheet?.classList.remove("is-open");
+
+    hud.canvasContent.innerHTML = "";
+
+    const sceneResult = renderSceneContent(context);
+
+    if (!sceneResult || sceneResult.useLegacy) {
+      const legacyActScreen = buildLegacyActScreen();
+      legacyActScreen.classList.add("hud__legacy-screen");
+
+      if (error) {
+        const errorBanner = document.createElement("div");
+        errorBanner.className = "screen__error hud__error-banner";
+        errorBanner.textContent = error;
+        legacyActScreen.insertBefore(errorBanner, legacyActScreen.firstChild || null);
+      }
+
+      if (busy) {
+        legacyActScreen.classList.add("screen--busy");
+        const busyNote = document.createElement("div");
+        busyNote.className = "screen__busy";
+        busyNote.textContent = "Syncing…";
+        legacyActScreen.appendChild(busyNote);
+      }
+
+      hud.canvasContent.appendChild(legacyActScreen);
+
+      const fallbackButton = createPrimaryButton("Check for quest updates", () => {
+        refreshSession();
+      });
+      fallbackButton.disabled = busy;
+      setHudActions([fallbackButton], { align: "center" });
+      return;
+    }
+
+    const sceneNode = sceneResult.node;
+    if (sceneNode) {
+      if (busy) {
+        sceneNode.classList.add("is-busy");
+      }
+      if (error) {
+        const errorBanner = document.createElement("div");
+        errorBanner.className = "screen__error hud__error-banner";
+        errorBanner.textContent = error;
+        sceneNode.insertBefore(errorBanner, sceneNode.firstChild || null);
+      }
+      hud.canvasContent.appendChild(sceneNode);
+    }
+
+    const actions = Array.isArray(sceneResult.actions) ? sceneResult.actions : [];
+    if (actions.length) {
+      setHudActions(actions, { align: sceneResult.actionsAlign || "space-between" });
+    } else {
+      setHudActions(
+        [
+          createPrimaryButton("Check for quest updates", () => {
+            refreshSession();
+          }),
+        ],
+        { align: "center" }
+      );
+    }
+  };
+
   const render = () => {
     const { view, busy, error } = quest.state;
+
+    if (view === "act") {
+      renderQuestHud({ busy, error });
+      return;
+    }
+
     root.innerHTML = "";
     const screen = (() => {
       switch (view) {
@@ -536,8 +2569,6 @@ if (!root) {
           return renderSignupCampfire();
         case "signup_kids":
           return renderSignupKids();
-        case "act":
-          return renderAct();
         case "error":
         default:
           return renderFatal();
@@ -1514,7 +3545,7 @@ if (!root) {
     return screen;
   };
 
-  const renderAct = () => {
+  const buildLegacyActScreen = () => {
     const { profile, session, story } = quest.state;
     const screen = document.createElement("section");
     screen.className = "screen";
@@ -2561,7 +4592,7 @@ if (!root) {
       const story = await apiRequest("/geocache/story");
 
       quest.set({
-        story,
+        story: story && Object.keys(story).length ? story : quest.state.story,
         busy: false,
         view: quest.state.profile ? "resume" : "landing",
         signinForm: {

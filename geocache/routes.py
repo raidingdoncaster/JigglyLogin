@@ -56,6 +56,7 @@ def quest_shell():
     initial_state = {
         "title": "Whispers of the Wild Court",
         "message": "Loading the Wild Court...",
+        "story": services.load_story(include_assets=True),
     }
     return render_template("geocache/base.html", initial_state=initial_state)
 
