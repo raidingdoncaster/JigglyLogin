@@ -837,20 +837,30 @@ const initialPayload = (() => {
     heading.textContent = "Quest Progress";
     body.appendChild(heading);
 
+    const campfireSource =
+      (profile.campfire_name && profile.campfire_name) ||
+      (profile.metadata && profile.metadata.campfire_username) ||
+      null;
+    const campfireDisplay =
+      campfireSource && campfireSource.toLowerCase() !== "not on campfire"
+        ? campfireSource
+        : "Not linked";
+
+    const lastUpdateRaw =
+      session.updated_at ||
+      session.created_at ||
+      (profile.metadata && profile.metadata.last_login_at) ||
+      null;
+    const lastUpdateDisplay = lastUpdateRaw
+      ? new Date(lastUpdateRaw).toLocaleString()
+      : "Not started";
+
     const stats = document.createElement("div");
     stats.className = "hud-overview-stats";
     stats.innerHTML = `
       <p><strong>Trainer:</strong> ${profile.trainer_name || "Unknown"}</p>
-      <p><strong>Campfire:</strong> ${
-        profile.campfire_name && profile.campfire_name !== "Not on Campfire"
-          ? profile.campfire_name
-          : "Not linked"
-      }</p>
-      <p><strong>Last Act Update:</strong> ${
-        session.updated_at
-          ? new Date(session.updated_at).toLocaleString()
-          : "Not started"
-      }</p>
+      <p><strong>Campfire:</strong> ${campfireDisplay}</p>
+      <p><strong>Last Act Update:</strong> ${lastUpdateDisplay}</p>
     `;
     body.appendChild(stats);
 

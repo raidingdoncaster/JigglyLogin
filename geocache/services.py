@@ -327,12 +327,21 @@ def _ensure_geocache_profile(
 ) -> Tuple[Dict[str, Any], bool]:
     trainer_norm = trainer_username.strip()
     profile = _fetch_profile_by_trainer(trainer_norm)
+    account_campfire = (
+        account_row.get("campfire_username")
+        or account_row.get("Campfire Username")
+        or account_row.get("campfire_name")
+        or account_row.get("Campfire Name")
+    )
     campfire_value = _normalize_campfire(campfire_name, campfire_opt_out)
+    if not campfire_value and not campfire_opt_out and account_campfire:
+        campfire_value = _normalize_campfire(account_campfire, False)
     hashed_pin = _hash_pin(pin)
     merged_metadata = _merge_metadata(
         profile.get("metadata") if profile else {},
         {
             "campfire_opt_out": campfire_opt_out,
+            "campfire_username": campfire_value or _normalize_campfire(account_campfire, False),
             "last_login_at": _now_iso(),
             **(metadata or {}),
         },
