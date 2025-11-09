@@ -22,7 +22,7 @@ import bleach
 from bleach.linkifier import DEFAULT_CALLBACKS
 from typing import Any
 
-from geocache import geocache_bp
+from geocache import geocache_bp, services
 from geocache.services import REQUIRED_FLAGS_BY_ACT
 
 # ====== Feature toggle ======
@@ -3507,12 +3507,13 @@ def admin_catalog():
 @app.route("/admin/geocache/story")
 def admin_geocache_story():
     _require_admin()
-    story_path = app.config.get("GEOCACHE_STORY_PATH")
-    if not story_path:
+    try:
+        story_path = services.get_story_path()
+    except services.GeocacheServiceError:
         abort(500, "Geocache story path not configured.")
 
     try:
-        with open(story_path, "r", encoding="utf-8") as handle:
+        with story_path.open("r", encoding="utf-8") as handle:
             raw_story = json.load(handle)
             story = services.enrich_story_with_assets(raw_story)
     except FileNotFoundError:

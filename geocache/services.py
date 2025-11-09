@@ -392,8 +392,26 @@ _location_cache: Dict[str, Any] = {"path": None, "mtime": 0, "locations": {}}
 _artifact_cache: Dict[str, Any] = {"path": None, "mtime": 0, "artifacts": {}}
 
 
+def _resolve_config_path(key: str) -> Path:
+    value = current_app.config.get(key)
+    if not value:
+        raise GeocacheServiceError(f"{key} is not configured", status_code=500, payload={"error": "config_missing"})
+    path = Path(value)
+    if not path.is_absolute():
+        path = Path(current_app.root_path) / path
+    return path
+
+
+def get_story_path() -> Path:
+    return _resolve_config_path("GEOCACHE_STORY_PATH")
+
+
+def get_assets_path() -> Path:
+    return _resolve_config_path("GEOCACHE_ASSETS_PATH")
+
+
 def _load_story_locations() -> Dict[str, Dict[str, float]]:
-    story_path = Path(current_app.config["GEOCACHE_ASSETS_PATH"])
+    story_path = get_assets_path()
     mtime = story_path.stat().st_mtime
     cache_path = _location_cache.get("path")
     if cache_path != str(story_path) or _location_cache.get("mtime", 0) < mtime:
@@ -436,7 +454,7 @@ def _get_location_spec(location_id: str) -> Optional[Dict[str, float]]:
 
 
 def _load_story_artifacts() -> Dict[str, Dict[str, Any]]:
-    story_path = Path(current_app.config["GEOCACHE_ASSETS_PATH"])
+    story_path = get_assets_path()
     mtime = story_path.stat().st_mtime
     cache_path = _artifact_cache.get("path")
     if cache_path != str(story_path) or _artifact_cache.get("mtime", 0) < mtime:
