@@ -32,14 +32,21 @@ feature_gate = FeatureGate()
 
 def _load_story_payload() -> dict:
     """Load the quest story skeleton from disk."""
-    story_path = Path(current_app.config["GEOCACHE_STORY_PATH"])
-    if not story_path.exists():
-        return {"title": "Whispers of the Wild Court", "acts": [], "scenes": {}}
-
     import json
 
-    with story_path.open("r", encoding="utf-8") as handle:
-        return json.load(handle)
+    try:
+        story_path = services.get_story_path()
+    except services.GeocacheServiceError:
+        return {"title": "Whispers of the Wild Court", "acts": [], "scenes": {}, "version": 1}
+
+    try:
+        with story_path.open("r", encoding="utf-8") as handle:
+            return json.load(handle)
+    except FileNotFoundError:
+        return {"title": "Whispers of the Wild Court", "acts": [], "scenes": {}, "version": 1}
+    except json.JSONDecodeError as exc:
+        current_app.logger.error("Unable to parse geocache story JSON: %s", exc)
+        return {"title": "Whispers of the Wild Court", "acts": [], "scenes": {}, "version": 1}
 
 
 @geocache_bp.get("/")
@@ -69,7 +76,11 @@ def quest_status():
 @geocache_bp.get("/story")
 def quest_story():
     feature_gate.guard()
-    payload = services.enrich_story_with_assets(_load_story_payload())
+    try:
+        payload = services.enrich_story_with_assets(_load_story_payload())
+    except services.GeocacheServiceError as exc:
+        current_app.logger.error("Failed to enrich story: %s", exc)
+        return jsonify({"error": "story_assets_unavailable"}), 500
     return jsonify(payload)
 
 
