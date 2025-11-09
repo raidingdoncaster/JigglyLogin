@@ -1122,7 +1122,6 @@ const initialPayload = (() => {
       return;
     }
     const scene = context.currentScene;
-    const scene = context.currentScene;
     const minigame = scene?.minigame || {};
 
     const characterConfig =
