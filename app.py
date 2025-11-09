@@ -24,6 +24,7 @@ from typing import Any
 
 from geocache import geocache_bp, services
 from geocache.services import REQUIRED_FLAGS_BY_ACT
+from rdab.trainer_detection import extract_trainer_name
 
 # ====== Feature toggle ======
 USE_SUPABASE = True  # ✅ Supabase for stamps/meetups
@@ -2319,20 +2320,6 @@ def search_trainers(query, limit=10):
         except RuntimeError:
             pass
         return []
-
-def extract_trainer_name(image_path):
-    try:
-        img = Image.open(image_path)
-        w, h = img.size
-        top, bottom = int(h * 0.15), int(h * 0.25)
-        left, right = int(w * 0.05), int(w * 0.90)
-        cropped = img.crop((left, top, right, bottom))
-        text = pytesseract.image_to_string(cropped)
-        lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
-        return lines[0] if lines else None
-    except Exception as e:
-        print("❌ OCR failed:", e)
-        return None
 
 def trigger_lugia_refresh():
     url = "https://script.google.com/macros/s/AKfycbwx33Twu9HGwW4bsSJb7vwHoaBS56gCldNlqiNjxGBJEhckVDAnv520MN4ZQWxI1U9D/exec"

@@ -160,6 +160,13 @@ body {
   margin-top: 4px;
 }
 
+.form__hint {
+  margin: -4px 0 0;
+  font-size: 0.85rem;
+  color: rgba(214, 226, 255, 0.7);
+  text-align: left;
+}
+
 .field {
   display: flex;
   flex-direction: column;

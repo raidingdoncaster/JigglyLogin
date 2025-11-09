@@ -89,6 +89,7 @@ def create_or_lookup_profile():
     campfire_name = payload.get("campfire_name")
     campfire_opt_out = bool(payload.get("campfire_opt_out"))
     metadata = payload.get("metadata")
+    create_if_missing = payload.get("create_if_missing", True)
     if metadata is not None and not isinstance(metadata, dict):
         metadata = None
 
@@ -105,6 +106,44 @@ def create_or_lookup_profile():
             campfire_name=campfire_name,
             campfire_opt_out=campfire_opt_out,
             metadata=metadata,
+            create_if_missing=bool(create_if_missing),
+        )
+    except services.GeocacheServiceError as exc:
+        return jsonify(exc.payload), exc.status_code
+
+    return jsonify(result)
+
+
+@geocache_bp.post("/signup/detect")
+def signup_detect():
+    feature_gate.guard()
+    file = request.files.get("profile_screenshot") or request.files.get("screenshot")
+    try:
+        trainer_name = services.detect_trainer_name_from_upload(file)
+    except services.GeocacheServiceError as exc:
+        return jsonify(exc.payload), exc.status_code
+    return jsonify({"trainer_name": trainer_name})
+
+
+@geocache_bp.post("/signup/complete")
+def signup_complete():
+    feature_gate.guard()
+    payload = request.get_json(silent=True) or {}
+    trainer_name = payload.get("trainer_name")
+    pin = payload.get("pin")
+    memorable = payload.get("memorable")
+    age_band = payload.get("age_band")
+    campfire_name = payload.get("campfire_name")
+    campfire_opt_out = bool(payload.get("campfire_opt_out"))
+
+    try:
+        result = services.complete_signup(
+            trainer_name,
+            pin,
+            memorable,
+            age_band=age_band,
+            campfire_name=campfire_name,
+            campfire_opt_out=campfire_opt_out,
         )
     except services.GeocacheServiceError as exc:
         return jsonify(exc.payload), exc.status_code

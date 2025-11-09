@@ -129,15 +129,143 @@ if (!root) {
     },
   };
 
-  const apiRequest = async (url, options = {}) => {
-    const opts = {
-      headers: {
-        "Content-Type": "application/json",
-        ...(options.headers || {}),
+  const LOGIN_MAX_ATTEMPTS = 5;
+  const LOGIN_LOCKOUT_SECONDS = 1800;
+  const SIGNIN_GUARD_KEY = "geocacheSigninGuard.v1";
+
+  const signinGuard = (() => {
+    const defaults = {
+      remaining: LOGIN_MAX_ATTEMPTS,
+      lockUntil: null,
+    };
+
+    const load = () => {
+      if (!supportsLocalStorage) {
+        return { ...defaults };
+      }
+      try {
+        const raw = window.localStorage.getItem(SIGNIN_GUARD_KEY);
+        if (!raw) {
+          return { ...defaults };
+        }
+        const parsed = JSON.parse(raw);
+        const remaining = Number.isFinite(parsed?.remaining)
+          ? Math.max(0, parseInt(parsed.remaining, 10))
+          : defaults.remaining;
+        const lockUntil =
+          typeof parsed?.lockUntil === "number" && parsed.lockUntil > 0
+            ? parsed.lockUntil
+            : null;
+        return {
+          remaining: remaining || defaults.remaining,
+          lockUntil,
+        };
+      } catch (err) {
+        console.warn("Failed to load signin guard:", err);
+        return { ...defaults };
+      }
+    };
+
+    let internal = load();
+
+    const persist = () => {
+      if (!supportsLocalStorage) {
+        return;
+      }
+      try {
+        window.localStorage.setItem(SIGNIN_GUARD_KEY, JSON.stringify(internal));
+      } catch (err) {
+        console.warn("Failed to persist signin guard:", err);
+      }
+    };
+
+    const now = () => Date.now();
+
+    const clearIfExpired = () => {
+      if (internal.lockUntil && internal.lockUntil <= now()) {
+        internal = { ...defaults };
+        persist();
+      }
+    };
+
+    const secondsRemaining = () => {
+      if (!internal.lockUntil) {
+        return 0;
+      }
+      const delta = internal.lockUntil - now();
+      return delta > 0 ? Math.ceil(delta / 1000) : 0;
+    };
+
+    return {
+      getState() {
+        clearIfExpired();
+        return { ...internal };
       },
+      reset() {
+        internal = { ...defaults };
+        persist();
+        return { ...internal };
+      },
+      recordSuccess() {
+        return this.reset();
+      },
+      recordFailure() {
+        clearIfExpired();
+        const remaining = Math.max((internal.remaining || defaults.remaining) - 1, 0);
+        internal.remaining = remaining;
+        if (remaining <= 0) {
+          internal.lockUntil = now() + LOGIN_LOCKOUT_SECONDS * 1000;
+          internal.remaining = defaults.remaining;
+        }
+        persist();
+        return {
+          ...internal,
+          waitSeconds: secondsRemaining(),
+        };
+      },
+      check() {
+        clearIfExpired();
+        const waitSeconds = secondsRemaining();
+        if (waitSeconds > 0) {
+          return {
+            allowed: false,
+            waitSeconds,
+            remaining: internal.remaining,
+          };
+        }
+        return {
+          allowed: true,
+          waitSeconds: 0,
+          remaining: internal.remaining,
+        };
+      },
+    };
+  })();
+
+  const createEmptySignup = () => ({
+    trainer_name: "",
+    detected_name: "",
+    pin: "",
+    memorable: "",
+    age_band: null,
+    campfire_name: "",
+    campfire_opt_out: false,
+  });
+
+  const apiRequest = async (url, options = {}) => {
+    const isFormData = options.body instanceof FormData;
+    const baseHeaders = options.headers || {};
+    const headers = isFormData
+      ? baseHeaders
+      : {
+          "Content-Type": "application/json",
+          ...baseHeaders,
+        };
+    const opts = {
+      headers,
       ...options,
     };
-    if (opts.body && typeof opts.body !== "string") {
+    if (opts.body && !isFormData && typeof opts.body !== "string") {
       opts.body = JSON.stringify(opts.body);
     }
 
@@ -210,6 +338,15 @@ if (!root) {
     quest.set({
       profile: payload.profile || quest.state.profile,
       session: payload.session || quest.state.session,
+      signinForm: {
+        ...quest.state.signinForm,
+        trainer_name:
+          (payload.profile && payload.profile.trainer_name) ||
+          quest.state.signinForm.trainer_name ||
+          "",
+        pin: "",
+      },
+      signup: createEmptySignup(),
       ...overrides,
     });
   };
@@ -238,9 +375,12 @@ if (!root) {
     }
     if (!activePin) {
       quest.set({
-        view: "auth",
-        authMode: "resume",
-        authPrefill: profile?.trainer_name || "",
+        view: "signin",
+        signinForm: {
+          ...quest.state.signinForm,
+          trainer_name: profile?.trainer_name || quest.state.signinForm.trainer_name || "",
+          pin: "",
+        },
         error: "Enter your 4-digit quest PIN to continue.",
       });
       return null;
@@ -281,9 +421,11 @@ if (!root) {
         quest.set({
           busy: false,
           pin: null,
-          view: "auth",
-          authMode: "resume",
-          authPrefill: retryName,
+          view: "signin",
+          signinForm: {
+            trainer_name: retryName,
+            pin: "",
+          },
           error: "PIN incorrect or expired. Please re-enter to continue.",
         });
       } else {
@@ -327,9 +469,11 @@ if (!root) {
         quest.set({
           busy: false,
           pin: null,
-          view: "auth",
-          authMode: "resume",
-          authPrefill: retryName,
+          view: "signin",
+          signinForm: {
+            trainer_name: retryName,
+            pin: "",
+          },
           error: "PIN incorrect or expired. Please re-enter to continue.",
         });
       } else {
@@ -352,8 +496,11 @@ if (!root) {
       pin: savedPin || null,
       busy: false,
       error: null,
-      authMode: saved.profile ? "resume" : "create",
-      authPrefill: saved.profile?.trainer_name || "",
+      signinForm: {
+        trainer_name: saved.profile?.trainer_name || "",
+        pin: "",
+      },
+      signup: createEmptySignup(),
     },
     set(patch) {
       this.state = {
@@ -377,8 +524,18 @@ if (!root) {
           return renderLanding();
         case "resume":
           return renderResume();
-        case "auth":
-          return renderAuth();
+        case "signin":
+          return renderSignin();
+        case "signup_upload":
+          return renderSignupUpload();
+        case "signup_confirm":
+          return renderSignupConfirm();
+        case "signup_age":
+          return renderSignupAge();
+        case "signup_campfire":
+          return renderSignupCampfire();
+        case "signup_kids":
+          return renderSignupKids();
         case "act":
           return renderAct();
         case "error":
@@ -454,25 +611,44 @@ if (!root) {
     const subtitle = document.createElement("p");
     subtitle.className = "screen__subtitle";
     subtitle.textContent =
-      "A mobile geocache quest built for live play. Ready to begin?";
+      "A mobile geocache quest built for live play. Sign in with your RDAB account or create a new quest pass.";
 
     const actions = document.createElement("div");
     actions.className = "screen__actions";
 
-    const startButton = document.createElement("button");
-    startButton.type = "button";
-    startButton.className = "button button--primary";
-    startButton.textContent = "Begin quest";
-    startButton.addEventListener("click", () => {
+    const signInButton = document.createElement("button");
+    signInButton.type = "button";
+    signInButton.className = "button button--primary";
+    signInButton.textContent = "Sign in with RDAB app";
+    signInButton.addEventListener("click", () => {
+      const prefill =
+        quest.state.profile?.trainer_name ||
+        quest.state.signinForm.trainer_name ||
+        "";
       quest.set({
-        view: "auth",
-        authMode: "create",
-        authPrefill: "",
+        view: "signin",
         error: null,
+        signinForm: {
+          trainer_name: prefill,
+          pin: "",
+        },
       });
     });
+    actions.appendChild(signInButton);
 
-    actions.appendChild(startButton);
+    const createButton = document.createElement("button");
+    createButton.type = "button";
+    createButton.className = "button button--secondary";
+    createButton.textContent = "Create quest pass";
+    createButton.addEventListener("click", () => {
+      signinGuard.reset();
+      quest.set({
+        view: "signup_upload",
+        error: null,
+        signup: createEmptySignup(),
+      });
+    });
+    actions.appendChild(createButton);
 
     if (quest.state.profile) {
       const resumeButton = document.createElement("button");
@@ -482,7 +658,6 @@ if (!root) {
       resumeButton.addEventListener("click", () => {
         quest.set({
           view: "resume",
-          authMode: "resume",
           error: null,
         });
       });
@@ -517,10 +692,16 @@ if (!root) {
     continueButton.className = "button button--primary";
     continueButton.textContent = "Enter PIN to continue";
     continueButton.addEventListener("click", () => {
+      const prefill =
+        quest.state.profile?.trainer_name ||
+        quest.state.signinForm.trainer_name ||
+        "";
       quest.set({
-        view: "auth",
-        authMode: "resume",
-        authPrefill: quest.state.profile?.trainer_name || "",
+        view: "signin",
+        signinForm: {
+          trainer_name: prefill,
+          pin: "",
+        },
         error: null,
       });
     });
@@ -537,8 +718,11 @@ if (!root) {
         session: null,
         pin: null,
         view: "landing",
-        authMode: "create",
-        authPrefill: "",
+        signinForm: {
+          trainer_name: "",
+          pin: "",
+        },
+        signup: createEmptySignup(),
         error: null,
       });
     });
@@ -552,22 +736,67 @@ if (!root) {
     return screen;
   };
 
-  const renderAuth = () => {
-    const { authMode, authPrefill, busy } = quest.state;
+  const completeQuestSignup = async () => {
+    const data = quest.state.signup || createEmptySignup();
+    const trainerName = (data.trainer_name || "").trim();
+    const pinValue = (data.pin || "").trim();
+    const memorableValue = (data.memorable || "").trim();
+
+    if (!trainerName || !pinValue || !memorableValue) {
+      quest.set({
+        error: "Signup details are incomplete. Please start again.",
+      });
+      return;
+    }
+
+    const requestBody = {
+      trainer_name: trainerName,
+      pin: pinValue,
+      memorable: memorableValue,
+      age_band: data.age_band || "13plus",
+      campfire_name: data.campfire_opt_out ? null : (data.campfire_name || null),
+      campfire_opt_out: Boolean(data.campfire_opt_out),
+    };
+
+    quest.set({ busy: true, error: null });
+    try {
+      const response = await apiRequest("/geocache/signup/complete", {
+        method: "POST",
+        body: requestBody,
+      });
+      signinGuard.recordSuccess();
+      pinVault.remember(pinValue);
+      applySessionPayload(response, {
+        busy: false,
+        error: null,
+        pin: pinValue,
+        view: "act",
+      });
+    } catch (error) {
+      quest.set({
+        busy: false,
+        error: messageFromError(error),
+      });
+    }
+  };
+
+  const renderSignin = () => {
     const screen = document.createElement("section");
     screen.className = "screen";
 
     const heading = document.createElement("h1");
     heading.className = "screen__title";
-    heading.textContent =
-      authMode === "resume" ? "Enter your quest PIN" : "Create your quest pass";
+    heading.textContent = "Sign in with RDAB app";
+    screen.appendChild(heading);
 
     const subtitle = document.createElement("p");
     subtitle.className = "screen__subtitle";
-    subtitle.textContent =
-      authMode === "resume"
-        ? "We found your save slot. Enter the 4-digit PIN you used at registration."
-        : "Log in with your Trainer name and Campfire handle so we can sync your progress.";
+    subtitle.textContent = "Enter your trainer name and 4-digit RDAB PIN to continue the quest.";
+    screen.appendChild(subtitle);
+
+    const guardStatus = signinGuard.check();
+    const locked = !guardStatus.allowed;
+    const signinState = quest.state.signinForm || { trainer_name: "", pin: "" };
 
     const form = document.createElement("form");
     form.className = "form";
@@ -575,112 +804,303 @@ if (!root) {
     const trainerField = document.createElement("div");
     trainerField.className = "field";
     const trainerLabel = document.createElement("label");
-    trainerLabel.setAttribute("for", "trainer_name");
-    trainerLabel.textContent = "Pokémon GO Trainer Name";
+    trainerLabel.setAttribute("for", "signin_trainer_name");
+    trainerLabel.textContent = "Trainer name";
     const trainerInput = document.createElement("input");
     trainerInput.className = "input";
-    trainerInput.id = "trainer_name";
+    trainerInput.id = "signin_trainer_name";
     trainerInput.name = "trainer_name";
     trainerInput.type = "text";
-    trainerInput.required = true;
-    trainerInput.maxLength = 32;
-    trainerInput.value = authPrefill || "";
     trainerInput.placeholder = "e.g. WildCourtSeeker";
+    trainerInput.maxLength = 32;
+    trainerInput.autocomplete = "username";
+    trainerInput.required = true;
+    trainerInput.value = signinState.trainer_name || "";
     trainerField.appendChild(trainerLabel);
     trainerField.appendChild(trainerInput);
-
-    const campfireField = document.createElement("div");
-    campfireField.className = "field";
-    const campfireLabel = document.createElement("label");
-    campfireLabel.setAttribute("for", "campfire_name");
-    campfireLabel.textContent = "Campfire username (optional)";
-    const campfireInput = document.createElement("input");
-    campfireInput.className = "input";
-    campfireInput.id = "campfire_name";
-    campfireInput.name = "campfire_name";
-    campfireInput.type = "text";
-    campfireInput.placeholder = "e.g. Proffy";
-    campfireInput.maxLength = 32;
-
-    const campfireCheckboxWrap = document.createElement("label");
-    campfireCheckboxWrap.className = "checkbox";
-    const campfireCheckbox = document.createElement("input");
-    campfireCheckbox.type = "checkbox";
-    campfireCheckbox.name = "campfire_opt_out";
-    campfireCheckbox.value = "1";
-    const checkboxText = document.createElement("span");
-    checkboxText.textContent = "I’m not on Campfire";
-    campfireCheckboxWrap.appendChild(campfireCheckbox);
-    campfireCheckboxWrap.appendChild(checkboxText);
-
-    campfireCheckbox.addEventListener("change", () => {
-      const optOut = campfireCheckbox.checked;
-      campfireInput.disabled = optOut;
-      if (optOut) {
-        campfireInput.value = "";
-      }
-    });
-
-    campfireField.appendChild(campfireLabel);
-    campfireField.appendChild(campfireInput);
-    campfireField.appendChild(campfireCheckboxWrap);
 
     const pinField = document.createElement("div");
     pinField.className = "field";
     const pinLabel = document.createElement("label");
-    pinLabel.setAttribute("for", "pin");
-    pinLabel.textContent = "4-digit quest PIN";
+    pinLabel.setAttribute("for", "signin_pin");
+    pinLabel.textContent = "4-digit RDAB PIN";
     const pinInput = document.createElement("input");
     pinInput.className = "input";
-    pinInput.id = "pin";
+    pinInput.id = "signin_pin";
     pinInput.name = "pin";
     pinInput.type = "password";
     pinInput.inputMode = "numeric";
     pinInput.pattern = "\\d{4}";
     pinInput.placeholder = "••••";
-    pinInput.required = true;
+    pinInput.autocomplete = "current-password";
     pinInput.maxLength = 4;
+    pinInput.required = true;
     pinField.appendChild(pinLabel);
     pinField.appendChild(pinInput);
+
+    const attemptHint = document.createElement("p");
+    attemptHint.className = "form__hint";
+    if (locked) {
+      attemptHint.textContent = `Locked for security. Try again in ${guardStatus.waitSeconds} seconds.`;
+    } else {
+      const remaining = guardStatus.remaining ?? LOGIN_MAX_ATTEMPTS;
+      attemptHint.textContent = `${remaining} attempt${remaining === 1 ? "" : "s"} before a lock.`;
+    }
 
     const submitButton = document.createElement("button");
     submitButton.type = "submit";
     submitButton.className = "button button--primary";
-    submitButton.textContent = authMode === "resume" ? "Continue quest" : "Create quest pass";
+    submitButton.textContent = "Continue";
 
     const backButton = document.createElement("button");
     backButton.type = "button";
     backButton.className = "button button--ghost";
     backButton.textContent = "Back";
     backButton.addEventListener("click", () => {
-      if (quest.state.profile) {
+      quest.set({
+        view: "landing",
+        error: null,
+      });
+    });
+
+    const signupButton = document.createElement("button");
+    signupButton.type = "button";
+    signupButton.className = "button button--ghost";
+    signupButton.textContent = "Need a quest pass?";
+    signupButton.addEventListener("click", () => {
+      signinGuard.reset();
+      quest.set({
+        view: "signup_upload",
+        error: null,
+        signup: createEmptySignup(),
+      });
+    });
+
+    form.appendChild(trainerField);
+    form.appendChild(pinField);
+    form.appendChild(attemptHint);
+    form.appendChild(submitButton);
+    form.appendChild(backButton);
+    form.appendChild(signupButton);
+
+    if (locked || quest.state.busy) {
+      trainerInput.disabled = true;
+      pinInput.disabled = true;
+      submitButton.disabled = true;
+    }
+
+    window.requestAnimationFrame(() => {
+      if (!locked && !quest.state.busy) {
+        if (!trainerInput.value) {
+          trainerInput.focus();
+        } else {
+          pinInput.focus();
+        }
+      }
+    });
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      if (quest.state.busy) {
+        return;
+      }
+
+      const guardCheck = signinGuard.check();
+      if (!guardCheck.allowed) {
         quest.set({
-          view: "resume",
-          error: null,
+          error: `Too many incorrect attempts. Try again in ${guardCheck.waitSeconds} seconds.`,
         });
-      } else {
-        quest.set({
-          view: "landing",
+        return;
+      }
+
+      const trainerName = (trainerInput.value || "").trim();
+      const pinValue = (pinInput.value || "").trim();
+
+      if (!trainerName || !pinValue) {
+        quest.set({ error: "Trainer name and PIN are required." });
+        return;
+      }
+
+      if (!/^\d{4}$/.test(pinValue)) {
+        quest.set({ error: "PIN must be exactly 4 digits." });
+        return;
+      }
+
+      quest.set({
+        busy: true,
+        error: null,
+        signinForm: {
+          trainer_name: trainerName,
+          pin: "",
+        },
+      });
+
+      try {
+        const response = await apiRequest("/geocache/profile", {
+          method: "POST",
+          body: {
+            trainer_name: trainerName,
+            pin: pinValue,
+            create_if_missing: false,
+            metadata: {
+              auth_mode: "signin",
+              source: "geocache",
+            },
+          },
+        });
+        signinGuard.recordSuccess();
+        pinVault.remember(pinValue);
+        applySessionPayload(response, {
+          busy: false,
           error: null,
+          pin: pinValue,
+          view: "act",
+        });
+      } catch (error) {
+        pinVault.clear();
+        if (error instanceof APIError) {
+          if (error.status === 401 || error.payload?.error === "invalid_pin") {
+            const guardState = signinGuard.recordFailure();
+            const waitSeconds = guardState.waitSeconds || 0;
+            const remaining = guardState.remaining ?? LOGIN_MAX_ATTEMPTS;
+            quest.set({
+              busy: false,
+              error:
+                waitSeconds > 0
+                  ? `Too many incorrect attempts. Try again in ${waitSeconds} seconds.`
+                  : `Wrong PIN. ${remaining} attempt${remaining === 1 ? "" : "s"} remaining.`,
+              signinForm: {
+                trainer_name: trainerName,
+                pin: "",
+              },
+            });
+            return;
+          }
+          if (error.status === 404 || error.payload?.error === "trainer_not_found") {
+            quest.set({
+              busy: false,
+              error: "We couldn't find that trainer. Create a quest pass first.",
+              signinForm: {
+                trainer_name: trainerName,
+                pin: "",
+              },
+            });
+            return;
+          }
+        }
+        quest.set({
+          busy: false,
+          error: messageFromError(error),
+          signinForm: {
+            trainer_name: trainerName,
+            pin: "",
+          },
         });
       }
     });
 
-    form.appendChild(trainerField);
-    form.appendChild(campfireField);
+    screen.appendChild(form);
+    return screen;
+  };
+
+  const renderSignupUpload = () => {
+    const screen = document.createElement("section");
+    screen.className = "screen";
+
+    const heading = document.createElement("h1");
+    heading.className = "screen__title";
+    heading.textContent = "Create your quest pass";
+    screen.appendChild(heading);
+
+    const subtitle = document.createElement("p");
+    subtitle.className = "screen__subtitle";
+    subtitle.textContent =
+      "Upload a clear screenshot of your Pokémon GO trainer profile, set a 4-digit PIN, and choose a memorable password.";
+    screen.appendChild(subtitle);
+
+    const signupState = quest.state.signup || createEmptySignup();
+
+    const form = document.createElement("form");
+    form.className = "form";
+
+    const screenshotField = document.createElement("div");
+    screenshotField.className = "field";
+    const screenshotLabel = document.createElement("label");
+    screenshotLabel.setAttribute("for", "signup_screenshot");
+    screenshotLabel.textContent = "Trainer profile screenshot";
+    const screenshotInput = document.createElement("input");
+    screenshotInput.className = "input";
+    screenshotInput.id = "signup_screenshot";
+    screenshotInput.name = "profile_screenshot";
+    screenshotInput.type = "file";
+    screenshotInput.accept = "image/*";
+    screenshotInput.required = true;
+    screenshotField.appendChild(screenshotLabel);
+    screenshotField.appendChild(screenshotInput);
+
+    const pinField = document.createElement("div");
+    pinField.className = "field";
+    const pinLabel = document.createElement("label");
+    pinLabel.setAttribute("for", "signup_pin");
+    pinLabel.textContent = "Choose a 4-digit PIN";
+    const pinInput = document.createElement("input");
+    pinInput.className = "input";
+    pinInput.id = "signup_pin";
+    pinInput.name = "pin";
+    pinInput.type = "password";
+    pinInput.inputMode = "numeric";
+    pinInput.pattern = "\\d{4}";
+    pinInput.maxLength = 4;
+    pinInput.placeholder = "1234";
+    pinInput.required = true;
+    pinInput.value = signupState.pin || "";
+    pinField.appendChild(pinLabel);
+    pinField.appendChild(pinInput);
+
+    const memorableField = document.createElement("div");
+    memorableField.className = "field";
+    const memorableLabel = document.createElement("label");
+    memorableLabel.setAttribute("for", "signup_memorable");
+    memorableLabel.textContent = "Memorable password (for recovery)";
+    const memorableInput = document.createElement("input");
+    memorableInput.className = "input";
+    memorableInput.id = "signup_memorable";
+    memorableInput.name = "memorable";
+    memorableInput.type = "text";
+    memorableInput.placeholder = "e.g. PikachuStorm";
+    memorableInput.required = true;
+    memorableInput.maxLength = 64;
+    memorableInput.value = signupState.memorable || "";
+    memorableField.appendChild(memorableLabel);
+    memorableField.appendChild(memorableInput);
+
+    const submitButton = document.createElement("button");
+    submitButton.type = "submit";
+    submitButton.className = "button button--primary";
+    submitButton.textContent = "Detect trainer name";
+
+    const backButton = document.createElement("button");
+    backButton.type = "button";
+    backButton.className = "button button--ghost";
+    backButton.textContent = "Back";
+    backButton.addEventListener("click", () => {
+      quest.set({
+        view: "landing",
+        error: null,
+        signup: createEmptySignup(),
+      });
+    });
+
+    form.appendChild(screenshotField);
     form.appendChild(pinField);
+    form.appendChild(memorableField);
     form.appendChild(submitButton);
     form.appendChild(backButton);
 
-    if (authMode === "resume" && quest.state.profile) {
-      const campfireName = quest.state.profile.campfire_name || "";
-      if (campfireName && campfireName.toLowerCase() !== "not on campfire") {
-        campfireInput.value = campfireName;
-      } else {
-        campfireCheckbox.checked = true;
-        campfireInput.disabled = true;
-        campfireInput.value = "";
-      }
+    if (quest.state.busy) {
+      form.querySelectorAll("input, button").forEach((el) => {
+        el.disabled = true;
+      });
     }
 
     form.addEventListener("submit", async (event) => {
@@ -689,68 +1109,408 @@ if (!root) {
         return;
       }
 
-      const trainerName = (trainerInput.value || "").trim();
-      const pin = (pinInput.value || "").trim();
-      const campfireName = (campfireInput.value || "").trim();
-      const campfireOptOut = campfireCheckbox.checked;
+      const file = screenshotInput.files && screenshotInput.files[0];
+      const pinValue = (pinInput.value || "").trim();
+      const memorableValue = (memorableInput.value || "").trim();
 
-      if (!trainerName || !pin) {
-        quest.set({ error: "Trainer name and PIN are required." });
+      if (!file) {
+        quest.set({ error: "Upload your trainer profile screenshot." });
         return;
       }
+      if (!/^\d{4}$/.test(pinValue)) {
+        quest.set({ error: "PIN must be exactly 4 digits." });
+        return;
+      }
+      if (!memorableValue) {
+        quest.set({ error: "Memorable password is required." });
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append("profile_screenshot", file);
 
       quest.set({ busy: true, error: null });
 
       try {
-        const payload = {
-          trainer_name: trainerName,
-          pin,
-          campfire_name: campfireOptOut ? null : campfireName || null,
-          campfire_opt_out: campfireOptOut,
-          metadata: {
-            device_hint: navigator.userAgent.slice(0, 64),
-            auth_mode: authMode,
-          },
-        };
-
-        const response = await apiRequest("/geocache/profile", {
+        const result = await apiRequest("/geocache/signup/detect", {
           method: "POST",
-          body: payload,
+          body: formData,
         });
-
-        pinVault.remember(pin);
-
-        applySessionPayload(response, {
-          pin,
+        const detected = (result.trainer_name || "").trim();
+        quest.set({
           busy: false,
           error: null,
-          view: "act",
-          authMode: "resume",
-          authPrefill: response.profile?.trainer_name || "",
+          signup: {
+            trainer_name: detected || signupState.trainer_name || "",
+            detected_name: detected,
+            pin: pinValue,
+            memorable: memorableValue,
+            age_band: null,
+            campfire_name: "",
+            campfire_opt_out: false,
+          },
+          view: "signup_confirm",
         });
       } catch (error) {
         quest.set({
           busy: false,
           error: messageFromError(error),
+          signup: {
+            ...signupState,
+            pin: pinValue,
+            memorable: memorableValue,
+          },
         });
       }
     });
 
-    if (busy) {
+    screen.appendChild(form);
+    return screen;
+  };
+
+  const renderSignupConfirm = () => {
+    const signupState = quest.state.signup || createEmptySignup();
+    const screen = document.createElement("section");
+    screen.className = "screen";
+
+    const heading = document.createElement("h1");
+    heading.className = "screen__title";
+    heading.textContent = "Confirm trainer name";
+    screen.appendChild(heading);
+
+    const subtitle = document.createElement("p");
+    subtitle.className = "screen__subtitle";
+    if (signupState.detected_name) {
+      subtitle.textContent = `Is your trainer name "${signupState.detected_name}"? Adjust it if something looks off.`;
+    } else {
+      subtitle.textContent = "We couldn't read the name from the screenshot. Type it exactly as it appears in Pokémon GO.";
+    }
+    screen.appendChild(subtitle);
+
+    const form = document.createElement("form");
+    form.className = "form";
+
+    const nameField = document.createElement("div");
+    nameField.className = "field";
+    const nameLabel = document.createElement("label");
+    nameLabel.setAttribute("for", "signup_trainer_name");
+    nameLabel.textContent = "Trainer name";
+    const nameInput = document.createElement("input");
+    nameInput.className = "input";
+    nameInput.id = "signup_trainer_name";
+    nameInput.name = "trainer_name";
+    nameInput.type = "text";
+    nameInput.required = true;
+    nameInput.maxLength = 32;
+    nameInput.placeholder = "Type your trainer name";
+    nameInput.value =
+      signupState.trainer_name ||
+      signupState.detected_name ||
+      "";
+    nameField.appendChild(nameLabel);
+    nameField.appendChild(nameInput);
+
+    const continueButton = document.createElement("button");
+    continueButton.type = "submit";
+    continueButton.className = "button button--primary";
+    continueButton.textContent = "Continue";
+
+    const retryButton = document.createElement("button");
+    retryButton.type = "button";
+    retryButton.className = "button button--ghost";
+    retryButton.textContent = "Re-upload screenshot";
+    retryButton.addEventListener("click", () => {
+      quest.set({
+        view: "signup_upload",
+        error: null,
+      });
+    });
+
+    const backButton = document.createElement("button");
+    backButton.type = "button";
+    backButton.className = "button button--ghost";
+    backButton.textContent = "Back";
+    backButton.addEventListener("click", () => {
+      quest.set({
+        view: "signup_upload",
+        error: null,
+      });
+    });
+
+    form.appendChild(nameField);
+    form.appendChild(continueButton);
+    form.appendChild(retryButton);
+    form.appendChild(backButton);
+
+    if (quest.state.busy) {
       form.querySelectorAll("input, button").forEach((el) => {
         el.disabled = true;
       });
     } else {
       window.requestAnimationFrame(() => {
-        if (document.activeElement !== pinInput) {
-          pinInput.focus();
-        }
+        nameInput.focus();
       });
     }
 
-    screen.appendChild(heading);
-    screen.appendChild(subtitle);
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      if (quest.state.busy) {
+        return;
+      }
+      const trainerName = (nameInput.value || "").trim();
+      if (!trainerName) {
+        quest.set({ error: "Trainer name is required." });
+        return;
+      }
+      quest.set({
+        signup: {
+          ...signupState,
+          trainer_name: trainerName,
+        },
+        view: "signup_age",
+        error: null,
+      });
+    });
+
     screen.appendChild(form);
+    return screen;
+  };
+
+  const renderSignupAge = () => {
+    const signupState = quest.state.signup || createEmptySignup();
+    const screen = document.createElement("section");
+    screen.className = "screen";
+
+    const heading = document.createElement("h1");
+    heading.className = "screen__title";
+    heading.textContent = "How old are you?";
+    screen.appendChild(heading);
+
+    const subtitle = document.createElement("p");
+    subtitle.className = "screen__subtitle";
+    subtitle.textContent = "We use this to follow Pokémon player safeguarding guidance.";
+    screen.appendChild(subtitle);
+
+    const actions = document.createElement("div");
+    actions.className = "screen__actions";
+
+    const adultButton = document.createElement("button");
+    adultButton.type = "button";
+    adultButton.className = "button button--primary";
+    adultButton.textContent = "I'm 13 or older";
+    adultButton.addEventListener("click", () => {
+      quest.set({
+        signup: {
+          ...signupState,
+          age_band: "13plus",
+          campfire_opt_out: false,
+        },
+        view: "signup_campfire",
+        error: null,
+      });
+    });
+
+    const kidButton = document.createElement("button");
+    kidButton.type = "button";
+    kidButton.className = "button button--secondary";
+    kidButton.textContent = "I'm under 13";
+    kidButton.addEventListener("click", () => {
+      quest.set({
+        signup: {
+          ...signupState,
+          age_band: "under13",
+          campfire_name: "",
+          campfire_opt_out: true,
+        },
+        view: "signup_kids",
+        error: null,
+      });
+    });
+
+    const backButton = document.createElement("button");
+    backButton.type = "button";
+    backButton.className = "button button--ghost";
+    backButton.textContent = "Back";
+    backButton.addEventListener("click", () => {
+      quest.set({
+        view: "signup_confirm",
+        error: null,
+      });
+    });
+
+    actions.appendChild(adultButton);
+    actions.appendChild(kidButton);
+    actions.appendChild(backButton);
+    screen.appendChild(actions);
+    return screen;
+  };
+
+  const renderSignupCampfire = () => {
+    const signupState = quest.state.signup || createEmptySignup();
+    const screen = document.createElement("section");
+    screen.className = "screen";
+
+    const heading = document.createElement("h1");
+    heading.className = "screen__title";
+    heading.textContent = "Campfire username";
+    screen.appendChild(heading);
+
+    const subtitle = document.createElement("p");
+    subtitle.className = "screen__subtitle";
+    subtitle.textContent =
+      "Link your Campfire username so we can sync check-ins and rewards.";
+    screen.appendChild(subtitle);
+
+    const form = document.createElement("form");
+    form.className = "form";
+
+    const campfireField = document.createElement("div");
+    campfireField.className = "field";
+    const campfireLabel = document.createElement("label");
+    campfireLabel.setAttribute("for", "signup_campfire");
+    campfireLabel.textContent = "Campfire username";
+    const campfireInput = document.createElement("input");
+    campfireInput.className = "input";
+    campfireInput.id = "signup_campfire";
+    campfireInput.name = "campfire_name";
+    campfireInput.type = "text";
+    campfireInput.placeholder = "e.g. Trainer123";
+    campfireInput.pattern = "[^@]+";
+    campfireInput.maxLength = 32;
+    campfireInput.value = signupState.campfire_name || "";
+    campfireField.appendChild(campfireLabel);
+    campfireField.appendChild(campfireInput);
+
+    const optOutWrap = document.createElement("label");
+    optOutWrap.className = "checkbox";
+    const optOutInput = document.createElement("input");
+    optOutInput.type = "checkbox";
+    optOutInput.name = "campfire_opt_out";
+    optOutInput.checked = Boolean(signupState.campfire_opt_out);
+    const optOutText = document.createElement("span");
+    optOutText.textContent = "I'm not on Campfire";
+    optOutWrap.appendChild(optOutInput);
+    optOutWrap.appendChild(optOutText);
+    campfireField.appendChild(optOutWrap);
+
+    optOutInput.addEventListener("change", () => {
+      const optOut = optOutInput.checked;
+      campfireInput.disabled = optOut;
+      if (optOut) {
+        campfireInput.value = "";
+      }
+    });
+    if (optOutInput.checked) {
+      campfireInput.disabled = true;
+    }
+
+    const submitButton = document.createElement("button");
+    submitButton.type = "submit";
+    submitButton.className = "button button--primary";
+    submitButton.textContent = "Create quest pass";
+
+    const backButton = document.createElement("button");
+    backButton.type = "button";
+    backButton.className = "button button--ghost";
+    backButton.textContent = "Back";
+    backButton.addEventListener("click", () => {
+      quest.set({
+        view: "signup_age",
+        error: null,
+      });
+    });
+
+    form.appendChild(campfireField);
+    form.appendChild(submitButton);
+    form.appendChild(backButton);
+
+    if (quest.state.busy) {
+      form.querySelectorAll("input, button").forEach((el) => {
+        el.disabled = true;
+      });
+    }
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      if (quest.state.busy) {
+        return;
+      }
+      const optOut = Boolean(optOutInput.checked);
+      const campfireName = optOut ? "" : (campfireInput.value || "").trim();
+      if (!optOut && !campfireName) {
+        quest.set({ error: "Campfire username is required or mark that you're not on Campfire." });
+        return;
+      }
+      const nextSignup = {
+        ...signupState,
+        campfire_name: campfireName,
+        campfire_opt_out: optOut,
+      };
+      quest.set({
+        signup: nextSignup,
+      });
+      await completeQuestSignup();
+    });
+
+    screen.appendChild(form);
+    return screen;
+  };
+
+  const renderSignupKids = () => {
+    const signupState = quest.state.signup || createEmptySignup();
+    const screen = document.createElement("section");
+    screen.className = "screen";
+
+    const heading = document.createElement("h1");
+    heading.className = "screen__title";
+    heading.textContent = "Create kids quest pass";
+    screen.appendChild(heading);
+
+    const message = document.createElement("p");
+    message.className = "screen__message";
+    message.textContent = `We'll create a Kids Account for trainer ${signupState.trainer_name}. Campfire can be linked later by a guardian.`;
+    screen.appendChild(message);
+
+    const actions = document.createElement("div");
+    actions.className = "screen__actions";
+
+    const createButton = document.createElement("button");
+    createButton.type = "button";
+    createButton.className = "button button--primary";
+    createButton.textContent = "Create kids quest pass";
+    createButton.addEventListener("click", async () => {
+      if (quest.state.busy) {
+        return;
+      }
+      quest.set({
+        signup: {
+          ...signupState,
+          campfire_name: "",
+          campfire_opt_out: true,
+        },
+      });
+      await completeQuestSignup();
+    });
+
+    const backButton = document.createElement("button");
+    backButton.type = "button";
+    backButton.className = "button button--ghost";
+    backButton.textContent = "Back";
+    backButton.addEventListener("click", () => {
+      quest.set({
+        view: "signup_age",
+        error: null,
+      });
+    });
+
+    if (quest.state.busy) {
+      createButton.disabled = true;
+      backButton.disabled = true;
+    }
+
+    actions.appendChild(createButton);
+    actions.appendChild(backButton);
+    screen.appendChild(actions);
     return screen;
   };
 
@@ -1705,8 +2465,11 @@ if (!root) {
         session: null,
         pin: null,
         view: "landing",
-        authMode: "create",
-        authPrefill: "",
+        signinForm: {
+          trainer_name: "",
+          pin: "",
+        },
+        signup: createEmptySignup(),
         error: null,
       });
     });
@@ -1801,8 +2564,13 @@ if (!root) {
         story,
         busy: false,
         view: quest.state.profile ? "resume" : "landing",
-        authMode: quest.state.profile ? "resume" : "create",
-        authPrefill: quest.state.profile?.trainer_name || "",
+        signinForm: {
+          trainer_name:
+            quest.state.profile?.trainer_name ||
+            quest.state.signinForm?.trainer_name ||
+            "",
+          pin: "",
+        },
         error: null,
       });
     } catch (error) {

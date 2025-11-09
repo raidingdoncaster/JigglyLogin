@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import tempfile
 import uuid
 from datetime import datetime, timezone
 from math import atan2, cos, radians, sin, sqrt
@@ -11,8 +12,16 @@ from typing import Any, Dict, Optional, Tuple
 
 from flask import current_app
 
+import requests
+
+from rdab.trainer_detection import extract_trainer_name
+
 
 PIN_SALT = os.getenv("PIN_SALT", "static-fallback-salt")
+LUGIA_REFRESH_URL = os.getenv(
+    "LUGIA_WEBAPP_URL",
+    "https://script.google.com/macros/s/AKfycbwx33Twu9HGwW4bsSJb7vwHoaBS56gCldNlqiNjxGBJEhckVDAnv520MN4ZQWxI1U9D/exec",
+)
 
 
 class GeocacheServiceError(Exception):
@@ -29,6 +38,15 @@ def _supabase():
     if not client:
         raise GeocacheServiceError("Supabase unavailable", status_code=503, payload={"error": "supabase_unavailable"})
     return client
+
+
+def _trigger_lugia_refresh() -> None:
+    if not LUGIA_REFRESH_URL:
+        return
+    try:
+        requests.get(LUGIA_REFRESH_URL, params={"action": "lugiaRefresh"}, timeout=10)
+    except Exception as exc:  # pragma: no cover - best-effort
+        current_app.logger.warning("Lugia refresh call failed: %s", exc)
 
 
 def _now_iso() -> str:
@@ -48,6 +66,37 @@ def _normalize_campfire(name: Optional[str], opt_out: bool) -> Optional[str]:
     if cleaned.startswith("@"):
         cleaned = cleaned[1:]
     return cleaned or None
+
+
+def detect_trainer_name_from_upload(file_storage) -> str:
+    if not file_storage or not getattr(file_storage, "filename", ""):
+        raise GeocacheServiceError(
+            "Screenshot is required",
+            status_code=400,
+            payload={"error": "missing_screenshot"},
+        )
+
+    suffix = Path(file_storage.filename).suffix or ".png"
+    tmp_path = None
+    try:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+            file_storage.save(tmp.name)
+            tmp_path = tmp.name
+        detected = extract_trainer_name(tmp_path)
+    finally:
+        if tmp_path:
+            try:
+                os.remove(tmp_path)
+            except OSError:
+                pass
+
+    if not detected:
+        raise GeocacheServiceError(
+            "We could not read the trainer name from that screenshot.",
+            status_code=422,
+            payload={"error": "ocr_failed"},
+        )
+    return detected.strip()
 
 
 def _hash_pin(pin: str) -> str:
@@ -94,6 +143,13 @@ def _fetch_sheet1_account(trainer_username: str) -> Optional[Dict[str, Any]]:
     return rows[0] if rows else None
 
 
+def _trainer_exists(trainer_username: str) -> bool:
+    cleaned = (trainer_username or "").strip().lower()
+    if not cleaned:
+        return False
+    return _fetch_sheet1_account(cleaned) is not None
+
+
 def _update_sheet1_account(account_row: Dict[str, Any], updates: Dict[str, Any]) -> Dict[str, Any]:
     if not updates:
         return account_row
@@ -113,7 +169,14 @@ def _update_sheet1_account(account_row: Dict[str, Any], updates: Dict[str, Any])
     return _fetch_sheet1_account(account_row.get("trainer_username") or "")
 
 
-def _ensure_trainer_account(trainer_username: str, pin: str, campfire_name: Optional[str], campfire_opt_out: bool) -> Tuple[Dict[str, Any], bool]:
+def _ensure_trainer_account(
+    trainer_username: str,
+    pin: str,
+    campfire_name: Optional[str],
+    campfire_opt_out: bool,
+    *,
+    create_if_missing: bool = True,
+) -> Tuple[Dict[str, Any], bool]:
     trainer_norm = trainer_username.lower()
     account = _fetch_sheet1_account(trainer_norm)
     campfire_value = _normalize_campfire(campfire_name, campfire_opt_out)
@@ -130,6 +193,13 @@ def _ensure_trainer_account(trainer_username: str, pin: str, campfire_name: Opti
         updates["last_login"] = _now_iso()
         refreshed = _update_sheet1_account(account, updates)
         return refreshed or account, False
+
+    if not create_if_missing:
+        raise GeocacheServiceError(
+            "Trainer not found. Please create a quest pass first.",
+            status_code=404,
+            payload={"error": "trainer_not_found"},
+        )
 
     payload = {
         "trainer_username": trainer_username,
@@ -388,7 +458,22 @@ def _distance_m(lat_a: float, lng_a: float, lat_b: float, lng_b: float) -> float
     return radius * c
 
 
-_DEFAULT_STORY = {"title": "Whispers of the Wild Court", "version": 1, "acts": [], "scenes": {}}
+_RESOURCE_DIR = Path(__file__).resolve().parent / "resources"
+
+
+def _load_resource_json(filename: str, fallback: Dict[str, Any]) -> Dict[str, Any]:
+    try:
+        path = _RESOURCE_DIR / filename
+        return json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return fallback
+
+
+_DEFAULT_STORY = _load_resource_json(
+    "geocache_story.json",
+    {"title": "Whispers of the Wild Court", "version": 1, "acts": [], "scenes": {}, "metadata": {}},
+)
+_DEFAULT_ASSETS = _load_resource_json("geocache_assets.json", {"locations": [], "artifacts": []})
 _location_cache: Dict[str, Any] = {"path": None, "mtime": 0, "locations": {}}
 _artifact_cache: Dict[str, Any] = {"path": None, "mtime": 0, "artifacts": {}}
 
@@ -423,8 +508,28 @@ def _load_story_locations() -> Dict[str, Dict[str, float]]:
         mtime = story_path.stat().st_mtime
     except FileNotFoundError:
         current_app.logger.warning("Geocache assets file missing at %s", story_path)
-        _location_cache.update({"path": str(story_path), "mtime": 0, "locations": {}})
-        return {}
+        assets = dict(_DEFAULT_ASSETS)
+        locations: Dict[str, Dict[str, float]] = {}
+        for entry in assets.get("locations", []):
+            location_id = entry.get("id") or entry.get("location_id")
+            if not location_id:
+                continue
+            try:
+                lat_f = float(entry.get("latitude"))
+                lng_f = float(entry.get("longitude"))
+            except (TypeError, ValueError):
+                continue
+            radius = float(entry.get("radius_m") or 75)
+            precision = int(entry.get("precision") or 4)
+            locations[str(location_id)] = {
+                "latitude": lat_f,
+                "longitude": lng_f,
+                "radius_m": radius,
+                "precision": precision,
+                "scene_id": entry.get("scene_id"),
+            }
+        _location_cache.update({"path": str(story_path), "mtime": 0, "locations": locations})
+        return locations
     cache_path = _location_cache.get("path")
     if cache_path != str(story_path) or _location_cache.get("mtime", 0) < mtime:
         try:
@@ -471,8 +576,25 @@ def _load_story_artifacts() -> Dict[str, Dict[str, Any]]:
         mtime = story_path.stat().st_mtime
     except FileNotFoundError:
         current_app.logger.warning("Geocache assets file missing at %s", story_path)
-        _artifact_cache.update({"path": str(story_path), "mtime": 0, "artifacts": {}})
-        return {}
+        assets = dict(_DEFAULT_ASSETS)
+        artifacts: Dict[str, Dict[str, Any]] = {}
+        for entry in assets.get("artifacts", []):
+            slug = str(entry.get("slug") or entry.get("id") or "")
+            if not slug:
+                continue
+            code = entry.get("code")
+            nfc_uid = entry.get("nfc_uid")
+            artifacts[slug] = {
+                "id": slug,
+                "slug": slug,
+                "display_name": entry.get("display_name") or slug.replace("-", " ").title(),
+                "code": str(code).strip() if code is not None else None,
+                "nfc_uid": str(nfc_uid).lower() if nfc_uid else None,
+                "location_hint": entry.get("hint"),
+                "scene_id": entry.get("scene_id"),
+            }
+        _artifact_cache.update({"path": str(story_path), "mtime": 0, "artifacts": artifacts})
+        return artifacts
     cache_path = _artifact_cache.get("path")
     if cache_path != str(story_path) or _artifact_cache.get("mtime", 0) < mtime:
         try:
@@ -716,6 +838,7 @@ def create_or_login_profile(
     campfire_name: Optional[str] = None,
     campfire_opt_out: bool = False,
     metadata: Optional[Dict[str, Any]] = None,
+    create_if_missing: bool = True,
 ) -> Dict[str, Any]:
     trainer_clean = _normalize_trainer(trainer_name)
     if not trainer_clean:
@@ -724,12 +847,122 @@ def create_or_login_profile(
     if not pin_clean or not pin_clean.isdigit() or len(pin_clean) != 4:
         raise GeocacheServiceError("PIN must be exactly 4 digits", status_code=400, payload={"error": "invalid_pin_format"})
 
-    account, account_created = _ensure_trainer_account(trainer_clean, pin_clean, campfire_name, campfire_opt_out)
+    account, account_created = _ensure_trainer_account(
+        trainer_clean,
+        pin_clean,
+        campfire_name,
+        campfire_opt_out,
+        create_if_missing=create_if_missing,
+    )
     profile, profile_created = _ensure_geocache_profile(trainer_clean, pin_clean, campfire_name, campfire_opt_out, account, metadata)
     session = _get_latest_session(profile["id"])
 
     return {
         "account_created": account_created,
+        "profile_created": profile_created,
+        "profile": _serialize_profile(profile),
+        "session": _serialize_session(session),
+    }
+
+
+def complete_signup(
+    trainer_name: str,
+    pin: str,
+    memorable: str,
+    *,
+    age_band: str,
+    campfire_name: Optional[str] = None,
+    campfire_opt_out: bool = False,
+) -> Dict[str, Any]:
+    trainer_clean = _normalize_trainer(trainer_name)
+    if not trainer_clean:
+        raise GeocacheServiceError("Trainer name required", status_code=400, payload={"error": "missing_trainer"})
+
+    pin_clean = (pin or "").strip()
+    if not pin_clean or not pin_clean.isdigit() or len(pin_clean) != 4:
+        raise GeocacheServiceError("PIN must be exactly 4 digits", status_code=400, payload={"error": "invalid_pin_format"})
+
+    memorable_clean = (memorable or "").strip()
+    if not memorable_clean:
+        raise GeocacheServiceError("Memorable password required", status_code=400, payload={"error": "missing_memorable"})
+
+    age_key = (age_band or "").strip().lower()
+    is_under13 = age_key in {"under13", "kids", "u13", "under-13"}
+
+    if _trainer_exists(trainer_clean):
+        raise GeocacheServiceError(
+            "This trainer already exists. Please log in instead.",
+            status_code=409,
+            payload={"error": "duplicate_trainer"},
+        )
+
+    effective_opt_out = campfire_opt_out
+    campfire_value: Optional[str]
+    account_type = "Standard"
+
+    if is_under13:
+        account_type = "Kids Account"
+        campfire_value = "Kids Account"
+        effective_opt_out = True
+    else:
+        campfire_clean = (campfire_name or "").strip()
+        if not campfire_clean:
+            effective_opt_out = True
+        campfire_value = _normalize_campfire(campfire_clean, effective_opt_out)
+
+    hashed_pin = _hash_pin(pin_clean)
+    payload = {
+        "trainer_username": trainer_clean,
+        "pin_hash": hashed_pin,
+        "memorable_password": memorable_clean,
+        "last_login": _now_iso(),
+        "campfire_username": campfire_value or "Not on Campfire",
+        "stamps": 0,
+        "avatar_icon": "avatar1.png",
+        "trainer_card_background": "default.png",
+        "account_type": account_type,
+    }
+
+    client = _supabase()
+    try:
+        resp = client.table("sheet1").insert(payload, returning="representation").execute()
+    except Exception as exc:
+        current_app.logger.exception("Supabase signup insert failed: %s", exc)
+        message = str(exc).lower()
+        if "duplicate" in message:
+            raise GeocacheServiceError(
+                "This trainer already exists. Please log in instead.",
+                status_code=409,
+                payload={"error": "duplicate_trainer"},
+            ) from exc
+        raise GeocacheServiceError("Signup failed due to a server error", status_code=502, payload={"error": "account_create_failed"}) from exc
+
+    rows = getattr(resp, "data", None) or []
+    account_row = rows[0] if rows else _fetch_sheet1_account(trainer_clean.lower())
+    if not account_row:
+        raise GeocacheServiceError("Signup failed due to a server error", status_code=502, payload={"error": "account_create_failed"})
+
+    metadata = {
+        "signup_source": "geocache",
+        "signup_age_band": "under13" if is_under13 else "13plus",
+    }
+    if effective_opt_out:
+        metadata["campfire_opt_out"] = True
+
+    profile, profile_created = _ensure_geocache_profile(
+        trainer_clean,
+        pin_clean,
+        campfire_value,
+        effective_opt_out,
+        account_row,
+        metadata,
+    )
+    session = _get_latest_session(profile["id"])
+
+    _trigger_lugia_refresh()
+
+    return {
+        "account_created": True,
         "profile_created": profile_created,
         "profile": _serialize_profile(profile),
         "session": _serialize_session(session),
