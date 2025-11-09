@@ -28,7 +28,7 @@ from geocache.services import REQUIRED_FLAGS_BY_ACT
 # ====== Feature toggle ======
 USE_SUPABASE = True  # ✅ Supabase for stamps/meetups
 MAINTENANCE_MODE = False  # ⛔️ Change to True to enable maintenance mode
-USE_GEOCACHE_QUEST = os.getenv("USE_GEOCACHE_QUEST", "0").strip().lower() in {"1", "true", "yes", "on"}
+USE_GEOCACHE_QUEST = os.getenv("USE_GEOCACHE_QUEST", "1").strip().lower() in {"1", "true", "yes", "on"}
 
 # ====== Auth security settings ======
 LOGIN_MAX_ATTEMPTS = 5
