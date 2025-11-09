@@ -143,16 +143,32 @@ create policy "service_role_all_geocache_artifacts"
     with check (true);
 
 -- Optional: if you later map rdab_user_id to Supabase auth.uid()
-drop policy if exists "user_manage_own_profile" on public.geocache_profiles;
-create policy "user_manage_own_profile"
+drop policy if exists "user_read_profile" on public.geocache_profiles;
+create policy "user_read_profile"
     on public.geocache_profiles
-    for select using (auth.uid() = rdab_user_id)
+    for select using (auth.uid() = rdab_user_id);
+
+drop policy if exists "user_write_profile" on public.geocache_profiles;
+create policy "user_write_profile"
+    on public.geocache_profiles
+    for all using (auth.uid() = rdab_user_id)
     with check (auth.uid() = rdab_user_id);
 
-drop policy if exists "user_manage_own_sessions" on public.geocache_sessions;
-create policy "user_manage_own_sessions"
+drop policy if exists "user_read_session" on public.geocache_sessions;
+create policy "user_read_session"
     on public.geocache_sessions
     for select using (
+        exists (
+            select 1 from public.geocache_profiles p
+            where p.id = geocache_sessions.profile_id
+              and p.rdab_user_id = auth.uid()
+        )
+    );
+
+drop policy if exists "user_write_session" on public.geocache_sessions;
+create policy "user_write_session"
+    on public.geocache_sessions
+    for all using (
         exists (
             select 1 from public.geocache_profiles p
             where p.id = geocache_sessions.profile_id
@@ -187,4 +203,3 @@ join public.geocache_profiles p on p.id = s.profile_id;
 ```
 
 Happy quest building!
-
