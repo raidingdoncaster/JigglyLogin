@@ -2,8 +2,10 @@ const root = document.getElementById("scene-root");
 
 if (!root) {
   console.error("Geocache quest root element missing.");
-} else {
-  const initialPayload = (() => {
+  throw new Error("Geocache quest root element missing.");
+}
+
+const initialPayload = (() => {
     try {
       return JSON.parse(root.dataset.initialState || "{}");
     } catch (err) {
@@ -2094,104 +2096,6 @@ if (!root) {
       node: container,
       actions: [continueButton],
       actionsAlign: "center",
-    };
-  };
-
-
-    const metaBlock = document.createElement("div");
-    metaBlock.className = "hud-card__meta-block";
-
-    if (typeof minigame.radius_m === "number") {
-      const radius = document.createElement("p");
-      radius.className = "hud-card__meta";
-      radius.textContent = `Check-in radius: ${Math.round(minigame.radius_m)} m`;
-      metaBlock.appendChild(radius);
-    }
-
-    if (
-      typeof minigame.latitude === "number" &&
-      typeof minigame.longitude === "number" &&
-      (minigame.latitude !== 0 || minigame.longitude !== 0)
-    ) {
-      const coords = document.createElement("p");
-      coords.className = "hud-card__meta";
-      coords.textContent = `Target: ${minigame.latitude.toFixed(5)}, ${minigame.longitude.toFixed(5)}`;
-      metaBlock.appendChild(coords);
-    }
-
-    if (metaBlock.children.length) {
-      card.appendChild(metaBlock);
-    }
-
-    const statusLine = document.createElement("p");
-    statusLine.className = "hud-card__status";
-    statusLine.style.display = "none";
-    card.appendChild(statusLine);
-
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "hud-card__cta";
-    button.textContent = minigame.cta_label || "I'm here!";
-    button.addEventListener("click", () => {
-      if (quest.state.busy || button.disabled) {
-        return;
-      }
-      if (!navigator.geolocation) {
-        quest.set({
-          error: "Location access not supported in this browser. Please enable GPS manually.",
-        });
-        return;
-      }
-      button.disabled = true;
-      statusLine.textContent = "Requesting location…";
-      statusLine.style.display = "block";
-
-      navigator.geolocation.getCurrentPosition(
-        async (pos) => {
-          try {
-            await postMinigame("/geocache/minigame/location", {
-              location_id: minigame.location_id || scene.id,
-              success_flag: flagKey,
-              scene_id: scene.id,
-              latitude: pos.coords.latitude,
-              longitude: pos.coords.longitude,
-              accuracy_m: pos.coords.accuracy,
-              precision: minigame.precision || 4,
-            });
-          } catch (_) {
-            statusLine.textContent = "Sync failed. Try again in a moment.";
-            button.disabled = false;
-          }
-        },
-        (error) => {
-          statusLine.textContent = error.message || "Unable to fetch location. Please grant permission.";
-          button.disabled = false;
-        },
-        {
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 0,
-        }
-      );
-    });
-    card.appendChild(button);
-
-    container.appendChild(card);
-
-    const actions = [];
-    if (context.prevScene) {
-      actions.push(createHexButton("←", () => navigateToScene(context, context.prevScene)));
-    }
-    if (context.nextScene) {
-      actions.push(createHexButton("→", () => navigateToScene(context, context.nextScene)));
-    } else if (context.nextAct) {
-      actions.push(createPrimaryButton("Continue", () => navigateToActStart(context, context.nextAct)));
-    }
-
-    return {
-      node: container,
-      actions,
-      actionsAlign: actions.length === 1 ? "center" : "space-between",
     };
   };
 
@@ -4619,5 +4523,4 @@ if (!root) {
     error: initialPayload.error || null,
   });
 
-  initialize();
-}
+initialize();
