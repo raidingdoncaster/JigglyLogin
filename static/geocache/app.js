@@ -131,6 +131,29 @@ const initialPayload = (() => {
     },
   };
 
+  const getValue = function (value) {
+    if (value === undefined || value === null) {
+      return undefined;
+    }
+    var result = value;
+    for (var i = 1; i < arguments.length; i += 1) {
+      if (result === undefined || result === null) {
+        return undefined;
+      }
+      var key = arguments[i];
+      result = result[key];
+    }
+    return result;
+  };
+
+  const callIfFunction = function (fn, context) {
+    if (typeof fn !== "function") {
+      return undefined;
+    }
+    var args = Array.prototype.slice.call(arguments, 2);
+    return fn.apply(context || null, args);
+  };
+
   const LOGIN_MAX_ATTEMPTS = 5;
   const LOGIN_LOCKOUT_SECONDS = 1800;
   const SIGNIN_GUARD_KEY = "geocacheSigninGuard.v1";
@@ -151,12 +174,14 @@ const initialPayload = (() => {
           return { ...defaults };
         }
         const parsed = JSON.parse(raw);
-        const remaining = Number.isFinite(parsed?.remaining)
-          ? Math.max(0, parseInt(parsed.remaining, 10))
+        const remainingRaw = getValue(parsed, "remaining");
+        const remaining = Number.isFinite(remainingRaw)
+          ? Math.max(0, parseInt(remainingRaw, 10))
           : defaults.remaining;
+        const lockUntilRaw = getValue(parsed, "lockUntil");
         const lockUntil =
-          typeof parsed?.lockUntil === "number" && parsed.lockUntil > 0
-            ? parsed.lockUntil
+          typeof lockUntilRaw === "number" && lockUntilRaw > 0
+            ? lockUntilRaw
             : null;
         return {
           remaining: remaining || defaults.remaining,
@@ -295,8 +320,8 @@ const initialPayload = (() => {
     }
     if (error instanceof APIError) {
       return (
-        error.payload?.detail ||
-        error.payload?.error ||
+        getValue(error.payload, "detail") ||
+        getValue(error.payload, "error") ||
         error.message ||
         "Request failed."
       );
@@ -391,7 +416,7 @@ const initialPayload = (() => {
         view: "signin",
         signinForm: {
           ...quest.state.signinForm,
-          trainer_name: profile?.trainer_name || quest.state.signinForm.trainer_name || "",
+          trainer_name: getValue(profile, "trainer_name") || quest.state.signinForm.trainer_name || "",
           pin: "",
         },
         error: "Enter your 4-digit quest PIN to continue.",
@@ -430,7 +455,7 @@ const initialPayload = (() => {
     } catch (error) {
       if (error instanceof APIError && error.status === 401) {
         pinVault.clear();
-        const retryName = quest.state.profile?.trainer_name || profile.trainer_name;
+        const retryName = getValue(quest.state.profile, "trainer_name") || profile.trainer_name;
         quest.set({
           busy: false,
           pin: null,
@@ -478,7 +503,7 @@ const initialPayload = (() => {
     } catch (error) {
       if (error instanceof APIError && error.status === 401) {
         pinVault.clear();
-        const retryName = quest.state.profile?.trainer_name || profile.trainer_name;
+        const retryName = getValue(quest.state.profile, "trainer_name") || profile.trainer_name;
         quest.set({
           busy: false,
           pin: null,
@@ -510,7 +535,7 @@ const initialPayload = (() => {
       busy: false,
       error: null,
       signinForm: {
-        trainer_name: saved.profile?.trainer_name || "",
+        trainer_name: getValue(saved.profile, "trainer_name") || "",
         pin: "",
       },
       signup: createEmptySignup(),
@@ -800,7 +825,7 @@ const initialPayload = (() => {
     const acts = ctx.acts || [];
     const activeAct = ctx.activeAct || acts[ctx.actIndex] || acts[0] || null;
 
-    hud.actTitle.textContent = activeAct?.title || story.title || "Quest";
+    hud.actTitle.textContent = getValue(activeAct, "title") || story.title || "Quest";
 
     if (hud.actStatus) {
       hud.actStatus.textContent =
@@ -962,7 +987,7 @@ const initialPayload = (() => {
     if (session.current_act) {
       activeActId = `act${session.current_act}`;
     } else if (acts.length) {
-      activeActId = acts[0]?.id || null;
+      activeActId = getValue(acts[0], "id") || null;
     }
 
     let actIndex = 0;
@@ -974,7 +999,7 @@ const initialPayload = (() => {
     }
 
     const activeAct = acts[actIndex] || null;
-    const sceneIds = Array.isArray(activeAct?.scenes) ? activeAct.scenes : [];
+    const sceneIds = Array.isArray(getValue(activeAct, "scenes")) ? activeAct.scenes : [];
 
     const scenes = sceneIds
       .map((id) => {
@@ -984,7 +1009,7 @@ const initialPayload = (() => {
         }
         return {
           id,
-          act_id: activeAct?.id || null,
+          act_id: getValue(activeAct, "id") || null,
           ...source,
         };
       })
@@ -1075,7 +1100,7 @@ const initialPayload = (() => {
     }
     const sceneType = (scene.type || "").toLowerCase();
     if (sceneType === "minigame") {
-      const kind = (scene.minigame?.kind || scene.kind || "").toLowerCase();
+      const kind = (getValue(scene.minigame, "kind") || scene.kind || "").toLowerCase();
       if (["location", "checkin"].includes(kind)) {
         return "location";
       }
@@ -1098,11 +1123,11 @@ const initialPayload = (() => {
       return;
     }
     const backgroundAsset =
-      scene?.background ||
-      scene?.art ||
-      scene?.backdrop ||
-      fallbackAct?.background ||
-      fallbackAct?.art ||
+      getValue(scene, "background") ||
+      getValue(scene, "art") ||
+      getValue(scene, "backdrop") ||
+      getValue(fallbackAct, "background") ||
+      getValue(fallbackAct, "art") ||
       null;
     const imageUrl = resolveAssetUrl(backgroundAsset);
     const current = hud.canvasLayer.dataset.asset || "";
@@ -1132,12 +1157,12 @@ const initialPayload = (() => {
       return;
     }
     const scene = context.currentScene;
-    const minigame = scene?.minigame || {};
+    const minigame = getValue(scene, "minigame") || {};
 
     const characterConfig =
-      scene?.character ||
-      minigame?.character ||
-      context.activeAct?.character ||
+      getValue(scene, "character") ||
+      getValue(minigame, "character") ||
+      getValue(context.activeAct, "character") ||
       {};
 
     const sources = [
@@ -1145,20 +1170,20 @@ const initialPayload = (() => {
       characterConfig.image,
       characterConfig.src,
       characterConfig.url,
-      scene?.character_asset,
-      scene?.character_image,
-      minigame?.character_asset,
-      minigame?.character_image,
-      context.activeAct?.character_asset,
-      context.activeAct?.character_image,
+      getValue(scene, "character_asset"),
+      getValue(scene, "character_image"),
+      getValue(minigame, "character_asset"),
+      getValue(minigame, "character_image"),
+      getValue(context.activeAct, "character_asset"),
+      getValue(context.activeAct, "character_image"),
     ];
 
     const asset = sources.find((value) => typeof value === "string" && value.trim()) || null;
     const side =
       (characterConfig.side ||
-        scene?.character_side ||
-        minigame?.character_side ||
-        context.activeAct?.character_side ||
+        getValue(scene, "character_side") ||
+        getValue(minigame, "character_side") ||
+        getValue(context.activeAct, "character_side") ||
         "right")
         .toString()
         .toLowerCase();
@@ -1195,7 +1220,7 @@ const initialPayload = (() => {
 
     const message = document.createElement("p");
     message.className = "hud-scene__placeholder";
-    if (context.activeAct?.intro) {
+    if (getValue(context.activeAct, "intro")) {
       message.textContent = context.activeAct.intro;
     } else {
       message.textContent =
@@ -1277,9 +1302,9 @@ const initialPayload = (() => {
 
   const renderActivityScene = (context) => {
     const scene = context.currentScene;
-    const minigame = scene?.minigame || {};
-    const kind = (minigame.kind || scene?.kind || "").toLowerCase();
-    const flagKey = minigame.success_flag || scene?.success_flag || scene?.id;
+    const minigame = getValue(scene, "minigame") || {};
+    const kind = (minigame.kind || getValue(scene, "kind") || "").toLowerCase();
+    const flagKey = minigame.success_flag || getValue(scene, "success_flag") || getValue(scene, "id");
 
     if (!flagKey) {
       return null;
@@ -1338,7 +1363,7 @@ const initialPayload = (() => {
             puzzle_id: minigame.puzzle_id || scene.id,
             success_flag: flagKey,
             scene_id: scene.id,
-            success_token: crypto?.randomUUID
+            success_token: getValue(crypto, "randomUUID")
               ? crypto.randomUUID()
               : `token-${Date.now()}`,
           });
@@ -1437,8 +1462,8 @@ const initialPayload = (() => {
 
   const renderFocusScene = (context) => {
     const scene = context.currentScene;
-    const minigame = scene?.minigame || {};
-    const flagKey = minigame.success_flag || scene?.success_flag || scene?.id;
+    const minigame = getValue(scene, "minigame") || {};
+    const flagKey = minigame.success_flag || getValue(scene, "success_flag") || getValue(scene, "id");
     if (!flagKey) {
       return null;
     }
@@ -1588,8 +1613,8 @@ const initialPayload = (() => {
 
   const renderIllusionScene = (context) => {
     const scene = context.currentScene;
-    const minigame = scene?.minigame || {};
-    const flagKey = minigame.success_flag || scene?.success_flag || scene?.id;
+    const minigame = getValue(scene, "minigame") || {};
+    const flagKey = minigame.success_flag || getValue(scene, "success_flag") || getValue(scene, "id");
     if (!flagKey) {
       return null;
     }
@@ -1746,8 +1771,8 @@ const initialPayload = (() => {
 
   const renderCombatScene = (context) => {
     const scene = context.currentScene;
-    const minigame = scene?.minigame || {};
-    const flagKey = minigame.success_flag || scene?.success_flag || scene?.id;
+    const minigame = getValue(scene, "minigame") || {};
+    const flagKey = minigame.success_flag || getValue(scene, "success_flag") || getValue(scene, "id");
     if (!flagKey) {
       return null;
     }
@@ -1923,15 +1948,17 @@ const initialPayload = (() => {
 
   const renderLocationScene = (context) => {
     const scene = context.currentScene;
-    const minigame = scene?.minigame || {};
-    const flagKey = minigame.success_flag || scene?.success_flag || scene?.id;
+    const minigame = getValue(scene, "minigame") || {};
+    const flagKey = minigame.success_flag || getValue(scene, "success_flag") || getValue(scene, "id");
     if (!flagKey) {
       return null;
     }
 
+    const sessionProgress = getValue(context.session, "progress_flags") || {};
+    const uppercaseFlagKey = callIfFunction(getValue(flagKey, "toUpperCase"), flagKey);
     const flagStatus =
-      context.session?.progress_flags?.[flagKey] ||
-      context.session?.progress_flags?.[flagKey?.toUpperCase?.()] ||
+      (flagKey !== undefined && flagKey !== null ? sessionProgress[flagKey] : undefined) ||
+      (uppercaseFlagKey !== undefined && uppercaseFlagKey !== null ? sessionProgress[uppercaseFlagKey] : undefined) ||
       null;
     const isComplete = Boolean(flagStatus && (flagStatus.status || flagStatus.validated_at));
 
@@ -2110,8 +2137,8 @@ const initialPayload = (() => {
 
   const renderArtifactScene = (context) => {
     const scene = context.currentScene;
-    const minigame = scene?.minigame || {};
-    const flagKey = minigame.success_flag || scene?.success_flag || scene?.id;
+    const minigame = getValue(scene, "minigame") || {};
+    const flagKey = minigame.success_flag || getValue(scene, "success_flag") || getValue(scene, "id");
     if (!flagKey) {
       return null;
     }
@@ -2310,8 +2337,8 @@ const initialPayload = (() => {
     }
 
     const mode = getSceneMode(scene);
-    const minigame = scene?.minigame || {};
-    const minigameKind = (minigame.kind || scene?.kind || "").toLowerCase();
+    const minigame = getValue(scene, "minigame") || {};
+    const minigameKind = (minigame.kind || getValue(scene, "kind") || "").toLowerCase();
 
     if (minigameKind === "focus") {
       const result = renderFocusScene(context);
@@ -2407,8 +2434,8 @@ const initialPayload = (() => {
       return;
     }
 
-    hud.overview?.classList.remove("is-open");
-    hud.settingsSheet?.classList.remove("is-open");
+    getValue(hud.overview, "classList").remove("is-open");
+    getValue(hud.settingsSheet, "classList").remove("is-open");
 
     hud.canvasContent.innerHTML = "";
 
@@ -2587,7 +2614,7 @@ const initialPayload = (() => {
     signInButton.textContent = "Sign in with RDAB app";
     signInButton.addEventListener("click", () => {
       const prefill =
-        quest.state.profile?.trainer_name ||
+        getValue(quest.state.profile, "trainer_name") ||
         quest.state.signinForm.trainer_name ||
         "";
       quest.set({
@@ -2658,7 +2685,7 @@ const initialPayload = (() => {
     continueButton.textContent = "Enter PIN to continue";
     continueButton.addEventListener("click", () => {
       const prefill =
-        quest.state.profile?.trainer_name ||
+        getValue(quest.state.profile, "trainer_name") ||
         quest.state.signinForm.trainer_name ||
         "";
       quest.set({
@@ -2924,7 +2951,7 @@ const initialPayload = (() => {
       } catch (error) {
         pinVault.clear();
         if (error instanceof APIError) {
-          if (error.status === 401 || error.payload?.error === "invalid_pin") {
+          if (error.status === 401 || getValue(error.payload, "error") === "invalid_pin") {
             const guardState = signinGuard.recordFailure();
             const waitSeconds = guardState.waitSeconds || 0;
             const remaining = guardState.remaining ?? LOGIN_MAX_ATTEMPTS;
@@ -2941,7 +2968,7 @@ const initialPayload = (() => {
             });
             return;
           }
-          if (error.status === 404 || error.payload?.error === "trainer_not_found") {
+          if (error.status === 404 || getValue(error.payload, "error") === "trainer_not_found") {
             quest.set({
               busy: false,
               error: "We couldn't find that trainer. Create a quest pass first.",
@@ -3486,15 +3513,15 @@ const initialPayload = (() => {
 
     const title = document.createElement("h1");
     title.className = "screen__title";
-    title.textContent = session?.current_act
+    title.textContent = getValue(session, "current_act")
       ? `Act ${session.current_act}`
       : "Quest ready";
 
     const actData = (() => {
-      if (!story?.acts || !story.acts.length) {
+      if (!getValue(story, "acts") || !story.acts.length) {
         return null;
       }
-      const actIdFromSession = session?.current_act
+      const actIdFromSession = getValue(session, "current_act")
         ? `act${session.current_act}`
         : null;
       const matched = story.acts.find((act) => {
@@ -3508,7 +3535,7 @@ const initialPayload = (() => {
 
     const message = document.createElement("p");
     message.className = "screen__message";
-    message.textContent = actData?.intro
+    message.textContent = getValue(actData, "intro")
       ? actData.intro
       : profile
       ? `Trainer ${profile.trainer_name}, your quest profile is synced. The first chapter unlocks shortly.`
@@ -3516,34 +3543,36 @@ const initialPayload = (() => {
 
     let objectiveTitle = null;
     let objectiveList = null;
-    if (actData?.objectives?.length) {
+    const objectives = getValue(actData, "objectives") || [];
+    if (objectives.length) {
       objectiveTitle = document.createElement("p");
       objectiveTitle.className = "screen__subtitle";
       objectiveTitle.textContent = "Quest objectives";
 
       objectiveList = document.createElement("ul");
       objectiveList.className = "objectives";
-      actData.objectives.forEach((objective) => {
+      objectives.forEach((objective) => {
         const item = document.createElement("li");
         item.textContent = objective;
         objectiveList.appendChild(item);
       });
     }
 
-    const sceneLookup = (id) => (story?.scenes || {})[id];
+    const sceneLookup = (id) => (getValue(story, "scenes") || {})[id];
     const minigameScenes =
-      (actData?.scenes || [])
+      (getValue(actData, "scenes") || [])
         .map((sceneId) => sceneLookup(sceneId))
-        .filter((scene) => scene?.type === "minigame") || [];
+        .filter((scene) => getValue(scene, "type") === "minigame") || [];
 
     const tasksPanel = document.createElement("div");
     tasksPanel.className = "tasks";
 
     minigameScenes.forEach((scene) => {
-      const minigame = scene?.minigame || {};
-      const kind = (minigame.kind || scene?.kind || "").toLowerCase();
-      const flagKey = minigame.success_flag || scene?.success_flag || scene?.id;
-      const flagStatus = flagKey ? session?.progress_flags?.[flagKey] : null;
+      const minigame = getValue(scene, "minigame") || {};
+      const kind = (minigame.kind || getValue(scene, "kind") || "").toLowerCase();
+      const flagKey = minigame.success_flag || getValue(scene, "success_flag") || getValue(scene, "id");
+      const sessionProgress = getValue(session, "progress_flags") || {};
+      const flagStatus = flagKey ? sessionProgress[flagKey] : null;
 
       const card = document.createElement("div");
       card.className = "task-card";
@@ -3554,7 +3583,7 @@ const initialPayload = (() => {
       const heading = document.createElement("h2");
       heading.className = "task-card__title";
       heading.textContent =
-        scene?.title ||
+        getValue(scene, "title") ||
         (kind === "artifact_scan"
           ? "Locate the artifact"
           : kind === "mosaic"
@@ -3564,7 +3593,7 @@ const initialPayload = (() => {
       const description = document.createElement("p");
       description.className = "task-card__description";
       description.textContent =
-        (scene?.text && scene.text[0]) ||
+        (getValue(scene, "text") && scene.text[0]) ||
         minigame.prompt ||
         (kind === "artifact_scan"
           ? "Scan the object on-site or enter the 4-digit code etched on it."
@@ -3675,7 +3704,7 @@ const initialPayload = (() => {
               puzzle_id: minigame.puzzle_id || scene.id,
               success_flag: flagKey,
               scene_id: scene.id,
-              success_token: crypto?.randomUUID
+              success_token: getValue(crypto, "randomUUID")
                 ? crypto.randomUUID()
                 : `token-${Date.now()}`,
             });
@@ -4355,9 +4384,9 @@ const initialPayload = (() => {
       tasksPanel.appendChild(card);
     });
 
-    const progressFlags = session?.progress_flags || {};
-    const currentActNumber = session?.current_act || 1;
-    const nextActId = actData?.next_act;
+    const progressFlags = getValue(session, "progress_flags") || {};
+    const currentActNumber = getValue(session, "current_act") || 1;
+    const nextActId = getValue(actData, "next_act");
     let nextActNumber = null;
     if (nextActId) {
       const match = /^act(\d+)/i.exec(nextActId);
@@ -4518,8 +4547,8 @@ const initialPayload = (() => {
       view: enabled ? (quest.state.profile ? "resume" : "landing") : "offline",
       signinForm: {
         trainer_name:
-          quest.state.profile?.trainer_name ||
-          quest.state.signinForm?.trainer_name ||
+          getValue(quest.state.profile, "trainer_name") ||
+          getValue(quest.state.signinForm, "trainer_name") ||
           "",
         pin: "",
       },
