@@ -59,6 +59,7 @@ def quest_shell():
         "enabled": feature_gate.enabled(),
         "use_supabase": bool(current_app.config.get("USE_SUPABASE", False)),
         "story": services.load_story(include_assets=True),
+        "view": "landing",
     }
     return render_template("geocache/base.html", initial_state=initial_state)
 
@@ -81,6 +82,27 @@ def quest_story():
     feature_gate.guard()
     story = services.load_story(include_assets=True)
     return jsonify(story)
+
+
+@geocache_bp.get("/manifest")
+def quest_manifest():
+    feature_gate.guard()
+    story = services.load_story(include_assets=True)
+    return jsonify({"story": story, "version": story.get("version")})
+
+
+@geocache_bp.get("/start")
+def quest_start():
+    feature_gate.guard()
+    initial_state = {
+        "title": "Whispers of the Wild Court",
+        "message": "Summoning Act I…",
+        "enabled": feature_gate.enabled(),
+        "use_supabase": bool(current_app.config.get("USE_SUPABASE", False)),
+        "story": services.load_story(include_assets=True),
+        "view": "signin",
+    }
+    return render_template("geocache/base.html", initial_state=initial_state)
 
 
 @geocache_bp.post("/profile")
