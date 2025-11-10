@@ -4505,52 +4505,32 @@ const initialPayload = (() => {
     }
   };
 
-  const initialize = async () => {
+  const initialize = () => {
     render();
-    quest.set({ busy: true, error: null });
+    const enabled = "enabled" in initialPayload ? Boolean(initialPayload.enabled) : true;
+    const storyPayload = initialPayload.story;
+    const hasStory = storyPayload && typeof storyPayload === "object" && Object.keys(storyPayload).length > 0;
 
-    try {
-      const status = await apiRequest("/geocache/status");
-      quest.set({
-        status,
-      });
-
-      if (!status.enabled) {
-        quest.set({
-          view: "offline",
-          busy: false,
-        });
-        return;
-      }
-
-      const story = await apiRequest("/geocache/story");
-
-      quest.set({
-        story: story && Object.keys(story).length ? story : quest.state.story,
-        busy: false,
-        view: quest.state.profile ? "resume" : "landing",
-        signinForm: {
-          trainer_name:
-            quest.state.profile?.trainer_name ||
-            quest.state.signinForm?.trainer_name ||
-            "",
-          pin: "",
-        },
-        error: null,
-      });
-    } catch (error) {
-      quest.set({
-        busy: false,
-        view: "error",
-        error: messageFromError(error),
-      });
-    }
+    quest.set({
+      status: { enabled },
+      story: hasStory ? storyPayload : quest.state.story,
+      busy: false,
+      view: enabled ? (quest.state.profile ? "resume" : "landing") : "offline",
+      signinForm: {
+        trainer_name:
+          quest.state.profile?.trainer_name ||
+          quest.state.signinForm?.trainer_name ||
+          "",
+        pin: "",
+      },
+      error: initialPayload.error || null,
+    });
   };
 
   // Prime initial render with whatever the server sent down.
-  quest.set({
-    view: "loading",
-    error: initialPayload.error || null,
-  });
+quest.set({
+  view: "loading",
+  error: initialPayload.error || null,
+});
 
 initialize();

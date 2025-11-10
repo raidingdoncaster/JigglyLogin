@@ -4,7 +4,6 @@ import hashlib
 import json
 import os
 import tempfile
-import uuid
 from datetime import datetime, timezone
 from math import atan2, cos, radians, sin, sqrt
 from pathlib import Path
@@ -226,81 +225,92 @@ def _ensure_trainer_account(
     return created_account, True
 
 
-def _parse_uuid(value: Any) -> Optional[str]:
-    if not value:
-        return None
-    try:
-        return str(uuid.UUID(str(value)))
-    except (ValueError, TypeError, AttributeError):
-        return None
-
-
-def _fetch_profile_by_trainer(trainer_username: str) -> Optional[Dict[str, Any]]:
+def _fetch_wotw_profile_by_trainer(trainer_username: str) -> Optional[Dict[str, Any]]:
     client = _supabase()
     trainer_lc = trainer_username.lower()
     try:
         resp = (
-            client.table("geocache_profiles")
-            .select("*")
-            .eq("trainer_name_lc", trainer_lc)
+            client.table("wotw_geocache_profiles")
+            .select("id, trainer_username, save_state")
+            .ilike("trainer_username", trainer_lc)
             .limit(1)
             .execute()
         )
     except Exception as exc:
-        current_app.logger.exception("Supabase geocache_profiles lookup failed: %s", exc)
+        current_app.logger.exception("Supabase wotw_geocache_profiles lookup failed: %s", exc)
         raise GeocacheServiceError("Failed to query quest profiles", status_code=502, payload={"error": "profile_lookup_failed"}) from exc
     rows = getattr(resp, "data", None) or []
     return rows[0] if rows else None
 
 
-def _fetch_profile_by_id(profile_id: str) -> Optional[Dict[str, Any]]:
+def _fetch_wotw_profile_by_id(profile_id: str) -> Optional[Dict[str, Any]]:
     client = _supabase()
     try:
         resp = (
-            client.table("geocache_profiles")
-            .select("*")
+            client.table("wotw_geocache_profiles")
+            .select("id, trainer_username, save_state")
             .eq("id", profile_id)
             .limit(1)
             .execute()
         )
     except Exception as exc:
-        current_app.logger.exception("Supabase geocache_profiles id lookup failed: %s", exc)
+        current_app.logger.exception("Supabase wotw_geocache_profiles id lookup failed: %s", exc)
         raise GeocacheServiceError("Failed to query quest profiles", status_code=502, payload={"error": "profile_lookup_failed"}) from exc
     rows = getattr(resp, "data", None) or []
     return rows[0] if rows else None
 
 
-def _fetch_artifact(slug: str) -> Optional[Dict[str, Any]]:
-    if not slug:
-        return None
-    spec = _get_artifact_spec(slug)
-    if spec:
-        return spec
+def _ensure_wotw_profile(trainer_username: str) -> Tuple[Dict[str, Any], bool]:
+    existing = _fetch_wotw_profile_by_trainer(trainer_username)
+    if existing:
+        return existing, False
 
-    # Fallback to Supabase if configured (legacy support)
     client = _supabase()
+    payload = {
+        "trainer_username": trainer_username,
+        "save_state": {},
+    }
     try:
         resp = (
-            client.table("geocache_artifacts")
-            .select("*")
-            .eq("slug", slug)
-            .limit(1)
+            client.table("wotw_geocache_profiles")
+            .insert(payload, returning="representation")
             .execute()
         )
     except Exception as exc:
-        current_app.logger.exception("Supabase geocache_artifacts lookup failed: %s", exc)
-        raise GeocacheServiceError("Failed to query artifacts", status_code=502, payload={"error": "artifact_lookup_failed"}) from exc
+        current_app.logger.exception("Supabase wotw_geocache_profiles insert failed: %s", exc)
+        raise GeocacheServiceError("Failed to create quest profile", status_code=502, payload={"error": "profile_create_failed"}) from exc
+
     rows = getattr(resp, "data", None) or []
-    return rows[0] if rows else None
+    created = rows[0] if rows else _fetch_wotw_profile_by_trainer(trainer_username)
+    if not created:
+        raise GeocacheServiceError("Quest profile creation failed", status_code=502, payload={"error": "profile_create_failed"})
+    return created, True
 
 
-def _merge_metadata(existing: Any, extra: Optional[Dict[str, Any]]) -> Dict[str, Any]:
-    base = existing.copy() if isinstance(existing, dict) else {}
-    if extra:
-        for key, value in extra.items():
-            if value is not None:
-                base[key] = value
-    return base
+def _save_wotw_profile(profile_id: str, trainer_username: str, save_state: Dict[str, Any]) -> Dict[str, Any]:
+    client = _supabase()
+    payload = {
+        "id": profile_id,
+        "trainer_username": trainer_username,
+        "save_state": save_state or {},
+    }
+    try:
+        resp = (
+            client.table("wotw_geocache_profiles")
+            .upsert(payload, returning="representation")
+            .execute()
+        )
+    except Exception as exc:
+        current_app.logger.exception("Supabase wotw_geocache_profiles upsert failed: %s", exc)
+        raise GeocacheServiceError("Failed to save quest progress", status_code=502, payload={"error": "profile_save_failed"}) from exc
+    rows = getattr(resp, "data", None) or []
+    return rows[0] if rows else _fetch_wotw_profile_by_id(profile_id)
+
+
+def _fetch_artifact(slug: str) -> Optional[Dict[str, Any]]:
+    if not slug:
+        return None
+    return _get_artifact_spec(slug)
 
 
 def _merge_dict(base: Optional[Dict[str, Any]], updates: Optional[Dict[str, Any]]) -> Dict[str, Any]:
@@ -317,90 +327,6 @@ def _merge_dict(base: Optional[Dict[str, Any]], updates: Optional[Dict[str, Any]
     return result
 
 
-def _ensure_geocache_profile(
-    trainer_username: str,
-    pin: str,
-    campfire_name: Optional[str],
-    campfire_opt_out: bool,
-    account_row: Dict[str, Any],
-    metadata: Optional[Dict[str, Any]] = None,
-) -> Tuple[Dict[str, Any], bool]:
-    trainer_norm = trainer_username.strip()
-    profile = _fetch_profile_by_trainer(trainer_norm)
-    account_campfire = (
-        account_row.get("campfire_username")
-        or account_row.get("Campfire Username")
-        or account_row.get("campfire_name")
-        or account_row.get("Campfire Name")
-    )
-    campfire_value = _normalize_campfire(campfire_name, campfire_opt_out)
-    if not campfire_value and not campfire_opt_out and account_campfire:
-        campfire_value = _normalize_campfire(account_campfire, False)
-    hashed_pin = _hash_pin(pin)
-    merged_metadata = _merge_metadata(
-        profile.get("metadata") if profile else {},
-        {
-            "campfire_opt_out": campfire_opt_out,
-            "campfire_username": campfire_value or _normalize_campfire(account_campfire, False),
-            "last_login_at": _now_iso(),
-            **(metadata or {}),
-        },
-    )
-
-    update_payload: Dict[str, Any] = {}
-    rdab_user_uuid = _parse_uuid(account_row.get("id"))
-
-    if profile:
-        if profile.get("pin_hash") != hashed_pin:
-            update_payload["pin_hash"] = hashed_pin
-        if campfire_value != profile.get("campfire_name"):
-            update_payload["campfire_name"] = campfire_value
-        if rdab_user_uuid and not profile.get("rdab_user_id"):
-            update_payload["rdab_user_id"] = rdab_user_uuid
-        update_payload["metadata"] = merged_metadata
-        if update_payload:
-            client = _supabase()
-            try:
-                resp = (
-                    client.table("geocache_profiles")
-                    .update(update_payload, returning="representation")
-                    .eq("id", profile["id"])
-                    .execute()
-                )
-            except Exception as exc:
-                current_app.logger.exception("Supabase geocache_profiles update failed: %s", exc)
-                raise GeocacheServiceError("Failed to update quest profile", status_code=502, payload={"error": "profile_update_failed"}) from exc
-            rows = getattr(resp, "data", None) or []
-            return (rows[0] if rows else _fetch_profile_by_trainer(trainer_norm)) or profile, False
-        return profile, False
-
-    insert_payload = {
-        "trainer_name": trainer_username,
-        "campfire_name": campfire_value,
-        "pin_hash": hashed_pin,
-        "metadata": merged_metadata,
-    }
-    if rdab_user_uuid:
-        insert_payload["rdab_user_id"] = rdab_user_uuid
-
-    client = _supabase()
-    try:
-        resp = (
-            client.table("geocache_profiles")
-            .insert(insert_payload, returning="representation")
-            .execute()
-        )
-    except Exception as exc:
-        current_app.logger.exception("Supabase geocache_profiles insert failed: %s", exc)
-        raise GeocacheServiceError("Failed to create quest profile", status_code=502, payload={"error": "profile_create_failed"}) from exc
-
-    rows = getattr(resp, "data", None) or []
-    created_profile = rows[0] if rows else _fetch_profile_by_trainer(trainer_norm)
-    if not created_profile:
-        raise GeocacheServiceError("Quest profile creation failed", status_code=502, payload={"error": "profile_create_failed"})
-    return created_profile, True
-
-
 SESSION_FIELDS = {
     "current_act",
     "last_scene",
@@ -411,6 +337,91 @@ SESSION_FIELDS = {
     "ending_choice",
     "ended_at",
 }
+
+DEFAULT_SESSION_STATE = {
+    "current_act": 1,
+    "last_scene": None,
+    "branch": None,
+    "choices": {},
+    "inventory": {},
+    "progress_flags": {},
+    "ending_choice": None,
+    "ended_at": None,
+    "created_at": None,
+    "updated_at": None,
+    "event_log": [],
+}
+
+
+def _normalize_session_state(raw: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    state = {key: value for key, value in DEFAULT_SESSION_STATE.items()}
+    if not isinstance(raw, dict):
+        return state
+
+    def _as_dict(candidate: Any) -> Dict[str, Any]:
+        return dict(candidate) if isinstance(candidate, dict) else {}
+
+    state["current_act"] = int(raw.get("current_act") or state["current_act"])
+    state["last_scene"] = raw.get("last_scene") or state["last_scene"]
+    state["branch"] = raw.get("branch") or state["branch"]
+    state["choices"] = _as_dict(raw.get("choices"))
+    state["inventory"] = _as_dict(raw.get("inventory"))
+    state["progress_flags"] = _as_dict(raw.get("progress_flags"))
+    state["ending_choice"] = raw.get("ending_choice") or state["ending_choice"]
+    state["ended_at"] = raw.get("ended_at") or state["ended_at"]
+    state["created_at"] = raw.get("created_at") or state["created_at"]
+    state["updated_at"] = raw.get("updated_at") or state["updated_at"]
+    if isinstance(raw.get("event_log"), list):
+        state["event_log"] = list(raw["event_log"])
+    return state
+
+
+def _merge_session_state(current: Dict[str, Any], updates: Dict[str, Any]) -> Dict[str, Any]:
+    merged = _normalize_session_state(current)
+    if not updates:
+        return merged
+
+    if "current_act" in updates and updates["current_act"] is not None:
+        merged["current_act"] = int(updates["current_act"])
+    if "last_scene" in updates:
+        merged["last_scene"] = updates["last_scene"]
+    if "branch" in updates:
+        merged["branch"] = updates["branch"]
+    if "ending_choice" in updates:
+        merged["ending_choice"] = updates["ending_choice"]
+    if "ended_at" in updates:
+        merged["ended_at"] = updates["ended_at"]
+    if "choices" in updates:
+        merged["choices"] = _merge_dict(merged.get("choices"), updates.get("choices"))
+    if "inventory" in updates:
+        merged["inventory"] = _merge_dict(merged.get("inventory"), updates.get("inventory"))
+    if "progress_flags" in updates:
+        merged["progress_flags"] = _merge_dict(merged.get("progress_flags"), updates.get("progress_flags"))
+
+    merged["updated_at"] = _now_iso()
+    if not merged.get("created_at"):
+        merged["created_at"] = merged["updated_at"]
+    return merged
+
+
+def _authorize_wotw_profile(profile_id: str, pin: str) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+    profile = _fetch_wotw_profile_by_id(profile_id)
+    if not profile:
+        raise GeocacheServiceError("Quest profile not found", status_code=404, payload={"error": "profile_not_found"})
+
+    trainer_username = profile.get("trainer_username") or ""
+    pin_clean = (pin or "").strip()
+    if not pin_clean:
+        raise GeocacheServiceError("PIN required", status_code=400, payload={"error": "missing_pin"})
+
+    account = _fetch_sheet1_account(trainer_username.lower())
+    if not account:
+        raise GeocacheServiceError("Trainer account missing", status_code=404, payload={"error": "account_missing"})
+
+    if not _pin_matches(account, trainer_username, pin_clean):
+        raise GeocacheServiceError("Incorrect PIN", status_code=401, payload={"error": "invalid_pin"})
+
+    return profile, account
 
 REQUIRED_FLAGS_BY_ACT = {
     2: {"compass_found", "compass_repaired"},
@@ -430,22 +441,6 @@ REQUIRED_FLAGS_BY_ACT = {
         "order_defeated",
     },
 }
-
-
-def _authorize_profile(profile_id: str, pin: str) -> Dict[str, Any]:
-    profile = _fetch_profile_by_id(profile_id)
-    if not profile:
-        raise GeocacheServiceError("Profile not found", status_code=404, payload={"error": "profile_not_found"})
-
-    pin_clean = (pin or "").strip()
-    if not pin_clean:
-        raise GeocacheServiceError("PIN required", status_code=400, payload={"error": "missing_pin"})
-
-    hashed_pin = _hash_pin(pin_clean)
-    if profile.get("pin_hash") != hashed_pin:
-        raise GeocacheServiceError("Incorrect PIN", status_code=401, payload={"error": "invalid_pin"})
-
-    return profile
 
 
 def _hash_location_token(lat: float, lng: float, precision: int = 4) -> str:
@@ -741,138 +736,53 @@ def _filter_session_state(state: Optional[Dict[str, Any]]) -> Dict[str, Any]:
         return {}
     filtered: Dict[str, Any] = {}
     for key in SESSION_FIELDS:
-        if key in state:
-            filtered[key] = state[key]
+        if key not in state:
+            continue
+        value = state[key]
+        if key == "current_act":
+            try:
+                filtered[key] = int(value)
+            except (TypeError, ValueError):
+                raise GeocacheServiceError("Invalid act value", status_code=400, payload={"error": "invalid_act"})
+        elif key in {"choices", "inventory", "progress_flags"}:
+            filtered[key] = value if isinstance(value, dict) else {}
+        else:
+            filtered[key] = value
     return filtered
 
 
-def _get_latest_session(profile_id: str) -> Optional[Dict[str, Any]]:
-    client = _supabase()
-    try:
-        resp = (
-            client.table("geocache_sessions")
-            .select("*")
-            .eq("profile_id", profile_id)
-            .order("created_at", desc=True)
-            .limit(1)
-            .execute()
-        )
-    except Exception as exc:
-        current_app.logger.exception("Supabase geocache_sessions lookup failed: %s", exc)
-        raise GeocacheServiceError("Failed to query quest sessions", status_code=502, payload={"error": "session_lookup_failed"}) from exc
-    rows = getattr(resp, "data", None) or []
-    return rows[0] if rows else None
-
-
-def _create_session(profile_id: str, state: Dict[str, Any]) -> Dict[str, Any]:
-    client = _supabase()
-    payload = {
-        "profile_id": profile_id,
-        **state,
+def _serialize_profile(profile_row: Dict[str, Any], account_row: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    account = account_row or {}
+    trainer_username = (account.get("trainer_username") or profile_row.get("trainer_username") or "").strip()
+    campfire_name = account.get("campfire_username") or "Not on Campfire"
+    metadata: Dict[str, Any] = {
+        "campfire_username": campfire_name,
     }
-    payload.setdefault("current_act", 1)
-    payload.setdefault("choices", state.get("choices") or {})
-    payload.setdefault("inventory", state.get("inventory") or {})
-    payload.setdefault("progress_flags", state.get("progress_flags") or {})
-    try:
-        resp = (
-            client.table("geocache_sessions")
-            .insert(payload, returning="representation")
-            .execute()
-        )
-    except Exception as exc:
-        current_app.logger.exception("Supabase geocache_sessions insert failed: %s", exc)
-        raise GeocacheServiceError("Failed to create quest session", status_code=502, payload={"error": "session_create_failed"}) from exc
-    rows = getattr(resp, "data", None) or []
-    created = rows[0] if rows else _get_latest_session(profile_id)
-    if not created:
-        raise GeocacheServiceError("Quest session creation failed", status_code=502, payload={"error": "session_create_failed"})
-    return created
+    if account.get("last_login"):
+        metadata["last_login_at"] = account["last_login"]
 
-
-def _update_session(existing_session: Dict[str, Any], state: Dict[str, Any]) -> Dict[str, Any]:
-    if not state:
-        return existing_session
-    client = _supabase()
-    update_payload = dict(state)
-    if "progress_flags" in state:
-        update_payload["progress_flags"] = _merge_dict(
-            existing_session.get("progress_flags"),
-            state.get("progress_flags"),
-        )
-    if "inventory" in state:
-        update_payload["inventory"] = _merge_dict(
-            existing_session.get("inventory"),
-            state.get("inventory"),
-        )
-    if "choices" in state:
-        update_payload["choices"] = _merge_dict(
-            existing_session.get("choices"),
-            state.get("choices"),
-        )
-
-    try:
-        resp = (
-            client.table("geocache_sessions")
-            .update(update_payload, returning="representation")
-            .eq("id", existing_session["id"])
-            .execute()
-        )
-    except Exception as exc:
-        current_app.logger.exception("Supabase geocache_sessions update failed: %s", exc)
-        raise GeocacheServiceError("Failed to update quest session", status_code=502, payload={"error": "session_update_failed"}) from exc
-    rows = getattr(resp, "data", None) or []
-    if rows:
-        return rows[0]
-    return {**existing_session, **update_payload}
-
-
-def _append_session_event(session_id: str, event: Optional[Dict[str, Any]]) -> None:
-    if not event:
-        return
-    client = _supabase()
-    payload = {
-        "session_id": session_id,
-        "event_type": event.get("event_type") or "update",
-        "payload": event.get("payload") or {},
-    }
-    try:
-        client.table("geocache_session_events").insert(payload).execute()
-    except Exception as exc:
-        # Log but do not raise — event logging should not break gameplay.
-        current_app.logger.warning("Supabase geocache_session_events insert failed: %s", exc)
-
-
-def _serialize_profile(profile: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
-    if not profile:
-        return None
     return {
-        "id": profile.get("id"),
-        "trainer_name": profile.get("trainer_name"),
-        "campfire_name": profile.get("campfire_name"),
-        "metadata": profile.get("metadata") or {},
-        "rdab_user_id": profile.get("rdab_user_id"),
-        "created_at": profile.get("created_at"),
-        "updated_at": profile.get("updated_at"),
+        "id": profile_row.get("id"),
+        "trainer_name": trainer_username,
+        "trainer_username": trainer_username,
+        "campfire_name": campfire_name,
+        "metadata": metadata,
     }
 
 
-def _serialize_session(session: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
-    if not session:
-        return None
+def _serialize_session(state: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    state = _normalize_session_state(state)
     return {
-        "id": session.get("id"),
-        "profile_id": session.get("profile_id"),
-        "current_act": session.get("current_act"),
-        "last_scene": session.get("last_scene"),
-        "branch": session.get("branch"),
-        "choices": session.get("choices") or {},
-        "inventory": session.get("inventory") or {},
-        "progress_flags": session.get("progress_flags") or {},
-        "ending_choice": session.get("ending_choice"),
-        "created_at": session.get("created_at"),
-        "updated_at": session.get("updated_at"),
-        "ended_at": session.get("ended_at"),
+        "current_act": state.get("current_act") or 1,
+        "last_scene": state.get("last_scene"),
+        "branch": state.get("branch"),
+        "choices": state.get("choices") or {},
+        "inventory": state.get("inventory") or {},
+        "progress_flags": state.get("progress_flags") or {},
+        "ending_choice": state.get("ending_choice"),
+        "ended_at": state.get("ended_at"),
+        "created_at": state.get("created_at"),
+        "updated_at": state.get("updated_at"),
     }
 
 
@@ -899,14 +809,17 @@ def create_or_login_profile(
         campfire_opt_out,
         create_if_missing=create_if_missing,
     )
-    profile, profile_created = _ensure_geocache_profile(trainer_clean, pin_clean, campfire_name, campfire_opt_out, account, metadata)
-    session = _get_latest_session(profile["id"])
+    profile_row, profile_created = _ensure_wotw_profile(trainer_clean)
+
+    save_state = _normalize_session_state(profile_row.get("save_state"))
+    serialized_profile = _serialize_profile(profile_row, account)
+    serialized_session = _serialize_session(save_state)
 
     return {
         "account_created": account_created,
         "profile_created": profile_created,
-        "profile": _serialize_profile(profile),
-        "session": _serialize_session(session),
+        "profile": serialized_profile,
+        "session": serialized_session,
     }
 
 
@@ -994,32 +907,25 @@ def complete_signup(
     if effective_opt_out:
         metadata["campfire_opt_out"] = True
 
-    profile, profile_created = _ensure_geocache_profile(
-        trainer_clean,
-        pin_clean,
-        campfire_value,
-        effective_opt_out,
-        account_row,
-        metadata,
-    )
-    session = _get_latest_session(profile["id"])
+    profile_row, profile_created = _ensure_wotw_profile(trainer_clean)
+    save_state = _normalize_session_state(profile_row.get("save_state"))
 
     _trigger_lugia_refresh()
 
     return {
         "account_created": True,
         "profile_created": profile_created,
-        "profile": _serialize_profile(profile),
-        "session": _serialize_session(session),
+        "profile": _serialize_profile(profile_row, account_row),
+        "session": _serialize_session(save_state),
     }
 
 
 def get_session_state(profile_id: str, pin: str) -> Dict[str, Any]:
-    profile = _authorize_profile(profile_id, pin)
-    session = _get_latest_session(profile["id"])
+    profile_row, account_row = _authorize_wotw_profile(profile_id, pin)
+    save_state = _normalize_session_state(profile_row.get("save_state"))
     return {
-        "profile": _serialize_profile(profile),
-        "session": _serialize_session(session),
+        "profile": _serialize_profile(profile_row, account_row),
+        "session": _serialize_session(save_state),
     }
 
 
@@ -1031,68 +937,68 @@ def save_session_state(
     event: Optional[Dict[str, Any]] = None,
     reset: bool = False,
 ) -> Dict[str, Any]:
-    profile = _authorize_profile(profile_id, pin)
-
+    profile_row, account_row = _authorize_wotw_profile(profile_id, pin)
     filtered_state = _filter_session_state(state_updates)
-    session_created = False
+
+    raw_state = profile_row.get("save_state") or {}
+    existing_state = _normalize_session_state(raw_state)
+    session_created = not bool(raw_state)
     session_reset = False
-    existing_session = None if reset else _get_latest_session(profile["id"])
-
-    if filtered_state:
-        existing_progress = existing_session.get("progress_flags") if existing_session else {}
-        combined_progress = _merge_dict(existing_progress, filtered_state.get("progress_flags"))
-
-        if "current_act" in filtered_state:
-            try:
-                target_act = int(filtered_state["current_act"])
-            except (TypeError, ValueError):
-                raise GeocacheServiceError("Invalid act value", status_code=400, payload={"error": "invalid_act"})
-
-            current_act = int(existing_session.get("current_act") or 1) if existing_session else 1
-            if target_act > current_act + 1:
-                raise GeocacheServiceError(
-                    "Act progression out of order",
-                    status_code=409,
-                    payload={"error": "act_out_of_sequence"},
-                )
-            required_flags = REQUIRED_FLAGS_BY_ACT.get(target_act)
-            if required_flags:
-                missing = [flag for flag in required_flags if not combined_progress.get(flag)]
-                if missing:
-                    raise GeocacheServiceError(
-                        "Quest requirements not met",
-                        status_code=409,
-                        payload={"error": "requirements_missing", "missing": missing},
-                    )
 
     if reset:
-        session = _create_session(profile["id"], filtered_state)
-        session_created = True
         session_reset = True
+        new_state = _normalize_session_state(filtered_state or {})
+        new_state["updated_at"] = _now_iso()
+        if not new_state.get("created_at"):
+            new_state["created_at"] = new_state["updated_at"]
     else:
-        if existing_session:
-            if filtered_state:
-                session = _update_session(existing_session, filtered_state)
-            else:
-                session = existing_session
-        else:
-            session = _create_session(profile["id"], filtered_state)
-            session_created = True
+        if filtered_state:
+            combined_progress = _merge_dict(existing_state.get("progress_flags"), filtered_state.get("progress_flags"))
 
-    _append_session_event(session["id"], event)
+            target_act = filtered_state.get("current_act")
+            if target_act is not None:
+                current_act = int(existing_state.get("current_act") or 1)
+                if target_act > current_act + 1:
+                    raise GeocacheServiceError(
+                        "Act progression out of order",
+                        status_code=409,
+                        payload={"error": "act_out_of_sequence"},
+                    )
+                required_flags = REQUIRED_FLAGS_BY_ACT.get(int(target_act))
+                if required_flags:
+                    missing = [flag for flag in required_flags if not combined_progress.get(flag)]
+                    if missing:
+                        raise GeocacheServiceError(
+                            "Quest requirements not met",
+                            status_code=409,
+                            payload={"error": "requirements_missing", "missing": missing},
+                        )
 
-    # Update profile metadata with last session reference
-    metadata = _merge_metadata(profile.get("metadata"), {"last_session_id": session["id"]})
-    client = _supabase()
-    try:
-        client.table("geocache_profiles").update({"metadata": metadata}, returning="minimal").eq("id", profile["id"]).execute()
-        profile["metadata"] = metadata
-    except Exception as exc:
-        current_app.logger.warning("Supabase geocache_profiles metadata update failed: %s", exc)
+        new_state = _merge_session_state(existing_state, filtered_state)
+
+    # Persist event metadata inside the save state for a simple audit trail.
+    if event:
+        base_log_source = new_state if session_reset else existing_state
+        event_log = list(base_log_source.get("event_log") or [])
+        event_entry = {
+            "recorded_at": _now_iso(),
+            **event,
+        }
+        event_log.append(event_entry)
+        new_state["event_log"] = event_log[-50:]  # cap to most recent 50 entries
+
+    timestamp = _now_iso()
+    new_state["updated_at"] = timestamp
+    if not new_state.get("created_at"):
+        new_state["created_at"] = timestamp
+
+    persisted = _save_wotw_profile(profile_row["id"], profile_row.get("trainer_username") or "", new_state)
+    profile_row.update(persisted or {})
+    profile_row["save_state"] = new_state
 
     return {
-        "profile": _serialize_profile(profile),
-        "session": _serialize_session(session),
+        "profile": _serialize_profile(profile_row, account_row),
+        "session": _serialize_session(new_state),
         "session_created": session_created,
         "session_reset": session_reset,
     }
@@ -1108,7 +1014,6 @@ def complete_artifact_scan(
     nfc_uid: Optional[str] = None,
     scene_id: Optional[str] = None,
 ) -> Dict[str, Any]:
-    profile = _authorize_profile(profile_id, pin)
     slug = (artifact_slug or "").strip()
     if not slug:
         raise GeocacheServiceError("Artifact slug required", status_code=400, payload={"error": "missing_artifact"})
@@ -1201,7 +1106,6 @@ def complete_mosaic_puzzle(
     success_token: Optional[str] = None,
     duration_ms: Optional[int] = None,
 ) -> Dict[str, Any]:
-    profile = _authorize_profile(profile_id, pin)
     puzzle_key = (puzzle_id or "").strip()
     if not puzzle_key:
         raise GeocacheServiceError("Puzzle identifier required", status_code=400, payload={"error": "missing_puzzle"})
@@ -1260,7 +1164,6 @@ def complete_location_check(
     precision: int = 4,
     scene_id: Optional[str] = None,
 ) -> Dict[str, Any]:
-    _authorize_profile(profile_id, pin)
     location_key = (location_id or "").strip()
     if not location_key:
         raise GeocacheServiceError("Location identifier required", status_code=400, payload={"error": "missing_location"})
