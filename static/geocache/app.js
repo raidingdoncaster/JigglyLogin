@@ -604,6 +604,23 @@ function autoSignInFromSession(force) {
       enterScene(startScene, { sync: !sessionData.last_scene });
     })
     .catch(function (error) {
+      if (error instanceof APIError && error.payload && error.payload.error === "session_not_authorised") {
+        quest.set({
+          busy: false,
+          error: null,
+          useSessionAuth: false,
+          sessionTrainer: null,
+        });
+        return;
+      }
+      if (error instanceof APIError && error.payload && error.payload.error === "trainer_not_found") {
+        quest.set({
+          busy: false,
+          error: null,
+          useSessionAuth: false,
+        });
+        return;
+      }
       quest.set({
         busy: false,
         error: messageFromError(error),
