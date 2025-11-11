@@ -333,7 +333,17 @@ function startQuestFromSession(sessionData, options) {
           throw error;
         });
   return ensureStory.then(() => {
-    const startScene = determineStartScene(sessionData || defaultSession());
+    let startScene = determineStartScene(sessionData || defaultSession());
+    if (!startScene) {
+      const acts = storyData.acts || [];
+      for (let i = 0; i < acts.length; i += 1) {
+        const actScenes = Array.isArray(acts[i].scenes) ? acts[i].scenes : [];
+        if (actScenes.length) {
+          startScene = actScenes[0];
+          break;
+        }
+      }
+    }
     if (!startScene) {
       quest.set({
         view: "story",
