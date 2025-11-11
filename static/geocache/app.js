@@ -193,6 +193,9 @@ const quest = {
     session: initialPayload.session || savedState.session || null,
     pin: savedPin || null,
     sceneId: null,
+    sessionTrainer: (initialPayload.session_trainer || "").trim() || null,
+    sessionAuthAttempted: false,
+    useSessionAuth: false,
   },
   set(patch) {
     this.state = Object.assign({}, this.state, patch || {});
@@ -358,7 +361,15 @@ function determineStartScene(session) {
 }
 
 function syncScene(sceneId, eventKey, extraState) {
-  if (!quest.state.profile || !quest.state.pin) {
+  if (!quest.state.profile) {
+    return Promise.resolve();
+  }
+  var activePin = quest.state.pin || "";
+  var useSessionAuth = !!quest.state.useSessionAuth || (!activePin && !!quest.state.sessionTrainer);
+  if (!activePin && !useSessionAuth) {
+    quest.set({
+      error: "Enter your quest PIN to continue syncing progress.",
+    });
     return Promise.resolve();
   }
   var actId = getActIdForScene(sceneId);
@@ -376,9 +387,12 @@ function syncScene(sceneId, eventKey, extraState) {
   }
   var requestBody = {
     profile_id: quest.state.profile.id,
-    pin: quest.state.pin,
+    pin: activePin,
     state: statePayload,
   };
+  if (useSessionAuth && !activePin) {
+    requestBody.use_session_auth = true;
+  }
   if (eventKey) {
     requestBody.event = { event_type: eventKey };
   }
@@ -418,17 +432,26 @@ function enterScene(sceneId, options) {
 }
 
 function resumeQuest() {
-  if (!quest.state.profile || !quest.state.pin) {
+  if (!quest.state.profile) {
+    quest.set({ view: "signin", error: "Sign in first to continue your quest." });
+    return;
+  }
+  var activePin = quest.state.pin || "";
+  var useSessionAuth = !!quest.state.useSessionAuth || (!activePin && !!quest.state.sessionTrainer);
+  if (!activePin && !useSessionAuth) {
     quest.set({
       view: "signin",
-      error: "Enter your trainer name and PIN to continue.",
+      error: "Enter your quest PIN to continue.",
     });
     return;
   }
   var requestBody = {
     profile_id: quest.state.profile.id,
-    pin: quest.state.pin,
+    pin: activePin,
   };
+  if (useSessionAuth && !activePin) {
+    requestBody.use_session_auth = true;
+  }
   quest.set({ busy: true, error: null });
   updateSessionRequest(requestBody)
     .then(function (response) {
@@ -506,6 +529,9 @@ function handleSigninSubmit(event) {
         profile: profile,
         session: session,
         pin: pinValue,
+        useSessionAuth: false,
+        sessionTrainer: trainerName,
+        sessionAuthAttempted: true,
       });
       var startScene = determineStartScene(session) || determineStartScene({});
       if (!startScene) {
@@ -523,6 +549,66 @@ function handleSigninSubmit(event) {
         error: messageFromError(error),
       });
       pinVault.clear();
+    });
+}
+
+function autoSignInFromSession(force) {
+  var trainer = quest.state.sessionTrainer;
+  if (!trainer) {
+    return;
+  }
+  if (!force && quest.state.sessionAuthAttempted) {
+    return;
+  }
+  if (quest.state.busy && !force) {
+    return;
+  }
+  quest.set({
+    sessionAuthAttempted: true,
+    busy: true,
+    error: null,
+    pin: "",
+  });
+  pinVault.clear();
+  createProfileRequest({
+    trainer_name: trainer,
+    pin: "",
+    metadata: { auth_mode: "session" },
+    create_if_missing: true,
+    use_session_auth: true,
+  })
+    .then(function (response) {
+      var profile = getValue(response, "profile") || null;
+      var sessionData = getValue(response, "session") || {};
+      if (!profile) {
+        throw new APIError("Quest profile missing from response.", response, 500);
+      }
+      storage.save({ profile: profile, session: sessionData });
+      quest.set({
+        busy: false,
+        profile: profile,
+        session: sessionData,
+        pin: "",
+        useSessionAuth: true,
+        sessionTrainer: trainer,
+      });
+      var startScene = determineStartScene(sessionData) || determineStartScene({});
+      if (!startScene) {
+        quest.set({
+          view: "story",
+          sceneId: null,
+          error: "Unable to load quest progress. Please talk to an event organiser.",
+        });
+        return;
+      }
+      enterScene(startScene, { sync: !sessionData.last_scene });
+    })
+    .catch(function (error) {
+      quest.set({
+        busy: false,
+        error: messageFromError(error),
+        useSessionAuth: false,
+      });
     });
 }
 
@@ -565,12 +651,31 @@ function renderLanding() {
       text: "A live geocache adventure for GO Wild Doncaster. Sign in and begin Act I instantly.",
     })
   );
+  if (quest.state.sessionTrainer) {
+    container.appendChild(
+      createElement("p", {
+        className: "screen__meta",
+        text: "Detected RDAB session for trainer \"" + quest.state.sessionTrainer + "\".",
+      })
+    );
+  }
   var actions = createElement("div", { className: "screen__actions" });
   actions.appendChild(
-    createButton("Begin quest", "button button--primary", function () {
+    createButton("Sign in with RDAB app", "button button--primary", function () {
       quest.set({ view: "signin", error: null });
     })
   );
+  if (quest.state.sessionTrainer && !quest.state.profile) {
+    actions.appendChild(
+      createButton(
+        "Continue as " + quest.state.sessionTrainer,
+        "button button--secondary",
+        function () {
+          autoSignInFromSession(true);
+        }
+      )
+    );
+  }
   actions.appendChild(
     createButton("What is this?", "button button--secondary", function () {
       quest.set({ view: "about", error: null });
@@ -633,7 +738,9 @@ function renderResume() {
     createElement("p", {
       className: "screen__message",
       text: hasProfile
-        ? "Press continue to fetch your progress. We’ll need your quest PIN."
+        ? quest.state.useSessionAuth || (!quest.state.pin && quest.state.sessionTrainer)
+          ? "Press continue to reload your quest progress."
+          : "Press continue to fetch your progress. We’ll need your quest PIN."
         : "Sign in first to create a quest profile.",
     })
   );
@@ -685,6 +792,8 @@ function renderSignin() {
   });
   if (quest.state.profile && quest.state.profile.trainer_name) {
     trainerInput.value = quest.state.profile.trainer_name;
+  } else if (quest.state.sessionTrainer) {
+    trainerInput.value = quest.state.sessionTrainer;
   }
   trainerField.appendChild(trainerLabel);
   trainerField.appendChild(trainerInput);
@@ -1743,6 +1852,13 @@ function ensureStoryLoaded() {
 
 ensureStoryLoaded().then(function () {
   render();
+  if (
+    quest.state.sessionTrainer &&
+    !quest.state.sessionAuthAttempted &&
+    (!quest.state.profile || !quest.state.pin)
+  ) {
+    autoSignInFromSession(false);
+  }
   if (
     quest.state.view === "story" &&
     !quest.state.sceneId &&

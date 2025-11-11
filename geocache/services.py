@@ -8,8 +8,10 @@ from datetime import datetime, timezone
 from math import atan2, cos, radians, sin, sqrt
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
+from types import SimpleNamespace
 
 from flask import current_app
+from flask import session
 
 import requests
 
@@ -34,9 +36,171 @@ class GeocacheServiceError(Exception):
 
 def _supabase():
     client = current_app.config.get("SUPABASE_CLIENT")
-    if not client:
-        raise GeocacheServiceError("Supabase unavailable", status_code=503, payload={"error": "supabase_unavailable"})
-    return client
+    if client:
+        return client
+    rest_client = current_app.config.get("_SUPABASE_REST_CLIENT")
+    if rest_client:
+        return rest_client
+    url = os.environ.get("SUPABASE_URL")
+    key = os.environ.get("SUPABASE_KEY")
+    if url and key:
+        rest_client = _SupabaseRestClient(url, key)
+        current_app.config["_SUPABASE_REST_CLIENT"] = rest_client
+        return rest_client
+    raise GeocacheServiceError(
+        "Supabase unavailable",
+        status_code=503,
+        payload={"error": "supabase_unavailable"},
+    )
+
+
+class _SupabaseRestClient:
+    def __init__(self, base_url: str, api_key: str):
+        self.base_url = base_url.rstrip("/") + "/rest/v1"
+        self.api_key = api_key
+
+    def table(self, name: str):
+        return _SupabaseRestTable(self, name)
+
+    def _headers(self):
+        return {
+            "apikey": self.api_key,
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
+
+
+class _SupabaseRestTable:
+    def __init__(self, client: _SupabaseRestClient, name: str):
+        self.client = client
+        self.name = name
+        self._reset()
+
+    def _reset(self):
+        self.operation = None
+        self.columns = "*"
+        self.filters = []
+        self.limit_value = None
+        self.payload = None
+        self.prefer = None
+        self.params = {}
+
+    def select(self, columns: str = "*"):
+        self._reset()
+        self.operation = "select"
+        self.columns = columns
+        return self
+
+    def insert(self, payload: Dict[str, Any], returning: str = "representation"):
+        self._reset()
+        self.operation = "insert"
+        self.payload = payload
+        self.prefer = f"return={returning or 'minimal'}"
+        return self
+
+    def upsert(self, payload: Dict[str, Any], returning: str = "representation"):
+        self._reset()
+        self.operation = "upsert"
+        self.payload = payload
+        self.prefer = f"return={returning or 'minimal'},resolution=merge-duplicates"
+        return self
+
+    def update(self, payload: Dict[str, Any], returning: str = "representation"):
+        self._reset()
+        self.operation = "update"
+        self.payload = payload
+        self.prefer = f"return={returning or 'representation'}"
+        return self
+
+    def ilike(self, column: str, value: str):
+        self.filters.append((column, "ilike", value))
+        return self
+
+    def eq(self, column: str, value: Any):
+        self.filters.append((column, "eq", value))
+        return self
+
+    def limit(self, value: int):
+        self.limit_value = value
+        return self
+
+    def execute(self):
+        try:
+            if self.operation == "select":
+                return self._execute_select()
+            if self.operation == "insert":
+                return self._execute_insert()
+            if self.operation == "upsert":
+                return self._execute_upsert()
+            if self.operation == "update":
+                return self._execute_update()
+            raise RuntimeError("Unsupported Supabase REST operation")
+        finally:
+            self._reset()
+
+    def _build_filter_params(self):
+        params = {}
+        for column, operator, value in self.filters:
+            if operator == "ilike":
+                params[column] = f"ilike.*{value}*"
+            elif operator == "eq":
+                params[column] = f"eq.{value}"
+        if self.limit_value:
+            params["limit"] = str(self.limit_value)
+        return params
+
+    def _execute_select(self):
+        url = f"{self.client.base_url}/{self.name}"
+        params = self._build_filter_params()
+        params["select"] = self.columns
+        headers = self.client._headers()
+        headers["Accept"] = "application/json"
+        response = requests.get(url, params=params, headers=headers, timeout=10)
+        if response.status_code >= 400:
+            raise RuntimeError(f"Supabase REST select failed: {response.status_code} {response.text[:300]}")
+        data = response.json()
+        return SimpleNamespace(data=data)
+
+    def _execute_insert(self):
+        url = f"{self.client.base_url}/{self.name}"
+        headers = self.client._headers()
+        if self.prefer:
+            headers["Prefer"] = self.prefer
+        payload = self.payload
+        if isinstance(payload, dict):
+            payload = [payload]
+        response = requests.post(url, json=payload, headers=headers, timeout=10)
+        if response.status_code >= 400:
+            raise RuntimeError(f"Supabase REST insert failed: {response.status_code} {response.text[:300]}")
+        data = response.json() if response.content else []
+        return SimpleNamespace(data=data)
+
+    def _execute_upsert(self):
+        url = f"{self.client.base_url}/{self.name}"
+        headers = self.client._headers()
+        prefer = self.prefer or "return=representation,resolution=merge-duplicates"
+        headers["Prefer"] = prefer
+        payload = self.payload
+        if isinstance(payload, dict):
+            payload = [payload]
+        response = requests.post(url, json=payload, headers=headers, timeout=10)
+        if response.status_code >= 400:
+            raise RuntimeError(f"Supabase REST upsert failed: {response.status_code} {response.text[:300]}")
+        data = response.json() if response.content else []
+        return SimpleNamespace(data=data)
+
+    def _execute_update(self):
+        url = f"{self.client.base_url}/{self.name}"
+        headers = self.client._headers()
+        if self.prefer:
+            headers["Prefer"] = self.prefer
+        params = self._build_filter_params()
+        payload = self.payload or {}
+        response = requests.patch(url, params=params, json=payload, headers=headers, timeout=10)
+        if response.status_code >= 400:
+            raise RuntimeError(f"Supabase REST update failed: {response.status_code} {response.text[:300]}")
+        data = response.json() if response.content else []
+        return SimpleNamespace(data=data)
 
 
 def _trigger_lugia_refresh() -> None:
@@ -404,22 +568,30 @@ def _merge_session_state(current: Dict[str, Any], updates: Dict[str, Any]) -> Di
     return merged
 
 
-def _authorize_wotw_profile(profile_id: str, pin: str) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+def _authorize_wotw_profile(profile_id: str, pin: str, *, use_session_auth: bool = False) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     profile = _fetch_wotw_profile_by_id(profile_id)
     if not profile:
         raise GeocacheServiceError("Quest profile not found", status_code=404, payload={"error": "profile_not_found"})
 
     trainer_username = profile.get("trainer_username") or ""
     pin_clean = (pin or "").strip()
-    if not pin_clean:
-        raise GeocacheServiceError("PIN required", status_code=400, payload={"error": "missing_pin"})
-
     account = _fetch_sheet1_account(trainer_username.lower())
     if not account:
         raise GeocacheServiceError("Trainer account missing", status_code=404, payload={"error": "account_missing"})
 
-    if not _pin_matches(account, trainer_username, pin_clean):
-        raise GeocacheServiceError("Incorrect PIN", status_code=401, payload={"error": "invalid_pin"})
+    if pin_clean:
+        if not _pin_matches(account, trainer_username, pin_clean):
+            raise GeocacheServiceError("Incorrect PIN", status_code=401, payload={"error": "invalid_pin"})
+    else:
+        if not use_session_auth:
+            raise GeocacheServiceError("PIN required", status_code=400, payload={"error": "missing_pin"})
+        session_trainer = (session.get("trainer") or "").strip().lower()
+        if not session_trainer or session_trainer != trainer_username.lower():
+            raise GeocacheServiceError(
+                "Session not authorised for this trainer.",
+                status_code=401,
+                payload={"error": "session_not_authorised"},
+            )
 
     return profile, account
 
@@ -794,21 +966,48 @@ def create_or_login_profile(
     campfire_opt_out: bool = False,
     metadata: Optional[Dict[str, Any]] = None,
     create_if_missing: bool = True,
+    use_session_auth: bool = False,
 ) -> Dict[str, Any]:
     trainer_clean = _normalize_trainer(trainer_name)
     if not trainer_clean:
         raise GeocacheServiceError("Trainer name required", status_code=400, payload={"error": "missing_trainer"})
     pin_clean = (pin or "").strip()
-    if not pin_clean or not pin_clean.isdigit() or len(pin_clean) != 4:
-        raise GeocacheServiceError("PIN must be exactly 4 digits", status_code=400, payload={"error": "invalid_pin_format"})
 
-    account, account_created = _ensure_trainer_account(
-        trainer_clean,
-        pin_clean,
-        campfire_name,
-        campfire_opt_out,
-        create_if_missing=create_if_missing,
-    )
+    session_trainer = (session.get("trainer") or "").strip().lower()
+    account_created = False
+
+    if use_session_auth:
+        if not session_trainer or session_trainer != trainer_clean:
+            raise GeocacheServiceError(
+                "Session not authorised for this trainer.",
+                status_code=401,
+                payload={"error": "session_not_authorised"},
+            )
+        account = _fetch_sheet1_account(trainer_clean)
+        if not account:
+            raise GeocacheServiceError(
+                "Trainer not found. Create a quest pass first.",
+                status_code=404,
+                payload={"error": "trainer_not_found"},
+            )
+        account_created = False
+        if pin_clean:
+            if not pin_clean.isdigit() or len(pin_clean) != 4:
+                raise GeocacheServiceError("PIN must be exactly 4 digits", status_code=400, payload={"error": "invalid_pin_format"})
+            hashed_pin = _hash_pin(pin_clean)
+            if account.get("pin_hash") != hashed_pin:
+                account = _update_sheet1_account(account, {"pin_hash": hashed_pin})
+    else:
+        if not pin_clean or not pin_clean.isdigit() or len(pin_clean) != 4:
+            raise GeocacheServiceError("PIN must be exactly 4 digits", status_code=400, payload={"error": "invalid_pin_format"})
+        account, account_created = _ensure_trainer_account(
+            trainer_clean,
+            pin_clean,
+            campfire_name,
+            campfire_opt_out,
+            create_if_missing=create_if_missing,
+        )
+
     profile_row, profile_created = _ensure_wotw_profile(trainer_clean)
 
     save_state = _normalize_session_state(profile_row.get("save_state"))
@@ -920,8 +1119,8 @@ def complete_signup(
     }
 
 
-def get_session_state(profile_id: str, pin: str) -> Dict[str, Any]:
-    profile_row, account_row = _authorize_wotw_profile(profile_id, pin)
+def get_session_state(profile_id: str, pin: str, *, use_session_auth: bool = False) -> Dict[str, Any]:
+    profile_row, account_row = _authorize_wotw_profile(profile_id, pin, use_session_auth=use_session_auth)
     save_state = _normalize_session_state(profile_row.get("save_state"))
     return {
         "profile": _serialize_profile(profile_row, account_row),
@@ -936,8 +1135,9 @@ def save_session_state(
     *,
     event: Optional[Dict[str, Any]] = None,
     reset: bool = False,
+    use_session_auth: bool = False,
 ) -> Dict[str, Any]:
-    profile_row, account_row = _authorize_wotw_profile(profile_id, pin)
+    profile_row, account_row = _authorize_wotw_profile(profile_id, pin, use_session_auth=use_session_auth)
     filtered_state = _filter_session_state(state_updates)
 
     raw_state = profile_row.get("save_state") or {}

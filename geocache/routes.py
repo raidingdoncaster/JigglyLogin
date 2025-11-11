@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from flask import Blueprint, abort, current_app, jsonify, render_template, request
+from flask import Blueprint, abort, current_app, jsonify, render_template, request, session
 
 from . import services
 
@@ -60,6 +60,7 @@ def quest_shell():
         "use_supabase": bool(current_app.config.get("USE_SUPABASE", False)),
         "story": services.load_story(include_assets=True),
         "view": "landing",
+        "session_trainer": (session.get("trainer") or "").strip(),
     }
     return render_template("geocache/base.html", initial_state=initial_state)
 
@@ -101,6 +102,7 @@ def quest_start():
         "use_supabase": bool(current_app.config.get("USE_SUPABASE", False)),
         "story": services.load_story(include_assets=True),
         "view": "signin",
+        "session_trainer": (session.get("trainer") or "").strip(),
     }
     return render_template("geocache/base.html", initial_state=initial_state)
 
@@ -115,14 +117,19 @@ def create_or_lookup_profile():
     campfire_opt_out = bool(payload.get("campfire_opt_out"))
     metadata = payload.get("metadata")
     create_if_missing = payload.get("create_if_missing", True)
+    use_session_auth = bool(payload.get("use_session_auth"))
     if metadata is not None and not isinstance(metadata, dict):
         metadata = None
 
-    if not trainer_name or not pin:
+    if not use_session_auth and (not trainer_name or not pin):
         return (
             jsonify({"error": "missing_fields", "detail": "trainer_name and pin are required"}),
             400,
         )
+    if use_session_auth and not trainer_name:
+        trainer_name = (session.get("trainer") or "").strip()
+        if not trainer_name:
+            return jsonify({"error": "session_not_authorised"}), 401
 
     try:
         result = services.create_or_login_profile(
@@ -132,6 +139,7 @@ def create_or_lookup_profile():
             campfire_opt_out=campfire_opt_out,
             metadata=metadata,
             create_if_missing=bool(create_if_missing),
+            use_session_auth=use_session_auth,
         )
     except services.GeocacheServiceError as exc:
         return jsonify(exc.payload), exc.status_code
@@ -188,10 +196,11 @@ def upsert_session_state():
     state_updates = payload.get("state")
     event = payload.get("event")
     reset = bool(payload.get("reset"))
+    use_session_auth = bool(payload.get("use_session_auth"))
 
     try:
         if state_updates is None and not reset:
-            result = services.get_session_state(profile_id, pin)
+            result = services.get_session_state(profile_id, pin, use_session_auth=use_session_auth)
         else:
             result = services.save_session_state(
                 profile_id,
@@ -199,6 +208,7 @@ def upsert_session_state():
                 state_updates,
                 event=event,
                 reset=reset,
+                use_session_auth=use_session_auth,
             )
     except services.GeocacheServiceError as exc:
         return jsonify(exc.payload), exc.status_code
