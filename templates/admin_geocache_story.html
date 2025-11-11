@@ -7,80 +7,48 @@
 {% block content %}
   <div class="story-header">
     <h1>🌿 Geocache Quest Story</h1>
-    <p>Review acts, scenes, and progression flags. Update <code>data/geocache_story.json</code> for content changes.</p>
-    <a class="button" href="{{ url_for('geocache.quest_shell') }}" target="_blank" rel="noopener">Open quest shell</a>
+    <p>Scenes are now defined in <code>geocache/story.py</code>. Update that file to change the adventure.</p>
+    <a class="button" href="{{ url_for('geocache.quest_shell') }}" target="_blank" rel="noopener">Open quest</a>
   </div>
 
-  {% for act in acts %}
-    <section class="act-card">
-      <header>
-        <h2>{{ act.id|capitalize }} – {{ act.title }}</h2>
-        <p class="act-intro">{{ act.intro }}</p>
-        {% if act.objectives %}
-          <h3>Objectives</h3>
-          <ul>
-            {% for objective in act.objectives %}
-              <li>{{ objective }}</li>
+  <section class="scene-list">
+    {% for scene_id, scene in scene_items %}
+      <article class="scene-card">
+        <header>
+          <h2>{{ scene.heading or scene_id }}</h2>
+          <p class="scene-id"><strong>Scene ID:</strong> {{ scene_id }}</p>
+          {% if scene.summary %}
+            <p class="scene-summary">{{ scene.summary }}</p>
+          {% endif %}
+        </header>
+
+        {% if scene.body %}
+          <div class="scene-body">
+            {% for paragraph in scene.body %}
+              <p>{{ paragraph }}</p>
             {% endfor %}
-          </ul>
+          </div>
         {% endif %}
-        {% if act.required_flags %}
-          <p class="act-required"><strong>Required flags:</strong> {{ act.required_flags|join(', ') }}</p>
-        {% endif %}
-        <p class="act-next"><strong>Next act:</strong> {{ act.next_act or 'End' }}</p>
-      </header>
 
-      <div class="scene-grid">
-        {% for scene_id, scene in act.scenes %}
-          <article class="scene-card">
-            <h4>{{ scene_id }}</h4>
-            <p class="scene-type">Type: {{ scene.type or 'narration' }}</p>
-            {% if scene.speaker %}
-              <p class="scene-speaker">Speaker: {{ scene.speaker }}</p>
-            {% endif %}
-            {% if scene.text %}
-              <div class="scene-text">
-                {% for line in scene.text %}
-                  <p>{{ line }}</p>
-                {% endfor %}
-              </div>
-            {% endif %}
-
-            {% if scene.minigame %}
-              <div class="scene-minigame">
-                <div><strong>Minigame:</strong> {{ scene.minigame.kind }}</div>
-                {% if scene.minigame.success_flag %}
-                  <div><strong>Flag:</strong> {{ scene.minigame.success_flag }}</div>
-                {% endif %}
-                {% for key, value in scene.minigame.items() %}
-                  {% if key not in ['kind', 'success_flag'] %}
-                    <div><strong>{{ key }}:</strong> {{ value }}</div>
+        {% if scene.options %}
+          <div class="scene-options">
+            <strong>Options</strong>
+            <ul>
+              {% for option in scene.options %}
+                <li>
+                  {{ option.label }}
+                  {% if option.next %}
+                    → <code>{{ option.next }}</code>
+                  {% elif option.action %}
+                    → <em>action:</em> <code>{{ option.action }}</code>
                   {% endif %}
-                {% endfor %}
-              </div>
-            {% endif %}
-
-            {% if scene.choices %}
-              <div class="scene-choices">
-                <strong>Choices:</strong>
-                <ul>
-                  {% for choice in scene.choices %}
-                    <li>{{ choice.id }} → {{ choice.next or 'End' }} ({{ choice.label }})</li>
-                  {% endfor %}
-                </ul>
-              </div>
-            {% elif scene.cta %}
-              <p class="scene-cta"><strong>CTA:</strong> {{ scene.cta.label }} → {{ scene.cta.next or 'End' }}</p>
-            {% endif %}
-          </article>
-        {% endfor %}
-      </div>
-    </section>
-  {% endfor %}
-
-  <section class="story-meta">
-    <h2>Metadata</h2>
-    <pre>{{ story.metadata | tojson(indent=2) }}</pre>
+                </li>
+              {% endfor %}
+            </ul>
+          </div>
+        {% endif %}
+      </article>
+    {% endfor %}
   </section>
 
   <section class="raw-json">
@@ -110,41 +78,28 @@
       font-weight:600;
     }
 
-    .act-card {
-      background:#fff;
-      border-radius:18px;
-      padding:24px;
-      margin-bottom:24px;
-      box-shadow:0 16px 32px rgba(15,23,42,0.08);
-    }
-    .act-card header h2 { margin-top:0; }
-    .act-intro { color:#455; margin-bottom:8px; }
-    .act-card ul { margin:0 0 8px 18px; }
-    .act-required { color:#924; }
-    .act-next { color:#476; }
-
-    .scene-grid {
+    .scene-list {
       display:grid;
       gap:18px;
-      margin-top:16px;
       grid-template-columns:repeat(auto-fill, minmax(260px,1fr));
     }
     .scene-card {
       border:1px solid rgba(15,23,42,0.08);
       border-radius:14px;
-      padding:16px;
-      background:rgba(245,248,255,0.5);
+      padding:18px;
+      background:#fff;
+      box-shadow:0 16px 32px rgba(15,23,42,0.06);
       display:flex;
       flex-direction:column;
-      gap:8px;
+      gap:10px;
     }
-    .scene-card h4 { margin:0; font-size:1.05em; }
-    .scene-type, .scene-speaker, .scene-cta { margin:0; color:#566; font-size:0.9em; }
-    .scene-text p { margin:0 0 6px; }
-    .scene-minigame { font-size:0.9em; background:rgba(58,141,222,0.08); padding:8px; border-radius:10px; }
-    .scene-choices ul { margin:6px 0 0 18px; font-size:0.9em; }
+    .scene-card header h2 { margin:0; }
+    .scene-id { margin:0; font-size:0.9em; color:#557; }
+    .scene-summary { margin:0; color:#455; }
+    .scene-body p { margin:0 0 6px; }
+    .scene-options ul { margin:6px 0 0 18px; }
 
-    .story-meta pre, .raw-json pre {
+    .raw-json pre {
       background:#0f172a;
       color:#f8fafc;
       padding:16px;

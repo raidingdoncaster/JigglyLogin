@@ -105,6 +105,56 @@ body {
   margin-top: 8px;
 }
 
+.screen__error {
+  width: 100%;
+  background: rgba(197, 79, 79, 0.12);
+  color: #842029;
+  border: 1px solid rgba(197, 79, 79, 0.3);
+  border-radius: 14px;
+  padding: 12px;
+  font-weight: 600;
+}
+
+.story-screen {
+  align-items: stretch;
+  gap: 12px;
+}
+
+.story-screen__location {
+  margin: 0;
+  font-size: 0.85rem;
+  color: rgba(60, 70, 90, 0.8);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.story-screen__title {
+  margin: 4px 0;
+  font-size: clamp(1.4rem, 3vw, 2rem);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.story-screen__summary {
+  margin: 0;
+  color: rgba(35, 52, 86, 0.82);
+  font-size: 1rem;
+}
+
+.story-screen__body {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: rgba(22, 38, 62, 0.95);
+}
+
+.story-screen__options {
+  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
 .button {
   display: inline-flex;
   align-items: center;

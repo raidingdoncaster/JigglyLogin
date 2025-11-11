@@ -22,8 +22,8 @@ import bleach
 from bleach.linkifier import DEFAULT_CALLBACKS
 from typing import Any
 
-from geocache import geocache_bp, services
-from geocache.services import REQUIRED_FLAGS_BY_ACT
+from geocache import geocache_bp
+from geocache.story import STORY as GEOCACHE_STORY
 from rdab.trainer_detection import extract_trainer_name
 
 # ====== Feature toggle ======
@@ -151,10 +151,6 @@ DATA_DIR.mkdir(parents=True, exist_ok=True)
 CUSTOM_EVENTS_PATH = DATA_DIR / "custom_events.json"
 GOWA_CONTENT_PATH = DATA_DIR / "gowa_page.json"
 LIVE_EVENTS_CONTENT_PATH = DATA_DIR / "live_events_page.json"
-GEOCACHE_STORY_PATH = DATA_DIR / "geocache_story.json"
-GEOCACHE_ASSETS_PATH = DATA_DIR / "geocache_assets.json"
-app.config.setdefault("GEOCACHE_STORY_PATH", GEOCACHE_STORY_PATH)
-app.config.setdefault("GEOCACHE_ASSETS_PATH", GEOCACHE_ASSETS_PATH)
 GOWA_DEFAULT_CONTENT = {
     "title": "Doncaster GO Wild Area 2025",
     "description": (
@@ -3494,43 +3490,12 @@ def admin_catalog():
 @app.route("/admin/geocache/story")
 def admin_geocache_story():
     _require_admin()
-    try:
-        story = services.load_story(include_assets=True)
-    except Exception as exc:
-        flash(f"Unable to load geocache story: {exc}", "error")
-        return redirect(url_for("admin_dashboard"))
-
-    scenes = story.get("scenes", {})
-    acts_raw = story.get("acts", [])
-    acts = []
-
-    for act in acts_raw:
-        act_id = act.get("id")
-        act_number = None
-        if isinstance(act_id, str) and act_id.lower().startswith("act"):
-            try:
-                act_number = int(act_id[3:])
-            except ValueError:
-                act_number = None
-        required = REQUIRED_FLAGS_BY_ACT.get(act_number or act_id, set())
-        act_scenes = act.get("scenes") or []
-        acts.append(
-            {
-                "id": act_id,
-                "title": act.get("title"),
-                "intro": act.get("intro"),
-                "objectives": act.get("objectives") or [],
-                "scenes": [(scene_id, scenes.get(scene_id, {})) for scene_id in act_scenes],
-                "next_act": act.get("next_act"),
-                "required_flags": sorted(required),
-            }
-        )
-
+    scenes = GEOCACHE_STORY.get("scenes", {})
+    scene_items = sorted(scenes.items(), key=lambda item: item[0])
     return render_template(
         "admin_geocache_story.html",
-        story=story,
-        acts=acts,
-        scenes=scenes,
+        story=GEOCACHE_STORY,
+        scene_items=scene_items,
     )
 
 
