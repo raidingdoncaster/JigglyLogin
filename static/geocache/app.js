@@ -360,6 +360,30 @@ function determineStartScene(session) {
   return actScenes.length ? actScenes[0] : null;
 }
 
+function startQuestFromSession(sessionData, options) {
+  var ensureStory =
+    storyData.acts && storyData.acts.length
+      ? Promise.resolve()
+      : fetchManifest().catch(function (error) {
+          quest.set({ error: messageFromError(error) });
+          throw error;
+        });
+  return ensureStory.then(function () {
+    var startScene = determineStartScene(sessionData) || determineStartScene({});
+    if (!startScene) {
+      quest.set({
+        view: "story",
+        sceneId: null,
+        error: "Unable to locate the next scene. Please speak to an event organiser.",
+      });
+      return;
+    }
+    var syncFlag =
+      options && Object.prototype.hasOwnProperty.call(options, "sync") ? options.sync : !sessionData.last_scene;
+    enterScene(startScene, { sync: syncFlag });
+  });
+}
+
 function syncScene(sceneId, eventKey, extraState) {
   if (!quest.state.profile) {
     return Promise.resolve();
@@ -463,16 +487,7 @@ function resumeQuest() {
         profile: updatedProfile,
         session: updatedSession,
       });
-      var startScene = determineStartScene(updatedSession);
-      if (!startScene) {
-        quest.set({
-          view: "story",
-          sceneId: null,
-          error: "Unable to locate the next scene. Please speak to an event host.",
-        });
-        return;
-      }
-      enterScene(startScene, { sync: false });
+      return startQuestFromSession(updatedSession, { sync: false });
     })
     .catch(function (error) {
       quest.set({ busy: false, error: messageFromError(error) });
@@ -533,15 +548,7 @@ function handleSigninSubmit(event) {
         sessionTrainer: trainerName,
         sessionAuthAttempted: true,
       });
-      var startScene = determineStartScene(session) || determineStartScene({});
-      if (!startScene) {
-        quest.set({
-          view: "error",
-          error: "Unable to load Act I. Please talk to an event organiser.",
-        });
-        return;
-      }
-      enterScene(startScene, { sync: !session.last_scene });
+      return startQuestFromSession(session, { sync: !session.last_scene });
     })
     .catch(function (error) {
       quest.set({
@@ -592,16 +599,7 @@ function autoSignInFromSession(force) {
         useSessionAuth: true,
         sessionTrainer: trainer,
       });
-      var startScene = determineStartScene(sessionData) || determineStartScene({});
-      if (!startScene) {
-        quest.set({
-          view: "story",
-          sceneId: null,
-          error: "Unable to load quest progress. Please talk to an event organiser.",
-        });
-        return;
-      }
-      enterScene(startScene, { sync: !sessionData.last_scene });
+      return startQuestFromSession(sessionData, { sync: !sessionData.last_scene });
     })
     .catch(function (error) {
       if (error instanceof APIError && error.payload && error.payload.error === "session_not_authorised") {
