@@ -22,8 +22,6 @@ import bleach
 from bleach.linkifier import DEFAULT_CALLBACKS
 from typing import Any
 
-from geocache import geocache_bp
-from geocache.story import STORY as GEOCACHE_STORY
 from rdab.trainer_detection import extract_trainer_name
 
 # ====== Feature toggle ======
@@ -109,7 +107,6 @@ app.secret_key = os.urandom(24)
 app.permanent_session_lifetime = timedelta(days=365)
 app.config.setdefault("USE_SUPABASE", USE_SUPABASE)
 app.config.setdefault("USE_GEOCACHE_QUEST", USE_GEOCACHE_QUEST)
-app.register_blueprint(geocache_bp)
 @app.errorhandler(404)
 @app.errorhandler(500)
 def show_custom_error_page(err):
@@ -232,7 +229,7 @@ GOWA_DEFAULT_CONTENT = {
         ),
         "paragraphs": [
             "Raiding Doncaster and Beyond and Community Ambassador teams from across the north of England have teamed up to help deliver Europe's first ever official Pokémon GO: Community Celebration event.",
-            "This is where community passion meets official gameplay. Expect a true in-person experience both on the ground in the City of Doncaster and in-game. From official route tours and raid trains, to geocache adventures and competitive challenges, to live activities and celebrations across the city.",
+            "This is where community passion meets official gameplay. Expect a true in-person experience both on the ground in the City of Doncaster and in-game. From official route tours and raid trains, to competitive challenges, to live activities and celebrations across the city.",
             "On Sunday, 16th November, the Wild Area comes alive at Doncaster Market and Corn Exchange from 10am till 6pm.",
             "This is not just an event. It's a milestone — where the communities of the North unite to deliver something truly world-class. Join us. Be a part of Pokémon GO history.",
         ],
@@ -289,12 +286,6 @@ GOWA_DEFAULT_CONTENT = {
                 "body": "Embark on Route Tours led by local guides! Explore Doncaster’s landmarks, tackle raids, battles, and uncover Wild secrets.",
                 "image": "gowa/activity-route-tour.png",
                 "image_alt": "Community Ambassadors leading a city route tour",
-            },
-            {
-                "title": "Digital Geocache Quest",
-                "body": "Join the Fairy Council in a secret investigation to uncover Team NO Wild’s true plans. Complete puzzles and uncover hidden clues to gain power, then use your power for good — or bad!",
-                "image": "gowa/activity-geocache.png",
-                "image_alt": "Digital geocache quest illustration",
             },
             {
                 "title": "Take on Team NO Wild",
@@ -380,12 +371,6 @@ LIVE_EVENTS_DEFAULT_CONTENT = {
                 "body": "Collect your wristband, grab a welcome drink, and meet the celebrations team.",
             },
             {
-                "image": "gowa/activity-geocache.png",
-                "time": "1:00 – 2:00 PM",
-                "title": "Trading Post & market",
-                "body": "Swap stickers, pins, and postcards while catching featured spawns around the market.",
-            },
-            {
                 "image": "gowa/activity-league.png",
                 "time": "5:50 PM",
                 "title": "Closing ceremony",
@@ -442,12 +427,6 @@ LIVE_EVENTS_DEFAULT_CONTENT = {
                 "description": "Play through the headline activities to claim an exclusive celebrations patch.",
                 "info": "Stamp cards available from the welcome desk.",
             },
-            {
-                "title": "Complete the geocache",
-                "image": "gowa/activity-geocache.png",
-                "description": "Crack the riddles around town to unlock the holographic postcard set.",
-                "info": "Check in with the Fairy Council booth for your first clue.",
-            },
         ],
         "prizes_showcase": {
             "heading": "Prizes include…",
@@ -471,11 +450,6 @@ LIVE_EVENTS_DEFAULT_CONTENT = {
                 {
                     "image": "gowa/activity-team-nowild.png",
                     "label": "Team NO Wild",
-                    "href": "#",
-                },
-                {
-                    "image": "gowa/activity-geocache.png",
-                    "label": "Geocache",
                     "href": "#",
                 },
             ],
@@ -3485,18 +3459,6 @@ def admin_catalog():
         print("⚠️ Failed fetching catalog items:", e)
 
     return render_template("admin_catalog.html", items=items)
-
-
-@app.route("/admin/geocache/story")
-def admin_geocache_story():
-    _require_admin()
-    scenes = GEOCACHE_STORY.get("scenes", {})
-    scene_items = sorted(scenes.items(), key=lambda item: item[0])
-    return render_template(
-        "admin_geocache_story.html",
-        story=GEOCACHE_STORY,
-        scene_items=scene_items,
-    )
 
 
 @app.route("/admin/catalog/<item_id>")
