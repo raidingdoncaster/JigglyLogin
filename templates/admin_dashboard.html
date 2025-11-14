@@ -47,10 +47,18 @@
       <img src="{{ url_for('static', filename='icons/admin/rdab-stats.png') }}" alt="RDAB Stats">
       <span>RDAB Stats</span>
     </a>
-    <a class="explore-card" href="{{ url_for('geocache.quest_shell') }}" target="_blank" rel="noopener">
-      <img src="{{ url_for('static', filename='icons/admin/catalog-manager.png') }}" alt="Geocache Quest">
-      <span>Run Geocache Quest</span>
-    </a>
+    {% if geocache_quest_available %}
+      <a class="explore-card" href="{{ url_for('geocache.quest_shell') }}" target="_blank" rel="noopener">
+        <img src="{{ url_for('static', filename='icons/admin/catalog-manager.png') }}" alt="Geocache Quest">
+        <span>Run Geocache Quest</span>
+      </a>
+    {% else %}
+      <div class="explore-card is-disabled" title="Geocache quest tooling is not deployed in this build.">
+        <img src="{{ url_for('static', filename='icons/admin/catalog-manager.png') }}" alt="Geocache Quest">
+        <span>Run Geocache Quest</span>
+        <small>Not available</small>
+      </div>
+    {% endif %}
     {% if show_leagues_app %}
       <a class="explore-card" href="{{ url_for('admin_leagues') }}">
         <img src="{{ url_for('static', filename='icons/leagues-app.png') }}" alt="Leagues Hub">
@@ -65,10 +73,18 @@
       <img src="{{ url_for('static', filename='icons/admin/catalog-manager.png') }}" alt="Catalog Manager">
       <span>Catalog Manager</span>
     </a>
-    <a class="explore-card" href="{{ url_for('admin_geocache_story') }}">
-      <img src="{{ url_for('static', filename='icons/admin/catalog-manager.png') }}" alt="Geocache Story">
-      <span>Story & Assets</span>
-    </a>
+    {% if geocache_story_available %}
+      <a class="explore-card" href="{{ url_for('admin_geocache_story') }}">
+        <img src="{{ url_for('static', filename='icons/admin/catalog-manager.png') }}" alt="Geocache Story">
+        <span>Story & Assets</span>
+      </a>
+    {% else %}
+      <div class="explore-card is-disabled" title="Story editor unlocks when the Geocache admin routes are deployed.">
+        <img src="{{ url_for('static', filename='icons/admin/catalog-manager.png') }}" alt="Geocache Story">
+        <span>Story & Assets</span>
+        <small>Not available</small>
+      </div>
+    {% endif %}
     <a class="explore-card" href="{{ url_for('admin_meetups') }}">
       <img src="{{ url_for('static', filename='icons/admin/meetups-manager.png') }}" alt="Meetup Manager">
       <span>Meetups Manager</span>
@@ -146,6 +162,17 @@
   font-size:0.9em;
   font-weight:600;
   text-shadow:0 6px 12px rgba(15,23,42,0.1);
+}
+.explore-card.is-disabled {
+  opacity:0.45;
+  pointer-events:none;
+  filter:grayscale(0.2);
+}
+.explore-card.is-disabled small {
+  display:block;
+  margin-top:4px;
+  font-size:0.75em;
+  color:#667085;
 }
 .live-events-cta{
   margin:32px auto 0;

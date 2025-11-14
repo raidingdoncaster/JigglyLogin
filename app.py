@@ -6,7 +6,7 @@ import requests
 import uuid
 import re
 from collections import Counter, defaultdict
-from flask import Flask, render_template, abort, request, redirect, url_for, session, flash, send_from_directory, jsonify, g, make_response
+from flask import Flask, render_template, abort, request, redirect, url_for, session, flash, send_from_directory, jsonify, g, make_response, current_app
 from werkzeug.utils import secure_filename
 from PIL import Image
 from pywebpush import webpush, WebPushException
@@ -3041,6 +3041,9 @@ def admin_dashboard():
     pending_redemptions = 0
     registered_trainers = 0
 
+    geocache_quest_available = "geocache.quest_shell" in current_app.view_functions
+    geocache_story_available = "admin_geocache_story" in current_app.view_functions
+
     try:
         # 📦 Active Catalog Items (where stock > 0 and active = true)
         result = supabase.table("catalog_items") \
@@ -3075,6 +3078,8 @@ def admin_dashboard():
         show_city_perks_app=SHOW_CITY_PERKS_APP,
         show_city_guides_app=SHOW_CITY_GUIDES_APP,
         show_leagues_app=SHOW_LEAGUES_APP,
+        geocache_quest_available=geocache_quest_available,
+        geocache_story_available=geocache_story_available,
     )
 
 
