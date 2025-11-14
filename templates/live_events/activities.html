@@ -10,9 +10,9 @@
       </div>
     {% endif %}
 
+    {% set story = activities.get("story") or {} %}
     <div class="story-brief">
-      {% set story = activities.get("story") or {} %}
-      <div>
+      <div class="story-brief__text">
         {% if story.eyebrow %}
           <div class="eyebrow">{{ story.eyebrow }}</div>
         {% endif %}
@@ -22,7 +22,7 @@
         {% endif %}
       </div>
       {% if story.image %}
-        <div class="agenda-card__image">
+        <div class="story-brief__image">
           <img src="{{ url_for('static', filename=story.image) }}" alt="{{ story.alt or '' }}">
         </div>
       {% endif %}

@@ -37,6 +37,7 @@ pogo-passport-key.json
 # --- Allow manifest.json but ignore other JSON files ---
 *.json
 !static/manifest.json
+!data/live_events.json
 !data/gowa_page.json
 !data/live_events.json
 

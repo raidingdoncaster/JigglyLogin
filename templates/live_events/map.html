@@ -23,9 +23,25 @@
       </ul>
     {% endif %}
 
-    {% if map_data.embed_html %}
-      <div class="welcome-card__image" style="margin-top:28px;">
-        {{ map_data.embed_html | safe }}
+    {% set locations = map_data.get("locations") or [] %}
+    {% if locations %}
+      <div class="map-actions">
+        {% for location in locations if location.image %}
+          <button
+            type="button"
+            class="map-button"
+            data-map-trigger
+            data-map-label="{{ location.label }}"
+            data-map-description="{{ location.description or '' }}"
+            data-map-image="{{ url_for('static', filename=location.image) }}"
+            data-map-alt="{{ location.alt or location.label }}"
+          >
+            <span>{{ location.label or "View map" }}</span>
+            {% if location.description %}
+              <small>{{ location.description }}</small>
+            {% endif %}
+          </button>
+        {% endfor %}
       </div>
     {% endif %}
   </section>

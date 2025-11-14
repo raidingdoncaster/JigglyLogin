@@ -76,6 +76,10 @@ GOWA_STATIC_PREFIX = "gowa"
 GOWA_BANNER_ASSET = f"{GOWA_STATIC_PREFIX}/banner.png"
 GOWA_LOGO_ASSET = f"{GOWA_STATIC_PREFIX}/logo.png"
 GOWA_EXTERNAL_URL = "https://rdab.app/gowa"
+GOWA_COMING_SOON_MODE = True  # 🚧 Set True to route every page to the GOWA coming-soon experience
+GOWA_COMING_SOON_MESSAGE = (
+    "Check back on 16/11/2025 to experience the full Pokemon GO: GO Wild Area - Doncaster celebration!"
+)
 
 # ====== Live events hub ======
 LIVE_EVENTS_ENABLED = True  # Toggle to enable the live events microsite
@@ -107,6 +111,24 @@ app.secret_key = os.urandom(24)
 app.permanent_session_lifetime = timedelta(days=365)
 app.config.setdefault("USE_SUPABASE", USE_SUPABASE)
 app.config.setdefault("USE_GEOCACHE_QUEST", USE_GEOCACHE_QUEST)
+
+
+@app.before_request
+def enforce_gowa_coming_soon_mode():
+    if not GOWA_COMING_SOON_MODE:
+        return
+
+    endpoint = request.endpoint or ""
+    allowed_when_locked = {
+        "static",
+        "manifest",
+        "service_worker",
+        "gowa_coming_soon",
+    }
+    if endpoint in allowed_when_locked:
+        return
+
+    return _render_gowa_coming_soon_page()
 @app.errorhandler(404)
 @app.errorhandler(500)
 def show_custom_error_page(err):
@@ -371,6 +393,12 @@ LIVE_EVENTS_DEFAULT_CONTENT = {
                 "body": "Collect your wristband, grab a welcome drink, and meet the celebrations team.",
             },
             {
+                "image": "gowa/activity-geocache.png",
+                "time": "1:00 – 1:45 PM",
+                "title": "Trading Post @ Corn Exchange",
+                "body": "Swap stickers, pins, and postcards at the Corn Exchange while catching featured spawns nearby.",
+            },
+            {
                 "image": "gowa/activity-league.png",
                 "time": "5:50 PM",
                 "title": "Closing ceremony",
@@ -469,6 +497,20 @@ LIVE_EVENTS_DEFAULT_CONTENT = {
             "Registration: Welcome arch beside Corn Exchange",
             "Rest zones: Corn Exchange mezzanine & Elmfield Park",
         ],
+        "locations": [
+            {
+                "label": "Doncaster City Centre",
+                "description": "Focuses on the Market Square, Corn Exchange, and surrounding raid hotspots.",
+                "image": "gowa/city-map.png",
+                "alt": "Annotated Doncaster city centre map",
+            },
+            {
+                "label": "Herten Triangle & Lakeside",
+                "description": "Highlights the evening meetups around Lakeside Village and the Herten Triangle.",
+                "image": "gowa/lakeside-map.png",
+                "alt": "Map showing Herten Triangle and Lakeside",
+            },
+        ],
     },
     "more": {
         "banner": {
@@ -562,6 +604,14 @@ def _ensure_live_events_enabled():
 def _ensure_gowa_enabled():
     if not GOWA_ENABLED:
         abort(404)
+
+
+def _render_gowa_coming_soon_page():
+    return render_template(
+        "gowa-coming-soon.html",
+        gowa_message=GOWA_COMING_SOON_MESSAGE,
+        gowa_return_date="16/11/2025",
+    )
 
 
 def _gowa_banner():
@@ -1969,6 +2019,11 @@ def live_events_page():
         active_view=view,
         navigation=content.get("navigation") or [],
     )
+
+
+@app.route("/gowa-coming-soon")
+def gowa_coming_soon():
+    return _render_gowa_coming_soon_page()
 
 
 @app.route("/gowa")
