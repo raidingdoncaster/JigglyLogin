@@ -84,6 +84,7 @@ GOWA_COMING_SOON_MESSAGE = (
 # ====== Live events hub ======
 LIVE_EVENTS_ENABLED = True  # Toggle to enable the live events microsite
 LIVE_EVENTS_EXTERNAL_URL = "https://rdab.app/live-events"
+LIVE_EVENTS_TAKEOVER = True  # When True, redirect all routes to the live events page
 
 # ====== Dashboard feature visibility toggles ======
 SHOW_CATALOG_APP = True
@@ -140,6 +141,17 @@ def check_maintenance_mode():
     from flask import request, render_template
 
     endpoint = request.endpoint or ""
+
+    if LIVE_EVENTS_TAKEOVER:
+        allowed_during_takeover = {
+            "static",
+            "manifest",
+            "service_worker",
+            "live_events_page",
+        }
+        if endpoint not in allowed_during_takeover:
+            return redirect(url_for("live_events_page"))
+
     allowed_when_locked = {
         "static",
         "manifest",
@@ -446,6 +458,20 @@ LIVE_EVENTS_DEFAULT_CONTENT = {
             "body": (
                 "Choose your path, complete featured activities, and collect stamps to unlock celebratory rewards."
             ),
+            "buttons": [
+                {
+                    "label": "Take part in CDL",
+                    "href": "https://docs.google.com/forms/d/e/1FAIpQLSdH6eWum7niLcEVv3K_KtYXoyaxo0IMM1Tofbexc5IiRHYrYQ/viewform?pli=1",
+                    "variant": "primary",
+                    "new_tab": True,
+                },
+                {
+                    "label": "Take part in the Geocache",
+                    "href": "https://pogoprizes.my.canva.site/wotwc",
+                    "variant": "secondary",
+                    "new_tab": True,
+                },
+            ],
         },
         "prizes_intro": "You can earn up to two prizes today.",
         "rewards": [

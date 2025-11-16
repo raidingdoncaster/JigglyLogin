@@ -37,6 +37,21 @@
         {% if mission.body %}
           <p class="lead">{{ mission.body }}</p>
         {% endif %}
+        {% set mission_buttons = mission.get("buttons") or [] %}
+        {% if mission_buttons %}
+          <div class="button-row">
+            {% for button in mission_buttons if button.label and button.href %}
+              {% set variant = button.variant or ("primary" if loop.first else "secondary") %}
+              <a
+                class="button button--{{ variant }} button--inline"
+                href="{{ button.href }}"
+                {% if button.new_tab %}target="_blank" rel="noopener"{% endif %}
+              >
+                {{ button.label }}
+              </a>
+            {% endfor %}
+          </div>
+        {% endif %}
       </div>
     {% endif %}
 

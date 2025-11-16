@@ -1,7 +1,7 @@
 {
   "meta": {
     "title": "Community Celebrations Live",
-    "description": "Your colourful hub for live events, story moments, and community surprises across Doncaster.",
+    "description": "Trainers, get ready to GO during Community Celebration: Doncaster 2025!",
     "canonical": "https://rdab.app/live-events"
   },
   "navigation": [
@@ -17,8 +17,8 @@
     },
     "welcome": {
       "eyebrow": "Welcome to Doncaster",
-      "title": "Community Celebrations Hub",
-      "subtitle": "Drop into the hub, plan your day, and discover the key moments we have lined up.",
+      "title": "Community Celebrations",
+      "subtitle": "Drop into the Corn Exchange, plan your day, and discover the key moments we have lined up.",
       "image": "gowa/communitycel.png",
       "alt": "Trainers celebrating together in Doncaster"
     },
@@ -28,19 +28,19 @@
         "image": "gowa/activity-route-tour.png",
         "time": "10:00 AM",
         "title": "Event hub opens",
-        "body": "Collect your wristband, grab a welcome drink, and meet the celebrations team."
+        "body": "Head over to the Corn Exchange for Merch!"
       },
       {
         "image": "gowa/activity-geocache.png",
         "time": "1:00 – 1:45 PM",
         "title": "Trading Post @ Corn Exchange",
-        "body": "Swap stickers, pins, and postcards at the Corn Exchange while catching featured spawns nearby."
+        "body": "Trade your Pokemon at the market square!"
       },
       {
         "image": "gowa/activity-league.png",
         "time": "5:50 PM",
         "title": "Closing ceremony",
-        "body": "Gather by the main stage for the big wrap-up, shout-outs, and prize reveals."
+        "body": "Head to the corn exchange to find out who wins the CDL."
       },
       {
         "image": "gowa/footer-banner.png",
@@ -56,7 +56,7 @@
     ],
     "route_tours": {
       "heading": "Route tours",
-      "description": "Join guided walks that uncover Doncaster lore, raid hotspots, and hidden challenges. Arrive five minutes early at the welcome arch to secure your spot.",
+      "description": "Join guided walks that uncover Doncaster lore, raid hotspots, and hidden challenges. Routes get going by Community Ambassadors outside of the Corn Exchange",
       "times_left": ["10:30 AM", "11:00 AM", "11:30 AM", "12:00 PM"],
       "times_right": ["1:00 PM", "2:00 PM", "3:00 PM", "4:00 PM"]
     }
@@ -75,21 +75,35 @@
     },
     "mission": {
       "title": "Your mission",
-      "body": "Choose your path, complete featured activities, and collect stamps to unlock celebratory rewards."
+      "body": "Choose your path, complete featured activities, and collect stamps to unlock celebratory rewards.",
+      "buttons": [
+        {
+          "label": "Take part in CDL",
+          "href": "https://docs.google.com/forms/d/e/1FAIpQLSdH6eWum7niLcEVv3K_KtYXoyaxo0IMM1Tofbexc5IiRHYrYQ/viewform?pli=1",
+          "variant": "primary",
+          "new_tab": true
+        },
+        {
+          "label": "Take part in the Geocache",
+          "href": "https://pogoprizes.my.canva.site/wotwc",
+          "variant": "secondary",
+          "new_tab": true
+        }
+      ]
     },
     "prizes_intro": "You can earn up to two prizes today.",
     "rewards": [
       {
         "title": "Earn 4 stamps",
         "image": "gowa/activity-league.png",
-        "description": "Play through the headline activities to claim an exclusive celebrations patch.",
+        "description": "Play through the headline activities for passport stamps and receive merch.",
         "info": "Stamp cards available from the welcome desk."
       },
       {
         "title": "Complete the geocache",
         "image": "gowa/activity-geocache.png",
-        "description": "Crack the riddles around town to unlock the holographic postcard set.",
-        "info": "Check in with the Fairy Council booth for your first clue."
+        "description": "Crack the codes.",
+        "info": "Tap here to get started."
       }
     ],
     "prizes_showcase": {
@@ -113,23 +127,23 @@
       "image": "gowa/banner.png",
       "alt": "Doncaster skyline banner"
     },
-    "heading": "Map & logistics",
-    "body": "Drop a static map, Google My Maps embed, or quick directions here. Use this placeholder to plan the layout.",
+    "heading": "Map",
+    "body": "",
     "notes": [
       "Venue hub: Doncaster Market Square",
-      "Registration: Welcome arch beside Corn Exchange",
-      "Rest zones: Corn Exchange mezzanine & Elmfield Park"
+      "Registration: Corn Exchange",
+      "Rest zones: Waterdale, Town Fields & Elmfield Park"
     ],
     "locations": [
       {
         "label": "Doncaster City Centre",
-        "description": "Focuses on the Market Square, Corn Exchange, and surrounding raid hotspots.",
+        "description": "Welcome!",
         "image": "gowa/city-map.png",
         "alt": "Annotated Doncaster city centre map"
       },
       {
         "label": "Herten Triangle & Lakeside",
-        "description": "Highlights the evening meetups around Lakeside Village and the Herten Triangle.",
+        "description": "Explore!",
         "image": "gowa/lakeside-map.png",
         "alt": "Map showing Herten Triangle and Lakeside"
       }
