@@ -71,12 +71,12 @@ if _gate_ttl_env:
         print(f"⚠️ Invalid ADMIN_DASHBOARD_GATE_TTL_SECONDS value: {_gate_ttl_env!r}. Using default {ADMIN_DASHBOARD_GATE_TTL_SECONDS}.")
 
 # ====== GOWA secret event toggle ======
-GOWA_ENABLED = True  # 🌿 Flip to True to unlock the Doncaster GO Wild Area experience
+GOWA_ENABLED = False  # 🌿 Flip to True to unlock the Doncaster GO Wild Area experience
 GOWA_STATIC_PREFIX = "gowa"
 GOWA_BANNER_ASSET = f"{GOWA_STATIC_PREFIX}/banner.png"
 GOWA_LOGO_ASSET = f"{GOWA_STATIC_PREFIX}/logo.png"
 GOWA_EXTERNAL_URL = "https://rdab.app/gowa"
-GOWA_COMING_SOON_MODE = True  # 🚧 Set True to route every page to the GOWA coming-soon experience
+GOWA_COMING_SOON_MODE = False  # 🚧 Set True to route every page to the GOWA coming-soon experience
 GOWA_COMING_SOON_MESSAGE = (
     "Check back on 16/11/2025 to experience the full Pokemon GO: GO Wild Area - Doncaster celebration!"
 )
