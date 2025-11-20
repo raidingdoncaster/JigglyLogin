@@ -25,8 +25,17 @@ from typing import Any
 from rdab.trainer_detection import extract_trainer_name
 
 # ====== Feature toggle ======
-USE_SUPABASE = True  # ✅ Supabase for stamps/meetups
-MAINTENANCE_MODE = False  # ⛔️ Change to True to enable maintenance mode
+def _env_flag(name: str, default: bool) -> bool:
+    """Parse truthy feature-toggle values from the environment."""
+    value = os.environ.get(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+USE_SUPABASE = _env_flag("USE_SUPABASE", True)  # ✅ Supabase for stamps/meetups
+MAINTENANCE_MODE = _env_flag("MAINTENANCE_MODE", False)  # ⛔️ Change to True to enable maintenance mode
+USE_GEOCACHE_QUEST = _env_flag("USE_GEOCACHE_QUEST", False)  # 🧭 Toggle Geocache quest endpoints
 
 # ====== Auth security settings ======
 LOGIN_MAX_ATTEMPTS = 5
