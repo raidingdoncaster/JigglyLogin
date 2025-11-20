@@ -60,7 +60,6 @@
     color:rgba(226,232,240,0.92);
     margin:0;
   }
-  .login-gowa-banner{margin-top:4px;}
   @media(max-width:840px){
     .auth-hero--login{
       padding:20px 22px 24px;
@@ -139,14 +138,6 @@
     <p>Read how we protect trainers, manage prizes, and keep the RDAB app running safely.</p>
     <a href="{{ url_for('policies_index') }}?pwa=1&amp;source=login" class="auth-btn auth-btn--primary">View policies</a>
   </section>
-
-  {% if gowa_banner %}
-    <div class="login-gowa-banner gowa-banner-wrap">
-      <a class="gowa-banner" href="{{ gowa_banner.href }}">
-        <img src="{{ gowa_banner.image_url }}" alt="{{ gowa_banner.alt }}">
-      </a>
-    </div>
-  {% endif %}
 </div>
 
 <script>

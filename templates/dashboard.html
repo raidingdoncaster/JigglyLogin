@@ -103,15 +103,6 @@
     <a href="{{ calendar_url }}" class="btn">Open Calendar</a>
   </div>
 </div>
-
-{% if gowa_banner %}
-  <div class="dashboard-gowa-banner gowa-banner-wrap">
-    <a class="gowa-banner" href="{{ gowa_banner.href }}">
-      <img src="{{ gowa_banner.image_url }}" alt="{{ gowa_banner.alt }}">
-    </a>
-  </div>
-{% endif %}
-
 <!-- Explore -->
 <div class="explore">
   <h3>🔍 Explore</h3>
@@ -164,8 +155,6 @@
 .btn-rsvp { background:#f97316; font-size:0.7em; padding:4px 10px; box-shadow:none; }
 .btn-disabled { background:#cbd5f5; color:#475569; font-size:0.7em; padding:4px 10px; border-radius:999px; }
 .upcoming-empty { font-size:0.85em; color:#777; margin:0 0 12px; }
-
-.dashboard-gowa-banner{margin:8px 0 18px;}
 
 .explore { display:flex; flex-direction:column; gap:10px; margin-top:8px; }
 .explore h3 { margin:0; }

@@ -22,15 +22,6 @@
       </div>
     </div>
   </section>
-
-  {% if gowa_banner %}
-    <div class="landing-gowa-banner gowa-banner-wrap">
-      <a class="gowa-banner" href="{{ gowa_banner.href }}">
-        <img src="{{ gowa_banner.image_url }}" alt="{{ gowa_banner.alt }}">
-      </a>
-    </div>
-  {% endif %}
-
   <div class="install-guide" id="installGuide">
     <div class="install-card">
       <button type="button" class="close-guide" id="closeInstall" aria-label="Close">×</button>
@@ -166,11 +157,6 @@
   font-size:0.78rem;
   color:#475569;
   line-height:1.6;
-}
-
-.landing-gowa-banner{
-  width:min(100%,960px);
-  margin:0 auto;
 }
 
 @media (max-width:540px){
