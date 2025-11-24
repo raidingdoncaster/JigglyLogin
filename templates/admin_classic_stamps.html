@@ -32,7 +32,7 @@
       <article class="classic-admin-card">
         <header>
           <div>
-            <h3>{{ entry.get('trainer_username') or 'Unknown Trainer' }}</h3>
+            <h3 class="trainer-username">{{ entry.get('trainer_username') or 'Unknown Trainer' }}</h3>
             <p class="meta">
               Submitted {{ entry.get('created_at') | to_date }}
               • {{ entry.get('declared_count') or 0 }} stamp{{ '' if (entry.get('declared_count') or 0) == 1 else 's' }} claimed
@@ -263,4 +263,3 @@
 </style>
 
 {% endblock %}
-

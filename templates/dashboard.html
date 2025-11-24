@@ -18,7 +18,7 @@
         <h2 class="trainer-name">{{ trainer }}!</h2>
 
         {% if account_type != "Kids Account" %}
-          <p><strong>Campfire Username:</strong> {{ campfire_username }}</p>
+          <p><strong>Campfire Username:</strong> <span class="identity-text">{{ campfire_username or '—' }}</span></p>
         {% endif %}
 
         {% if most_recent_meetup %}

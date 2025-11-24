@@ -72,7 +72,7 @@
         {% for r in redemptions %}
         <tr data-id="{{ r.id }}" data-redemption-id="{{ r.id }}" data-status="{{ r.status }}">
           <td>{{ r.created_at|to_date }}</td>
-          <td>{{ r.trainer_username }}</td>
+          <td><span class="identity-text">{{ r.trainer_username }}</span></td>
           <td class="status-cell">{{ r.status }}</td>
           <td>{{ (r.item_snapshot.name if r.item_snapshot else '') or 'Unknown Item' }}</td>
           <td class="meetup-cell">{{ r.meetup_display or '—' }}</td>

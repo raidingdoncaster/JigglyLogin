@@ -57,8 +57,8 @@
             {% for trainer in search_results %}
               <li>
                 <div>
-                  <strong>{{ trainer.display_name }}</strong>
-                  <p class="search-meta">{{ trainer.username }} · {{ trainer.account_type }}</p>
+                  <strong class="identity-text">{{ trainer.display_name }}</strong>
+                  <p class="search-meta"><span class="identity-text">{{ trainer.username }}</span> · {{ trainer.account_type }}</p>
                 </div>
                 <a class="btn-link" href="{{ url_for('leagues') }}?trainer={{ trainer.username }}">View Profile</a>
               </li>

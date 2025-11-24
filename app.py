@@ -1224,13 +1224,21 @@ def nl2br(text):
     return Markup(linked)
 
 # ====== VAPID setup ======
-VAPID_PUBLIC_KEY = os.environ.get("MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEAbWEvTQ7pDPa0Q-O8drCVnHmfnzVpn7W7UkclKUd1A-yGIee_ehqUjRgMp_HxSBPMylN_H83ffaE2eDIybrTVA")
-VAPID_PRIVATE_KEY = os.environ.get("MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgDJL244WZuoVzLqj3NvdTZ_fY-DtZqDQUakJdKV73myihRANCAAQBtYS9NDukM9rRD47x2sJWceZ-fNWmftbtSRyUpR3UD7IYh5796GpSNGAyn8fFIE8zKU38fzd99oTZ4MjJutNU")
+_DEFAULT_VAPID_PUBLIC = "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEAbWEvTQ7pDPa0Q-O8drCVnHmfnzVpn7W7UkclKUd1A-yGIee_ehqUjRgMp_HxSBPMylN_H83ffaE2eDIybrTVA"
+_DEFAULT_VAPID_PRIVATE = "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgDJL244WZuoVzLqj3NvdTZ_fY-DtZqDQUakJdKV73myihRANCAAQBtYS9NDukM9rRD47x2sJWceZ-fNWmftbtSRyUpR3UD7IYh5796GpSNGAyn8fFIE8zKU38fzd99oTZ4MjJutNU"
+VAPID_PUBLIC_KEY = os.environ.get("VAPID_PUBLIC_KEY", _DEFAULT_VAPID_PUBLIC)
+VAPID_PRIVATE_KEY = os.environ.get("VAPID_PRIVATE_KEY", _DEFAULT_VAPID_PRIVATE)
 VAPID_CLAIMS = {"sub": "mailto:raidingdoncaster@gmail.com"}
 
 @app.route('/manifest.json')
 def manifest():
     return send_from_directory('static', 'manifest.json')
+
+@app.route("/service-worker.js")
+def service_worker():
+    response = make_response(send_from_directory("static", "service-worker.js"))
+    response.headers["Cache-Control"] = "no-cache"
+    return response
 
 # ===== Header =====
 @app.context_processor
@@ -1789,6 +1797,34 @@ def _hash_pin(pin: str, username: str) -> str:
     # Simple salted SHA256: adequate for a 4-digit PIN admin reset flow
     s = f"{PIN_SALT}:{username}:{pin}".encode("utf-8")
     return hashlib.sha256(s).hexdigest()
+
+def _pin_hash_value(username: str | None, pin: str) -> str:
+    username = (username or "").strip()
+    if username:
+        return _hash_pin(pin, username)
+    return hash_value(pin)
+
+def _pin_matches(user_record: dict | None, candidate_pin: str) -> bool:
+    if not user_record or not candidate_pin:
+        return False
+    trainer_username = (
+        user_record.get("trainer_username")
+        or user_record.get("Trainer Username")
+        or ""
+    )
+    stored_hash = (
+        user_record.get("pin_hash")
+        or user_record.get("PIN Hash")
+        or ""
+    )
+    trainer_username = (trainer_username or "").strip()
+    stored_hash = (stored_hash or "").strip()
+    if not stored_hash:
+        return False
+    if trainer_username and stored_hash == _hash_pin(candidate_pin, trainer_username):
+        return True
+    # Legacy fallback for older unsalted hashes
+    return stored_hash == hash_value(candidate_pin)
 
 def reset_pin(trainer_username: str, new_pin: str, actor: str = "Admin"):
     if not re.fullmatch(r"\d{4}", new_pin or ""):
@@ -2444,8 +2480,8 @@ def admin_login():
         return redirect(url_for("admin_login"))
 
     user = r.data[0]
-    # Compare hashed pin
-    if user.get("pin_hash") != hash_value(pin):
+    # Compare hashed pin (supports legacy + salted)
+    if not _pin_matches(user, pin):
         flash("Incorrect PIN.", "error")
         return redirect(url_for("admin_login"))
 
@@ -3346,7 +3382,7 @@ def admin_reset_pin(username):
         return redirect(url_for("admin_trainer_detail", username=username))
 
     trainer_username = target_user.get("trainer_username") or username
-    hashed = hash_value(new_pin)
+    hashed = _pin_hash_value(trainer_username, new_pin)
 
     try:
         supabase.table("sheet1") \
@@ -3781,7 +3817,7 @@ def login():
         pin = request.form.get("pin", "")
 
         _, user = find_user(username)
-        if user and user.get("pin_hash") == hash_value(pin):
+        if user and _pin_matches(user, pin):
             session["trainer"] = user.get("trainer_username")
             session["account_type"] = normalize_account_type(user.get("account_type"))
             session.permanent = True
@@ -3936,9 +3972,10 @@ def age():
                 flash("Supabase is currently unavailable. Please try again later.", "error")
                 return redirect(url_for("signup"))
 
+            trainer_username = details["trainer_name"]
             payload = {
                 "trainer_username": details["trainer_name"],
-                "pin_hash": hash_value(details["pin"]),
+                "pin_hash": _pin_hash_value(trainer_username, details["pin"]),
                 "memorable_password": details["memorable"],
                 "last_login": datetime.utcnow().isoformat(),
                 "campfire_username": "Kids Account",
@@ -3999,9 +4036,10 @@ def campfire():
             flash("Supabase is currently unavailable. Please try again later.", "error")
             return redirect(url_for("signup"))
 
+        trainer_username = details["trainer_name"]
         payload = {
             "trainer_username": details["trainer_name"],
-            "pin_hash": hash_value(details["pin"]),
+            "pin_hash": _pin_hash_value(trainer_username, details["pin"]),
             "memorable_password": details["memorable"],
             "last_login": datetime.utcnow().isoformat(),
             "campfire_username": campfire_username,
@@ -4056,8 +4094,9 @@ def recover():
             return redirect(url_for("recover"))
 
         try:
+            new_hash = _pin_hash_value(trainer_username, new_pin)
             supabase.table("sheet1").update({
-                "pin_hash": hash_value(new_pin),
+                "pin_hash": new_hash,
                 "last_login": datetime.utcnow().isoformat(),
             }).eq("trainer_username", trainer_username).execute()
         except Exception as exc:
@@ -4392,6 +4431,9 @@ def inbox_message(message_id):
         return redirect(url_for("home"))
 
     trainer = session["trainer"]
+    if not (USE_SUPABASE and supabase):
+        flash("Inbox messages are unavailable right now. Please try again later.", "error")
+        return redirect(url_for("inbox"))
 
     # Receipt messages
     if message_id.startswith("rec:"):
@@ -4458,8 +4500,7 @@ def change_pin():
         flash("User not found.", "error")
         return redirect(url_for("dashboard"))
 
-    stored_pin_hash = user.get("pin_hash") or user.get("PIN Hash")
-    if stored_pin_hash != hash_value(old_pin):
+    if not _pin_matches(user, old_pin):
         flash("Old PIN is incorrect.", "error")
         return redirect(url_for("dashboard"))
 
@@ -4474,8 +4515,9 @@ def change_pin():
         return redirect(url_for("dashboard"))
 
     try:
+        new_hash = _pin_hash_value(trainer_username, new_pin)
         supabase.table("sheet1").update({
-            "pin_hash": hash_value(new_pin),
+            "pin_hash": new_hash,
         }).eq("trainer_username", trainer_username).execute()
     except Exception as exc:
         print("⚠️ Supabase change_pin failed:", exc)

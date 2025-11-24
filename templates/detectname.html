@@ -8,7 +8,7 @@
 <div class="auth-shell auth-shell--center">
   <section class="auth-card auth-card--center">
     <h2>Confirm trainer name</h2>
-    <p>One, two, and... <strong>{{ trainer_name }}</strong></p>
+    <p>One, two, and... <strong class="identity-text">{{ trainer_name }}</strong></p>
 
     <form action="{{ url_for('detectname') }}" method="post" class="auth-form auth-form--compact">
       <p class="helper-copy">We detected your trainer name from the screenshot. Adjust it if something looks off.</p>

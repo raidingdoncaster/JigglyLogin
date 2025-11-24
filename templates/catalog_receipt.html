@@ -36,7 +36,7 @@
   <!-- Trainer Info -->
   <div class="section">
     <h3>👤 Trainer</h3>
-    <p><strong>Username:</strong> {{ rec.trainer_username }}</p>
+    <p><strong>Username:</strong> <span class="identity-text">{{ rec.trainer_username }}</span></p>
     <p><strong>Placed:</strong> {{ rec.created_at|to_date }}</p>
     <p><strong>Redemption ID:</strong> <code>{{ rec.id }}</code></p>
   </div>

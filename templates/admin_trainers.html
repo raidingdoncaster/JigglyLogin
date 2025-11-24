@@ -52,11 +52,11 @@
        data-stamps="{{ stamp_total }}">
       <img src="{{ url_for('static', filename='avatars/' ~ t.avatar_icon) }}"
            alt="Avatar" class="avatar">
-      <h4>{{ t.trainer_username }}</h4>
+      <h4 class="trainer-username">{{ t.trainer_username }}</h4>
       <p class="trainer-account">{{ 'Standard' if t.account_type|lower == 'standard' else t.account_type }}</p>
       <p class="trainer-stamps">Stamps: {{ stamp_total }}</p>
       {% if t.campfire_username %}
-        <p class="trainer-campfire">Campfire: {{ t.campfire_username }}</p>
+        <p class="trainer-campfire">Campfire: <span class="identity-text">{{ t.campfire_username }}</span></p>
       {% endif %}
     </a>
   {% endfor %}
@@ -105,7 +105,7 @@
                 <span class="option-meta">
                   {{ t.account_type or 'Unknown' }} • {{ stamp_total }} stamp{{ '' if stamp_total == 1 else 's' }}
                   {% if t.campfire_username %}
-                    • Campfire: {{ t.campfire_username }}
+                    • Campfire: <span class="identity-text">{{ t.campfire_username }}</span>
                   {% endif %}
                 </span>
               </div>

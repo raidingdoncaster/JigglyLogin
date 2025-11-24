@@ -9,16 +9,16 @@
 <!-- Header -->
 <div class="admin-header">
   <h1>👤 Manage Trainer</h1>
-  <p>Update details and stamps for <strong>{{ trainer.trainer_username }}</strong></p>
+  <p>Update details and stamps for <strong class="identity-text">{{ trainer.trainer_username }}</strong></p>
 </div>
 
 <!-- Trainer Card -->
 <div class="trainer-detail-card">
   <img src="{{ url_for('static', filename='avatars/' ~ trainer.avatar_icon) }}" 
        alt="Avatar" class="avatar-lg">
-  <h2>{{ trainer.trainer_username }}</h2>
+  <h2 class="trainer-username">{{ trainer.trainer_username }}</h2>
   <p><strong>Account Type:</strong> {{ 'Standard' if trainer.account_type|lower == 'standard' else trainer.account_type }}</p>
-  <p><strong>Campfire Username:</strong> {{ trainer.campfire_username or 'N/A' }}</p>
+  <p><strong>Campfire Username:</strong> <span class="identity-text">{{ trainer.campfire_username or 'N/A' }}</span></p>
   <p><strong>Current Stamps:</strong> {{ trainer.stamps }}</p>
 </div>
 

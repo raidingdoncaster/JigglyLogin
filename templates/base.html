@@ -25,14 +25,15 @@
   <meta charset="UTF-8" />
   <title>{{ title if title else "JigglyLogin" }}</title>
 
-  <!-- Google Font -->
-  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
 
   <style>
     :root{
       --brand:#3a8dde;
       --brand2:#5eb8ff;
       --header-height:56px;
+      --identity-font:'IBM Plex Mono','Fira Mono','Consolas','SFMono-Regular',monospace;
     }
     *,*::before,*::after{box-sizing:border-box;}
     body{
@@ -44,6 +45,20 @@
       padding-top:var(--header-height);
       padding-top:calc(var(--header-height) + env(safe-area-inset-top));
     }
+    .identity-text,
+    .trainer-name,
+    .trainer-campfire,
+    .trainer-username,
+    .option-name{
+      font-family:var(--identity-font);
+      letter-spacing:0.04em;
+      font-feature-settings:"tnum","ss01","cv02";
+    }
+    .identity-text{
+      font-weight:600;
+      color:inherit;
+    }
+
     /* Header */
     header{
       position:fixed; top:0; left:0; right:0; z-index:6000;
