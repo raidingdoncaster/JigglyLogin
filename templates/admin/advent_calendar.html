@@ -25,48 +25,59 @@
   {% set opened_days = state.opened_days %}
   {% set openable_day = state.openable_day %}
 
-  <div class="advent-grid">
+  <div class="advent-grid compact">
     {% for day in range(1, 26) %}
       {% set day_config = config.get(day) %}
       {% set opened = day in opened_days %}
       {% set is_openable = day == openable_day %}
       <div class="advent-cell{% if opened %} is-opened{% elif is_openable %} is-openable{% else %} is-locked{% endif %}">
-        <div class="advent-day-label">Day {{ "%02d"|format(day) }}</div>
+        <div class="advent-day-label">
+          <span>Day {{ "%02d"|format(day) }}</span>
+          {% if opened %}
+            <span class="advent-badge">✨</span>
+          {% elif is_openable %}
+            <span class="advent-badge is-today">★</span>
+          {% endif %}
+        </div>
 
         {% if opened and day_config %}
           <img src="{{ url_for('static', filename='advent/' ~ day_config.stamp_png) }}" alt="Stamp for day {{ day }}">
-          <p class="advent-status">Opened</p>
-          <p class="advent-message">{{ day_config.message }}</p>
+          <button
+            type="button"
+            class="message-btn"
+            data-day="{{ day }}"
+            data-message="{{ day_config.message|e }}"
+          >
+            View quote
+          </button>
+          <small class="advent-status">Opened</small>
         {% elif is_openable %}
-          <form method="POST" action="{{ url_for('admin_advent.open_day', day=day) }}">
+          <form class="open-day-form" method="POST" action="{{ url_for('admin_advent.open_day', day=day) }}">
             {% if day_override %}
               <input type="hidden" name="day_override" value="{{ day_override }}">
             {% endif %}
-            <button type="submit">Open</button>
+            <button type="submit" data-day="{{ day }}">Open</button>
           </form>
-          <p class="advent-hint">Ready to unlock</p>
+          <small class="advent-hint">Ready to unlock</small>
         {% else %}
           <div class="advent-placeholder">🔒</div>
-          <p class="advent-status">Locked</p>
+          <small class="advent-status">Locked</small>
         {% endif %}
       </div>
     {% endfor %}
   </div>
 
-  {% if opened_days %}
-    <div class="advent-opened-summary">
-      <h2>Unlocked Messages</h2>
-      <ul>
-        {% for day in opened_days %}
-          {% set day_config = config.get(day) %}
-          <li>
-            <strong>Day {{ day }}:</strong>
-            <span>{{ day_config.message if day_config else 'Message missing in JSON.' }}</span>
-          </li>
-        {% endfor %}
-      </ul>
+  <div class="advent-modal" id="advent-modal" hidden>
+    <div class="advent-modal__backdrop"></div>
+    <div class="advent-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="advent-modal-day">
+      <button type="button" class="advent-modal__close" aria-label="Close">&times;</button>
+      <div class="advent-modal__body">
+        <p class="advent-modal__eyebrow">Unlocked Quote</p>
+        <h2 id="advent-modal-day"></h2>
+        <p id="advent-modal-message"></p>
+      </div>
     </div>
-  {% endif %}
+  </div>
 </div>
 
 <style>
@@ -172,21 +183,21 @@
   filter: blur(8px);
   border-radius: 50%;
 }
-.advent-grid {
+.advent-grid.compact {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 16px;
+  gap: 12px;
   margin-top: 24px;
   position: relative;
   z-index: 1;
 }
 .advent-cell {
   background: rgba(255, 255, 255, 0.12);
-  border-radius: 18px;
-  padding: 18px;
+  border-radius: 16px;
+  padding: 12px;
   text-align: center;
   border: 1px solid rgba(255, 255, 255, 0.2);
-  min-height: 190px;
+  min-height: 150px;
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
@@ -197,7 +208,7 @@
 }
 .advent-cell img {
   max-width: 100%;
-  height: 90px;
+  height: 60px;
   object-fit: contain;
   filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.3));
 }
@@ -222,26 +233,140 @@
   background: linear-gradient(145deg, rgba(255, 255, 255, 0.25), rgba(255, 233, 185, 0.15));
   animation: pulseGlow 2s infinite;
 }
+.advent-cell.is-openable::before,
+.advent-cell.is-openable::after {
+  content: "";
+  position: absolute;
+  inset: 8px;
+  border-radius: inherit;
+  border: 1px dashed rgba(255, 255, 255, 0.25);
+  animation: orbit 6s linear infinite;
+  pointer-events: none;
+}
+.advent-cell.is-openable::after {
+  inset: 14px;
+  border-style: dotted;
+  animation-duration: 4s;
+}
 .advent-cell.is-locked {
   border-color: rgba(255, 255, 255, 0.08);
   color: rgba(255, 255, 255, 0.7);
 }
 .advent-placeholder { font-size: 2rem; }
-.advent-message { font-size: 0.9rem; color: #04291f; background: rgba(255,255,255,0.7); border-radius: 8px; padding: 6px; }
-.advent-opened-summary {
-  position: relative;
-  z-index: 1;
-  margin-top: 32px;
-  background: rgba(255, 255, 255, 0.9);
-  color: #06302c;
-  padding: 18px;
-  border-radius: 18px;
+.advent-day-label {
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #fff;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
-.advent-opened-summary ul { list-style: none; padding: 0; margin: 0; }
-.advent-opened-summary li { margin-bottom: 8px; }
-.advent-day-label { font-weight: bold; text-transform: uppercase; letter-spacing: 0.08em; color: #fff; }
-.advent-status { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.18em; color: rgba(255, 255, 255, 0.85); }
+.advent-badge {
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.15);
+  font-size: 0.85rem;
+}
+.advent-badge.is-today {
+  background: rgba(255, 255, 255, 0.35);
+}
+.message-btn {
+  font-size: 0.85rem;
+  padding: 6px 12px;
+}
+.advent-status { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.18em; color: rgba(255, 255, 255, 0.85); }
 .advent-hint { font-size: 0.85rem; color: #fff; }
+.advent-modal {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+}
+.advent-modal[hidden] {
+  display: none;
+}
+.advent-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(3px);
+}
+.advent-modal__dialog {
+  position: relative;
+  background: #fff;
+  color: #062324;
+  border-radius: 20px;
+  padding: 24px;
+  width: min(420px, 90vw);
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.4);
+  z-index: 1;
+}
+.advent-modal__close {
+  position: absolute;
+  top: 12px;
+  right: 16px;
+  background: transparent;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+}
+.advent-modal__eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  font-size: 0.7rem;
+  margin-bottom: 6px;
+  color: #0a9b7a;
+}
+.advent-modal__body h2 {
+  margin-top: 0;
+  margin-bottom: 12px;
+}
+.advent-modal__body p {
+  margin: 0;
+}
+.advent-cell.is-openable.unlocking {
+  animation: unlockBurst 0.8s forwards;
+  pointer-events: none;
+}
+.advent-cell.is-openable.unlocking::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(circle, rgba(255,255,255,0.9) 0%, transparent 65%);
+  animation: shimmer 0.8s forwards;
+}
+.magic-burst {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.magic-burst__spark {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff 0%, rgba(255,255,255,0) 70%);
+  animation: sparkleDrift 1.2s ease-out forwards;
+  mix-blend-mode: screen;
+}
+.magic-burst__spark.is-heart::after {
+  content: "❤";
+  font-size: 0.9rem;
+  color: #ff9fb3;
+  position: absolute;
+  inset: -4px;
+}
+.magic-burst__spark.is-star::after {
+  content: "★";
+  font-size: 0.9rem;
+  color: #ffd93d;
+  position: absolute;
+  inset: -4px;
+}
 
 @keyframes snowfall {
   from {
@@ -256,10 +381,116 @@
   50% { box-shadow: 0 0 24px rgba(255, 255, 255, 0.6); }
   100% { box-shadow: 0 0 12px rgba(255, 255, 255, 0.3); }
 }
+@keyframes unlockBurst {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 rgba(255,255,255,0);
+  }
+  40% {
+    transform: scale(1.05);
+    box-shadow: 0 0 25px rgba(255,255,255,0.6);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 rgba(255,255,255,0);
+  }
+}
+@keyframes shimmer {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+@keyframes orbit {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+@keyframes sparkleDrift {
+  0% {
+    transform: translate(0, 0) scale(0.6);
+    opacity: 1;
+  }
+  70% { opacity: 1; }
+  100% {
+    transform: translate(var(--dx, 0), var(--dy, -40px)) scale(1.4);
+    opacity: 0;
+  }
+}
 @media (max-width: 900px) {
-  .advent-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .advent-grid.compact { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .advent-scene { padding: 16px; }
   .header-tree { width: 120px; height: 110px; }
 }
+@media (max-width: 600px) {
+  .advent-grid.compact { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 </style>
+
+<script>
+(function() {
+  const modal = document.getElementById("advent-modal");
+  if (!modal) return;
+
+  const dayEl = document.getElementById("advent-modal-day");
+  const messageEl = document.getElementById("advent-modal-message");
+  const closeButtons = modal.querySelectorAll(".advent-modal__close, .advent-modal__backdrop");
+
+  function openModal(day, message) {
+    dayEl.textContent = `Day ${day}`;
+    messageEl.textContent = message;
+    modal.hidden = false;
+  }
+
+  function closeModal() {
+    modal.hidden = true;
+  }
+
+  document.addEventListener("click", (event) => {
+    const trigger = event.target.closest(".message-btn");
+    if (trigger) {
+      const day = trigger.dataset.day;
+      const message = trigger.dataset.message || "No message provided.";
+      openModal(day, message);
+    }
+  });
+
+  closeButtons.forEach((btn) => btn.addEventListener("click", closeModal));
+
+  const createMagicBurst = (cell) => {
+    const burst = document.createElement("div");
+    burst.className = "magic-burst";
+    for (let i = 0; i < 8; i++) {
+      const spark = document.createElement("span");
+      spark.className = "magic-burst__spark";
+      if (i % 3 === 0) {
+        spark.classList.add("is-heart");
+      } else if (i % 3 === 1) {
+        spark.classList.add("is-star");
+      }
+      const angle = (Math.PI * 2 * i) / 8;
+      const distance = 50 + Math.random() * 30;
+      spark.style.setProperty("--dx", `${Math.cos(angle) * distance}px`);
+      spark.style.setProperty("--dy", `${Math.sin(angle) * distance}px`);
+      spark.style.left = "50%";
+      spark.style.top = "50%";
+      burst.appendChild(spark);
+    }
+    cell.appendChild(burst);
+    setTimeout(() => burst.remove(), 1200);
+  };
+
+  document.querySelectorAll(".open-day-form").forEach((form) => {
+    form.addEventListener("submit", () => {
+      const cell = form.closest(".advent-cell");
+      if (cell) {
+        cell.classList.add("unlocking");
+        createMagicBurst(cell);
+        const button = form.querySelector("button[type='submit']");
+        if (button) {
+          button.disabled = true;
+          button.textContent = "Opening...";
+        }
+      }
+    });
+  });
+})();
+</script>
 {% endblock %}
