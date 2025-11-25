@@ -6,106 +6,260 @@
 {% endblock %}
 
 {% block content %}
-<div class="admin-header">
-  <h1>🎁 Advent Calendar (Test Mode)</h1>
-  <p>Effective day: <strong>{{ effective_day }}</strong>{% if day_override %} (override active){% endif %}</p>
-</div>
-
-<div class="advent-controls">
-  <p>Use <code>?day_override=&lt;1-25&gt;</code> on the URL to simulate different December days.</p>
-</div>
-
-{% set opened_days = state.opened_days %}
-{% set openable_day = state.openable_day %}
-
-<div class="advent-grid">
-  {% for day in range(1, 26) %}
-    {% set day_config = config.get(day) %}
-    {% set opened = day in opened_days %}
-    {% set is_openable = day == openable_day %}
-    <div class="advent-cell{% if opened %} is-opened{% elif is_openable %} is-openable{% else %} is-locked{% endif %}">
-      <div class="advent-day-label">Day {{ "%02d"|format(day) }}</div>
-
-      {% if opened and day_config %}
-        <img src="{{ url_for('static', filename='advent/' ~ day_config.stamp_png) }}" alt="Stamp for day {{ day }}">
-        <p class="advent-status">Opened</p>
-        <p class="advent-message">{{ day_config.message }}</p>
-      {% elif is_openable %}
-        <form method="POST" action="{{ url_for('admin_advent.open_day', day=day) }}">
-          {% if day_override %}
-            <input type="hidden" name="day_override" value="{{ day_override }}">
-          {% endif %}
-          <button type="submit">Open</button>
-        </form>
-        <p class="advent-hint">Ready to unlock</p>
-      {% else %}
-        <div class="advent-placeholder">🔒</div>
-        <p class="advent-status">Locked</p>
-      {% endif %}
+<div class="advent-scene">
+  <div class="admin-header advent-header">
+    <div class="header-text">
+      <p class="advent-tag">North Pole Dev Build</p>
+      <h1>🎄 Advent Calendar (Test Mode)</h1>
+      <p>Effective day: <strong>{{ effective_day }}</strong>{% if day_override %} (override active){% endif %}</p>
+      <div class="advent-controls">
+        <p>Use <code>?day_override=&lt;1-25&gt;</code> on the URL to simulate different December days.</p>
+      </div>
     </div>
-  {% endfor %}
-</div>
-
-{% if opened_days %}
-  <div class="advent-opened-summary">
-    <h2>Unlocked Messages</h2>
-    <ul>
-      {% for day in opened_days %}
-        {% set day_config = config.get(day) %}
-        <li>
-          <strong>Day {{ day }}:</strong>
-          <span>{{ day_config.message if day_config else 'Message missing in JSON.' }}</span>
-        </li>
-      {% endfor %}
-    </ul>
+    <div class="header-tree">
+      <div class="tree"></div>
+      <div class="tree-shadow"></div>
+    </div>
   </div>
-{% endif %}
+
+  {% set opened_days = state.opened_days %}
+  {% set openable_day = state.openable_day %}
+
+  <div class="advent-grid">
+    {% for day in range(1, 26) %}
+      {% set day_config = config.get(day) %}
+      {% set opened = day in opened_days %}
+      {% set is_openable = day == openable_day %}
+      <div class="advent-cell{% if opened %} is-opened{% elif is_openable %} is-openable{% else %} is-locked{% endif %}">
+        <div class="advent-day-label">Day {{ "%02d"|format(day) }}</div>
+
+        {% if opened and day_config %}
+          <img src="{{ url_for('static', filename='advent/' ~ day_config.stamp_png) }}" alt="Stamp for day {{ day }}">
+          <p class="advent-status">Opened</p>
+          <p class="advent-message">{{ day_config.message }}</p>
+        {% elif is_openable %}
+          <form method="POST" action="{{ url_for('admin_advent.open_day', day=day) }}">
+            {% if day_override %}
+              <input type="hidden" name="day_override" value="{{ day_override }}">
+            {% endif %}
+            <button type="submit">Open</button>
+          </form>
+          <p class="advent-hint">Ready to unlock</p>
+        {% else %}
+          <div class="advent-placeholder">🔒</div>
+          <p class="advent-status">Locked</p>
+        {% endif %}
+      </div>
+    {% endfor %}
+  </div>
+
+  {% if opened_days %}
+    <div class="advent-opened-summary">
+      <h2>Unlocked Messages</h2>
+      <ul>
+        {% for day in opened_days %}
+          {% set day_config = config.get(day) %}
+          <li>
+            <strong>Day {{ day }}:</strong>
+            <span>{{ day_config.message if day_config else 'Message missing in JSON.' }}</span>
+          </li>
+        {% endfor %}
+      </ul>
+    </div>
+  {% endif %}
+</div>
 
 <style>
+.advent-scene {
+  position: relative;
+  padding: 24px;
+  border-radius: 28px;
+  background: linear-gradient(145deg, #012d3b, #045a4a 35%, #77000f 100%);
+  color: #fff;
+  overflow: hidden;
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.35);
+}
+.advent-scene::before,
+.advent-scene::after {
+  content: "";
+  position: absolute;
+  top: -20%;
+  left: 0;
+  width: 200%;
+  height: 200%;
+  pointer-events: none;
+  background-image: radial-gradient(#ffffff 1px, transparent 1px);
+  background-size: 180px 180px;
+  opacity: 0.35;
+  animation: snowfall 18s linear infinite;
+}
+.advent-scene::after {
+  animation-duration: 30s;
+  opacity: 0.5;
+  filter: blur(1px);
+}
+.advent-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  align-items: center;
+  flex-wrap: wrap;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 20px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  position: relative;
+  z-index: 1;
+}
+.advent-tag {
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  font-size: 0.65rem;
+  margin: 0 0 6px 0;
+  color: #ffd6d9;
+}
+.advent-controls {
+  margin-top: 8px;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.85);
+}
+.advent-controls code {
+  background: rgba(255, 255, 255, 0.15);
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+.header-tree {
+  position: relative;
+  width: 160px;
+  height: 140px;
+  flex: 0 0 auto;
+}
+.tree {
+  width: 0;
+  height: 0;
+  border-left: 70px solid transparent;
+  border-right: 70px solid transparent;
+  border-bottom: 120px solid #0fd58a;
+  position: relative;
+  filter: drop-shadow(0 8px 12px rgba(0, 0, 0, 0.4));
+}
+.tree::before,
+.tree::after {
+  content: "";
+  position: absolute;
+  left: -60px;
+  border-left: 60px solid transparent;
+  border-right: 60px solid transparent;
+  border-bottom: 110px solid #1aff9c;
+  top: -60px;
+  opacity: 0.9;
+}
+.tree::after {
+  top: -110px;
+  left: -50px;
+  border-left: 50px solid transparent;
+  border-right: 50px solid transparent;
+  border-bottom: 90px solid #8cffcd;
+  opacity: 0.7;
+}
+.tree-shadow {
+  position: absolute;
+  bottom: 10px;
+  left: 20px;
+  width: 120px;
+  height: 20px;
+  background: rgba(0, 0, 0, 0.35);
+  filter: blur(8px);
+  border-radius: 50%;
+}
 .advent-grid {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 16px;
   margin-top: 24px;
+  position: relative;
+  z-index: 1;
 }
 .advent-cell {
-  background: #fff;
-  border-radius: 12px;
-  padding: 16px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 18px;
+  padding: 18px;
   text-align: center;
-  border: 2px solid transparent;
-  min-height: 180px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  min-height: 190px;
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
   gap: 8px;
+  backdrop-filter: blur(4px);
+  position: relative;
+  overflow: hidden;
 }
 .advent-cell img {
   max-width: 100%;
-  height: 80px;
+  height: 90px;
   object-fit: contain;
+  filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.3));
 }
 .advent-cell button {
-  background: #007bff;
+  background: linear-gradient(135deg, #ff6b6b, #ffd93d);
   color: #fff;
   border: none;
-  border-radius: 8px;
-  padding: 8px 12px;
+  border-radius: 999px;
+  padding: 10px 16px;
   cursor: pointer;
+  font-weight: 600;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
 }
-.advent-cell button:hover { background: #0056b3; }
-.advent-cell.is-opened { border-color: #6dd5ed; }
-.advent-cell.is-openable { border-color: #ffc857; background: #fffbea; }
-.advent-cell.is-locked { border-color: #ececec; color: #999; }
+.advent-cell button:hover { filter: brightness(1.05); }
+.advent-cell.is-opened {
+  border-color: rgba(135, 255, 196, 0.5);
+  background: linear-gradient(160deg, rgba(148, 255, 233, 0.2), rgba(25, 255, 173, 0.05));
+  box-shadow: inset 0 0 30px rgba(148, 255, 233, 0.3);
+}
+.advent-cell.is-openable {
+  border-color: rgba(255, 231, 138, 0.7);
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.25), rgba(255, 233, 185, 0.15));
+  animation: pulseGlow 2s infinite;
+}
+.advent-cell.is-locked {
+  border-color: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.7);
+}
 .advent-placeholder { font-size: 2rem; }
-.advent-message { font-size: 0.9rem; color: #333; }
-.advent-opened-summary ul { list-style: none; padding: 0; }
+.advent-message { font-size: 0.9rem; color: #04291f; background: rgba(255,255,255,0.7); border-radius: 8px; padding: 6px; }
+.advent-opened-summary {
+  position: relative;
+  z-index: 1;
+  margin-top: 32px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #06302c;
+  padding: 18px;
+  border-radius: 18px;
+}
+.advent-opened-summary ul { list-style: none; padding: 0; margin: 0; }
 .advent-opened-summary li { margin-bottom: 8px; }
-.advent-day-label { font-weight: bold; }
-.advent-status { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; }
-.advent-hint { font-size: 0.85rem; color: #555; }
+.advent-day-label { font-weight: bold; text-transform: uppercase; letter-spacing: 0.08em; color: #fff; }
+.advent-status { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.18em; color: rgba(255, 255, 255, 0.85); }
+.advent-hint { font-size: 0.85rem; color: #fff; }
+
+@keyframes snowfall {
+  from {
+    transform: translateY(-10%);
+  }
+  to {
+    transform: translateY(10%);
+  }
+}
+@keyframes pulseGlow {
+  0% { box-shadow: 0 0 12px rgba(255, 255, 255, 0.3); }
+  50% { box-shadow: 0 0 24px rgba(255, 255, 255, 0.6); }
+  100% { box-shadow: 0 0 12px rgba(255, 255, 255, 0.3); }
+}
 @media (max-width: 900px) {
   .advent-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .advent-scene { padding: 16px; }
+  .header-tree { width: 120px; height: 110px; }
 }
 </style>
 {% endblock %}

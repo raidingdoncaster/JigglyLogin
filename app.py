@@ -2174,6 +2174,34 @@ def admin_dashboard():
     )
 
 
+@app.route("/admin/testing-grounds")
+def admin_testing_grounds():
+    session["last_page"] = request.path
+    if "trainer" not in session:
+        flash("Please log in to access Testing Grounds.", "warning")
+        return redirect(url_for("home"))
+
+    _, user = find_user(session["trainer"])
+    if not user or user.get("account_type") != "Admin":
+        flash("⛔ Access denied. Admins only.", "error")
+        return redirect(url_for("dashboard"))
+
+    experiments = [
+        {
+            "name": "Advent Calendar",
+            "status": "Alpha",
+            "summary": "Preview the 25-day stamp-and-quote experience before launching to trainers.",
+            "cta_label": "Open Advent Calendar",
+            "cta_url": url_for("admin_advent.view_calendar"),
+        },
+    ]
+
+    return render_template(
+        "admin_testing_grounds.html",
+        experiments=experiments,
+    )
+
+
 @app.route("/admin/leagues")
 def admin_leagues():
     session["last_page"] = request.path

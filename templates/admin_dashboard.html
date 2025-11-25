@@ -100,6 +100,15 @@
   </div>
 </div>
 
+<div class="testing-banner">
+  <div>
+    <p class="testing-banner__eyebrow">Prototype Lab</p>
+    <h3>Testing Grounds</h3>
+    <p>Try experimental features like the Advent Calendar before trainers see them.</p>
+  </div>
+  <a class="testing-banner__cta" href="{{ url_for('admin_testing_grounds') }}">Enter Testing Grounds</a>
+</div>
+
 <style>
 .admin-header { text-align:center; margin-bottom:20px; }
 .admin-header h1 { margin:0; }
@@ -164,8 +173,53 @@
   font-size:0.75em;
   color:#667085;
 }
+.testing-banner {
+  margin-top:32px;
+  padding:20px 24px;
+  border-radius:18px;
+  background:linear-gradient(135deg,#1f1c2c,#928dab);
+  color:#fff;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:16px;
+  flex-wrap:wrap;
+}
+.testing-banner__eyebrow {
+  text-transform:uppercase;
+  font-size:0.75rem;
+  letter-spacing:0.2em;
+  margin:0 0 6px 0;
+}
+.testing-banner h3 {
+  margin:0 0 4px 0;
+}
+.testing-banner p {
+  margin:0;
+  max-width:520px;
+}
+.testing-banner__cta {
+  background:#fff;
+  color:#1f1c2c;
+  padding:12px 24px;
+  border-radius:999px;
+  text-decoration:none;
+  font-weight:600;
+  white-space:nowrap;
+}
+.testing-banner__cta:hover {
+  background:rgba(255,255,255,0.85);
+}
 @media(max-width:720px){
   .admin-header{ text-align:left; }
+  .testing-banner {
+    flex-direction:column;
+    align-items:flex-start;
+  }
+  .testing-banner__cta {
+    width:100%;
+    text-align:center;
+  }
 }
 </style>
 

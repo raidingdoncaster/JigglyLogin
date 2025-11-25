@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block page_settings %}
+  {% set container_class = 'is-wide' %}
+{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+  <h1>🧪 Testing Grounds</h1>
+  <p>Sandbox features here before opening them up to every trainer.</p>
+</div>
+
+<div class="testing-list">
+  {% for experiment in experiments %}
+    <section class="testing-card">
+      <div class="testing-card__body">
+        <p class="testing-card__status">{{ experiment.status }}</p>
+        <h2>{{ experiment.name }}</h2>
+        <p>{{ experiment.summary }}</p>
+      </div>
+      <div class="testing-card__cta">
+        <a class="btn" href="{{ experiment.cta_url }}">{{ experiment.cta_label }}</a>
+      </div>
+    </section>
+  {% else %}
+    <p>No experiments are queued up yet. Check back soon!</p>
+  {% endfor %}
+</div>
+
+<style>
+.testing-list {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.testing-card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 20px;
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  border: 1px solid #e6e6e6;
+}
+.testing-card__status {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #6c63ff;
+  margin: 0 0 6px 0;
+}
+.testing-card__body h2 {
+  margin: 0 0 6px 0;
+}
+.testing-card__body p {
+  margin: 0;
+}
+.testing-card__cta .btn {
+  display: inline-block;
+  background: #111;
+  color: #fff;
+  padding: 10px 18px;
+  border-radius: 999px;
+  text-decoration: none;
+}
+.testing-card__cta .btn:hover {
+  background: #333;
+}
+@media (max-width: 640px) {
+  .testing-card {
+    flex-direction: column;
+  }
+  .testing-card__cta {
+    width: 100%;
+  }
+  .testing-card__cta .btn {
+    width: 100%;
+    text-align: center;
+  }
+}
+</style>
+{% endblock %}
