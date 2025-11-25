@@ -40,6 +40,7 @@ pogo-passport-key.json
 !data/live_events.json
 !data/gowa_page.json
 !data/live_events.json
+!advent/config/advent_2025.json
 
 # --- Google SDK (don’t commit the whole SDK!) ---
 google-cloud-sdk/

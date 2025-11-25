@@ -3,30 +3,32 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from typing import Dict, List, Optional
 
 from sqlalchemy.exc import IntegrityError
+from flask import current_app, has_app_context
 
 from extensions import db
 from advent.models import AdventClaim
 
-ADVENT_CONFIG_PATH = Path(__file__).resolve().parent / "config" / "advent_2025.json"
-_CONFIG_CACHE: Dict[str, object] = {"data": None, "mtime": None}
+DEFAULT_CONFIG_BASENAME = "advent_2025.json"
+_CONFIG_CACHE: Dict[str, object] = {"data": None, "mtime": None, "path": None}
 
 
 def load_advent_config(force_refresh: bool = False) -> Dict[int, dict]:
     """Load and cache Advent day metadata as a dict keyed by day."""
-    if not ADVENT_CONFIG_PATH.exists():
-        raise FileNotFoundError(f"Advent config missing: {ADVENT_CONFIG_PATH}")
+    config_path = _resolve_config_path()
 
-    mtime = ADVENT_CONFIG_PATH.stat().st_mtime
+    mtime = config_path.stat().st_mtime
     cached = _CONFIG_CACHE.get("data")
     cached_mtime = _CONFIG_CACHE.get("mtime")
-    if not force_refresh and cached and cached_mtime == mtime:
+    cached_path = _CONFIG_CACHE.get("path")
+    if not force_refresh and cached and cached_mtime == mtime and cached_path == config_path:
         return cached  # type: ignore[return-value]
 
-    with ADVENT_CONFIG_PATH.open("r", encoding="utf-8") as handle:
+    with config_path.open("r", encoding="utf-8") as handle:
         payload = json.load(handle)
 
     config: Dict[int, dict] = {}
@@ -45,6 +47,7 @@ def load_advent_config(force_refresh: bool = False) -> Dict[int, dict]:
 
     _CONFIG_CACHE["data"] = config
     _CONFIG_CACHE["mtime"] = mtime
+    _CONFIG_CACHE["path"] = config_path
     return config
 
 
@@ -107,3 +110,34 @@ def _clamp_day(day: int) -> int:
     except (TypeError, ValueError):
         return 1
 
+
+def _resolve_config_path() -> Path:
+    """Return the first Advent config path that exists across multiple fallbacks."""
+    candidates: List[Path] = []
+    env_override = os.environ.get("ADVENT_CONFIG_PATH")
+    if env_override:
+        candidates.append(Path(env_override).expanduser())
+
+    module_dir = Path(__file__).resolve().parent
+    candidates.append(module_dir / "config" / DEFAULT_CONFIG_BASENAME)
+
+    if has_app_context():
+        root_path = Path(current_app.root_path)
+        candidates.extend(
+            [
+                root_path / "advent" / "config" / DEFAULT_CONFIG_BASENAME,
+                root_path / "config" / DEFAULT_CONFIG_BASENAME,
+                root_path / "app" / "config" / DEFAULT_CONFIG_BASENAME,
+            ]
+        )
+
+    seen: List[Path] = []
+    for path in candidates:
+        if path in seen:
+            continue
+        seen.append(path)
+        if path.exists():
+            return path
+
+    checked = ", ".join(str(path) for path in seen)
+    raise FileNotFoundError(f"Advent config missing. Checked: {checked}")
