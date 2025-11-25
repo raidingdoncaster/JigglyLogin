@@ -23,6 +23,8 @@ from bleach.linkifier import DEFAULT_CALLBACKS
 from typing import Any
 
 from rdab.trainer_detection import extract_trainer_name
+from extensions import db
+from advent import create_advent_blueprint
 
 # ====== Feature toggle ======
 def _env_flag(name: str, default: bool) -> bool:
@@ -142,6 +144,11 @@ CLASSIC_SUBMISSION_STATUSES = {"PENDING", "AWARDED", "REJECTED"}
 DATA_DIR = Path(app.root_path) / "data"
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 CUSTOM_EVENTS_PATH = DATA_DIR / "custom_events.json"
+
+SQLITE_PATH = DATA_DIR / "app.db"
+app.config.setdefault("SQLALCHEMY_DATABASE_URI", f"sqlite:///{SQLITE_PATH}")
+app.config.setdefault("SQLALCHEMY_TRACK_MODIFICATIONS", False)
+db.init_app(app)
 try:
     LONDON_TZ = ZoneInfo("Europe/London")
 except Exception:
@@ -2509,6 +2516,23 @@ def _is_admin():
         return False
     _, u = find_user(session["trainer"])
     return bool(u and u.get("account_type") == "Admin")
+
+
+def get_current_admin_user():
+    """Return the logged-in admin Supabase record or None."""
+    trainer = session.get("trainer")
+    if not trainer:
+        return None
+    _, user = find_user(trainer)
+    if not user or user.get("account_type") != "Admin":
+        return None
+    return user
+
+
+app.register_blueprint(create_advent_blueprint(get_current_admin_user))
+
+with app.app_context():
+    db.create_all()
 
 def _tags_csv_to_array(csv: str | None):
     if not csv:

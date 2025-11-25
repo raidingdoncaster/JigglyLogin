@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{# Edit advent/config/advent_2025.json to change stamps/messages, then reuse this template for player routes later. #}
+
+{% block page_settings %}
+  {% set container_class = 'is-wide' %}
+{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+  <h1>🎁 Advent Calendar (Test Mode)</h1>
+  <p>Effective day: <strong>{{ effective_day }}</strong>{% if day_override %} (override active){% endif %}</p>
+</div>
+
+<div class="advent-controls">
+  <p>Use <code>?day_override=&lt;1-25&gt;</code> on the URL to simulate different December days.</p>
+</div>
+
+{% set opened_days = state.opened_days %}
+{% set openable_day = state.openable_day %}
+
+<div class="advent-grid">
+  {% for day in range(1, 26) %}
+    {% set day_config = config.get(day) %}
+    {% set opened = day in opened_days %}
+    {% set is_openable = day == openable_day %}
+    <div class="advent-cell{% if opened %} is-opened{% elif is_openable %} is-openable{% else %} is-locked{% endif %}">
+      <div class="advent-day-label">Day {{ "%02d"|format(day) }}</div>
+
+      {% if opened and day_config %}
+        <img src="{{ url_for('static', filename='advent/' ~ day_config.stamp_png) }}" alt="Stamp for day {{ day }}">
+        <p class="advent-status">Opened</p>
+        <p class="advent-message">{{ day_config.message }}</p>
+      {% elif is_openable %}
+        <form method="POST" action="{{ url_for('admin_advent.open_day', day=day) }}">
+          {% if day_override %}
+            <input type="hidden" name="day_override" value="{{ day_override }}">
+          {% endif %}
+          <button type="submit">Open</button>
+        </form>
+        <p class="advent-hint">Ready to unlock</p>
+      {% else %}
+        <div class="advent-placeholder">🔒</div>
+        <p class="advent-status">Locked</p>
+      {% endif %}
+    </div>
+  {% endfor %}
+</div>
+
+{% if opened_days %}
+  <div class="advent-opened-summary">
+    <h2>Unlocked Messages</h2>
+    <ul>
+      {% for day in opened_days %}
+        {% set day_config = config.get(day) %}
+        <li>
+          <strong>Day {{ day }}:</strong>
+          <span>{{ day_config.message if day_config else 'Message missing in JSON.' }}</span>
+        </li>
+      {% endfor %}
+    </ul>
+  </div>
+{% endif %}
+
+<style>
+.advent-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 24px;
+}
+.advent-cell {
+  background: #fff;
+  border-radius: 12px;
+  padding: 16px;
+  text-align: center;
+  border: 2px solid transparent;
+  min-height: 180px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 8px;
+}
+.advent-cell img {
+  max-width: 100%;
+  height: 80px;
+  object-fit: contain;
+}
+.advent-cell button {
+  background: #007bff;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+.advent-cell button:hover { background: #0056b3; }
+.advent-cell.is-opened { border-color: #6dd5ed; }
+.advent-cell.is-openable { border-color: #ffc857; background: #fffbea; }
+.advent-cell.is-locked { border-color: #ececec; color: #999; }
+.advent-placeholder { font-size: 2rem; }
+.advent-message { font-size: 0.9rem; color: #333; }
+.advent-opened-summary ul { list-style: none; padding: 0; }
+.advent-opened-summary li { margin-bottom: 8px; }
+.advent-day-label { font-weight: bold; }
+.advent-status { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; }
+.advent-hint { font-size: 0.85rem; color: #555; }
+@media (max-width: 900px) {
+  .advent-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+</style>
+{% endblock %}
