@@ -2524,9 +2524,19 @@ def admin_testing_login_concept():
             "device_caption": "Passport stickers layered over soft daylight photo strip",
         },
     ]
+    base_hero_content = {
+        "eyebrow": "Raiding Doncaster and Beyond",
+        "headline": "Where local Trainers level up together.",
+        "body": (
+            "Sign in to track your passport stamps, unlock rewards, and stay in sync with"
+            " Doncaster’s Pokémon GO community."
+        ),
+        "image": url_for("static", filename="banner.jpg"),
+    }
     return render_template(
         "admin_testing_login_concepts.html",
         concepts=login_concepts,
+        base_hero=base_hero_content,
     )
 
 

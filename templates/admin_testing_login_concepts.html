@@ -15,26 +15,32 @@
   </p>
 </div>
 
-<div class="concept-grid">
+<div class="concept-preview-grid">
   {% for concept in concepts %}
-    <article class="concept-card" data-slug="{{ concept.slug }}">
-      <div class="concept-visual">
-        <span class="concept-visual__badge">{{ concept.status }}</span>
-        <h2>{{ concept.title }}</h2>
-        <p>{{ concept.hero_copy }}</p>
-        <div class="concept-visual__device">
-          <div class="concept-device__screen">
-            <span>{{ concept.device_caption }}</span>
+    <article class="concept-preview" data-slug="{{ concept.slug }}">
+      <div class="concept-preview__splash">
+        <span class="concept-preview__badge">{{ concept.status }}</span>
+        <div class="concept-hero">
+          <div class="concept-hero__media">
+            <div class="concept-hero__image-frame">
+              <img src="{{ base_hero.image }}" alt="Login splash hero preview for {{ concept.title }}" loading="lazy">
+              <span class="concept-hero__device-chip">{{ concept.title }}</span>
+            </div>
+          </div>
+          <div class="concept-hero__copy">
+            <span class="concept-hero__eyebrow">{{ base_hero.eyebrow }}</span>
+            <h2>{{ base_hero.headline }}</h2>
+            <p>{{ base_hero.body }}</p>
+            <p class="concept-hero__variation">{{ concept.hero_copy }}</p>
           </div>
         </div>
-        <div class="concept-visual__sparkles" aria-hidden="true">
-          <span></span>
-          <span></span>
-          <span></span>
-        </div>
+        <p class="concept-preview__caption">{{ concept.device_caption }}</p>
       </div>
-      <div class="concept-info">
-        <p class="concept-summary">{{ concept.summary }}</p>
+      <div class="concept-preview__details">
+        <div>
+          <h3>{{ concept.title }}</h3>
+          <p class="concept-summary">{{ concept.summary }}</p>
+        </div>
         <ul class="concept-highlights">
           {% for highlight in concept.highlights %}
             <li>{{ highlight }}</li>
@@ -83,79 +89,109 @@
   max-width: 760px;
   color: rgba(15, 23, 42, 0.82);
 }
-.concept-grid {
+.concept-preview-grid {
   display: flex;
   flex-direction: column;
-  gap: 28px;
+  gap: 32px;
 }
-.concept-card {
+.concept-preview {
   border: 1px solid #e5e7eb;
-  border-radius: 22px;
+  border-radius: 24px;
   overflow: hidden;
   background: #fff;
-  display: grid;
-  grid-template-columns: minmax(320px, 0.9fr) minmax(320px, 1fr);
+  box-shadow: 0 20px 60px rgba(15, 23, 42, 0.08);
 }
-.concept-visual {
-  padding: 28px;
-  color: #fff;
+.concept-preview__splash {
+  padding: 32px;
+  color: #e2e8f0;
   position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
 }
-.concept-visual__badge {
+.concept-preview__badge {
   font-size: 0.78rem;
   letter-spacing: 0.2em;
   text-transform: uppercase;
-  opacity: 0.85;
+  opacity: 0.92;
+  display: inline-flex;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  margin-bottom: 18px;
 }
-.concept-visual__device {
-  margin-top: auto;
-  background: rgba(255, 255, 255, 0.12);
-  padding: 14px;
-  border-radius: 18px;
-  border: 1px solid rgba(255, 255, 255, 0.25);
-}
-.concept-device__screen {
-  border-radius: 24px;
-  padding: 32px 16px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  text-align: center;
-  font-size: 0.95rem;
-  min-height: 130px;
+.concept-hero {
   display: flex;
   align-items: center;
-  justify-content: center;
-  line-height: 1.4;
+  gap: clamp(20px, 6vw, 44px);
+  flex-wrap: wrap;
 }
-.concept-visual__sparkles {
+.concept-hero__media {
+  flex: 0 0 clamp(220px, 28%, 320px);
+}
+.concept-hero__image-frame {
+  border-radius: 26px;
+  padding: 18px;
+  background: rgba(5, 10, 25, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  position: relative;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.2);
+}
+.concept-hero__image-frame img {
+  width: 100%;
+  border-radius: 18px;
+  display: block;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.25);
+}
+.concept-hero__device-chip {
   position: absolute;
-  inset: 0;
-  pointer-events: none;
+  bottom: 14px;
+  right: 14px;
+  padding: 6px 12px;
+  font-size: 0.75rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.65);
+  color: #f8fafc;
 }
-.concept-visual__sparkles span {
-  position: absolute;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.35);
-  filter: blur(0.4px);
-  animation: drift 12s linear infinite;
+.concept-hero__copy {
+  flex: 1;
+  min-width: 260px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
-.concept-visual__sparkles span:nth-child(1) { top: 16%; left: 18%; animation-delay: 0s; }
-.concept-visual__sparkles span:nth-child(2) { top: 40%; right: 12%; animation-delay: 3s; }
-.concept-visual__sparkles span:nth-child(3) { bottom: 12%; left: 32%; animation-delay: 6s; }
-@keyframes drift {
-  0% { transform: translate3d(0, 0, 0) scale(1); opacity: 0.8; }
-  50% { transform: translate3d(10px, -8px, 0) scale(1.2); opacity: 0.4; }
-  100% { transform: translate3d(-8px, 12px, 0) scale(1); opacity: 0.8; }
+.concept-hero__eyebrow {
+  font-size: 0.64rem;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: rgba(248, 250, 252, 0.8);
 }
-.concept-info {
-  padding: 28px 32px;
+.concept-hero__copy h2 {
+  margin: 0;
+  font-size: clamp(1.35rem, 2vw, 1.7rem);
+  color: #fff;
+}
+.concept-hero__copy p {
+  margin: 0;
+  line-height: 1.5;
+  color: rgba(226, 232, 240, 0.92);
+}
+.concept-hero__variation {
+  font-weight: 600;
+  color: rgba(248, 250, 252, 0.92);
+}
+.concept-preview__caption {
+  margin: 18px 0 0;
+  font-size: 0.92rem;
+  color: rgba(226, 232, 240, 0.9);
+}
+.concept-preview__details {
+  padding: 28px 32px 32px;
   display: flex;
   flex-direction: column;
   gap: 18px;
+}
+.concept-preview__details h3 {
+  margin: 0 0 6px;
 }
 .concept-summary {
   font-size: 1.02rem;
@@ -194,32 +230,55 @@
   background: var(--chip-color);
   box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.15);
 }
-.concept-card[data-slug="aurora-passport"] .concept-visual {
+.concept-preview[data-slug="aurora-passport"] .concept-preview__splash {
   background: radial-gradient(circle at 12% 20%, rgba(34, 211, 238, 0.6), transparent 60%),
               radial-gradient(circle at 70% 0%, rgba(244, 114, 182, 0.4), transparent 55%),
               linear-gradient(135deg, #0f172a 15%, #1d4ed8 52%, #22d3ee 100%);
 }
-.concept-card[data-slug="midnight-arcade"] .concept-visual {
+.concept-preview[data-slug="aurora-passport"] .concept-hero__image-frame {
+  background: rgba(15, 23, 42, 0.35);
+}
+.concept-preview[data-slug="midnight-arcade"] .concept-preview__splash {
   background: radial-gradient(circle at 20% 10%, rgba(139, 92, 246, 0.5), transparent 40%),
               radial-gradient(circle at 80% 30%, rgba(244, 63, 94, 0.5), transparent 50%),
               linear-gradient(120deg, #050914 0%, #111827 85%);
 }
-.concept-card[data-slug="midnight-arcade"] .concept-visual__device {
+.concept-preview[data-slug="midnight-arcade"] .concept-hero__image-frame {
   background: rgba(5, 9, 20, 0.7);
+  border-color: rgba(255, 255, 255, 0.15);
 }
-.concept-card[data-slug="sunlit-field-notes"] .concept-visual {
+.concept-preview[data-slug="midnight-arcade"] .concept-hero__device-chip {
+  background: rgba(8, 145, 178, 0.35);
+}
+.concept-preview[data-slug="sunlit-field-notes"] .concept-preview__splash {
   color: #1f2937;
   background: radial-gradient(circle at 12% 20%, rgba(251, 146, 60, 0.45), transparent 55%),
               radial-gradient(circle at 75% 0%, rgba(6, 95, 70, 0.2), transparent 40%),
               linear-gradient(120deg, #fef3c7 0%, #fde68a 60%, #fcd34d 100%);
 }
-.concept-card[data-slug="sunlit-field-notes"] .concept-visual__device {
-  background: rgba(255, 255, 255, 0.55);
+.concept-preview[data-slug="sunlit-field-notes"] .concept-hero__image-frame {
+  background: rgba(255, 255, 255, 0.65);
   border-color: rgba(156, 163, 175, 0.4);
+  box-shadow: 0 18px 32px rgba(253, 230, 138, 0.5);
 }
-.concept-card[data-slug="sunlit-field-notes"] .concept-device__screen {
-  border-color: rgba(156, 163, 175, 0.4);
-  color: #374151;
+.concept-preview[data-slug="sunlit-field-notes"] .concept-hero__device-chip {
+  background: rgba(59, 130, 246, 0.1);
+  color: #1f2937;
+}
+.concept-preview[data-slug="sunlit-field-notes"] .concept-hero__copy h2,
+.concept-preview[data-slug="sunlit-field-notes"] .concept-hero__copy p {
+  color: #1f2937;
+}
+.concept-preview[data-slug="sunlit-field-notes"] .concept-hero__eyebrow {
+  color: rgba(75, 85, 99, 0.85);
+}
+.concept-preview[data-slug="sunlit-field-notes"] .concept-preview__badge {
+  background: rgba(255, 255, 255, 0.8);
+  border-color: rgba(55, 65, 81, 0.25);
+  color: rgba(55, 65, 81, 0.8);
+}
+.concept-preview[data-slug="sunlit-field-notes"] .concept-preview__caption {
+  color: rgba(55, 65, 81, 0.8);
 }
 .login-lab__next {
   margin-top: 38px;
@@ -239,18 +298,17 @@
   flex-direction: column;
   gap: 6px;
 }
-@media (max-width: 960px) {
-  .concept-card {
-    grid-template-columns: 1fr;
-  }
-}
-@media (max-width: 600px) {
-  .concept-visual,
-  .concept-info {
+@media (max-width: 720px) {
+  .concept-preview__splash,
+  .concept-preview__details {
     padding: 22px;
   }
-  .concept-device__screen {
-    padding: 24px 12px;
+  .concept-hero {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .concept-hero__media {
+    width: 100%;
   }
 }
 </style>

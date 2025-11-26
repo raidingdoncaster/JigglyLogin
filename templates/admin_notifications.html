@@ -150,20 +150,11 @@
       <tbody>
         {% for n in notifications %}
           {% set row_type = (n.type or 'announcement')|lower %}
-          {% set data_payload = {
-            "id": n.id,
-            "subject": n.subject,
-            "message": n.message,
-            "type": n.type,
-            "audience": n.audience,
-            "sent_at": n.sent_at
-          } %}
           <tr data-id="{{ n.id }}"
               data-type="{{ row_type }}"
               data-audience="{{ n.audience or 'ALL' }}"
               data-date="{{ n.sent_at or '' }}"
               data-search="{{ (n.subject ~ ' ' ~ (n.message or ''))|striptags|lower }}"
-              data-notification='{{ data_payload|tojson|forceescape }}'
               tabindex="0">
             <td>
               <span class="type-pill">{{ n.type or 'Announcement' }}</span>
@@ -761,6 +752,10 @@ body.modal-open { overflow:hidden; }
 }
 </style>
 
+<script id="notificationData" type="application/json">
+  {{ notifications|tojson }}
+</script>
+
 <script>
 document.addEventListener("DOMContentLoaded", () => {
   const notifAlert = document.getElementById("notifAlert");
@@ -776,6 +771,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const groupButtons = Array.from(document.querySelectorAll("[data-select-group]"));
   const audienceCount = document.getElementById("audienceSelectedCount");
   const manualInput = document.querySelector("input[name='audience_manual']");
+  const notificationDataScript = document.getElementById("notificationData");
 
   const notificationTable = document.getElementById("notificationTable");
   const tableBody = notificationTable ? notificationTable.querySelector("tbody") : null;
@@ -802,6 +798,35 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const filters = { search: "", category: "all", sort: "newest" };
   const state = { current: null, activeRow: null, editing: false };
+  const notificationStore = new Map();
+
+  const registerNotification = (notification) => {
+    if (!notification || !notification.id) return;
+    const id = String(notification.id);
+    notificationStore.set(id, notification);
+  };
+
+  const bootstrapNotifications = () => {
+    if (!notificationDataScript) return;
+    const payload = notificationDataScript.textContent || "[]";
+    try {
+      const parsed = JSON.parse(payload);
+      if (Array.isArray(parsed)) {
+        parsed.forEach((entry) => registerNotification(entry));
+      }
+    } catch (err) {
+      console.error("Failed to parse notifications payload.", err);
+    }
+  };
+
+  const getNotificationByRow = (row) => {
+    if (!row) return null;
+    const id = row.dataset.id;
+    if (!id) return null;
+    return notificationStore.get(id) || null;
+  };
+
+  bootstrapNotifications();
 
   const setAlert = (message = "", tone = "success") => {
     if (!notifAlert) return;
@@ -818,7 +843,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const getNotificationRows = () => {
     if (!tableBody) return [];
-    return Array.from(tableBody.querySelectorAll("tr[data-notification]"));
+    return Array.from(tableBody.querySelectorAll("tr[data-id]"));
   };
 
   const findRowById = (id) => getNotificationRows().find((row) => row.dataset.id === id) || null;
@@ -891,13 +916,25 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   const updateRowDataset = (row, notification) => {
-    if (!row) return;
-    row.dataset.notification = JSON.stringify(notification);
+    if (!row || !notification) return;
+    registerNotification(notification);
+    row.dataset.id = notification.id || "";
     row.dataset.type = (notification.type || "announcement").toLowerCase();
+    row.dataset.audience = notification.audience || "ALL";
     row.dataset.date = notification.sent_at || "";
     row.dataset.search = sanitizeDatasetSearch(notification);
     const pill = row.querySelector(".type-pill");
     if (pill) pill.textContent = formatTypeLabel(notification.type);
+    const audienceLabel = row.querySelector(".aud-label");
+    if (audienceLabel) {
+      audienceLabel.textContent = notification.audience === "ALL"
+        ? "All Trainers"
+        : (notification.audience || "Unknown");
+    }
+    const srOnly = row.querySelector(".sr-only");
+    if (srOnly) {
+      srOnly.textContent = `Subject: ${notification.subject || "Notification"}`;
+    }
   };
 
   const toggleModal = (show) => {
@@ -1111,27 +1148,39 @@ document.addEventListener("DOMContentLoaded", () => {
 
   if (notificationTable) {
     notificationTable.addEventListener("click", (event) => {
-      const row = event.target.closest("tr[data-notification]");
+      const row = event.target.closest("tr[data-id]");
       if (!row) return;
-      const payload = row.dataset.notification ? JSON.parse(row.dataset.notification) : null;
-      if (payload) openModal(row, payload);
+      const payload = getNotificationByRow(row);
+      if (payload) {
+        openModal(row, payload);
+      } else {
+        setAlert("Unable to load notification. Please refresh.", "error");
+      }
     });
     notificationTable.addEventListener("keydown", (event) => {
       if (!["Enter", " "].includes(event.key)) return;
-      const row = event.target.closest("tr[data-notification]");
+      const row = event.target.closest("tr[data-id]");
       if (!row) return;
       event.preventDefault();
-      const payload = row.dataset.notification ? JSON.parse(row.dataset.notification) : null;
-      if (payload) openModal(row, payload);
+      const payload = getNotificationByRow(row);
+      if (payload) {
+        openModal(row, payload);
+      } else {
+        setAlert("Unable to load notification. Please refresh.", "error");
+      }
     });
     notificationTable.querySelectorAll("[data-open-notification]").forEach((button) => {
       button.addEventListener("click", (event) => {
         event.preventDefault();
         event.stopPropagation();
-        const row = button.closest("tr[data-notification]");
+        const row = button.closest("tr[data-id]");
         if (!row) return;
-        const payload = row.dataset.notification ? JSON.parse(row.dataset.notification) : null;
-        if (payload) openModal(row, payload);
+        const payload = getNotificationByRow(row);
+        if (payload) {
+          openModal(row, payload);
+        } else {
+          setAlert("Unable to load notification. Please refresh.", "error");
+        }
       });
     });
   }
@@ -1199,6 +1248,9 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         const row = state.activeRow || findRowById(state.current.id);
         if (row) row.remove();
+        if (state.current && state.current.id) {
+          notificationStore.delete(String(state.current.id));
+        }
         toggleModal(false);
         setAlert("Notification deleted.", "success");
         applyFilters();
