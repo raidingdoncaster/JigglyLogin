@@ -2010,6 +2010,64 @@ def _admin_dashboard_gate_check(password: str) -> bool:
     return False
 
 
+def _load_admin_gate_security_state() -> dict:
+    state = session.get("admin_dashboard_security")
+    if not isinstance(state, dict):
+        state = {}
+    return state
+
+
+def _save_admin_gate_security_state(state: dict) -> None:
+    session["admin_dashboard_security"] = state
+
+
+def _build_admin_gate_status_payload() -> dict:
+    gate_required = _admin_dashboard_gate_enabled()
+    verified = _admin_dashboard_gate_verified()
+    security_state = _load_admin_gate_security_state()
+
+    try:
+        remaining = int(security_state.get("remaining", ADMIN_DASHBOARD_GATE_MAX_ATTEMPTS))
+    except (TypeError, ValueError):
+        remaining = ADMIN_DASHBOARD_GATE_MAX_ATTEMPTS
+    remaining = max(0, min(remaining, ADMIN_DASHBOARD_GATE_MAX_ATTEMPTS))
+
+    lockout_seconds = None
+    locked = False
+    raw_lock_until = security_state.get("lock_until")
+    lock_until_ts = None
+    if raw_lock_until is not None:
+        try:
+            lock_until_ts = float(raw_lock_until)
+        except (TypeError, ValueError):
+            lock_until_ts = None
+    if lock_until_ts:
+        now_ts = time.time()
+        if now_ts < lock_until_ts:
+            locked = True
+            lockout_seconds = max(int(lock_until_ts - now_ts), 1)
+        else:
+            security_state["lock_until"] = None
+            _save_admin_gate_security_state(security_state)
+
+    return {
+        "enabled": gate_required,
+        "verified": bool(verified or not gate_required),
+        "locked": locked,
+        "lockout_seconds": lockout_seconds,
+        "remaining_attempts": remaining,
+        "ttl_seconds": ADMIN_DASHBOARD_GATE_TTL_SECONDS,
+    }
+
+
+@app.context_processor
+def inject_admin_gate_flags():
+    return {
+        "admin_gate_enabled": _admin_dashboard_gate_enabled(),
+        "admin_gate_verified": _admin_dashboard_gate_verified(),
+    }
+
+
 def _is_trainer_panel_ajax() -> bool:
     """Detect if the current request came from the trainer panel modal."""
     try:
@@ -2033,10 +2091,10 @@ def _panel_action_response(success: bool, message: str, username: str, *, status
     return jsonify(payload), status
 
 
-def _deny_admin_request():
+def _deny_admin_request(message: str = "Admins only."):
     """Abort with JSON when possible so the modal can handle errors gracefully."""
     if _is_trainer_panel_ajax():
-        abort(make_response(jsonify({"success": False, "message": "Admins only."}), 403))
+        abort(make_response(jsonify({"success": False, "message": message}), 403))
     abort(403)
 
 
@@ -2047,7 +2105,115 @@ def _require_admin():
     _, admin_user = find_user(trainer_username)
     if not admin_user or (admin_user.get("account_type") or "").lower() != "admin":
         _deny_admin_request()
+    if _admin_dashboard_gate_enabled() and not _admin_dashboard_gate_verified():
+        _deny_admin_request("Admin quick menu is locked.")
     session["account_type"] = "Admin"
+
+
+def _current_admin_user_record():
+    trainer_username = session.get("trainer")
+    if not trainer_username:
+        return None
+    _, admin_user = find_user(trainer_username)
+    if not admin_user or (admin_user.get("account_type") or "").lower() != "admin":
+        return None
+    return admin_user
+
+
+@app.route("/admin/gate/status", methods=["GET"])
+def admin_gate_status():
+    trainer_username = session.get("trainer")
+    if not trainer_username:
+        return jsonify({"success": False, "message": "Please log in."}), 401
+    admin_user = _current_admin_user_record()
+    if not admin_user:
+        return jsonify({"success": False, "message": "Admins only."}), 403
+    return jsonify(_build_admin_gate_status_payload())
+
+
+@app.route("/admin/gate/unlock", methods=["POST"])
+def admin_gate_unlock():
+    trainer_username = session.get("trainer")
+    if not trainer_username:
+        return jsonify({"success": False, "message": "Please log in."}), 401
+    admin_user = _current_admin_user_record()
+    if not admin_user:
+        return jsonify({"success": False, "message": "Admins only."}), 403
+
+    if not _admin_dashboard_gate_enabled():
+        session["admin_dashboard_gate"] = {"verified_at": time.time()}
+        session.pop("admin_dashboard_security", None)
+        return jsonify({
+            "success": True,
+            "message": "Admin tools unlocked.",
+            "status": _build_admin_gate_status_payload(),
+        })
+
+    payload = request.get_json(silent=True) or {}
+    submitted_password = payload.get("admin_password")
+    if submitted_password is None:
+        submitted_password = request.form.get("admin_password")
+    submitted_password = (submitted_password or "").strip()
+    if not submitted_password:
+        return jsonify({"success": False, "message": "Enter the admin password."}), 400
+
+    security_state = _load_admin_gate_security_state()
+    try:
+        remaining = int(security_state.get("remaining", ADMIN_DASHBOARD_GATE_MAX_ATTEMPTS))
+    except (TypeError, ValueError):
+        remaining = ADMIN_DASHBOARD_GATE_MAX_ATTEMPTS
+    remaining = max(0, remaining)
+
+    now_ts = time.time()
+    lock_until_raw = security_state.get("lock_until")
+    lock_until_ts = None
+    if lock_until_raw is not None:
+        try:
+            lock_until_ts = float(lock_until_raw)
+        except (TypeError, ValueError):
+            lock_until_ts = None
+
+    if lock_until_ts and now_ts < lock_until_ts:
+        wait_seconds = max(int(lock_until_ts - now_ts), 1)
+        security_state["remaining"] = ADMIN_DASHBOARD_GATE_MAX_ATTEMPTS
+        _save_admin_gate_security_state(security_state)
+        status_payload = _build_admin_gate_status_payload()
+        return jsonify({
+            "success": False,
+            "message": f"Too many incorrect attempts. Try again in {wait_seconds} seconds.",
+            "status": status_payload,
+        }), 423
+
+    if _admin_dashboard_gate_check(submitted_password):
+        session["admin_dashboard_gate"] = {"verified_at": time.time()}
+        security_state["remaining"] = ADMIN_DASHBOARD_GATE_MAX_ATTEMPTS
+        security_state["lock_until"] = None
+        _save_admin_gate_security_state(security_state)
+        return jsonify({
+            "success": True,
+            "message": "Admin tools unlocked.",
+            "status": _build_admin_gate_status_payload(),
+        })
+
+    remaining = max(remaining - 1, 0)
+    security_state["remaining"] = remaining
+    status_code = 403
+    if remaining <= 0:
+        security_state["lock_until"] = now_ts + ADMIN_DASHBOARD_GATE_LOCK_SECONDS
+        security_state["remaining"] = ADMIN_DASHBOARD_GATE_MAX_ATTEMPTS
+        status_code = 423
+        error_message = f"Too many incorrect attempts. Try again in {ADMIN_DASHBOARD_GATE_LOCK_SECONDS} seconds."
+    else:
+        security_state["lock_until"] = None
+        attempt_word = "attempt" if remaining == 1 else "attempts"
+        error_message = f"Incorrect admin password. {remaining} {attempt_word} remaining."
+
+    _save_admin_gate_security_state(security_state)
+    return jsonify({
+        "success": False,
+        "message": error_message,
+        "status": _build_admin_gate_status_payload(),
+    }), status_code
 
 def update_trainer_username(current_username: str, new_username: str, actor: str = "Admin"):
     desired = (new_username or "").strip()
@@ -2188,19 +2354,21 @@ def admin_required(f):
             flash("Please log in first.", "warning")
             return redirect(url_for("home"))
 
-        # Load user from Sheet1 (or Supabase if you’ve switched)
-        _, user = find_user(session["trainer"])
-        account_type = user.get("account_type", "")
-
-        if account_type != "Admin":
+        admin_user = _current_admin_user_record()
+        if not admin_user:
             flash("Admins only!", "error")
             return redirect(url_for("dashboard"))
 
+        if _admin_dashboard_gate_enabled() and not _admin_dashboard_gate_verified():
+            flash("Unlock the admin quick menu to access this tool.", "warning")
+            return redirect(url_for("dashboard"))
+
+        session["account_type"] = "Admin"
         return f(*args, **kwargs)
     return wrapper
 
 # ===== Admin Dashboard =====
-@app.route("/admin/dashboard", methods=["GET", "POST"])
+@app.route("/admin/dashboard", methods=["GET"])
 def admin_dashboard():
     session["last_page"] = request.path
     if "trainer" not in session:
@@ -2214,70 +2382,8 @@ def admin_dashboard():
 
     gate_required = _admin_dashboard_gate_enabled()
     if gate_required and not _admin_dashboard_gate_verified():
-        security_state = session.get("admin_dashboard_security") or {}
-        try:
-            remaining = int(security_state.get("remaining", ADMIN_DASHBOARD_GATE_MAX_ATTEMPTS))
-        except (TypeError, ValueError):
-            remaining = ADMIN_DASHBOARD_GATE_MAX_ATTEMPTS
-        remaining = max(0, remaining)
-
-        now_ts = time.time()
-        lock_until_ts = None
-        lock_until_raw = security_state.get("lock_until")
-        if lock_until_raw is not None:
-            try:
-                lock_until_ts = float(lock_until_raw)
-            except (TypeError, ValueError):
-                security_state["lock_until"] = None
-                lock_until_ts = None
-
-        if lock_until_ts and now_ts < lock_until_ts:
-            wait_seconds = max(int(lock_until_ts - now_ts), 1)
-            flash(f"Too many incorrect attempts. Try again in {wait_seconds} seconds.", "error")
-            security_state["remaining"] = ADMIN_DASHBOARD_GATE_MAX_ATTEMPTS
-            session["admin_dashboard_security"] = security_state
-            return (
-                render_template(
-                    "admin_dashboard_password.html",
-                    remaining_attempts=ADMIN_DASHBOARD_GATE_MAX_ATTEMPTS,
-                    locked=True,
-                    lockout_seconds=wait_seconds,
-                ),
-                403,
-            )
-
-        if request.method == "POST":
-            submitted_password = request.form.get("admin_password", "")
-            if _admin_dashboard_gate_check(submitted_password):
-                session["admin_dashboard_gate"] = {"verified_at": time.time()}
-                security_state["remaining"] = ADMIN_DASHBOARD_GATE_MAX_ATTEMPTS
-                security_state["lock_until"] = None
-                session["admin_dashboard_security"] = security_state
-                flash("Admin dashboard unlocked.", "success")
-                return redirect(url_for("admin_dashboard"))
-
-            remaining = max(remaining - 1, 0)
-            security_state["remaining"] = remaining
-            if remaining <= 0:
-                security_state["lock_until"] = now_ts + ADMIN_DASHBOARD_GATE_LOCK_SECONDS
-                security_state["remaining"] = ADMIN_DASHBOARD_GATE_MAX_ATTEMPTS
-                flash(f"Too many incorrect attempts. Try again in {ADMIN_DASHBOARD_GATE_LOCK_SECONDS} seconds.", "error")
-            else:
-                security_state["lock_until"] = None
-                attempt_word = "attempt" if remaining == 1 else "attempts"
-                flash(f"Incorrect admin password. {remaining} {attempt_word} remaining.", "error")
-
-            session["admin_dashboard_security"] = security_state
-        else:
-            security_state["remaining"] = min(remaining, ADMIN_DASHBOARD_GATE_MAX_ATTEMPTS)
-            session["admin_dashboard_security"] = security_state
-
-        return render_template(
-            "admin_dashboard_password.html",
-            remaining_attempts=security_state.get("remaining", ADMIN_DASHBOARD_GATE_MAX_ATTEMPTS),
-            locked=False,
-            lockout_seconds=None,
-        )
+        flash("Unlock the admin quick menu to access the Admin Dashboard.", "warning")
+        return redirect(url_for("dashboard"))
 
     if gate_required:
         session.pop("admin_dashboard_security", None)
@@ -2342,6 +2448,13 @@ def admin_testing_grounds():
 
     experiments = [
         {
+            "name": "Login Concept Lab",
+            "status": "Concept",
+            "summary": "Review three refreshed splash explorations before we refresh the trainer login hero.",
+            "cta_label": "Preview Login Concepts",
+            "cta_url": url_for("admin_testing_login_concept"),
+        },
+        {
             "name": "Advent Calendar",
             "status": "Alpha",
             "summary": "Preview the 25-day stamp-and-quote experience before launching to trainers.",
@@ -2353,6 +2466,67 @@ def admin_testing_grounds():
     return render_template(
         "admin_testing_grounds.html",
         experiments=experiments,
+    )
+
+
+@app.route("/admin/testing-grounds/login-concept")
+@admin_required
+def admin_testing_login_concept():
+    session["last_page"] = request.path
+    login_concepts = [
+        {
+            "slug": "aurora-passport",
+            "title": "Aurora Passport",
+            "status": "Frosted gradient + passport stamps",
+            "summary": (
+                "A sleeker take on today’s hero — glacier blues blend into a subtle"
+                " aurora while oversized stamp icons hint at progress."
+            ),
+            "hero_copy": "Collective energy, but calmer and more premium.",
+            "palette": ["#0f172a", "#1d4ed8", "#22d3ee", "#f472b6"],
+            "highlights": [
+                "Glassmorphism panel that mirrors the passport card UI.",
+                "Animated aurora ribbon that loops slowly behind the hero image.",
+                "Microcopy emphasises safety and togetherness for anxious trainers.",
+            ],
+            "device_caption": "Login hero framed by frosted glass + aurora ribbon",
+        },
+        {
+            "slug": "midnight-arcade",
+            "title": "Midnight Arcade",
+            "status": "Neon raid hype",
+            "summary": (
+                "Hyper-modern noir palette with neon wireframes, inspired by city PVP nights."
+            ),
+            "hero_copy": "Loud energy for special pushes (like Leagues season).",
+            "palette": ["#050914", "#8b5cf6", "#f43f5e", "#22d3ee"],
+            "highlights": [
+                "Retro grid + particle glow hints at AR scan beams.",
+                "Hero copy swaps to ‘Coordinate. Charge. Win.’ messaging for urgency.",
+                "CTA buttons adopt a pill outline that pulses softly on focus.",
+            ],
+            "device_caption": "Stretched neon banner over a blurred Doncaster skyline",
+        },
+        {
+            "slug": "sunlit-field-notes",
+            "title": "Sunlit Field Notes",
+            "status": "Soft daylight + stationery textures",
+            "summary": (
+                "Warm parchment textures, pencil annotations, and pastel stickers for a more welcoming daytime feel."
+            ),
+            "hero_copy": "Grounded, analog energy for family-friendly beats.",
+            "palette": ["#fef3c7", "#fb923c", "#065f46", "#312e81"],
+            "highlights": [
+                "Rounded photo frame stacks Polaroid moments from recent events.",
+                "Handwritten-style eyebrow copy humanises the invite to log in.",
+                "Background subtly animates with drifting paper grain to feel tactile.",
+            ],
+            "device_caption": "Passport stickers layered over soft daylight photo strip",
+        },
+    ]
+    return render_template(
+        "admin_testing_login_concepts.html",
+        concepts=login_concepts,
     )
 
 
@@ -3617,11 +3791,18 @@ def admin_trainers():
                 flash(f"No trainer found with username '{search_name}'", "warning")
 
     # 📋 Fetch all accounts from Supabase.sheet1
+    trainer_columns = "id, trainer_username, campfire_username, account_type, stamps, avatar_icon, trainer_card_background"
     try:
-        resp = supabase.table("sheet1").select(
-            "id, created_at, trainer_username, campfire_username, account_type, stamps, avatar_icon, trainer_card_background"
-        ).execute()
-        all_trainers = resp.data or []
+        resp = None
+        try:
+            resp = supabase.table("sheet1").select(
+                f"{trainer_columns}, created_at"
+            ).execute()
+        except Exception as column_err:
+            print("⚠️ Trainer fetch with created_at failed, retrying without it:", column_err)
+            resp = supabase.table("sheet1").select(trainer_columns).execute()
+
+        all_trainers = (resp.data if resp else []) or []
         for entry in all_trainers:
             entry["account_type"] = normalize_account_type(entry.get("account_type"))
             entry.setdefault("avatar_icon", "avatar1.png")

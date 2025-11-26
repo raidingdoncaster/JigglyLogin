@@ -26,14 +26,14 @@
   <title>{{ title if title else "JigglyLogin" }}</title>
 
   <!-- Google Fonts -->
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Montserrat:wght@400;600&family=Space+Grotesk:wght@400;600&display=swap" rel="stylesheet">
 
   <style>
     :root{
       --brand:#3a8dde;
       --brand2:#5eb8ff;
       --header-height:56px;
-      --identity-font:'JetBrains Mono','Source Code Pro','Consolas','SFMono-Regular',monospace;
+      --identity-font:'Space Grotesk','JetBrains Mono','Source Code Pro','Consolas','SFMono-Regular',monospace;
     }
     *,*::before,*::after{box-sizing:border-box;}
     body{
@@ -60,7 +60,7 @@
     }
 
     /* Header */
-    header{
+    .site-header{
       position:fixed; top:0; left:0; right:0; z-index:6000;
       background:linear-gradient(135deg,var(--brand),var(--brand2));
       padding:6px 12px;
@@ -310,7 +310,7 @@
     /* Mobile */
     @media(max-width:480px){
       :root{ --header-height:64px; }
-      header{ padding:8px 12px; }
+      .site-header{ padding:8px 12px; }
       .nav-icons{ gap:10px; }
       .nav-item{ width:40px; height:40px; }
       .nav-item img.nav-icon{ max-width:36px; max-height:36px; }
@@ -321,7 +321,7 @@
 
   <script>
     window.addEventListener("DOMContentLoaded",()=>{
-      const headerEl=document.querySelector("header");
+      const headerEl=document.querySelector(".site-header");
       const setHeaderOffset=()=>{
         if(!headerEl) return;
         const height=headerEl.offsetHeight;
@@ -398,7 +398,7 @@
 </head>
 <body>
   <!-- Header -->
-  <header>
+  <header class="site-header">
     <div class="header-left">
       <div class="logo"></div>
       {% if header_back_action %}
@@ -597,6 +597,7 @@
   </script>
 
   {% if account_type == "Admin" %}
+  {% set admin_gate_locked = admin_gate_enabled and not admin_gate_verified %}
   <button
     type="button"
     id="admin-fab"
@@ -609,7 +610,9 @@
   <div id="admin-quick-menu-overlay" class="admin-quick-menu-overlay" hidden></div>
   <div
     id="admin-quick-menu"
-    class="admin-quick-menu"
+    class="admin-quick-menu{% if admin_gate_locked %} admin-quick-menu--locked{% endif %}"
+    data-gate-enabled="{{ 'true' if admin_gate_enabled else 'false' }}"
+    data-gate-verified="{{ 'true' if admin_gate_verified else 'false' }}"
     role="dialog"
     aria-modal="true"
     aria-label="Admin quick access"
@@ -623,7 +626,37 @@
       </div>
       <button type="button" id="admin-quick-menu-close" class="admin-quick-menu__close" aria-label="Close admin shortcuts">✕</button>
     </div>
-    <div class="admin-quick-menu__actions">
+    <div
+      id="admin-quick-menu-gate"
+      class="admin-quick-menu__gate"
+      {% if not admin_gate_locked %}hidden{% endif %}
+    >
+      <p id="admin-quick-menu-gate-message" class="admin-quick-menu__gate-message">
+        Enter the admin password to unlock your shortcuts.
+      </p>
+      <form id="admin-quick-menu-gate-form" class="admin-quick-menu__gate-form" autocomplete="off">
+        <label class="admin-quick-menu__gate-label" for="admin-quick-password">Admin password</label>
+        <div class="admin-quick-menu__gate-input">
+          <input
+            id="admin-quick-password"
+            name="admin_password"
+            type="password"
+            inputmode="text"
+            autocomplete="off"
+            placeholder="Enter admin password"
+            required
+          >
+          <button type="submit" class="admin-quick-menu__gate-button">Unlock</button>
+        </div>
+      </form>
+      <p
+        id="admin-quick-menu-gate-status"
+        class="admin-quick-menu__gate-status"
+        role="status"
+        aria-live="polite"
+      ></p>
+    </div>
+    <div class="admin-quick-menu__actions" aria-hidden="{{ 'true' if admin_gate_locked else 'false' }}">
       <a href="{{ url_for('admin_dashboard') }}" class="admin-quick-menu__action">
         <span class="admin-quick-menu__icon">👑</span>
         <span class="admin-quick-menu__label">Admin Dashboard</span>
@@ -725,6 +758,84 @@
       grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
       gap: 12px;
     }
+    .admin-quick-menu--locked .admin-quick-menu__actions {
+      opacity: 0.35;
+      pointer-events: none;
+      filter: grayscale(0.1);
+    }
+    .admin-quick-menu__gate {
+      border: 1px dashed rgba(148,163,184,0.9);
+      border-radius: 18px;
+      padding: 16px;
+      background: #f8fafc;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .admin-quick-menu__gate-message {
+      margin: 0;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #0f172a;
+    }
+    .admin-quick-menu__gate-form {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .admin-quick-menu__gate-label {
+      font-size: 0.78rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-bottom: 2px;
+      color: #475569;
+    }
+    .admin-quick-menu__gate-input {
+      display: flex;
+      gap: 8px;
+      align-items: stretch;
+    }
+    .admin-quick-menu__gate-input input {
+      flex: 1;
+      border-radius: 12px;
+      border: 1px solid rgba(15,23,42,0.2);
+      padding: 10px 12px;
+      font-size: 1rem;
+      font-family: inherit;
+    }
+    .admin-quick-menu__gate-button {
+      border: none;
+      background: var(--brand);
+      color: #fff;
+      border-radius: 12px;
+      padding: 0 18px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+    .admin-quick-menu__gate-button:hover:not(:disabled) {
+      background: #2f73bb;
+    }
+    .admin-quick-menu__gate-button:disabled {
+      opacity: 0.6;
+      cursor: wait;
+    }
+    .admin-quick-menu__gate-form.is-busy .admin-quick-menu__gate-button {
+      opacity: 0.6;
+      cursor: wait;
+    }
+    .admin-quick-menu__gate-status {
+      min-height: 1.2em;
+      margin: 0;
+      font-size: 0.85rem;
+      color: #0f172a;
+    }
+    .admin-quick-menu__gate-status.is-error {
+      color: #b91c1c;
+    }
+    .admin-quick-menu__gate-status.is-success {
+      color: #15803d;
+    }
     .admin-quick-menu__action {
       border-radius: 18px;
       border: 1px solid rgba(148,163,184,0.4);
@@ -772,6 +883,173 @@
       const closeBtn = document.getElementById("admin-quick-menu-close");
       if (!fab || !sheet || !overlay) return;
 
+      const actions = sheet.querySelector(".admin-quick-menu__actions");
+      const gateSection = document.getElementById("admin-quick-menu-gate");
+      const gateForm = document.getElementById("admin-quick-menu-gate-form");
+      const gateInput = document.getElementById("admin-quick-password");
+      const gateStatus = document.getElementById("admin-quick-menu-gate-status");
+      const gateEnabled = sheet.dataset.gateEnabled === "true";
+      let gateVerified = sheet.dataset.gateVerified === "true";
+      let gateStatusCache = null;
+      let gateStatusLoading = false;
+      let gateUnlockLoading = false;
+
+      const setLockedState = (locked) => {
+        sheet.classList.toggle("admin-quick-menu--locked", locked);
+        if (actions) {
+          actions.setAttribute("aria-hidden", locked ? "true" : "false");
+        }
+        if (gateSection) {
+          gateSection.hidden = !locked;
+        }
+      };
+
+      setLockedState(gateEnabled && !gateVerified);
+
+      const updateGateStatusText = (status, options) => {
+        if (!gateStatus) return;
+        const opts = options || {};
+        gateStatus.classList.remove("is-error", "is-success");
+        if (opts.message) {
+          gateStatus.textContent = opts.message;
+          if (opts.variant === "error") {
+            gateStatus.classList.add("is-error");
+          } else if (opts.variant === "success") {
+            gateStatus.classList.add("is-success");
+          }
+          return;
+        }
+        if (!status || !gateEnabled) {
+          gateStatus.textContent = "";
+          return;
+        }
+        if (status.locked && typeof status.lockout_seconds === "number") {
+          const seconds = Math.max(parseInt(status.lockout_seconds, 10) || 0, 1);
+          gateStatus.textContent = `Locked. Try again in ${seconds}s.`;
+          gateStatus.classList.add("is-error");
+          return;
+        }
+        if (typeof status.remaining_attempts === "number") {
+          const attempts = status.remaining_attempts;
+          const word = attempts === 1 ? "attempt" : "attempts";
+          gateStatus.textContent = `${attempts} ${word} remaining.`;
+          return;
+        }
+        gateStatus.textContent = "";
+      };
+
+      const applyGateStatus = (status) => {
+        if (!gateEnabled) {
+          gateVerified = true;
+          setLockedState(false);
+          updateGateStatusText(null);
+          return;
+        }
+        if (status) {
+          gateVerified = Boolean(status.verified);
+          gateStatusCache = status;
+        }
+        setLockedState(gateEnabled && !gateVerified);
+        updateGateStatusText(status || gateStatusCache || null);
+      };
+
+      const ensureGateStatus = async () => {
+        if (!gateEnabled || gateVerified) {
+          return gateStatusCache;
+        }
+        if (gateStatusLoading) {
+          return gateStatusCache;
+        }
+        gateStatusLoading = true;
+        if (gateStatus && !gateStatus.textContent) {
+          updateGateStatusText(null, { message: "Checking admin lock..." });
+        }
+        try {
+          const response = await fetch("/admin/gate/status", {
+            method: "GET",
+            headers: { "Accept": "application/json" },
+            credentials: "same-origin",
+          });
+          if (!response.ok) {
+            let message = "Unable to check admin lock.";
+            if (response.status === 401) {
+              message = "Session expired. Please log in again.";
+            } else if (response.status === 403) {
+              message = "Admin access required.";
+            }
+            updateGateStatusText(null, { message, variant: "error" });
+            return null;
+          }
+          const status = await response.json();
+          applyGateStatus(status);
+          return status;
+        } catch (err) {
+          updateGateStatusText(null, { message: "Unable to check admin lock.", variant: "error" });
+          return null;
+        } finally {
+          gateStatusLoading = false;
+        }
+      };
+
+      if (gateForm && gateEnabled) {
+        gateForm.addEventListener("submit", async (event) => {
+          event.preventDefault();
+          if (gateUnlockLoading) {
+            return;
+          }
+          const password = (gateInput && gateInput.value || "").trim();
+          if (!password) {
+            updateGateStatusText(null, { message: "Enter the admin password.", variant: "error" });
+            if (gateInput) {
+              gateInput.focus();
+            }
+            return;
+          }
+          gateUnlockLoading = true;
+          gateForm.classList.add("is-busy");
+          updateGateStatusText(null, { message: "Verifying..." });
+          try {
+            const response = await fetch("/admin/gate/unlock", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+              },
+              credentials: "same-origin",
+              body: JSON.stringify({ admin_password: password }),
+            });
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok || !payload.success) {
+              const status = payload.status || gateStatusCache;
+              if (status) {
+                applyGateStatus(status);
+              }
+              updateGateStatusText(status, {
+                message: payload.message || "Unable to unlock admin tools.",
+                variant: "error",
+              });
+              return;
+            }
+            applyGateStatus(payload.status || null);
+            updateGateStatusText(payload.status || null, { message: "Admin tools unlocked.", variant: "success" });
+            if (gateInput) {
+              gateInput.value = "";
+            }
+            if (actions) {
+              const firstAction = actions.querySelector("a, button");
+              if (firstAction) {
+                window.setTimeout(() => firstAction.focus({ preventScroll: true }), 30);
+              }
+            }
+          } catch (err) {
+            updateGateStatusText(null, { message: "Unable to unlock admin tools.", variant: "error" });
+          } finally {
+            gateUnlockLoading = false;
+            gateForm.classList.remove("is-busy");
+          }
+        });
+      }
+
       let hideOverlayTimer;
 
       const openSheet = () => {
@@ -783,11 +1061,20 @@
         sheet.setAttribute("aria-hidden", "false");
         fab.setAttribute("aria-expanded", "true");
 
-        const focusTarget = sheet.querySelector("a, button:not(#admin-fab)");
-        if (focusTarget) {
-          focusTarget.focus({ preventScroll: true });
+        if (gateEnabled && !gateVerified) {
+          if (gateInput) {
+            gateInput.focus({ preventScroll: true });
+          } else {
+            sheet.focus({ preventScroll: true });
+          }
+          ensureGateStatus();
         } else {
-          sheet.focus({ preventScroll: true });
+          const focusTarget = sheet.querySelector("a, button:not(#admin-fab)");
+          if (focusTarget) {
+            focusTarget.focus({ preventScroll: true });
+          } else {
+            sheet.focus({ preventScroll: true });
+          }
         }
         document.addEventListener("keydown", handleEscape);
       };

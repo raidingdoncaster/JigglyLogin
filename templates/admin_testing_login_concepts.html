@@ -1,0 +1,257 @@
+{% extends "base.html" %}
+
+{% block page_settings %}
+  {% set container_class = 'is-wide' %}
+{% endblock %}
+
+{% block content %}
+<div class="login-lab">
+  <a class="login-lab__back" href="{{ url_for('admin_testing_grounds') }}">← Back to Testing Grounds</a>
+  <span class="login-lab__eyebrow">Testing Grounds</span>
+  <h1>Login Concept Lab</h1>
+  <p class="login-lab__lede">
+    Three refreshed splash explorations built off our current hero. Each is tuned for a different campaign
+    mood so we can rotate the login experience without rewriting the entire auth flow.
+  </p>
+</div>
+
+<div class="concept-grid">
+  {% for concept in concepts %}
+    <article class="concept-card" data-slug="{{ concept.slug }}">
+      <div class="concept-visual">
+        <span class="concept-visual__badge">{{ concept.status }}</span>
+        <h2>{{ concept.title }}</h2>
+        <p>{{ concept.hero_copy }}</p>
+        <div class="concept-visual__device">
+          <div class="concept-device__screen">
+            <span>{{ concept.device_caption }}</span>
+          </div>
+        </div>
+        <div class="concept-visual__sparkles" aria-hidden="true">
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+      </div>
+      <div class="concept-info">
+        <p class="concept-summary">{{ concept.summary }}</p>
+        <ul class="concept-highlights">
+          {% for highlight in concept.highlights %}
+            <li>{{ highlight }}</li>
+          {% endfor %}
+        </ul>
+        <div class="concept-palette">
+          {% for color in concept.palette %}
+            <span class="palette-chip" style="--chip-color: {{ color }}">{{ color }}</span>
+          {% endfor %}
+        </div>
+      </div>
+    </article>
+  {% endfor %}
+</div>
+
+<section class="login-lab__next">
+  <h3>What happens next?</h3>
+  <ol>
+    <li>Screenshot or record feedback from other admins and trainers.</li>
+    <li>Vote on which concept aligns best with the next campaign (winter raids, leagues push, family day, etc.).</li>
+    <li>We’ll port the winning layout into <code>templates/login.html</code> and keep the other two ready for seasonal swaps.</li>
+  </ol>
+</section>
+
+<style>
+.login-lab {
+  margin-bottom: 26px;
+}
+.login-lab__back {
+  font-size: 0.9rem;
+  color: #6c63ff;
+  text-decoration: none;
+}
+.login-lab__back:hover {
+  text-decoration: underline;
+}
+.login-lab__eyebrow {
+  display: inline-block;
+  margin-top: 6px;
+  font-size: 0.75rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(15, 23, 42, 0.6);
+}
+.login-lab__lede {
+  max-width: 760px;
+  color: rgba(15, 23, 42, 0.82);
+}
+.concept-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+.concept-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 22px;
+  overflow: hidden;
+  background: #fff;
+  display: grid;
+  grid-template-columns: minmax(320px, 0.9fr) minmax(320px, 1fr);
+}
+.concept-visual {
+  padding: 28px;
+  color: #fff;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.concept-visual__badge {
+  font-size: 0.78rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+.concept-visual__device {
+  margin-top: auto;
+  background: rgba(255, 255, 255, 0.12);
+  padding: 14px;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+.concept-device__screen {
+  border-radius: 24px;
+  padding: 32px 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  text-align: center;
+  font-size: 0.95rem;
+  min-height: 130px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.4;
+}
+.concept-visual__sparkles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.concept-visual__sparkles span {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.35);
+  filter: blur(0.4px);
+  animation: drift 12s linear infinite;
+}
+.concept-visual__sparkles span:nth-child(1) { top: 16%; left: 18%; animation-delay: 0s; }
+.concept-visual__sparkles span:nth-child(2) { top: 40%; right: 12%; animation-delay: 3s; }
+.concept-visual__sparkles span:nth-child(3) { bottom: 12%; left: 32%; animation-delay: 6s; }
+@keyframes drift {
+  0% { transform: translate3d(0, 0, 0) scale(1); opacity: 0.8; }
+  50% { transform: translate3d(10px, -8px, 0) scale(1.2); opacity: 0.4; }
+  100% { transform: translate3d(-8px, 12px, 0) scale(1); opacity: 0.8; }
+}
+.concept-info {
+  padding: 28px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.concept-summary {
+  font-size: 1.02rem;
+  margin: 0;
+}
+.concept-highlights {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: rgba(15, 23, 42, 0.85);
+}
+.concept-palette {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.palette-chip {
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #0f172a;
+  background: #f8fafc;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.palette-chip::before {
+  content: "";
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--chip-color);
+  box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.15);
+}
+.concept-card[data-slug="aurora-passport"] .concept-visual {
+  background: radial-gradient(circle at 12% 20%, rgba(34, 211, 238, 0.6), transparent 60%),
+              radial-gradient(circle at 70% 0%, rgba(244, 114, 182, 0.4), transparent 55%),
+              linear-gradient(135deg, #0f172a 15%, #1d4ed8 52%, #22d3ee 100%);
+}
+.concept-card[data-slug="midnight-arcade"] .concept-visual {
+  background: radial-gradient(circle at 20% 10%, rgba(139, 92, 246, 0.5), transparent 40%),
+              radial-gradient(circle at 80% 30%, rgba(244, 63, 94, 0.5), transparent 50%),
+              linear-gradient(120deg, #050914 0%, #111827 85%);
+}
+.concept-card[data-slug="midnight-arcade"] .concept-visual__device {
+  background: rgba(5, 9, 20, 0.7);
+}
+.concept-card[data-slug="sunlit-field-notes"] .concept-visual {
+  color: #1f2937;
+  background: radial-gradient(circle at 12% 20%, rgba(251, 146, 60, 0.45), transparent 55%),
+              radial-gradient(circle at 75% 0%, rgba(6, 95, 70, 0.2), transparent 40%),
+              linear-gradient(120deg, #fef3c7 0%, #fde68a 60%, #fcd34d 100%);
+}
+.concept-card[data-slug="sunlit-field-notes"] .concept-visual__device {
+  background: rgba(255, 255, 255, 0.55);
+  border-color: rgba(156, 163, 175, 0.4);
+}
+.concept-card[data-slug="sunlit-field-notes"] .concept-device__screen {
+  border-color: rgba(156, 163, 175, 0.4);
+  color: #374151;
+}
+.login-lab__next {
+  margin-top: 38px;
+  padding: 24px 28px;
+  border: 1px dashed #cbd5f5;
+  border-radius: 18px;
+  background: #f8fafc;
+}
+.login-lab__next h3 {
+  margin-top: 0;
+}
+.login-lab__next ol {
+  margin: 0;
+  padding-left: 20px;
+  color: rgba(15, 23, 42, 0.86);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+@media (max-width: 960px) {
+  .concept-card {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 600px) {
+  .concept-visual,
+  .concept-info {
+    padding: 22px;
+  }
+  .concept-device__screen {
+    padding: 24px 12px;
+  }
+}
+</style>
+{% endblock %}
