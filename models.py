@@ -47,8 +47,6 @@ class CityPerk(db.Model):
     logo_url = db.Column(db.String(500), nullable=True)
     cover_image_url = db.Column(db.String(500), nullable=True)
 
-    qr_code_slug = db.Column(db.String(120), unique=True, nullable=True)
-
     created_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = db.Column(
         db.DateTime(timezone=True),
@@ -85,11 +83,17 @@ class CityPerk(db.Model):
     def status(self, reference: Optional[datetime] = None) -> str:
         """Return a friendly status label for admin dashboards."""
         ref = reference or datetime.now(timezone.utc)
+        if ref.tzinfo is None:
+            ref = ref.replace(tzinfo=timezone.utc)
+
+        start = _ensure_aware(self.start_date)
+        end = _ensure_aware(self.end_date)
+
         if not self.is_active:
             return self.STATUS_INACTIVE
-        if self.start_date and self.start_date > ref:
+        if start and start > ref:
             return self.STATUS_SCHEDULED
-        if self.end_date and self.end_date < ref:
+        if end and end < ref:
             return self.STATUS_EXPIRED
         return self.STATUS_LIVE
 
@@ -140,7 +144,6 @@ class CityPerk(db.Model):
                 "logo_url": self.logo_url,
                 "cover_image_url": self.cover_image_url,
             },
-            "qr_code_slug": self.qr_code_slug,
         }
 
     def __repr__(self) -> str:  # pragma: no cover - helper for shell debugging
@@ -150,6 +153,13 @@ class CityPerk(db.Model):
 def _isoformat_or_none(value: Optional[datetime]) -> Optional[str]:
     if value is None:
         return None
+    aware = _ensure_aware(value)
+    return aware.astimezone(timezone.utc).isoformat()
+
+
+def _ensure_aware(value: Optional[datetime]) -> Optional[datetime]:
+    if value is None:
+        return None
     if value.tzinfo is None:
-        value = value.replace(tzinfo=timezone.utc)
-    return value.astimezone(timezone.utc).isoformat()
+        return value.replace(tzinfo=timezone.utc)
+    return value

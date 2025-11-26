@@ -2920,6 +2920,7 @@ app.register_blueprint(
         admin_required,
         get_current_admin_user,
         _upload_to_supabase,
+        supabase,
     )
 )
 app.register_blueprint(city_perks_api_blueprint)

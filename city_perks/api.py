@@ -51,17 +51,6 @@ def get_city_perk(perk_id: int):
     return jsonify(perk.to_public_dict())
 
 
-@city_perks_api_blueprint.get("/slug/<string:qr_code_slug>")
-def get_city_perk_by_slug(qr_code_slug: str):
-    slug = qr_code_slug.strip()
-    if not slug:
-        return _json_not_found()
-    perk = _live_perks_query().filter(CityPerk.qr_code_slug == slug).first()
-    if not perk:
-        return _json_not_found()
-    return jsonify(perk.to_public_dict())
-
-
 def _live_perks_query():
     now = datetime.now(timezone.utc)
     return CityPerk.query.filter(
