@@ -2356,6 +2356,18 @@ def admin_testing_grounds():
     )
 
 
+@app.route("/admin/rdab-support")
+@admin_required
+def admin_rdab_support():
+    session["last_page"] = request.path
+    support_threads: list[dict] = []
+    return render_template(
+        "admin_rdab_support.html",
+        support_threads=support_threads,
+        has_threads=bool(support_threads),
+    )
+
+
 @app.route("/admin/leagues")
 def admin_leagues():
     session["last_page"] = request.path

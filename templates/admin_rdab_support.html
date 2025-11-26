@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+
+{% block page_settings %}
+  {% set container_class = 'is-wide' %}
+{% endblock %}
+
+{% block content %}
+<div class="rdab-support-shell">
+  <div class="rdab-support-header">
+    <div>
+      <p class="rdab-support-eyebrow">Operations</p>
+      <h1>🆘 RDAB Support</h1>
+      <p class="rdab-support-lede">
+        Coordinate urgent trainer issues, redemption escalations, and safeguarding follow-ups from one place.
+      </p>
+    </div>
+    <a class="rdab-support-back" href="{{ url_for('admin_dashboard') }}">← Back to Admin Dashboard</a>
+  </div>
+
+  {% if has_threads %}
+    <div class="rdab-support-grid">
+      {% for thread in support_threads %}
+        <article class="rdab-support-card">
+          <p class="rdab-support-card__eyebrow">{{ thread.category or 'General' }}</p>
+          <h3>{{ thread.title or 'Untitled Request' }}</h3>
+          <p>{{ thread.summary or 'No summary provided yet.' }}</p>
+        </article>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="rdab-support-empty">
+      <div class="rdab-support-empty__content">
+        <p class="rdab-support-empty__eyebrow">Queue Status</p>
+        <h3>All quiet for now</h3>
+        <p>
+          RDAB Support tooling will land here soon. Use the quick access menu or dashboard widget to jump back once
+          escalations are available.
+        </p>
+      </div>
+    </div>
+  {% endif %}
+</div>
+
+<style>
+.rdab-support-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+.rdab-support-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+.rdab-support-eyebrow {
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.25em;
+  font-size: 0.7rem;
+  color: #94a3b8;
+}
+.rdab-support-lede {
+  max-width: 640px;
+  color: #475569;
+}
+.rdab-support-back {
+  padding: 10px 18px;
+  border-radius: 999px;
+  background: rgba(15,23,42,0.08);
+  text-decoration: none;
+  font-weight: 600;
+  color: #0f172a;
+}
+.rdab-support-back:hover {
+  background: rgba(15,23,42,0.12);
+}
+.rdab-support-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+}
+.rdab-support-card {
+  border-radius: 18px;
+  padding: 18px;
+  background: #fff;
+  border: 1px solid rgba(148,163,184,0.4);
+  box-shadow: 0 10px 24px rgba(15,23,42,0.08);
+}
+.rdab-support-card__eyebrow {
+  margin: 0 0 6px;
+  text-transform: uppercase;
+  font-size: 0.72rem;
+  letter-spacing: 0.2em;
+  color: #94a3b8;
+}
+.rdab-support-empty {
+  border-radius: 22px;
+  border: 2px dashed rgba(148,163,184,0.5);
+  padding: clamp(32px, 6vw, 48px);
+  text-align: center;
+  color: #475569;
+  background: linear-gradient(135deg, rgba(58,141,222,0.08), rgba(94,184,255,0.08));
+}
+.rdab-support-empty__eyebrow {
+  margin: 0 0 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.3em;
+  font-size: 0.7rem;
+  color: #64748b;
+}
+.rdab-support-empty__content h3 {
+  margin: 0 0 8px;
+}
+.rdab-support-empty__content p {
+  margin: 0 auto;
+  max-width: 440px;
+}
+@media(max-width: 640px) {
+  .rdab-support-header {
+    flex-direction: column;
+  }
+  .rdab-support-back {
+    width: 100%;
+    text-align: center;
+  }
+}
+</style>
+{% endblock %}

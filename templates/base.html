@@ -597,17 +597,236 @@
   </script>
 
   {% if account_type == "Admin" %}
-  <a href="{{ url_for('admin_dashboard') }}" id="admin-fab" title="Admin Dashboard">👑</a>
+  <button
+    type="button"
+    id="admin-fab"
+    class="admin-fab"
+    title="Admin shortcuts"
+    aria-label="Open admin shortcuts"
+    aria-expanded="false"
+    aria-controls="admin-quick-menu"
+  >👑</button>
+  <div id="admin-quick-menu-overlay" class="admin-quick-menu-overlay" hidden></div>
+  <div
+    id="admin-quick-menu"
+    class="admin-quick-menu"
+    role="dialog"
+    aria-modal="true"
+    aria-label="Admin quick access"
+    aria-hidden="true"
+    tabindex="-1"
+  >
+    <div class="admin-quick-menu__header">
+      <div>
+        <p class="admin-quick-menu__eyebrow">Admin Tools</p>
+        <h3>Quick Access</h3>
+      </div>
+      <button type="button" id="admin-quick-menu-close" class="admin-quick-menu__close" aria-label="Close admin shortcuts">✕</button>
+    </div>
+    <div class="admin-quick-menu__actions">
+      <a href="{{ url_for('admin_dashboard') }}" class="admin-quick-menu__action">
+        <span class="admin-quick-menu__icon">👑</span>
+        <span class="admin-quick-menu__label">Admin Dashboard</span>
+      </a>
+      <a href="{{ url_for('admin_trainers') }}" class="admin-quick-menu__action">
+        <span class="admin-quick-menu__icon">👥</span>
+        <span class="admin-quick-menu__label">Trainer Manager</span>
+      </a>
+      <a href="{{ url_for('admin_redemptions') }}" class="admin-quick-menu__action">
+        <span class="admin-quick-menu__icon">🎁</span>
+        <span class="admin-quick-menu__label">Redemptions Manager</span>
+      </a>
+      <a href="{{ url_for('admin_rdab_support') }}" class="admin-quick-menu__action">
+        <span class="admin-quick-menu__icon">🆘</span>
+        <span class="admin-quick-menu__label">RDAB Support</span>
+      </a>
+    </div>
+  </div>
   <style>
-    #admin-fab {
+    .admin-fab {
       position: fixed; bottom: 20px; right: 20px; width: 56px; height: 56px;
-      background: var(--brand); color: white; border-radius: 50%;
+      background: var(--brand); color: #fff; border-radius: 50%;
       display: flex; align-items: center; justify-content: center;
-      font-size: 1.6em; text-decoration: none; box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-      z-index: 2000; transition: background 0.2s, transform 0.2s;
+      font-size: 1.6em; border: none; cursor: pointer;
+      box-shadow: 0 8px 18px rgba(58,141,222,0.4);
+      z-index: 4000; transition: transform 0.2s ease, background 0.2s ease;
     }
-    #admin-fab:hover { background: #2f73bb; transform: scale(1.08); }
+    .admin-fab:focus-visible { outline: 3px solid rgba(255,255,255,0.9); outline-offset: 3px; }
+    .admin-fab:hover,
+    .admin-fab:active {
+      background: #2f73bb;
+      transform: scale(1.08);
+    }
+    .admin-quick-menu-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15,23,42,0.5);
+      z-index: 3990;
+      opacity: 0;
+      transition: opacity 0.25s ease;
+    }
+    .admin-quick-menu-overlay.is-visible {
+      opacity: 1;
+    }
+    .admin-quick-menu {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      padding: 24px clamp(20px, 6vw, 40px) calc(24px + env(safe-area-inset-bottom));
+      background: #fff;
+      border-radius: 24px 24px 0 0;
+      box-shadow: 0 -20px 45px rgba(15,23,42,0.25);
+      transform: translateY(110%);
+      transition: transform 0.28s ease;
+      z-index: 4010;
+      min-height: clamp(260px, 50vh, 420px);
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+    .admin-quick-menu.is-visible {
+      transform: translateY(0);
+    }
+    .admin-quick-menu__header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .admin-quick-menu__eyebrow {
+      text-transform: uppercase;
+      letter-spacing: 0.28em;
+      font-size: 0.72rem;
+      margin: 0;
+      color: #94a3b8;
+    }
+    .admin-quick-menu__header h3 {
+      margin: 4px 0 0;
+    }
+    .admin-quick-menu__close {
+      border: none;
+      background: rgba(15,23,42,0.05);
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      font-size: 1.1rem;
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+    .admin-quick-menu__close:hover,
+    .admin-quick-menu__close:focus-visible {
+      background: rgba(15,23,42,0.1);
+      outline: none;
+    }
+    .admin-quick-menu__actions {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 12px;
+    }
+    .admin-quick-menu__action {
+      border-radius: 18px;
+      border: 1px solid rgba(148,163,184,0.4);
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 8px;
+      text-decoration: none;
+      color: #0f172a;
+      font-weight: 600;
+      background: linear-gradient(145deg, #fff, #f8fafc);
+      box-shadow: 0 12px 20px rgba(15,23,42,0.08);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .admin-quick-menu__action:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 16px 28px rgba(15,23,42,0.15);
+    }
+    .admin-quick-menu__icon {
+      font-size: 1.6rem;
+      line-height: 1;
+    }
+    .admin-quick-menu__label {
+      font-size: 0.95rem;
+    }
+    @media(min-width: 840px) {
+      .admin-quick-menu {
+        left: 50%;
+        width: min(520px, 90vw);
+        transform: translate(-50%, 110%);
+        border-radius: 28px;
+      }
+      .admin-quick-menu.is-visible {
+        transform: translate(-50%, 0);
+      }
+    }
   </style>
+
+  <script>
+    (function () {
+      const fab = document.getElementById("admin-fab");
+      const sheet = document.getElementById("admin-quick-menu");
+      const overlay = document.getElementById("admin-quick-menu-overlay");
+      const closeBtn = document.getElementById("admin-quick-menu-close");
+      if (!fab || !sheet || !overlay) return;
+
+      let hideOverlayTimer;
+
+      const openSheet = () => {
+        if (sheet.classList.contains("is-visible")) return;
+        clearTimeout(hideOverlayTimer);
+        overlay.hidden = false;
+        requestAnimationFrame(() => overlay.classList.add("is-visible"));
+        sheet.classList.add("is-visible");
+        sheet.setAttribute("aria-hidden", "false");
+        fab.setAttribute("aria-expanded", "true");
+
+        const focusTarget = sheet.querySelector("a, button:not(#admin-fab)");
+        if (focusTarget) {
+          focusTarget.focus({ preventScroll: true });
+        } else {
+          sheet.focus({ preventScroll: true });
+        }
+        document.addEventListener("keydown", handleEscape);
+      };
+
+      const closeSheet = () => {
+        if (!sheet.classList.contains("is-visible")) return;
+        sheet.classList.remove("is-visible");
+        sheet.setAttribute("aria-hidden", "true");
+        fab.setAttribute("aria-expanded", "false");
+        overlay.classList.remove("is-visible");
+        hideOverlayTimer = window.setTimeout(() => {
+          overlay.hidden = true;
+        }, 220);
+        document.removeEventListener("keydown", handleEscape);
+        fab.focus({ preventScroll: true });
+      };
+
+      const toggleSheet = () => {
+        if (sheet.classList.contains("is-visible")) {
+          closeSheet();
+        } else {
+          openSheet();
+        }
+      };
+
+      const handleEscape = (event) => {
+        if (event.key === "Escape") {
+          closeSheet();
+        }
+      };
+
+      fab.addEventListener("click", (event) => {
+        event.preventDefault();
+        toggleSheet();
+      });
+      overlay.addEventListener("click", closeSheet);
+      if (closeBtn) closeBtn.addEventListener("click", closeSheet);
+    })();
+  </script>
 
   <!-- === RDAB Session Memory === -->
 <script>

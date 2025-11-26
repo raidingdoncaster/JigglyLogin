@@ -73,6 +73,20 @@
       <img src="{{ url_for('static', filename='icons/admin/redemptions-manager.png') }}" alt="Redemptions Manager">
       <span>Redemptions Manager</span>
     </a>
+</div>
+</div>
+
+<!-- RDAB Support Widget -->
+<div class="rdab-support-widget">
+  <div class="rdab-support-widget__header">
+    <div>
+      <p class="rdab-support-widget__eyebrow">Support Ops</p>
+      <h3>RDAB Support</h3>
+    </div>
+    <a class="rdab-support-widget__cta" href="{{ url_for('admin_rdab_support') }}">View RDAB Support</a>
+  </div>
+  <div class="rdab-support-widget__body">
+    <p class="rdab-support-widget__empty">No support threads yet. This panel is standing by for future tooling.</p>
   </div>
 </div>
 
@@ -149,6 +163,61 @@
   font-size:0.75em;
   color:#667085;
 }
+.rdab-support-widget {
+  margin-top:28px;
+  padding:24px;
+  border-radius:20px;
+  background:#fff;
+  box-shadow:0 12px 28px rgba(15,23,42,0.12);
+}
+.rdab-support-widget__header {
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:18px;
+  flex-wrap:wrap;
+}
+.rdab-support-widget__eyebrow {
+  margin:0;
+  text-transform:uppercase;
+  font-size:0.72rem;
+  letter-spacing:0.24em;
+  color:#94a3b8;
+}
+.rdab-support-widget__header h3 {
+  margin:4px 0 0;
+}
+.rdab-support-widget__cta {
+  margin-left:auto;
+  padding:10px 18px;
+  border-radius:999px;
+  background:var(--brand);
+  color:#fff;
+  text-decoration:none;
+  font-weight:600;
+  font-size:0.9rem;
+  white-space:nowrap;
+  box-shadow:0 12px 24px rgba(58,141,222,0.35);
+}
+.rdab-support-widget__cta:hover {
+  background:#2f73bb;
+}
+.rdab-support-widget__body {
+  margin-top:18px;
+  min-height:140px;
+  border:2px dashed rgba(148,163,184,0.5);
+  border-radius:16px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:28px;
+  text-align:center;
+  color:#64748b;
+}
+.rdab-support-widget__empty {
+  margin:0;
+  font-weight:600;
+}
 .testing-banner {
   margin-top:32px;
   padding:20px 24px;
@@ -188,6 +257,14 @@
 }
 @media(max-width:720px){
   .admin-header{ text-align:left; }
+  .rdab-support-widget__header{
+    flex-direction:column;
+    align-items:flex-start;
+  }
+  .rdab-support-widget__cta{
+    width:100%;
+    text-align:center;
+  }
   .testing-banner {
     flex-direction:column;
     align-items:flex-start;
