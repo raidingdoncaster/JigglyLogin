@@ -78,6 +78,24 @@
   </div>
 </div>
 
+<!-- Raw Supabase Snapshot -->
+<section class="panel raw-snapshot">
+  <div class="panel__header">
+    <div>
+      <h2>📦 Supabase Snapshot</h2>
+      <p class="panel__hint">Direct dump from the events & attendance tables.</p>
+    </div>
+    <button class="btn secondary" type="button" id="downloadStatsJson">
+      Download JSON
+    </button>
+  </div>
+  <div class="snapshot-meta">
+    <p>Events: <strong>{{ supabase_snapshot.events_count }}</strong></p>
+    <p>Attendance rows: <strong>{{ supabase_snapshot.attendance_count }}</strong></p>
+  </div>
+  <pre class="snapshot-preview" id="supabaseJsonPreview" aria-live="polite"></pre>
+</section>
+
 <!-- Top Meetups -->
 <section class="panel">
   <div class="panel__header">
@@ -179,6 +197,14 @@
     </header>
     <div class="explorer__controls">
       <input type="search" id="meetupSearch" placeholder="Search meet-ups…" aria-label="Search meet-ups">
+      <label class="explorer__sort">
+        Sort by
+        <select id="meetupSort">
+          <option value="date" selected>Newest</option>
+          <option value="rsvp">RSVPs</option>
+          <option value="checkins">Check-ins</option>
+        </select>
+      </label>
     </div>
     <div class="explorer__list" id="meetupList" aria-live="polite"></div>
   </div>
@@ -300,6 +326,16 @@
 .panel__header { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap; margin-bottom:12px; }
 .panel__hint { margin:2px 0 0; color:#475467; font-size:0.85em; }
 .panel-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:18px; }
+.raw-snapshot .snapshot-meta { display:flex; flex-wrap:wrap; gap:16px; margin-bottom:12px; color:#475467; }
+.snapshot-preview {
+  background:#0f172a;
+  color:#e2e8f0;
+  border-radius:12px;
+  padding:16px;
+  max-height:220px;
+  overflow:auto;
+  font-size:0.85em;
+}
 
 .table-scroll{overflow-x:auto;border-radius:16px;box-shadow:0 10px 24px rgba(15,23,42,0.12);margin-top:16px;}
 .stats-table { width:100%; border-collapse:separate; border-spacing:0; min-width:520px; }
@@ -338,12 +374,30 @@
 }
 .explorer__controls {
   padding:16px 24px 0 24px;
+  display:flex;
+  flex-wrap:wrap;
+  gap:12px;
+  align-items:center;
 }
 .explorer__controls input {
-  width:100%;
+  flex:1;
+  min-width:220px;
   border-radius:999px;
   border:1px solid #d0d5dd;
   padding:10px 16px;
+}
+.explorer__sort {
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+  font-size:0.85em;
+  color:#475467;
+}
+.explorer__sort select {
+  border-radius:12px;
+  border:1px solid #d0d5dd;
+  padding:8px 10px;
+  min-width:140px;
 }
 .explorer__list {
   padding:12px 24px 24px;
@@ -441,6 +495,7 @@
 <!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
+const RDAB_SUPABASE = {{ supabase_snapshot | tojson }};
 const RDAB_MEETUPS = {{ meetup_browser | tojson }};
 document.addEventListener("DOMContentLoaded", () => {
   const topMeetupLabels = {{ top_meetups | map(attribute="name") | list | tojson }};
@@ -531,8 +586,52 @@ document.addEventListener("DOMContentLoaded", () => {
   const detailCheckedList = document.getElementById("meetupCheckedList");
   const detailRsvpList = document.getElementById("meetupRsvpList");
   const detailTabs = document.querySelectorAll("[data-detail-tab]");
+  const supabasePreview = document.getElementById("supabaseJsonPreview");
+  const downloadJsonBtn = document.getElementById("downloadStatsJson");
+  const meetupSort = document.getElementById("meetupSort");
+
+  const renderSupabasePreview = () => {
+    if (!supabasePreview || !RDAB_SUPABASE) return;
+    const payload = {
+      events_sample: (RDAB_SUPABASE.events || []).slice(0, 3),
+      attendance_sample: (RDAB_SUPABASE.attendance || []).slice(0, 3),
+    };
+    supabasePreview.textContent = JSON.stringify(payload, null, 2);
+  };
+  renderSupabasePreview();
+
+  if (downloadJsonBtn) {
+    const defaultLabel = downloadJsonBtn.textContent;
+    downloadJsonBtn.addEventListener("click", async () => {
+      downloadJsonBtn.disabled = true;
+      downloadJsonBtn.textContent = "Preparing…";
+      try {
+        const resp = await fetch("{{ url_for('admin_stats_raw') }}", { headers: { "Accept": "application/json" } });
+        if (!resp.ok) throw new Error("Failed to fetch stats JSON.");
+        const blob = await resp.blob();
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+        link.href = url;
+        link.download = `rdab-stats-${timestamp}.json`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+      } catch (err) {
+        console.error(err);
+        alert("Unable to download stats JSON. Please try again.");
+      } finally {
+        downloadJsonBtn.disabled = false;
+        downloadJsonBtn.textContent = defaultLabel;
+      }
+    });
+  }
+
+  let currentSortKey = meetupSort ? meetupSort.value : "date";
 
   const renderMeetupList = (items) => {
+    if (!meetupList) return;
     meetupList.innerHTML = "";
     if (!items.length) {
       meetupList.innerHTML = "<p>No meet-ups found.</p>";
@@ -554,6 +653,29 @@ document.addEventListener("DOMContentLoaded", () => {
       div.addEventListener("click", () => openMeetupDetail(meetup.id));
       meetupList.appendChild(div);
     });
+  };
+
+  const sortMeetups = () => {
+    const items = [...RDAB_MEETUPS];
+    if (currentSortKey === "rsvp") {
+      return items.sort((a, b) => b.rsvp_count - a.rsvp_count);
+    }
+    if (currentSortKey === "checkins") {
+      return items.sort((a, b) => b.checkin_count - a.checkin_count);
+    }
+    return items.sort((a, b) => new Date(b.date_iso || 0) - new Date(a.date_iso || 0));
+  };
+
+  const applyMeetupFilters = () => {
+    const query = meetupSearch ? meetupSearch.value.trim().toLowerCase() : "";
+    let items = sortMeetups();
+    if (query) {
+      items = items.filter((meetup) =>
+        meetup.name.toLowerCase().includes(query) ||
+        (meetup.date || "").toLowerCase().includes(query)
+      );
+    }
+    renderMeetupList(items);
   };
 
   const openExplorer = () => {
@@ -619,16 +741,16 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  renderMeetupList(RDAB_MEETUPS);
+  applyMeetupFilters();
 
   if (meetupSearch) {
-    meetupSearch.addEventListener("input", () => {
-      const query = meetupSearch.value.trim().toLowerCase();
-      const filtered = RDAB_MEETUPS.filter((meetup) =>
-        meetup.name.toLowerCase().includes(query) ||
-        (meetup.date || "").toLowerCase().includes(query)
-      );
-      renderMeetupList(filtered);
+    meetupSearch.addEventListener("input", applyMeetupFilters);
+  }
+
+  if (meetupSort) {
+    meetupSort.addEventListener("change", () => {
+      currentSortKey = meetupSort.value;
+      applyMeetupFilters();
     });
   }
 

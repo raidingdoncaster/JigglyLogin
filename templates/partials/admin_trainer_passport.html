@@ -1,53 +1,99 @@
 {% set entries = ledger or [] %}
 {% set summary = ledger_summary or {'total_entries': 0, 'total_awarded': 0, 'total_removed': 0, 'net_total': 0} %}
+{% set total_lifetime = total_stamps or 0 %}
+{% set passport_cards = passport_pages or [] %}
+{% set most_recent = most_recent_stamp %}
 
 <div class="passport-summary">
   <div class="passport-summary__primary">
-    <p>Total recorded stamps</p>
-    <strong>{{ summary.net_total }}</strong>
+    <p>Lifetime stamps</p>
+    <strong>{{ total_lifetime }}</strong>
+    {% if most_recent %}
+      <span class="passport-summary__recent">Latest: {{ most_recent.name }}</span>
+    {% endif %}
   </div>
   <div class="passport-summary__breakdown">
+    <span>Entries: {{ summary.total_entries }}</span>
     <span>Earned: <strong>+{{ summary.total_awarded }}</strong></span>
     <span>Removed: <strong>-{{ summary.total_removed }}</strong></span>
-    <span>Entries: {{ summary.total_entries }}</span>
   </div>
 </div>
 
-{% if entries %}
-  <p class="passport-meta">Showing latest {{ entries|length }} entries from the Lugia Ledger (newest first).</p>
-{% else %}
-  <p class="passport-meta">No passport entries were found for this trainer.</p>
-{% endif %}
-
-<div class="passport-ledger" role="table">
-  {% for entry in entries %}
-    <div class="passport-ledger__row {% if entry.count < 0 %}is-negative{% endif %}" role="row">
-      <div class="passport-ledger__count" role="cell">
-        {{ '+' if entry.count > 0 else '' }}{{ entry.count }}
-      </div>
-      <div class="passport-ledger__body" role="cell">
-        <div class="passport-ledger__reason">
-          <strong>{{ entry.reason }}</strong>
-          {% if entry.event_name %}
-            <span class="passport-chip">{{ entry.event_name }}</span>
-          {% endif %}
+<div class="passport-mini-section">
+  <div class="passport-mini-header">
+    <h4>Digital passport</h4>
+    <span>{{ total_lifetime }} stamps recorded</span>
+  </div>
+  {% if passport_cards %}
+    <div class="passport-mini-grid" role="list">
+      {% for page in passport_cards %}
+        <div class="passport-mini-card" role="listitem" aria-label="Passport page {{ loop.index }}">
+          <div class="passport-mini-slots">
+            {% for i in range(12) %}
+              {% if i < page|length %}
+                <div class="passport-mini-slot is-filled">
+                  <img src="{{ page[i].icon }}" alt="{{ page[i].name }}" loading="lazy">
+                  {% if page[i].count > 1 %}
+                    <span class="passport-mini-count" aria-label="Awarded {{ page[i].count }} stamps">×{{ page[i].count }}</span>
+                  {% endif %}
+                  <p title="{{ page[i].name }}">{{ page[i].name }}</p>
+                </div>
+              {% else %}
+                <div class="passport-mini-slot" aria-hidden="true">
+                  <div class="pokeball-placeholder"></div>
+                </div>
+              {% endif %}
+            {% endfor %}
+          </div>
+          <p class="passport-mini-label">Page {{ loop.index }}</p>
         </div>
-        <div class="passport-ledger__meta">
-          <span>{{ entry.created_date }}{% if entry.created_time %} at {{ entry.created_time }}{% endif %}</span>
-          {% if entry.awarded_by %}
-            <span>Awarded by {{ entry.awarded_by }}</span>
-          {% endif %}
-          {% if entry.campfire and entry.campfire|lower != trainer.campfire_username|default('', true)|lower %}
-            <span>Campfire: {{ entry.campfire }}</span>
-          {% endif %}
-        </div>
-      </div>
+      {% endfor %}
     </div>
   {% else %}
-    <div class="passport-ledger__empty" role="row">
-      <p>No ledger activity yet.</p>
-    </div>
-  {% endfor %}
+    <p class="passport-meta">This trainer hasn't earned any passport stamps yet.</p>
+  {% endif %}
+</div>
+
+<div class="passport-ledger-section">
+  <div class="passport-ledger-header">
+    <h4>Lugia ledger</h4>
+    <span>{{ summary.total_entries }} entries</span>
+  </div>
+  {% if entries %}
+    <p class="passport-meta">Latest {{ entries|length }} transactions (newest first).</p>
+  {% else %}
+    <p class="passport-meta">No ledger entries were found for this trainer.</p>
+  {% endif %}
+  <div class="passport-ledger" role="table">
+    {% for entry in entries %}
+      <div class="passport-ledger__row {% if entry.count < 0 %}is-negative{% endif %}" role="row">
+        <div class="passport-ledger__count" role="cell">
+          {{ '+' if entry.count > 0 else '' }}{{ entry.count }}
+        </div>
+        <div class="passport-ledger__body" role="cell">
+          <div class="passport-ledger__reason">
+            <strong>{{ entry.reason }}</strong>
+            {% if entry.event_name %}
+              <span class="passport-chip">{{ entry.event_name }}</span>
+            {% endif %}
+          </div>
+          <div class="passport-ledger__meta">
+            <span>{{ entry.created_date }}{% if entry.created_time %} at {{ entry.created_time }}{% endif %}</span>
+            {% if entry.awarded_by %}
+              <span>Awarded by {{ entry.awarded_by }}</span>
+            {% endif %}
+            {% if entry.campfire and entry.campfire|lower != trainer.campfire_username|default('', true)|lower %}
+              <span>Campfire: {{ entry.campfire }}</span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    {% else %}
+      <div class="passport-ledger__empty" role="row">
+        <p>No ledger activity yet.</p>
+      </div>
+    {% endfor %}
+  </div>
 </div>
 
 <style>
@@ -55,7 +101,7 @@
   display:flex;
   flex-wrap:wrap;
   gap:12px;
-  align-items:center;
+  align-items:flex-start;
   justify-content:space-between;
   padding:12px 16px;
   border:1px solid #e2e8f0;
@@ -75,6 +121,12 @@
   color:#0f172a;
   line-height:1.2;
 }
+.passport-summary__recent {
+  display:block;
+  margin-top:6px;
+  font-size:0.85em;
+  color:#475569;
+}
 .passport-summary__breakdown {
   display:flex;
   flex-wrap:wrap;
@@ -84,6 +136,121 @@
 }
 .passport-summary__breakdown strong {
   color:#111827;
+}
+.passport-mini-section {
+  margin-top:18px;
+  border:1px solid #e2e8f0;
+  border-radius:16px;
+  padding:16px;
+  background:#fff;
+  box-shadow:0 10px 24px rgba(15,23,42,0.08);
+}
+.passport-mini-header {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:12px;
+  font-size:0.9em;
+  color:#475569;
+}
+.passport-mini-header h4 {
+  margin:0;
+  font-size:1.05em;
+  color:#0f172a;
+}
+.passport-mini-grid {
+  display:flex;
+  gap:14px;
+  overflow-x:auto;
+  padding-bottom:6px;
+}
+.passport-mini-card {
+  min-width:220px;
+  border:1px solid #e2e8f0;
+  border-radius:14px;
+  padding:12px;
+  background:#f8fafc;
+  box-shadow:0 6px 12px rgba(15,23,42,0.08);
+  flex-shrink:0;
+}
+.passport-mini-slots {
+  display:grid;
+  grid-template-columns:repeat(3, 1fr);
+  gap:10px;
+}
+.passport-mini-slot {
+  border-radius:12px;
+  min-height:70px;
+  background:#fff;
+  border:1px dashed #dbeafe;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  padding:6px;
+  text-align:center;
+  font-size:0.75em;
+  color:#475569;
+  position:relative;
+}
+.passport-mini-slot.is-filled {
+  border:1px solid #bfdbfe;
+  box-shadow:0 8px 16px rgba(15,23,42,0.08);
+}
+.passport-mini-slot img {
+  width:36px;
+  height:36px;
+  object-fit:contain;
+  margin-bottom:4px;
+}
+.passport-mini-slot p {
+  margin:0;
+  line-height:1.2;
+}
+.passport-mini-count {
+  position:absolute;
+  top:4px;
+  right:6px;
+  font-size:0.7em;
+  font-weight:600;
+  color:#0f172a;
+  background:#e0f2fe;
+  border-radius:999px;
+  padding:2px 6px;
+}
+.passport-mini-label {
+  margin:10px 0 0;
+  font-size:0.75em;
+  text-transform:uppercase;
+  letter-spacing:0.08em;
+  color:#94a3b8;
+}
+.pokeball-placeholder {
+  width:28px;
+  height:28px;
+  border-radius:50%;
+  border:2px solid #e2e8f0;
+  position:relative;
+}
+.pokeball-placeholder::before {
+  content:"";
+  position:absolute;
+  top:50%;
+  left:0;
+  right:0;
+  height:2px;
+  background:#e2e8f0;
+}
+.passport-ledger-section {
+  margin-top:18px;
+}
+.passport-ledger-header {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  font-size:0.9em;
+  color:#475569;
 }
 .passport-meta {
   margin:12px 0 8px;
@@ -159,6 +326,12 @@
   color:#475569;
 }
 @media(max-width:520px){
+  .passport-mini-slots{
+    grid-template-columns:repeat(2,1fr);
+  }
+  .passport-mini-card{
+    min-width:180px;
+  }
   .passport-ledger__row{
     flex-direction:column;
     align-items:flex-start;

@@ -1409,6 +1409,8 @@ def admin_adjust_stamps_route(username):
     )
 
     ok, msg = adjust_stamps(username, count, reason, action, actor)  # ← pass actor
+    if _is_trainer_panel_ajax():
+        return _panel_action_response(ok, msg, username)
     flash(msg, "success" if ok else "error")
     return redirect(url_for("admin_trainer_detail", username=username))
 
@@ -2008,13 +2010,43 @@ def _admin_dashboard_gate_check(password: str) -> bool:
     return False
 
 
+def _is_trainer_panel_ajax() -> bool:
+    """Detect if the current request came from the trainer panel modal."""
+    try:
+        header_value = request.headers.get("X-Requested-With", "")
+    except RuntimeError:
+        return False
+    return header_value.lower() == "xmlhttprequest"
+
+
+def _panel_action_response(success: bool, message: str, username: str, *, status_code: int | None = None, extra: dict | None = None):
+    payload = {
+        "success": bool(success),
+        "message": message,
+        "redirect_username": username,
+        "panel_url": url_for("admin_trainer_panel", username=username),
+        "passport_url": url_for("admin_trainer_passport", username=username),
+    }
+    if extra:
+        payload.update(extra)
+    status = status_code if status_code is not None else (200 if success else 400)
+    return jsonify(payload), status
+
+
+def _deny_admin_request():
+    """Abort with JSON when possible so the modal can handle errors gracefully."""
+    if _is_trainer_panel_ajax():
+        abort(make_response(jsonify({"success": False, "message": "Admins only."}), 403))
+    abort(403)
+
+
 def _require_admin():
     trainer_username = session.get("trainer")
     if not trainer_username:
-        abort(403)
+        _deny_admin_request()
     _, admin_user = find_user(trainer_username)
     if not admin_user or (admin_user.get("account_type") or "").lower() != "admin":
-        abort(403)
+        _deny_admin_request()
     session["account_type"] = "Admin"
 
 def update_trainer_username(current_username: str, new_username: str, actor: str = "Admin"):
@@ -2091,6 +2123,8 @@ def admin_change_account_type_route(username):
     new_type = request.form.get("account_type", "")
     actor = _current_actor()
     ok, msg = change_account_type(username, new_type, actor)
+    if _is_trainer_panel_ajax():
+        return _panel_action_response(ok, msg, username)
     flash(msg, "success" if ok else "error")
     return redirect(url_for("admin_trainer_detail", username=username))
 
@@ -2102,6 +2136,8 @@ def admin_reset_pin_route(username):
     new_pin = request.form.get("new_pin", "")
     actor = _current_actor()
     ok, msg = reset_pin(username, new_pin, actor)
+    if _is_trainer_panel_ajax():
+        return _panel_action_response(ok, msg, username)
     flash(msg, "success" if ok else "error")
     return redirect(url_for("admin_trainer_detail", username=username))
 
@@ -2113,8 +2149,10 @@ def admin_change_trainer_username_route(username):
     desired = request.form.get("new_trainer_username", "")
     actor = _current_actor()
     ok, msg, final_username = update_trainer_username(username, desired, actor)
-    flash(msg, "success" if ok else "error")
     redirect_username = final_username if ok else username
+    if _is_trainer_panel_ajax():
+        return _panel_action_response(ok, msg, redirect_username)
+    flash(msg, "success" if ok else "error")
     return redirect(url_for("admin_trainer_detail", username=redirect_username))
 
 # --- ADMIN: Change Campfire username ---
@@ -2125,6 +2163,8 @@ def admin_change_campfire_username_route(username):
     new_campfire = request.form.get("new_campfire_username", "")
     actor = _current_actor()
     ok, msg = update_campfire_username(username, new_campfire, actor)
+    if _is_trainer_panel_ajax():
+        return _panel_action_response(ok, msg, username)
     flash(msg, "success" if ok else "error")
     return redirect(url_for("admin_trainer_detail", username=username))
 
@@ -2136,6 +2176,8 @@ def admin_change_memorable_password_route(username):
     new_memorable = request.form.get("new_memorable_password", "")
     actor = _current_actor()
     ok, msg = update_memorable_password(username, new_memorable, actor)
+    if _is_trainer_panel_ajax():
+        return _panel_action_response(ok, msg, username)
     flash(msg, "success" if ok else "error")
     return redirect(url_for("admin_trainer_detail", username=username))
 
@@ -3565,7 +3607,7 @@ def admin_trainers():
     # 📋 Fetch all accounts from Supabase.sheet1
     try:
         resp = supabase.table("sheet1").select(
-            "trainer_username, campfire_username, account_type, stamps, avatar_icon, trainer_card_background"
+            "id, created_at, trainer_username, campfire_username, account_type, stamps, avatar_icon, trainer_card_background"
         ).execute()
         all_trainers = resp.data or []
         for entry in all_trainers:
@@ -3641,10 +3683,19 @@ def admin_trainer_passport(username):
         trainer_data.get("trainer_username") or username,
         trainer_data.get("campfire_username")
     )
+    total_stamps, stamp_entries, most_recent_stamp = get_passport_stamps(
+        trainer_data.get("trainer_username") or username,
+        trainer_data.get("campfire_username")
+    )
+    passport_pages = [stamp_entries[i:i + 12] for i in range(0, len(stamp_entries), 12)]
 
     return render_template(
         "partials/admin_trainer_passport.html",
         trainer=trainer_data,
+        total_stamps=total_stamps,
+        passport_pages=passport_pages,
+        passport_stamps=stamp_entries,
+        most_recent_stamp=most_recent_stamp,
         ledger=ledger_rows,
         ledger_summary=ledger_summary,
     )
@@ -3747,6 +3798,17 @@ STATS_GROUP_OPTIONS = [
     ("year", "Yearly"),
 ]
 
+def _load_supabase_table(table: str, columns: str = "*") -> list[dict]:
+    """Return the raw rows for a Supabase table or an empty list on failure."""
+    if not (USE_SUPABASE and supabase):
+        return []
+    try:
+        response = supabase.table(table).select(columns).execute()
+        return response.data or []
+    except Exception as exc:
+        print(f"⚠️ {table} fetch failed:", exc)
+        return []
+
 def _stats_time_bounds(range_key: str):
     now = datetime.now(timezone.utc)
     range_key = (range_key or "90d").lower()
@@ -3814,30 +3876,9 @@ def admin_stats():
     if group_key not in dict(STATS_GROUP_OPTIONS):
         group_key = "month"
 
-    events = []
-    attendance = []
-    accounts = []
-
-    try:
-        events = (supabase.table("events")
-                  .select("event_id,name,start_time,cover_photo_url,location")
-                  .execute().data) or []
-    except Exception as e:
-        print("⚠️ events fetch failed:", e)
-
-    try:
-        attendance = (supabase.table("attendance")
-                      .select("event_id,rsvp_status,campfire_username,display_name,checked_in_at")
-                      .execute().data) or []
-    except Exception as e:
-        print("⚠️ attendance fetch failed:", e)
-
-    try:
-        accounts = (supabase.table("sheet1")
-                    .select("trainer_username,account_type,stamps")
-                    .execute().data) or []
-    except Exception as e:
-        print("⚠️ accounts fetch failed:", e)
+    events = _load_supabase_table("events")
+    attendance = _load_supabase_table("attendance")
+    accounts = _load_supabase_table("sheet1", "trainer_username,account_type,stamps")
 
     ev_map: dict[str, dict] = {}
     filtered_event_ids: list[str] = []
@@ -4023,6 +4064,13 @@ def admin_stats():
         "total_checkins": total_attendances,
     }
 
+    supabase_snapshot = {
+        "events": events,
+        "attendance": attendance,
+        "events_count": len(events),
+        "attendance_count": len(attendance),
+    }
+
     return render_template(
         "admin_stats.html",
         range_options=range_options,
@@ -4043,7 +4091,22 @@ def admin_stats():
         meetup_browser=meetup_browser,
         meetup_picker=meetup_picker,
         timeframe_meta=timeframe_meta,
+        supabase_snapshot=supabase_snapshot,
     )
+
+@app.route("/admin/stats/raw.json")
+@admin_required
+def admin_stats_raw():
+    events = _load_supabase_table("events")
+    attendance = _load_supabase_table("attendance")
+    payload = {
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "events_count": len(events),
+        "attendance_count": len(attendance),
+        "events": events,
+        "attendance": attendance,
+    }
+    return jsonify(payload)
 
 @app.route("/toggle_maintenance")
 def toggle_maintenance():

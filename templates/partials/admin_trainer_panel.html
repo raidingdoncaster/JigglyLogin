@@ -2,11 +2,16 @@
 {% set background_url = url_for('static', filename='backgrounds/' ~ background_file) %}
 {% set passport_panel_id = ('passportDrawer-' ~ (trainer.trainer_username | replace(' ', '-') | lower)) %}
 
-<div class="trainer-panel" data-trainer-panel>
+<div class="trainer-panel"
+     data-trainer-panel
+     data-panel-mode="{{ 'modal' if modal_view else 'page' }}"
+     data-panel-refresh-url="{{ url_for('admin_trainer_panel', username=trainer.trainer_username) }}">
   <div class="admin-header">
     <h1>👤 Manage Trainer</h1>
     <p>Update details and stamps for <strong class="identity-text">{{ trainer.trainer_username }}</strong></p>
   </div>
+
+  <div class="trainer-panel-alert" data-panel-alert role="status" aria-live="polite" hidden></div>
 
   <div class="panel-quick-actions">
     <button type="button"
@@ -149,6 +154,33 @@
   display:flex;
   flex-direction:column;
   gap:18px;
+}
+.trainer-panel-alert {
+  border-radius:14px;
+  padding:12px 16px;
+  font-size:0.9em;
+  border:1px solid transparent;
+  background:#f1f5f9;
+  color:#1e293b;
+  box-shadow:0 4px 10px rgba(15,23,42,0.08);
+}
+.trainer-panel-alert[hidden] {
+  display:none;
+}
+.trainer-panel-alert.is-success {
+  border-color:#34d399;
+  background:#ecfdf5;
+  color:#065f46;
+}
+.trainer-panel-alert.is-error {
+  border-color:#f87171;
+  background:#fef2f2;
+  color:#991b1b;
+}
+.trainer-panel-alert.is-info {
+  border-color:#93c5fd;
+  background:#eff6ff;
+  color:#1d4ed8;
 }
 .panel-quick-actions {
   display:flex;

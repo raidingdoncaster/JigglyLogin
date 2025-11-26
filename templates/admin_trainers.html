@@ -21,6 +21,7 @@
     <div class="toolbar-select">
       <label for="trainerSort">Sort</label>
       <select id="trainerSort">
+        <option value="recent" selected>Most Recent</option>
         <option value="name-asc">Trainer (A → Z)</option>
         <option value="name-desc">Trainer (Z → A)</option>
         <option value="stamps-desc">Stamps (High → Low)</option>
@@ -46,13 +47,15 @@
     {% set stamp_total = t.stamps or 0 %}
     {% set background_file = t.trainer_card_background or 'default.png' %}
     {% set background_url = url_for('static', filename='backgrounds/' ~ background_file) %}
-    <a href="{{ url_for('admin_trainer_detail', username=t.trainer_username) }}"
+       <a href="{{ url_for('admin_trainer_detail', username=t.trainer_username) }}"
        class="trainer-card"
        style="--trainer-card-bg: url('{{ background_url }}');"
        data-username="{{ t.trainer_username | lower }}"
        data-campfire="{{ (t.campfire_username or '') | lower }}"
        data-account-type="{{ (t.account_type or '') | lower }}"
        data-stamps="{{ stamp_total }}"
+       data-created="{{ t.created_at or '' }}"
+       data-id="{{ t.id or 0 }}"
        data-detail-url="{{ url_for('admin_trainer_panel', username=t.trainer_username) }}">
       <img src="{{ url_for('static', filename='avatars/' ~ t.avatar_icon) }}"
            alt="Avatar" class="avatar">
@@ -690,7 +693,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   const sortCards = (list) => {
-    const sortValue = sortSelect ? sortSelect.value : "name-asc";
+    const sortValue = sortSelect ? sortSelect.value : "recent";
     const sorted = list.slice();
     const compareByName = (a, b) => {
       const nameA = normalize(a.dataset.username);
@@ -702,8 +705,20 @@ document.addEventListener("DOMContentLoaded", () => {
       const stampsB = Number(b.dataset.stamps || 0);
       return stampsA - stampsB;
     };
+    const getCreatedValue = (el) => {
+      if (!el || !el.dataset) return 0;
+      const timestamp = el.dataset.created ? Date.parse(el.dataset.created) : NaN;
+      if (!Number.isNaN(timestamp)) {
+        return timestamp;
+      }
+      const fallbackId = Number(el.dataset.id || 0);
+      return Number.isNaN(fallbackId) ? 0 : fallbackId;
+    };
 
     switch (sortValue) {
+      case "recent":
+        sorted.sort((a, b) => getCreatedValue(b) - getCreatedValue(a) || compareByName(a, b));
+        break;
       case "name-desc":
         sorted.sort((a, b) => compareByName(b, a));
         break;

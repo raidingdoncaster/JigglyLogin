@@ -14,18 +14,16 @@
 <div id="notifAlert" class="inline-toast is-hidden" role="status" aria-live="polite"></div>
 
 <!-- Compose -->
-<div class="card compose-card" id="composeCard">
-  <div class="compose-card__header">
+<details class="card compose-card" id="composeCard">
+  <summary class="compose-card__summary">
     <div>
+      <p class="eyebrow">Comms toolkit</p>
       <h3>➕ Compose notification</h3>
-      <p>Write rich HTML-friendly messages and choose the perfect audience.</p>
+      <p class="muted">Write rich HTML-friendly messages and choose the perfect audience.</p>
     </div>
-    <button type="button" class="compose-card__toggle" id="composeToggle" aria-expanded="false" aria-controls="composeBody">
-      <span class="toggle-label">Open form</span>
-      <span class="toggle-icon">▸</span>
-    </button>
-  </div>
-  <div class="compose-card__body is-collapsed" id="composeBody">
+    <span class="summary-action" aria-hidden="true"></span>
+  </summary>
+  <div class="compose-card__body" id="composeBody">
     <form method="post" class="compose-form" id="composeForm">
       <div class="form-grid">
         <label>
@@ -117,7 +115,7 @@
       </div>
     </form>
   </div>
-</div>
+</details>
 
 <!-- Recent Notifications -->
 <section class="recent">
@@ -179,7 +177,16 @@
               </div>
             </td>
             <td>{{ n.sent_at|to_date }}</td>
-            <td><span class="chevron">↗</span></td>
+            <td class="open-cell">
+              <button
+                type="button"
+                class="row-open"
+                data-open-notification
+                aria-label="Open notification {{ (n.subject or 'Notification')|e }}">
+                <span>Open</span>
+                <span aria-hidden="true">↗</span>
+              </button>
+            </td>
           </tr>
         {% else %}
           <tr class="empty-row">
@@ -263,38 +270,54 @@ body.modal-open { overflow:hidden; }
   padding:20px;
   box-shadow:0 14px 30px rgba(15,23,42,0.12);
 }
-.compose-card { margin-top:18px; }
-.compose-card__header {
+.compose-card {
+  margin-top:18px;
+  background:linear-gradient(135deg,#f1f5ff,#fff0fb);
+  border:1px solid rgba(59,130,246,0.25);
+  box-shadow:0 16px 36px rgba(37,99,235,0.15);
+}
+.compose-card__summary {
   display:flex;
   justify-content:space-between;
   gap:16px;
   align-items:flex-start;
+  cursor:pointer;
+  list-style:none;
 }
-.compose-card__header h3 { margin:0; }
-.compose-card__header p { margin:4px 0 0; color:#475467; }
-.compose-card__toggle {
-  border:none;
-  background:#f4f6fb;
-  border-radius:999px;
-  padding:6px 12px;
+.compose-card__summary::-webkit-details-marker { display:none; }
+.compose-card__summary::marker { content:""; }
+.compose-card__summary h3 { margin:4px 0; }
+.compose-card__summary .eyebrow {
+  margin:0;
+  text-transform:uppercase;
+  letter-spacing:0.08em;
+  font-size:0.75em;
+  color:#475467;
+}
+.compose-card__summary .muted {
+  margin:0;
+  color:#475467;
+  font-size:0.9em;
+}
+.summary-action {
   display:inline-flex;
   align-items:center;
-  gap:8px;
+  justify-content:center;
+  border-radius:999px;
+  padding:8px 16px;
   font-weight:600;
-  cursor:pointer;
+  color:#2563eb;
+  border:1px solid rgba(37,99,235,0.25);
+  background:#fff;
+  box-shadow:0 8px 20px rgba(37,99,235,0.2);
 }
+.summary-action::after { content:"Expand form"; }
+.compose-card[open] .summary-action::after { content:"Hide form"; }
 .compose-card__body {
   margin-top:18px;
-  transition:max-height .3s ease, opacity .25s ease;
+  padding-top:16px;
+  border-top:1px dashed rgba(71,85,105,0.25);
 }
-.compose-card__body.is-collapsed {
-  max-height:0;
-  opacity:0;
-  overflow:hidden;
-  pointer-events:none;
-}
-.toggle-icon { transition:transform .2s ease; }
-.compose-card__toggle[aria-expanded="true"] .toggle-icon { transform:rotate(90deg); }
 
 .compose-form { display:flex; flex-direction:column; gap:20px; }
 .form-grid {
@@ -528,8 +551,10 @@ body.modal-open { overflow:hidden; }
 
 .table-scroll {
   border-radius:18px;
-  overflow:hidden;
+  overflow-x:auto;
+  overflow-y:hidden;
   box-shadow:0 14px 30px rgba(15,23,42,0.12);
+  -webkit-overflow-scrolling:touch;
 }
 .notif-table {
   width:100%;
@@ -567,7 +592,30 @@ body.modal-open { overflow:hidden; }
 }
 .aud-cell { display:flex; flex-direction:column; }
 .aud-label { font-weight:600; }
-.chevron { font-size:1.1em; color:#98a2b3; }
+.open-cell { text-align:right; }
+.row-open {
+  border:none;
+  background:transparent;
+  font-weight:600;
+  color:#1d4ed8;
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  cursor:pointer;
+  padding:6px 10px;
+  border-radius:999px;
+  transition:background .2s ease, color .2s ease;
+}
+.row-open:hover,
+.row-open:focus-visible {
+  background:rgba(37,99,235,0.08);
+  color:#1e3a8a;
+}
+.row-open span[aria-hidden="true"] { font-size:1.1em; }
+.row-open:focus-visible {
+  outline:2px solid rgba(37,99,235,0.4);
+  outline-offset:2px;
+}
 .sr-only {
   position:absolute;
   width:1px;
@@ -703,6 +751,12 @@ body.modal-open { overflow:hidden; }
   .section-tools { width:100%; }
   .section-tools input,
   .section-tools select { flex:1; }
+  .row-open {
+    background:#eef2ff;
+    width:100%;
+    justify-content:center;
+  }
+  .open-cell { text-align:center; }
   .modal__dialog { padding:18px; }
 }
 </style>
@@ -710,8 +764,6 @@ body.modal-open { overflow:hidden; }
 <script>
 document.addEventListener("DOMContentLoaded", () => {
   const notifAlert = document.getElementById("notifAlert");
-  const composeToggle = document.getElementById("composeToggle");
-  const composeBody = document.getElementById("composeBody");
   const composeForm = document.getElementById("composeForm");
   const messageField = document.getElementById("notifMessage");
   const editorToolbar = document.querySelector(".editor-toolbar");
@@ -898,16 +950,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   };
 
-  if (composeToggle && composeBody) {
-    composeToggle.addEventListener("click", () => {
-      const expanded = composeToggle.getAttribute("aria-expanded") === "true";
-      composeToggle.setAttribute("aria-expanded", String(!expanded));
-      composeBody.classList.toggle("is-collapsed", expanded);
-      const label = composeToggle.querySelector(".toggle-label");
-      if (label) label.textContent = expanded ? "Open form" : "Hide form";
-    });
-  }
-
   const getAudienceMode = () => {
     const checked = audienceRadios.find((radio) => radio.checked);
     return checked ? checked.value : "all";
@@ -1081,6 +1123,16 @@ document.addEventListener("DOMContentLoaded", () => {
       event.preventDefault();
       const payload = row.dataset.notification ? JSON.parse(row.dataset.notification) : null;
       if (payload) openModal(row, payload);
+    });
+    notificationTable.querySelectorAll("[data-open-notification]").forEach((button) => {
+      button.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const row = button.closest("tr[data-notification]");
+        if (!row) return;
+        const payload = row.dataset.notification ? JSON.parse(row.dataset.notification) : null;
+        if (payload) openModal(row, payload);
+      });
     });
   }
 
