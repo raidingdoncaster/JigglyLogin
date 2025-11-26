@@ -115,6 +115,21 @@ def _create_shared_advent_blueprint(
         except (TypeError, ValueError):
             return None
 
+    def _extract_trainer_username(user: dict) -> Optional[str]:
+        candidates = [
+            user.get("trainer_username"),
+            user.get("trainer"),
+            user.get("username"),
+            user.get("trainername"),
+            session.get("trainer"),
+        ]
+        for value in candidates:
+            if value:
+                text = str(value).strip()
+                if text:
+                    return text
+        return None
+
     @bp.get("/advent")
     def view_calendar():
         user = _require_user(json_mode=False)
@@ -195,7 +210,7 @@ def _create_shared_advent_blueprint(
 
         state = get_advent_state_for_user(user_id, today_day)
         openable_day = state.get("openable_day")
-        trainer_username = user.get("trainer_username") if isinstance(user, dict) else None
+        trainer_username = _extract_trainer_username(user) if isinstance(user, dict) else None
 
         if openable_day != day:
             msg = "You can only open the next available Advent day."

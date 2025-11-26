@@ -41,7 +41,6 @@ class CityPerk(db.Model):
     end_date = db.Column(db.DateTime(timezone=True), nullable=True)
 
     is_active = db.Column(db.Boolean, default=True, nullable=False)
-    is_featured = db.Column(db.Boolean, default=False, nullable=False)
     show_on_map = db.Column(db.Boolean, default=True, nullable=False)
 
     logo_url = db.Column(db.String(500), nullable=True)
@@ -137,7 +136,6 @@ class CityPerk(db.Model):
             },
             "flags": {
                 "is_active": self.is_active,
-                "is_featured": self.is_featured,
                 "show_on_map": self.show_on_map,
             },
             "media": {

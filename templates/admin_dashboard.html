@@ -102,7 +102,10 @@
     <h3>Testing Grounds</h3>
     <p>Try experimental features like the Advent Calendar before trainers see them.</p>
   </div>
-  <a class="testing-banner__cta" href="{{ url_for('admin_testing_grounds') }}">Enter Testing Grounds</a>
+  <div class="testing-banner__actions">
+    <a class="testing-banner__cta" href="{{ url_for('admin_testing_grounds') }}">Enter Testing Grounds</a>
+    <a class="testing-banner__cta is-secondary" href="{{ url_for('player_advent.view_calendar') }}">Open Player Advent</a>
+  </div>
 </div>
 
 <style>
@@ -257,6 +260,16 @@
   text-decoration:none;
   font-weight:600;
   white-space:nowrap;
+}
+.testing-banner__actions {
+  display:flex;
+  gap:12px;
+  flex-wrap:wrap;
+}
+.testing-banner__cta.is-secondary {
+  background:transparent;
+  color:#fff;
+  border:1px solid rgba(255,255,255,0.6);
 }
 .testing-banner__cta:hover {
   background:rgba(255,255,255,0.85);

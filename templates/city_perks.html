@@ -16,10 +16,6 @@
       <strong>{{ perks_count }}</strong>
       <span>Live perks</span>
     </div>
-    <div>
-      <strong>{{ featured_count }}</strong>
-      <span>Featured spots</span>
-    </div>
   </div>
 </div>
 
@@ -79,9 +75,6 @@
             <img src="{{ perk.cover_image_url }}" alt="{{ perk.name }} cover image">
           {% else %}
             <div class="perk-cover--fallback">{{ perk.perk_mode_icon }}</div>
-          {% endif %}
-          {% if perk.is_featured %}
-            <span class="perk-chip">Featured</span>
           {% endif %}
         </div>
         <div class="perk-summary">
@@ -177,9 +170,15 @@
 
 .city-perks-actions {
   margin:20px 0;
-  display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+  display:flex;
   gap:12px;
+  flex-wrap:nowrap;
+  overflow-x:auto;
+  padding-bottom:4px;
+  scrollbar-width:none;
+}
+.city-perks-actions::-webkit-scrollbar {
+  display:none;
 }
 .action-tile {
   border:1px solid #e2e8f0;
@@ -195,6 +194,7 @@
   text-decoration:none;
   cursor:pointer;
   box-shadow:0 8px 16px rgba(15,23,42,0.08);
+  flex:0 0 180px;
 }
 .action-icon {
   font-size:1.4rem;
@@ -245,6 +245,7 @@
   text-decoration:none;
   font-weight:600;
   color:#1d4ed8;
+}
 .perks-grid {
   display:grid;
   grid-template-columns:repeat(2,minmax(0,1fr));

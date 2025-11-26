@@ -34,7 +34,7 @@ STATUS_KEYS = {choice[0] for choice in STATUS_CHOICES}
 
 PERK_MODES = ["in_store", "online", "hybrid"]
 
-BOOLEAN_FIELDS = ("is_active", "is_featured", "show_on_map")
+BOOLEAN_FIELDS = ("is_active", "show_on_map")
 
 CITY_PERKS_FOLDER = "city-perks"
 
@@ -78,7 +78,6 @@ def create_city_perks_admin_blueprint(
             )
 
         perks = query.order_by(
-            CityPerk.is_featured.desc(),
             CityPerk.start_date.desc(),
             CityPerk.name.asc(),
         ).all()
@@ -183,9 +182,9 @@ def _now() -> datetime:
 def _apply_status_filter(query, status: str, now: datetime):
     if status == "live":
         query = query.filter(
-            CityPerk.is_active.is_(True),
-            CityPerk.start_date <= now,
-            or_(CityPerk.end_date.is_(None), CityPerk.end_date >= now),
+        CityPerk.is_active.is_(True),
+        CityPerk.start_date <= now,
+        or_(CityPerk.end_date.is_(None), CityPerk.end_date >= now),
         )
     elif status == "scheduled":
         query = query.filter(
@@ -247,7 +246,6 @@ def _empty_form_values() -> dict:
         "start_date": "",
         "end_date": "",
         "is_active": True,
-        "is_featured": False,
         "show_on_map": True,
         "logo_url": "",
         "cover_image_url": "",
@@ -277,7 +275,6 @@ def _form_values_from_perk(perk: CityPerk) -> dict:
             "start_date": _format_datetime_input(perk.start_date),
             "end_date": _format_datetime_input(perk.end_date),
             "is_active": bool(perk.is_active),
-            "is_featured": bool(perk.is_featured),
             "show_on_map": bool(perk.show_on_map),
             "logo_url": perk.logo_url or "",
             "cover_image_url": perk.cover_image_url or "",
@@ -355,7 +352,6 @@ def _validate_and_normalize(form_values: dict, existing: Optional[CityPerk] = No
         "start_date": start_dt,
         "end_date": end_dt,
         "is_active": bool(form_values["is_active"]),
-        "is_featured": bool(form_values["is_featured"]),
         "show_on_map": show_on_map,
         "logo_url": form_values["logo_url"].strip() or None,
         "cover_image_url": form_values["cover_image_url"].strip() or None,
@@ -477,7 +473,6 @@ def _city_perk_to_supabase_row(perk: CityPerk) -> dict:
         "start_date": _iso(perk.start_date),
         "end_date": _iso(perk.end_date),
         "is_active": perk.is_active,
-        "is_featured": perk.is_featured,
         "show_on_map": perk.show_on_map,
         "logo_url": perk.logo_url,
         "cover_image_url": perk.cover_image_url,

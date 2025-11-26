@@ -23,19 +23,12 @@ def list_live_city_perks():
 
     area = _clean_or_none(request.args.get("area"))
     category = _clean_or_none(request.args.get("category"))
-    featured = _parse_bool_param(request.args.get("featured"))
 
     if area:
         query = query.filter(CityPerk.area == area)
     if category:
         query = query.filter(CityPerk.category == category)
-    if featured is True:
-        query = query.filter(CityPerk.is_featured.is_(True))
-    elif featured is False:
-        query = query.filter(CityPerk.is_featured.is_(False))
-
     perks = query.order_by(
-        CityPerk.is_featured.desc(),
         CityPerk.start_date.asc(),
         CityPerk.name.asc(),
     ).all()
@@ -70,13 +63,3 @@ def _clean_or_none(value: Optional[str]) -> Optional[str]:
     cleaned = value.strip()
     return cleaned or None
 
-
-def _parse_bool_param(value: Optional[str]) -> Optional[bool]:
-    if value is None:
-        return None
-    lowered = value.strip().lower()
-    if lowered in {"true", "1", "yes"}:
-        return True
-    if lowered in {"false", "0", "no"}:
-        return False
-    return None

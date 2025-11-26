@@ -5268,7 +5268,7 @@ def city_perks_page():
         search_term=search_term,
         filters_active=filters_active,
         perks_count=len(perks),
-        featured_count=sum(1 for perk in perks if perk.is_featured),
+        featured_count=0,
         show_back=False,
         api_url=url_for("city_perks_api.list_live_city_perks"),
         map_perks=map_ready_perks,
