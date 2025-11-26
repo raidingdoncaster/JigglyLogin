@@ -578,8 +578,116 @@ document.addEventListener("DOMContentLoaded", () => {
   const searchInput = document.getElementById("trainerSearch");
   const sortSelect = document.getElementById("trainerSort");
   const filterSelect = document.getElementById("trainerFilter");
+  const trainerPanelOverlay = document.getElementById("trainerPanelModal");
+  const trainerPanelContent = document.getElementById("trainerPanelContent");
+  let trainerPanelAbortController = null;
+
+  const closeTrainerPanel = () => {
+    if (!trainerPanelOverlay) return;
+    trainerPanelOverlay.setAttribute("hidden", "");
+    const massOverlay = document.getElementById("massStampOverlay");
+    if (!massOverlay || massOverlay.hasAttribute("hidden")) {
+      document.body.classList.remove("modal-open");
+    }
+    if (trainerPanelAbortController) {
+      trainerPanelAbortController.abort();
+      trainerPanelAbortController = null;
+    }
+  };
+
+  const openTrainerPanel = async (detailUrl, fallbackHref) => {
+    if (!trainerPanelOverlay || !trainerPanelContent) {
+      if (fallbackHref) {
+        window.location.href = fallbackHref;
+      }
+      return;
+    }
+    if (!detailUrl) {
+      if (fallbackHref) {
+        window.location.href = fallbackHref;
+      }
+      return;
+    }
+    if (trainerPanelAbortController) {
+      trainerPanelAbortController.abort();
+    }
+    trainerPanelAbortController = new AbortController();
+    trainerPanelOverlay.removeAttribute("hidden");
+    document.body.classList.add("modal-open");
+    trainerPanelContent.innerHTML =
+      '<p class="trainer-panel-placeholder">Loading trainer details…</p>';
+
+    try {
+      const response = await fetch(detailUrl, {
+        headers: { "X-Requested-With": "XMLHttpRequest" },
+        signal: trainerPanelAbortController.signal,
+      });
+      if (response.redirected) {
+        if (fallbackHref) {
+          window.location.href = fallbackHref;
+          return;
+        }
+        throw new Error("Trainer detail redirected unexpectedly.");
+      }
+      if (!response.ok) {
+        throw new Error("Failed to load trainer panel.");
+      }
+      const html = await response.text();
+      trainerPanelContent.innerHTML = html;
+      const panelRoot = trainerPanelContent.querySelector("[data-trainer-panel]");
+      if (window.initTrainerPanel && panelRoot) {
+        window.initTrainerPanel(panelRoot);
+      }
+    } catch (err) {
+      if (err.name === "AbortError") return;
+      console.error("Trainer panel load failed:", err);
+      trainerPanelContent.innerHTML = `
+        <div class="trainer-panel-error">
+          <p>We couldn't load that trainer right now.</p>
+          <button type="button" class="btn btn-secondary" data-panel-open-full>Open full page</button>
+        </div>`;
+      const fallbackBtn = trainerPanelContent.querySelector("[data-panel-open-full]");
+      if (fallbackBtn && fallbackHref) {
+        fallbackBtn.addEventListener("click", () => {
+          window.location.href = fallbackHref;
+        });
+      }
+    } finally {
+      trainerPanelAbortController = null;
+    }
+  };
+
+  if (trainerPanelOverlay) {
+    trainerPanelOverlay.addEventListener("click", (evt) => {
+      if (evt.target === trainerPanelOverlay) {
+        closeTrainerPanel();
+      }
+    });
+    const closeButtons = trainerPanelOverlay.querySelectorAll("[data-panel-close]");
+    closeButtons.forEach((btn) => btn.addEventListener("click", closeTrainerPanel));
+  }
+
+  document.addEventListener("keydown", (evt) => {
+    if (
+      evt.key === "Escape" &&
+      trainerPanelOverlay &&
+      !trainerPanelOverlay.hasAttribute("hidden")
+    ) {
+      closeTrainerPanel();
+    }
+  });
 
   const normalize = (value) => (value || "").toString().trim().toLowerCase();
+
+  cards.forEach((card) => {
+    card.addEventListener("click", (evt) => {
+      if (evt.metaKey || evt.ctrlKey || evt.shiftKey || evt.button !== 0) {
+        return;
+      }
+      evt.preventDefault();
+      openTrainerPanel(card.dataset.detailUrl || card.href, card.href);
+    });
+  });
 
   const sortCards = (list) => {
     const sortValue = sortSelect ? sortSelect.value : "name-asc";
@@ -685,7 +793,9 @@ document.addEventListener("DOMContentLoaded", () => {
   const closeModal = () => {
     if (!overlay) return;
     overlay.setAttribute("hidden", "");
-    document.body.classList.remove("modal-open");
+    if (!trainerPanelOverlay || trainerPanelOverlay.hasAttribute("hidden")) {
+      document.body.classList.remove("modal-open");
+    }
     if (form) {
       form.reset();
     }

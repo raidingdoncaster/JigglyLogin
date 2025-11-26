@@ -1589,6 +1589,85 @@ def get_passport_stamps(username: str, campfire_username: str | None = None):
         print("⚠️ Supabase get_passport_stamps failed:", e)
         return 0, [], None
 
+
+def fetch_passport_ledger(username: str, campfire_username: str | None = None, limit: int = 200):
+    """Return recent Lugia ledger rows for a trainer sorted by newest first."""
+    empty_summary = {"total_entries": 0, "total_awarded": 0, "total_removed": 0, "net_total": 0}
+    if not supabase:
+        return [], empty_summary
+
+    trainer_lookup = (username or "").strip()
+    campfire_lookup = (campfire_username or "").strip()
+    if not trainer_lookup and not campfire_lookup:
+        return [], empty_summary
+
+    try:
+        query = supabase.table("lugia_ledger").select(
+            "id, created_at, trainer, campfire, reason, count, awardedby, eventname, eventid"
+        )
+        if trainer_lookup and campfire_lookup:
+            query = query.or_(f"trainer.ilike.{trainer_lookup},campfire.ilike.{campfire_lookup}")
+        elif campfire_lookup:
+            query = query.ilike("campfire", campfire_lookup)
+        else:
+            query = query.ilike("trainer", trainer_lookup)
+
+        query = query.order("created_at", desc=True)
+        if limit:
+            query = query.limit(limit)
+
+        rows = query.execute().data or []
+
+        formatted = []
+        total_awarded = 0
+        total_removed = 0
+        for row in rows:
+            try:
+                delta = int(row.get("count") or 0)
+            except (ValueError, TypeError):
+                delta = 0
+
+            if delta > 0:
+                total_awarded += delta
+            elif delta < 0:
+                total_removed += abs(delta)
+
+            created_at = row.get("created_at") or ""
+            created_date = ""
+            created_time = ""
+            if created_at:
+                try:
+                    dt = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
+                    created_date = dt.strftime("%d %b %Y")
+                    created_time = dt.strftime("%H:%M")
+                except Exception:
+                    created_date = created_at
+
+            formatted.append({
+                "id": row.get("id"),
+                "reason": (row.get("reason") or row.get("eventname") or "").strip() or "Passport stamp",
+                "event_name": (row.get("eventname") or "").strip(),
+                "count": delta,
+                "trainer": row.get("trainer") or "",
+                "campfire": row.get("campfire") or "",
+                "awarded_by": row.get("awardedby") or row.get("awarded_by") or "",
+                "event_id": row.get("eventid") or row.get("event_id") or "",
+                "created_at": created_at,
+                "created_date": created_date,
+                "created_time": created_time,
+            })
+
+        summary = {
+            "total_entries": len(formatted),
+            "total_awarded": total_awarded,
+            "total_removed": total_removed,
+            "net_total": total_awarded - total_removed,
+        }
+        return formatted, summary
+    except Exception as e:
+        print("⚠️ fetch_passport_ledger failed:", e)
+        return [], empty_summary
+
 def get_most_recent_meetup(username: str, campfire_username: str | None = None):
     """
     Returns {title, date, icon, event_id} for the user's most recent meetup.
@@ -3551,6 +3630,25 @@ def admin_trainer_panel(username):
         modal_view=True,
     )
 
+
+@app.route("/admin/trainers/<username>/passport")
+def admin_trainer_passport(username):
+    trainer_data, error_response = _load_trainer_for_admin(username)
+    if error_response:
+        return error_response
+
+    ledger_rows, ledger_summary = fetch_passport_ledger(
+        trainer_data.get("trainer_username") or username,
+        trainer_data.get("campfire_username")
+    )
+
+    return render_template(
+        "partials/admin_trainer_passport.html",
+        trainer=trainer_data,
+        ledger=ledger_rows,
+        ledger_summary=ledger_summary,
+    )
+
 @app.route("/admin/trainers/<username>/change_account_type", methods=["POST"])
 def admin_change_account_type(username):
     if "trainer" not in session:
@@ -3635,18 +3733,94 @@ def admin_reset_pin(username):
 
 # ====== Admin: RDAB Stats ======
 from collections import Counter, defaultdict
-from datetime import datetime
+
+STATS_RANGE_OPTIONS = [
+    ("30d", "Last 30 days"),
+    ("90d", "Last 90 days"),
+    ("ytd", "Year to date"),
+    ("365d", "Last 12 months"),
+    ("all", "All time"),
+]
+STATS_GROUP_OPTIONS = [
+    ("month", "Monthly"),
+    ("quarter", "Quarterly"),
+    ("year", "Yearly"),
+]
+
+def _stats_time_bounds(range_key: str):
+    now = datetime.now(timezone.utc)
+    range_key = (range_key or "90d").lower()
+    label_lookup = dict(STATS_RANGE_OPTIONS)
+    label = label_lookup.get(range_key, label_lookup["90d"])
+    start = None
+    if range_key == "30d":
+        start = now - timedelta(days=30)
+    elif range_key == "90d":
+        start = now - timedelta(days=90)
+    elif range_key == "ytd":
+        start = datetime(now.year, 1, 1, tzinfo=timezone.utc)
+    elif range_key in {"365d", "1y"}:
+        start = now - timedelta(days=365)
+    elif range_key == "all":
+        start = None
+    else:
+        start = now - timedelta(days=90)
+        range_key = "90d"
+        label = label_lookup["90d"]
+    return range_key, start, now, label
+
+def _parse_event_dt(value: str | None):
+    if not value:
+        return None
+    raw = value.replace("Z", "+00:00")
+    try:
+        dt = datetime.fromisoformat(raw)
+    except Exception:
+        try:
+            dt = parser.isoparse(value)
+        except Exception:
+            return None
+    if not dt.tzinfo:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt
+
+def _group_bucket(dt: datetime, group_key: str):
+    if not dt:
+        return ((0,), "Unknown")
+    group_key = group_key.lower()
+    if group_key == "year":
+        return ((dt.year,), str(dt.year))
+    if group_key == "quarter":
+        quarter = ((dt.month - 1) // 3) + 1
+        return ((dt.year, quarter), f"Q{quarter} {dt.year}")
+    # default: month
+    return ((dt.year, dt.month), dt.strftime("%b %Y"))
+
+def _normalize_status(value: str | None) -> str:
+    return (value or "").upper().replace("-", "_").strip()
+
+def _normalize_user(row: dict) -> str:
+    return (row.get("campfire_username") or row.get("display_name") or "").strip().lower()
+
+def _display_name(row: dict) -> str:
+    return row.get("display_name") or row.get("campfire_username") or "Unknown Trainer"
+
 @app.route("/admin/stats")
 @admin_required
 def admin_stats():
-    # --- Pull data ---
+    range_key = request.args.get("range", "90d").lower()
+    group_key = request.args.get("group", "month").lower()
+    range_key, start_dt, end_dt, range_label = _stats_time_bounds(range_key)
+    if group_key not in dict(STATS_GROUP_OPTIONS):
+        group_key = "month"
+
     events = []
     attendance = []
     accounts = []
 
     try:
         events = (supabase.table("events")
-                  .select("event_id,name,start_time,cover_photo_url")
+                  .select("event_id,name,start_time,cover_photo_url,location")
                   .execute().data) or []
     except Exception as e:
         print("⚠️ events fetch failed:", e)
@@ -3665,133 +3839,210 @@ def admin_stats():
     except Exception as e:
         print("⚠️ accounts fetch failed:", e)
 
-    # --- Index events by id ---
-    ev_map = {}
-    month_of_event = {}
+    ev_map: dict[str, dict] = {}
+    filtered_event_ids: list[str] = []
     for e in events:
         eid = str(e.get("event_id") or "").strip().lower()
+        dt = _parse_event_dt(e.get("start_time"))
+        if not dt:
+            continue
         ev_map[eid] = {
-            "name": e.get("name") or "Unknown",
-            "date": e.get("start_time") or "",
-            "cover": e.get("cover_photo_url") or ""
+            "id": eid,
+            "name": e.get("name") or "Unnamed meetup",
+            "dt": dt,
+            "date_iso": dt.isoformat(),
+            "date_display": dt.strftime("%d %b %Y • %H:%M") if dt else "",
+            "cover": e.get("cover_photo_url") or "",
+            "location": e.get("location") or "",
         }
-        try:
-            dt = datetime.fromisoformat((e.get("start_time") or "").replace("Z", "+00:00"))
-            month_of_event[eid] = dt.strftime("%Y-%m")  # e.g. 2025-02
-        except Exception:
-            month_of_event[eid] = None
-
-    # --- Keep only unique CHECKED_IN entries (event_id + user) ---
-    def norm_status(s):
-        return (s or "").upper().replace("-", "_").strip()
-
-    def norm_user(row):
-        return (row.get("campfire_username") or row.get("display_name") or "").strip().lower()
-
-    unique_checkins = set()
-    for r in attendance:
-        if norm_status(r.get("rsvp_status")) != "CHECKED_IN":
+        if start_dt and dt < start_dt:
             continue
-        eid = str(r.get("event_id") or "").strip().lower()
-        user = norm_user(r)
-        if not eid or not user:
+        if dt > end_dt:
             continue
-        unique_checkins.add((eid, user))
+        filtered_event_ids.append(eid)
 
-    # --- Aggregations ---
-    total_attendances = len(unique_checkins)
-    counts_by_event = Counter(eid for eid, _ in unique_checkins)
-    counts_by_trainer = Counter(user for _, user in unique_checkins)
+    filtered_event_ids = sorted(filtered_event_ids, key=lambda eid: ev_map[eid]["dt"], reverse=True)
+    filtered_set = set(filtered_event_ids)
 
-    # Top meetups (join with event info)
+    event_people: dict[str, dict] = defaultdict(dict)
+    counts_by_event = Counter()
+    counts_by_trainer = Counter()
+    unique_attendees = set()
+
+    for row in attendance:
+        eid = str(row.get("event_id") or "").strip().lower()
+        if not eid or eid not in filtered_set:
+            continue
+        user_key = _normalize_user(row)
+        if not user_key:
+            continue
+        status = _normalize_status(row.get("rsvp_status"))
+        entry = event_people[eid].setdefault(user_key, {
+            "id": user_key,
+            "display_name": _display_name(row),
+            "campfire": (row.get("campfire_username") or "").strip(),
+            "checked_in": False,
+            "checked_in_at": None,
+            "rsvp_status": None,
+        })
+        if status and status != "CHECKED_IN":
+            entry["rsvp_status"] = status
+        if status == "CHECKED_IN":
+            entry["checked_in"] = True
+            entry["checked_in_at"] = row.get("checked_in_at")
+            unique_attendees.add(user_key)
+            counts_by_trainer[entry["display_name"]] += 1
+            counts_by_event[eid] += 1
+
+    rsvp_totals = Counter({eid: len(roster) for eid, roster in event_people.items()})
+    total_attendances = sum(counts_by_event.values())
+    total_rsvps = sum(rsvp_totals.values())
+    meetup_count = len(filtered_event_ids)
+    meetings_with_checkins = sum(1 for eid in filtered_event_ids if counts_by_event[eid] > 0)
+    avg_attendance = round(total_attendances / max(meetup_count, 1), 1)
+
+    new_attendees = sum(1 for _, c in counts_by_trainer.items() if c == 1)
+    unique_attendee_count = len(unique_attendees)
+    returning_pct = round(
+        100 * (1 - (new_attendees / max(unique_attendee_count, 1))),
+        1,
+    ) if unique_attendee_count else 0.0
+
     top_meetups = []
-    for eid, cnt in counts_by_event.most_common(10):
-        meta = ev_map.get(eid, {})
+    for eid in sorted(filtered_event_ids,
+                      key=lambda e: counts_by_event[e],
+                      reverse=True)[:10]:
+        meta = ev_map[eid]
         top_meetups.append({
             "event_id": eid,
-            "name": meta.get("name", "Unknown"),
-            "date": meta.get("date", ""),
-            "count": cnt
+            "name": meta["name"],
+            "date": meta["date_iso"],
+            "count": counts_by_event[eid],
+            "rsvp": rsvp_totals.get(eid, 0),
         })
 
-    # Top trainers
-    top_trainers = [{"trainer": t or "unknown", "count": c}
-                    for t, c in counts_by_trainer.most_common(10)]
+    top_trainers = [
+        {"trainer": name, "count": count}
+        for name, count in counts_by_trainer.most_common(10)
+    ]
 
-    # Growth trends (per month)
-    events_per_month = Counter()
-    for eid, meta in ev_map.items():
-        m = month_of_event.get(eid)
-        if m: events_per_month[m] += 1
+    grouped = {}
+    for eid in filtered_event_ids:
+        meta = ev_map[eid]
+        key, label = _group_bucket(meta["dt"], group_key)
+        bucket = grouped.setdefault(key, {"label": label, "events": 0, "attendance": 0})
+        bucket["events"] += 1
+    for eid, count in counts_by_event.items():
+        meta = ev_map.get(eid)
+        if not meta:
+            continue
+        key, label = _group_bucket(meta["dt"], group_key)
+        bucket = grouped.setdefault(key, {"label": label, "events": 0, "attendance": 0})
+        bucket["attendance"] += count
+    growth_labels = []
+    growth_events = []
+    growth_attend = []
+    for key in sorted(grouped.keys()):
+        bucket = grouped[key]
+        growth_labels.append(bucket["label"])
+        growth_events.append(bucket["events"])
+        growth_attend.append(bucket["attendance"])
 
-    attend_per_month = Counter()
-    for eid, _ in unique_checkins:
-        m = month_of_event.get(eid)
-        if m: attend_per_month[m] += 1
-
-    # Build a unified month axis (sorted)
-    months = sorted(set(events_per_month.keys()) | set(attend_per_month.keys()))
-    growth_labels = months
-    growth_events = [events_per_month[m] for m in months]
-    growth_attend = [attend_per_month[m] for m in months]
-
-    # Stamp distribution
     bins = {"0–4": 0, "5–9": 0, "10–19": 0, "20+": 0}
-    for a in accounts:
+    for acct in accounts:
         try:
-            s = int(a.get("stamps") or 0)
+            stamps = int(acct.get("stamps") or 0)
         except Exception:
-            s = 0
-        if s <= 4: bins["0–4"] += 1
-        elif s <= 9: bins["5–9"] += 1
-        elif s <= 19: bins["10–19"] += 1
-        else: bins["20+"] += 1
+            stamps = 0
+        if stamps <= 4:
+            bins["0–4"] += 1
+        elif stamps <= 9:
+            bins["5–9"] += 1
+        elif stamps <= 19:
+            bins["10–19"] += 1
+        else:
+            bins["20+"] += 1
     stamp_labels = list(bins.keys())
     stamp_counts = list(bins.values())
 
-    # Account types pie
-    acct_counter = Counter(normalize_account_type(a.get("account_type")) for a in accounts)
+    acct_counter = Counter(normalize_account_type(acct.get("account_type")) for acct in accounts)
     account_labels = list(acct_counter.keys())
     account_counts = list(acct_counter.values())
 
-    # Summary numbers
-    total_meetups = len(events)                 # all events in table
-    meetups_with_checkins = len(counts_by_event)  # events that had at least one check-in
-    unique_attendees = len(counts_by_trainer)
-    avg_attendance = round(total_attendances / max(meetups_with_checkins, 1), 1)
+    meetup_browser = []
+    for eid in filtered_event_ids:
+        meta = ev_map[eid]
+        roster = list(event_people.get(eid, {}).values())
+        roster_sorted = sorted(roster, key=lambda a: a["display_name"].lower())
+        checked = [p for p in roster_sorted if p["checked_in"]]
+        rsvps_only = [p for p in roster_sorted if not p["checked_in"]]
+        meetup_browser.append({
+            "id": eid,
+            "name": meta["name"],
+            "date": meta["date_display"],
+            "date_iso": meta["date_iso"],
+            "cover": meta["cover"],
+            "location": meta["location"],
+            "rsvp_count": len(roster_sorted),
+            "checkin_count": len(checked),
+            "attendees": roster_sorted,
+            "checked_in": checked,
+            "rsvps": rsvps_only,
+        })
 
-    # Returning vs new attendees
-    new_only = sum(1 for _, c in counts_by_trainer.items() if c == 1)
-    returning_pct = round(100 * (1 - (new_only / max(unique_attendees, 1))), 1)
-
-    # Engagement highlights
     highlights = {
         "avg_attendance": avg_attendance,
-        "unique_attendees": unique_attendees,
-        "meetups_with_checkins": meetups_with_checkins,
-        "returning_pct": returning_pct
+        "unique_attendees": unique_attendee_count,
+        "meetups_with_checkins": meetings_with_checkins,
+        "returning_pct": returning_pct,
+        "total_rsvps": total_rsvps,
+        "timeframe_label": range_label,
+    }
+
+    range_options = [
+        {"key": key, "label": label, "active": key == range_key}
+        for key, label in STATS_RANGE_OPTIONS
+    ]
+    group_options = [
+        {"key": key, "label": label, "active": key == group_key}
+        for key, label in STATS_GROUP_OPTIONS
+    ]
+
+    timeframe_meta = {
+        "label": range_label,
+        "start": start_dt.isoformat() if start_dt else None,
+        "end": end_dt.isoformat(),
+        "event_count": meetup_count,
+        "attendance_count": total_attendances,
+        "rsvp_count": total_rsvps,
+    }
+
+    meetup_picker = {
+        "total_events": meetup_count,
+        "total_rsvps": total_rsvps,
+        "total_checkins": total_attendances,
     }
 
     return render_template(
         "admin_stats.html",
-        # summary cards
-        total_meetups=total_meetups,
+        range_options=range_options,
+        group_options=group_options,
+        selected_range=range_key,
+        selected_group=group_key,
+        highlights=highlights,
         total_attendances=total_attendances,
-        # top meetups
-        top_meetups=top_meetups,  # [{name,date,count}]
-        # top trainers
-        top_trainers=top_trainers,  # [{trainer,count}]
-        # growth
+        top_meetups=top_meetups,
+        top_trainers=top_trainers,
         growth_labels=growth_labels,
         growth_events=growth_events,
         growth_attend=growth_attend,
-        # distributions
         stamp_labels=stamp_labels,
         stamp_counts=stamp_counts,
         account_labels=account_labels,
         account_counts=account_counts,
-        # highlights
-        highlights=highlights
+        meetup_browser=meetup_browser,
+        meetup_picker=meetup_picker,
+        timeframe_meta=timeframe_meta,
     )
 
 @app.route("/toggle_maintenance")

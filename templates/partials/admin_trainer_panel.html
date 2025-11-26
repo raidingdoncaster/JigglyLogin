@@ -1,10 +1,23 @@
 {% set background_file = trainer.trainer_card_background or 'default.png' %}
 {% set background_url = url_for('static', filename='backgrounds/' ~ background_file) %}
+{% set passport_panel_id = ('passportDrawer-' ~ (trainer.trainer_username | replace(' ', '-') | lower)) %}
 
 <div class="trainer-panel" data-trainer-panel>
   <div class="admin-header">
     <h1>👤 Manage Trainer</h1>
     <p>Update details and stamps for <strong class="identity-text">{{ trainer.trainer_username }}</strong></p>
+  </div>
+
+  <div class="panel-quick-actions">
+    <button type="button"
+            class="btn btn-secondary"
+            data-passport-load
+            data-passport-url="{{ url_for('admin_trainer_passport', username=trainer.trainer_username) }}"
+            data-passport-label-open="Hide Passport"
+            aria-controls="{{ passport_panel_id }}"
+            aria-expanded="false">
+      <span data-passport-label>View Passport</span>
+    </button>
   </div>
 
   <div class="trainer-detail-card" style="--trainer-panel-bg: url('{{ background_url }}');">
@@ -16,6 +29,19 @@
     <p><strong>Campfire Username:</strong> <span class="identity-text">{{ trainer.campfire_username or 'N/A' }}</span></p>
     <p><strong>Current Stamps:</strong> {{ trainer.stamps or 0 }}</p>
     <p class="trainer-background-label">Background: <span class="identity-text">{{ background_file }}</span></p>
+  </div>
+
+  <div id="{{ passport_panel_id }}" class="passport-drawer" data-passport-panel hidden>
+    <div class="passport-drawer__header">
+      <div>
+        <p class="passport-drawer__eyebrow">Passport Overview</p>
+        <h3>📘 Lugia Ledger</h3>
+      </div>
+      <button type="button" class="passport-drawer__close" data-passport-close aria-label="Close passport view">&times;</button>
+    </div>
+    <div class="passport-drawer__body" data-passport-body>
+      <p class="passport-drawer__placeholder">Select "View Passport" to load this trainer's stamp history.</p>
+    </div>
   </div>
 
   <div class="management-actions">
@@ -124,6 +150,19 @@
   flex-direction:column;
   gap:18px;
 }
+.panel-quick-actions {
+  display:flex;
+  justify-content:flex-end;
+}
+.panel-quick-actions .btn {
+  background:#fff;
+  color:#3a8dde;
+  border:1px solid #3a8dde;
+  box-shadow:none;
+}
+.panel-quick-actions .btn:hover {
+  background:#3a8dde10;
+}
 .trainer-detail-card {
   position:relative;
   border-radius:18px;
@@ -157,6 +196,53 @@
   border:3px solid #3a8dde;
   margin-bottom:12px;
   box-shadow:0 8px 20px rgba(58,141,222,0.25);
+}
+.passport-drawer {
+  border:1px solid #e2e8f0;
+  border-radius:18px;
+  padding:18px;
+  background:#f9fafb;
+  box-shadow:0 10px 24px rgba(15,23,42,0.08);
+}
+.passport-drawer[hidden] {
+  display:none;
+}
+.passport-drawer__header {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+}
+.passport-drawer__eyebrow {
+  margin:0;
+  text-transform:uppercase;
+  letter-spacing:0.2em;
+  font-size:0.65em;
+  color:#94a3b8;
+}
+.passport-drawer__header h3 {
+  margin:4px 0 0;
+}
+.passport-drawer__close {
+  background:rgba(15,23,42,0.08);
+  border:0;
+  width:34px;
+  height:34px;
+  border-radius:50%;
+  font-size:1.3em;
+  cursor:pointer;
+}
+.passport-drawer__close:hover {
+  background:rgba(15,23,42,0.16);
+}
+.passport-drawer__placeholder {
+  margin:0;
+  padding:40px 20px;
+  text-align:center;
+  color:#64748b;
+}
+.passport-drawer__placeholder--error {
+  color:#b91c1c;
 }
 .management-actions {
   display:grid;

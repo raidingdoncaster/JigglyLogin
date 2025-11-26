@@ -1,0 +1,170 @@
+{% set entries = ledger or [] %}
+{% set summary = ledger_summary or {'total_entries': 0, 'total_awarded': 0, 'total_removed': 0, 'net_total': 0} %}
+
+<div class="passport-summary">
+  <div class="passport-summary__primary">
+    <p>Total recorded stamps</p>
+    <strong>{{ summary.net_total }}</strong>
+  </div>
+  <div class="passport-summary__breakdown">
+    <span>Earned: <strong>+{{ summary.total_awarded }}</strong></span>
+    <span>Removed: <strong>-{{ summary.total_removed }}</strong></span>
+    <span>Entries: {{ summary.total_entries }}</span>
+  </div>
+</div>
+
+{% if entries %}
+  <p class="passport-meta">Showing latest {{ entries|length }} entries from the Lugia Ledger (newest first).</p>
+{% else %}
+  <p class="passport-meta">No passport entries were found for this trainer.</p>
+{% endif %}
+
+<div class="passport-ledger" role="table">
+  {% for entry in entries %}
+    <div class="passport-ledger__row {% if entry.count < 0 %}is-negative{% endif %}" role="row">
+      <div class="passport-ledger__count" role="cell">
+        {{ '+' if entry.count > 0 else '' }}{{ entry.count }}
+      </div>
+      <div class="passport-ledger__body" role="cell">
+        <div class="passport-ledger__reason">
+          <strong>{{ entry.reason }}</strong>
+          {% if entry.event_name %}
+            <span class="passport-chip">{{ entry.event_name }}</span>
+          {% endif %}
+        </div>
+        <div class="passport-ledger__meta">
+          <span>{{ entry.created_date }}{% if entry.created_time %} at {{ entry.created_time }}{% endif %}</span>
+          {% if entry.awarded_by %}
+            <span>Awarded by {{ entry.awarded_by }}</span>
+          {% endif %}
+          {% if entry.campfire and entry.campfire|lower != trainer.campfire_username|default('', true)|lower %}
+            <span>Campfire: {{ entry.campfire }}</span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  {% else %}
+    <div class="passport-ledger__empty" role="row">
+      <p>No ledger activity yet.</p>
+    </div>
+  {% endfor %}
+</div>
+
+<style>
+.passport-summary {
+  display:flex;
+  flex-wrap:wrap;
+  gap:12px;
+  align-items:center;
+  justify-content:space-between;
+  padding:12px 16px;
+  border:1px solid #e2e8f0;
+  border-radius:14px;
+  background:#f8fafc;
+}
+.passport-summary__primary p {
+  margin:0;
+  font-size:0.85em;
+  color:#475569;
+  text-transform:uppercase;
+  letter-spacing:0.08em;
+}
+.passport-summary__primary strong {
+  display:block;
+  font-size:1.8em;
+  color:#0f172a;
+  line-height:1.2;
+}
+.passport-summary__breakdown {
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px 18px;
+  font-size:0.9em;
+  color:#475569;
+}
+.passport-summary__breakdown strong {
+  color:#111827;
+}
+.passport-meta {
+  margin:12px 0 8px;
+  font-size:0.85em;
+  color:#546178;
+}
+.passport-ledger {
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  max-height:320px;
+  overflow:auto;
+  padding-right:6px;
+}
+.passport-ledger__row {
+  display:flex;
+  gap:14px;
+  border:1px solid #e2e8f0;
+  border-radius:14px;
+  padding:12px 14px;
+  background:#fff;
+  box-shadow:0 4px 12px rgba(15,23,42,0.05);
+}
+.passport-ledger__row.is-negative {
+  border-color:#fecdd3;
+  background:#fff1f2;
+}
+.passport-ledger__count {
+  font-weight:700;
+  font-size:1.2em;
+  min-width:56px;
+  text-align:center;
+  color:#0f172a;
+}
+.passport-ledger__row.is-negative .passport-ledger__count {
+  color:#be123c;
+}
+.passport-ledger__body {
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+}
+.passport-ledger__reason {
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  font-size:0.95em;
+  color:#0f172a;
+}
+.passport-chip {
+  background:#e0f2fe;
+  color:#0369a1;
+  padding:2px 10px;
+  border-radius:999px;
+  font-size:0.75em;
+  text-transform:uppercase;
+  letter-spacing:0.05em;
+}
+.passport-ledger__meta {
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+  font-size:0.8em;
+  color:#64748b;
+}
+.passport-ledger__empty {
+  text-align:center;
+  padding:20px;
+  border:1px dashed #cbd5f5;
+  border-radius:12px;
+  background:#f8fafc;
+  color:#475569;
+}
+@media(max-width:520px){
+  .passport-ledger__row{
+    flex-direction:column;
+    align-items:flex-start;
+  }
+  .passport-ledger__count{
+    min-width:auto;
+  }
+}
+</style>

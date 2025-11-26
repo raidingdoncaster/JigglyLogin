@@ -7,187 +7,657 @@
 {% block content %}
 
 <h1>📊 RDAB Stats</h1>
+<p class="eyebrow">Timeframe: {{ highlights.timeframe_label }}</p>
+
+<!-- Filters -->
+<div class="stats-toolbar">
+  <div class="chip-group" role="group" aria-label="Timeframe">
+    {% for option in range_options %}
+      <a href="{{ url_for('admin_stats', range=option.key, group=selected_group) }}"
+         class="chip {{ 'active' if option.active else '' }}">
+        {{ option.label }}
+      </a>
+    {% endfor %}
+  </div>
+  <form class="group-select" method="get">
+    <input type="hidden" name="range" value="{{ selected_range }}">
+    <label>
+      Group by
+      <select name="group" onchange="this.form.submit()">
+        {% for option in group_options %}
+          <option value="{{ option.key }}" {% if option.active %}selected{% endif %}>
+            {{ option.label }}
+          </option>
+        {% endfor %}
+      </select>
+    </label>
+  </form>
+</div>
 
 <!-- Summary Cards -->
 <div class="stats-summary">
   <div class="stat-card">
-    <h3>{{ total_meetups }}</h3>
-    <p>Total Meet-ups</p>
+    <p>Meet-ups in range</p>
+    <h3>{{ timeframe_meta.event_count }}</h3>
   </div>
   <div class="stat-card">
-    <h3>{{ total_attendances }}</h3>
-    <p>Total Attendances</p>
+    <p>Total RSVPs</p>
+    <h3>{{ timeframe_meta.rsvp_count }}</h3>
   </div>
   <div class="stat-card">
+    <p>Check-ins</p>
+    <h3>{{ timeframe_meta.attendance_count }}</h3>
+  </div>
+  <div class="stat-card">
+    <p>Unique attendees</p>
     <h3>{{ highlights.unique_attendees }}</h3>
-    <p>Unique Attendees</p>
   </div>
   <div class="stat-card">
+    <p>Avg per meetup</p>
     <h3>{{ highlights.avg_attendance }}</h3>
-    <p>Avg Attendance / Meetup</p>
+  </div>
+  <div class="stat-card">
+    <p>Returning attendees</p>
+    <h3>{{ highlights.returning_pct }}%</h3>
   </div>
 </div>
 
 <!-- Engagement Highlights -->
-<h2>✨ Engagement Highlights</h2>
 <div class="highlight-grid">
   <div class="highlight">
+    <p>Meetups w/ check-ins</p>
     <strong>{{ highlights.meetups_with_checkins }}</strong>
-    <p>Meetups with Check-ins</p>
   </div>
   <div class="highlight">
-    <strong>{{ highlights.returning_pct }}%</strong>
-    <p>Returning Attendees</p>
+    <p>Timeframe</p>
+    <strong>{{ timeframe_meta.label }}</strong>
+  </div>
+  <div class="highlight actions">
+    <p>Explore meet-ups</p>
+    <button class="btn secondary" type="button" id="openMeetupExplorer">Open Explorer</button>
   </div>
 </div>
 
 <!-- Top Meetups -->
-<h2>🏆 Top Attended Meet-ups</h2>
-<canvas id="topMeetupsChart" height="200"></canvas>
-<div class="table-scroll">
-  <table class="stats-table">
-    <thead>
-      <tr>
-        <th>Meet-up</th>
-        <th>Date</th>
-        <th>Attendances</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for m in top_meetups %}
-      <tr>
-        <td>{{ m.name }}</td>
-        <td>{{ m.date|to_date }}</td>
-        <td>{{ m.count }}</td>
-      </tr>
-      {% else %}
-      <tr><td colspan="3">No data available.</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</div>
+<section class="panel">
+  <div class="panel__header">
+    <div>
+      <h2>🏆 Top Attended Meet-ups</h2>
+      <p class="panel__hint">Based on check-ins for the selected timeframe.</p>
+    </div>
+  </div>
+  <canvas id="topMeetupsChart" height="200"></canvas>
+  <div class="table-scroll">
+    <table class="stats-table">
+      <thead>
+        <tr>
+          <th>Meet-up</th>
+          <th>Date</th>
+          <th>RSVPs</th>
+          <th>Check-ins</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for m in top_meetups %}
+        <tr data-meetup-id="{{ m.event_id }}">
+          <td>{{ m.name }}</td>
+          <td>{{ m.date|to_date }}</td>
+          <td>{{ m.rsvp }}</td>
+          <td>{{ m.count }}</td>
+          <td><button class="link-btn" type="button" data-open-meetup="{{ m.event_id }}">View</button></td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5">No data available for this timeframe.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
 
 <!-- Top Trainers -->
-<h2>💪 Top Trainers by Attendance</h2>
-<canvas id="topTrainersChart" height="200"></canvas>
-<div class="table-scroll">
-  <table class="stats-table">
-    <thead>
-      <tr>
-        <th>Trainer</th>
-        <th>Attendances</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for t in top_trainers %}
-      <tr>
-        <td>{{ t.trainer }}</td>
-        <td>{{ t.count }}</td>
-      </tr>
-      {% else %}
-      <tr><td colspan="2">No data available.</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</div>
+<section class="panel">
+  <div class="panel__header">
+    <h2>💪 Top Trainers by Attendance</h2>
+  </div>
+  <canvas id="topTrainersChart" height="200"></canvas>
+  <div class="table-scroll">
+    <table class="stats-table">
+      <thead>
+        <tr>
+          <th>Trainer</th>
+          <th>Check-ins</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for t in top_trainers %}
+          <tr>
+            <td>{{ t.trainer }}</td>
+            <td>{{ t.count }}</td>
+          </tr>
+        {% else %}
+          <tr><td colspan="2">No trainer data available.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
 
 <!-- Growth Trends -->
-<h2>📈 Growth Trends</h2>
-<canvas id="growthChart" height="200"></canvas>
+<section class="panel">
+  <div class="panel__header">
+    <h2>📈 Growth Trends ({{ group_options | selectattr('active') | map(attribute='label') | list | first }})</h2>
+  </div>
+  <canvas id="growthChart" height="220"></canvas>
+</section>
 
 <!-- Distributions -->
-<h2>🧾 Stamp Distribution</h2>
-<canvas id="stampChart" height="200"></canvas>
+<div class="panel-grid">
+  <section class="panel">
+    <div class="panel__header">
+      <h2>🧾 Stamp Distribution</h2>
+    </div>
+    <canvas id="stampChart" height="220"></canvas>
+  </section>
+  <section class="panel">
+    <div class="panel__header">
+      <h2>👤 Account Types</h2>
+    </div>
+    <canvas id="accountChart" height="220"></canvas>
+  </section>
+</div>
 
-<h2>👤 Account Types</h2>
-<canvas id="accountChart" height="200"></canvas>
+<!-- Meetup Explorer Overlay -->
+<div id="meetupExplorer" class="explorer" aria-hidden="true">
+  <div class="explorer__dialog">
+    <header class="explorer__header">
+      <div>
+        <h3>Meetup Explorer</h3>
+        <p>Total events: {{ meetup_picker.total_events }} • RSVPs: {{ meetup_picker.total_rsvps }} • Check-ins: {{ meetup_picker.total_checkins }}</p>
+      </div>
+      <button type="button" class="modal-close" data-close-explorer>&times;</button>
+    </header>
+    <div class="explorer__controls">
+      <input type="search" id="meetupSearch" placeholder="Search meet-ups…" aria-label="Search meet-ups">
+    </div>
+    <div class="explorer__list" id="meetupList" aria-live="polite"></div>
+  </div>
+</div>
+
+<!-- Meetup Detail Modal -->
+<div id="meetupDetailModal" class="modal" aria-hidden="true" aria-modal="true" role="dialog">
+  <div class="modal__overlay" data-close-detail></div>
+  <div class="modal__dialog">
+    <div class="modal__header">
+      <div>
+        <h3 id="meetupDetailTitle">Meet-up</h3>
+        <p class="modal__meta" id="meetupDetailMeta"></p>
+      </div>
+      <button type="button" class="modal__close" data-close-detail aria-label="Close">&times;</button>
+    </div>
+    <div class="modal__body" id="meetupDetailBody">
+      <div class="detail-stats">
+        <div>
+          <p>RSVPs</p>
+          <strong id="meetupDetailRsvp">0</strong>
+        </div>
+        <div>
+          <p>Check-ins</p>
+          <strong id="meetupDetailCheckins">0</strong>
+        </div>
+      </div>
+      <div class="detail-tabs">
+        <button type="button" class="chip active" data-detail-tab="checked">Checked-in</button>
+        <button type="button" class="chip" data-detail-tab="rsvp">RSVPs</button>
+      </div>
+      <div class="detail-list" id="meetupCheckedList"></div>
+      <div class="detail-list is-hidden" id="meetupRsvpList"></div>
+    </div>
+    <div class="modal__actions">
+      <button type="button" class="btn outline" data-close-detail>Close</button>
+    </div>
+  </div>
+</div>
 
 <style>
-.stats-summary {display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:24px;}
-.stat-card {background:#fff;border-radius:16px;padding:18px;text-align:center;box-shadow:0 10px 24px rgba(15,23,42,0.12);}
+.eyebrow { color:#475467; font-weight:600; text-transform:uppercase; letter-spacing:.08em; margin-top:-6px; }
+.stats-toolbar {
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:12px;
+  margin:16px 0;
+}
+.chip-group { display:flex; flex-wrap:wrap; gap:8px; }
+.chip {
+  border:1px solid #e4e7ec;
+  border-radius:999px;
+  padding:6px 12px;
+  font-weight:600;
+  text-decoration:none;
+  color:#344054;
+  background:#fff;
+}
+.chip.active { background:#3a8dde; color:#fff; border-color:#3a8dde; }
+.group-select label { font-size:0.85em; color:#475467; display:flex; flex-direction:column; gap:4px; }
+.group-select select {
+  border-radius:12px;
+  border:1px solid #d0d5dd;
+  padding:8px 10px;
+  min-width:160px;
+}
+
+.stats-summary {
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
+  gap:14px;
+  margin-bottom:20px;
+}
+.stat-card {
+  background:#fff;
+  border-radius:16px;
+  padding:16px;
+  box-shadow:0 10px 24px rgba(15,23,42,0.12);
+}
+.stat-card p { margin:0 0 6px 0; color:#475467; font-size:0.85em; text-transform:uppercase; letter-spacing:.05em; }
 .stat-card h3 { margin:0; font-size:1.6em; color:#1d4ed8; }
-.stat-card p { margin:6px 0 0; font-size:0.9em; color:#64748b; }
 
-.highlight-grid {display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:24px;}
-.highlight {background:#fff;padding:18px;border-radius:16px;text-align:center;box-shadow:0 10px 24px rgba(15,23,42,0.12);}
-.highlight strong { font-size:1.3em; color:#2563eb; }
+.highlight-grid {
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+  gap:14px;
+  margin-bottom:28px;
+}
+.highlight {
+  background:#fff;
+  border-radius:16px;
+  padding:16px;
+  box-shadow:0 10px 24px rgba(15,23,42,0.12);
+}
+.highlight p { margin:0 0 6px 0; color:#475467; }
+.highlight strong { font-size:1.4em; color:#2563eb; }
+.highlight.actions { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.btn {
+  border:none;
+  border-radius:999px;
+  padding:10px 16px;
+  font-weight:600;
+  cursor:pointer;
+}
+.btn.secondary { background:#eef2ff; color:#1d4ed8; }
+.btn.outline { background:#fff; border:1px solid #d0d5dd; color:#1d2939; }
+.btn:disabled { opacity:0.6; cursor:not-allowed; }
+.link-btn {
+  background:none;
+  border:none;
+  color:#2563eb;
+  font-weight:600;
+  cursor:pointer;
+}
 
-.table-scroll{overflow-x:auto;border-radius:16px;box-shadow:0 10px 24px rgba(15,23,42,0.12);margin:16px 0;}
+.panel { background:#fff; border-radius:18px; padding:20px; box-shadow:0 12px 28px rgba(15,23,42,0.12); margin-bottom:24px; }
+.panel__header { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap; margin-bottom:12px; }
+.panel__hint { margin:2px 0 0; color:#475467; font-size:0.85em; }
+.panel-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:18px; }
+
+.table-scroll{overflow-x:auto;border-radius:16px;box-shadow:0 10px 24px rgba(15,23,42,0.12);margin-top:16px;}
 .stats-table { width:100%; border-collapse:separate; border-spacing:0; min-width:520px; }
 .stats-table th { text-align:left; font-size:0.85rem; font-weight:700; padding:12px 14px; background:#f1f5f9; color:#1f2937; }
 .stats-table td { padding:12px 14px; border-top:1px solid #e2e8f0; font-size:0.9rem; color:#334155; }
 .stats-table tbody tr:nth-child(even){ background:#f8fafc; }
 .stats-table tbody tr:hover{ background:#eef2ff; }
+
+.explorer {
+  position:fixed;
+  inset:0;
+  background:rgba(15,23,42,0.55);
+  display:none;
+  align-items:center;
+  justify-content:center;
+  padding:20px;
+  z-index:1000;
+}
+.explorer[aria-hidden="false"] { display:flex; }
+.explorer__dialog {
+  background:#fff;
+  border-radius:20px;
+  width:min(920px, 100%);
+  max-height:90vh;
+  display:flex;
+  flex-direction:column;
+  box-shadow:0 30px 60px rgba(15,23,42,0.35);
+}
+.explorer__header {
+  padding:18px 24px;
+  border-bottom:1px solid #e4e7ec;
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:12px;
+}
+.explorer__controls {
+  padding:16px 24px 0 24px;
+}
+.explorer__controls input {
+  width:100%;
+  border-radius:999px;
+  border:1px solid #d0d5dd;
+  padding:10px 16px;
+}
+.explorer__list {
+  padding:12px 24px 24px;
+  overflow:auto;
+}
+.explorer-item {
+  border:1px solid #e4e7ec;
+  border-radius:14px;
+  padding:12px;
+  margin-bottom:12px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:12px;
+  cursor:pointer;
+}
+.explorer-item:hover { border-color:#3a8dde; }
+.explorer-item__title { font-weight:700; }
+.explorer-item__meta { color:#475467; font-size:0.85em; }
+
+.modal {
+  position:fixed;
+  inset:0;
+  background:rgba(15,23,42,0.55);
+  display:none;
+  align-items:center;
+  justify-content:center;
+  padding:20px;
+  z-index:1001;
+}
+.modal[aria-hidden="false"] { display:flex; }
+.modal__dialog {
+  background:#fff;
+  border-radius:20px;
+  width:min(720px, 100%);
+  max-height:90vh;
+  overflow:auto;
+  padding:24px;
+  box-shadow:0 30px 60px rgba(15,23,42,0.35);
+}
+.modal__header { display:flex; justify-content:space-between; gap:12px; align-items:flex-start; }
+.modal__meta { margin-top:4px; color:#475467; font-size:0.9em; }
+.modal__body { margin-top:16px; }
+.modal__actions { display:flex; justify-content:flex-end; margin-top:16px; }
+.modal-close, .modal__close {
+  border:none;
+  background:#eef2ff;
+  border-radius:50%;
+  width:36px;
+  height:36px;
+  font-size:1.2rem;
+  cursor:pointer;
+}
+
+.detail-stats {
+  display:flex;
+  gap:16px;
+  flex-wrap:wrap;
+}
+.detail-stats div {
+  background:#f8fafc;
+  border-radius:12px;
+  padding:10px 14px;
+}
+.detail-tabs {
+  margin-top:16px;
+  display:flex;
+  gap:8px;
+}
+.detail-list {
+  margin-top:16px;
+  max-height:320px;
+  overflow:auto;
+  border:1px solid #e4e7ec;
+  border-radius:12px;
+}
+.detail-row {
+  display:flex;
+  justify-content:space-between;
+  padding:10px 14px;
+  border-bottom:1px solid #e4e7ec;
+}
+.detail-row:last-child { border-bottom:none; }
+.detail-row small { color:#475467; }
+.detail-list.is-hidden { display:none; }
+
+@media(max-width:640px){
+  .stats-toolbar { flex-direction:column; }
+  .group-select { width:100%; }
+  .group-select select { width:100%; }
+  .panel__header { flex-direction:column; }
+}
 </style>
 
 <!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
+const RDAB_MEETUPS = {{ meetup_browser | tojson }};
 document.addEventListener("DOMContentLoaded", () => {
-  // Top Meetups
-  new Chart(document.getElementById("topMeetupsChart"), {
-    type: "bar",
-    data: {
-      labels: {{ top_meetups | map(attribute="name") | list | tojson }},
-      datasets: [{
-        label: "Attendances",
-        data: {{ top_meetups | map(attribute="count") | list | tojson }},
-        backgroundColor: "#3a8dde"
-      }]
-    },
-    options: { responsive: true, plugins: { legend: { display:false } } }
-  });
+  const topMeetupLabels = {{ top_meetups | map(attribute="name") | list | tojson }};
+  const topMeetupCheckins = {{ top_meetups | map(attribute="count") | list | tojson }};
+  const topTrainLabels = {{ top_trainers | map(attribute="trainer") | list | tojson }};
+  const topTrainCounts = {{ top_trainers | map(attribute="count") | list | tojson }};
+  const growthLabels = {{ growth_labels | tojson }};
+  const growthEvents = {{ growth_events | tojson }};
+  const growthAttend = {{ growth_attend | tojson }};
+  const stampLabels = {{ stamp_labels | tojson }};
+  const stampCounts = {{ stamp_counts | tojson }};
+  const accountLabels = {{ account_labels | tojson }};
+  const accountCounts = {{ account_counts | tojson }};
 
-  // Top Trainers
-  new Chart(document.getElementById("topTrainersChart"), {
-    type: "bar",
-    data: {
-      labels: {{ top_trainers | map(attribute="trainer") | list | tojson }},
-      datasets: [{
-        label: "Attendances",
-        data: {{ top_trainers | map(attribute="count") | list | tojson }},
-        backgroundColor: "#5eb8ff"
-      }]
-    },
-    options: { responsive: true, plugins: { legend: { display:false } } }
-  });
+  const chartDefaults = {
+    responsive: true,
+    plugins: { legend: { display: false } },
+    scales: { y: { beginAtZero: true } }
+  };
 
-  // Growth Trends
-  new Chart(document.getElementById("growthChart"), {
-    type: "line",
-    data: {
-      labels: {{ growth_labels | tojson }},
-      datasets: [
-        { label: "Meet-ups", data: {{ growth_events | tojson }}, borderColor: "#3a8dde", fill:false },
-        { label: "Attendances", data: {{ growth_attend | tojson }}, borderColor: "#ff9900", fill:false }
-      ]
-    },
-    options: { responsive: true }
-  });
+  if (document.getElementById("topMeetupsChart")) {
+    new Chart(document.getElementById("topMeetupsChart"), {
+      type: "bar",
+      data: {
+        labels: topMeetupLabels,
+        datasets: [{ label: "Check-ins", data: topMeetupCheckins, backgroundColor: "#3a8dde" }]
+      },
+      options: chartDefaults
+    });
+  }
 
-  // Stamp Distribution
-  new Chart(document.getElementById("stampChart"), {
-    type: "pie",
-    data: {
-      labels: {{ stamp_labels | tojson }},
-      datasets: [{
-        data: {{ stamp_counts | tojson }},
-        backgroundColor: ["#3a8dde","#5eb8ff","#87cefa","#b0e0e6"]
-      }]
+  if (document.getElementById("topTrainersChart")) {
+    new Chart(document.getElementById("topTrainersChart"), {
+      type: "bar",
+      data: {
+        labels: topTrainLabels,
+        datasets: [{ label: "Check-ins", data: topTrainCounts, backgroundColor: "#5eb8ff" }]
+      },
+      options: chartDefaults
+    });
+  }
+
+  if (document.getElementById("growthChart")) {
+    new Chart(document.getElementById("growthChart"), {
+      type: "line",
+      data: {
+        labels: growthLabels,
+        datasets: [
+          { label: "Meet-ups", data: growthEvents, borderColor: "#3a8dde", fill: false, tension: 0.3 },
+          { label: "Check-ins", data: growthAttend, borderColor: "#ff9900", fill: false, tension: 0.3 }
+        ]
+      },
+      options: { responsive:true }
+    });
+  }
+
+  if (document.getElementById("stampChart")) {
+    new Chart(document.getElementById("stampChart"), {
+      type: "pie",
+      data: {
+        labels: stampLabels,
+        datasets: [{ data: stampCounts, backgroundColor: ["#3a8dde","#5eb8ff","#87cefa","#b0e0e6"] }]
+      }
+    });
+  }
+
+  if (document.getElementById("accountChart")) {
+    new Chart(document.getElementById("accountChart"), {
+      type: "pie",
+      data: {
+        labels: accountLabels,
+        datasets: [{ data: accountCounts, backgroundColor: ["#3a8dde","#ff9900","#77dd77","#ff6961"] }]
+      }
+    });
+  }
+
+  const explorer = document.getElementById("meetupExplorer");
+  const meetupList = document.getElementById("meetupList");
+  const meetupSearch = document.getElementById("meetupSearch");
+  const openExplorerBtn = document.getElementById("openMeetupExplorer");
+  const explorerClose = document.querySelector("[data-close-explorer]");
+  const detailModal = document.getElementById("meetupDetailModal");
+  const detailCloseButtons = detailModal ? detailModal.querySelectorAll("[data-close-detail]") : [];
+  const detailTitle = document.getElementById("meetupDetailTitle");
+  const detailMeta = document.getElementById("meetupDetailMeta");
+  const detailRsvp = document.getElementById("meetupDetailRsvp");
+  const detailCheckins = document.getElementById("meetupDetailCheckins");
+  const detailCheckedList = document.getElementById("meetupCheckedList");
+  const detailRsvpList = document.getElementById("meetupRsvpList");
+  const detailTabs = document.querySelectorAll("[data-detail-tab]");
+
+  const renderMeetupList = (items) => {
+    meetupList.innerHTML = "";
+    if (!items.length) {
+      meetupList.innerHTML = "<p>No meet-ups found.</p>";
+      return;
     }
+    items.forEach((meetup) => {
+      const div = document.createElement("div");
+      div.className = "explorer-item";
+      div.dataset.meetupId = meetup.id;
+      div.innerHTML = `
+        <div>
+          <div class="explorer-item__title">${meetup.name}</div>
+          <div class="explorer-item__meta">${meetup.date}</div>
+        </div>
+        <div class="explorer-item__meta">
+          RSVPs: ${meetup.rsvp_count} • Check-ins: ${meetup.checkin_count}
+        </div>
+      `;
+      div.addEventListener("click", () => openMeetupDetail(meetup.id));
+      meetupList.appendChild(div);
+    });
+  };
+
+  const openExplorer = () => {
+    if (!explorer) return;
+    explorer.setAttribute("aria-hidden", "false");
+  };
+
+  const closeExplorer = () => {
+    if (!explorer) return;
+    explorer.setAttribute("aria-hidden", "true");
+  };
+
+  const openMeetupDetail = (id) => {
+    const meetup = RDAB_MEETUPS.find((item) => item.id === id);
+    if (!meetup || !detailModal) return;
+    detailTitle.textContent = meetup.name;
+    detailMeta.textContent = meetup.date || "";
+    detailRsvp.textContent = meetup.rsvp_count;
+    detailCheckins.textContent = meetup.checkin_count;
+    renderDetailList(detailCheckedList, meetup.checked_in, "No check-ins yet.");
+    renderDetailList(detailRsvpList, meetup.rsvps, "No RSVPs yet.");
+    detailTabs.forEach((tab) => tab.classList.toggle("active", tab.dataset.detailTab === "checked"));
+    detailCheckedList.classList.remove("is-hidden");
+    detailRsvpList.classList.add("is-hidden");
+    detailModal.setAttribute("aria-hidden", "false");
+    document.body.classList.add("modal-open");
+  };
+
+  const closeMeetupDetail = () => {
+    if (!detailModal) return;
+    detailModal.setAttribute("aria-hidden", "true");
+    document.body.classList.remove("modal-open");
+  };
+
+  const renderDetailList = (container, list, empty) => {
+    container.innerHTML = "";
+    if (!list || !list.length) {
+      container.innerHTML = `<p style="padding:12px;">${empty}</p>`;
+      return;
+    }
+    list.forEach((person) => {
+      const row = document.createElement("div");
+      row.className = "detail-row";
+      const statusLabel = person.checked_in ? "Checked-in" : (person.rsvp_status || "RSVP");
+      row.innerHTML = `
+        <div>
+          <strong>${person.display_name}</strong>
+          <small>${person.campfire || ""}</small>
+        </div>
+        <div>
+          <small>${statusLabel}</small>
+        </div>
+      `;
+      container.appendChild(row);
+    });
+  };
+
+  if (openExplorerBtn) openExplorerBtn.addEventListener("click", openExplorer);
+  if (explorerClose) explorerClose.addEventListener("click", closeExplorer);
+  if (explorer) {
+    explorer.addEventListener("click", (evt) => {
+      if (evt.target === explorer) closeExplorer();
+    });
+  }
+
+  renderMeetupList(RDAB_MEETUPS);
+
+  if (meetupSearch) {
+    meetupSearch.addEventListener("input", () => {
+      const query = meetupSearch.value.trim().toLowerCase();
+      const filtered = RDAB_MEETUPS.filter((meetup) =>
+        meetup.name.toLowerCase().includes(query) ||
+        (meetup.date || "").toLowerCase().includes(query)
+      );
+      renderMeetupList(filtered);
+    });
+  }
+
+  document.querySelectorAll("[data-open-meetup]").forEach((btn) => {
+    btn.addEventListener("click", () => openMeetupDetail(btn.dataset.openMeetup));
   });
 
-  // Account Types
-  new Chart(document.getElementById("accountChart"), {
-    type: "pie",
-    data: {
-      labels: {{ account_labels | tojson }},
-      datasets: [{
-        data: {{ account_counts | tojson }},
-        backgroundColor: ["#3a8dde","#ff9900","#77dd77","#ff6961"]
-      }]
-    }
+  detailTabs.forEach((tab) => {
+    tab.addEventListener("click", () => {
+      const target = tab.dataset.detailTab;
+      detailTabs.forEach((t) => t.classList.toggle("active", t === tab));
+      if (target === "checked") {
+        detailCheckedList.classList.remove("is-hidden");
+        detailRsvpList.classList.add("is-hidden");
+      } else {
+        detailCheckedList.classList.add("is-hidden");
+        detailRsvpList.classList.remove("is-hidden");
+      }
+    });
   });
+
+  detailCloseButtons.forEach((btn) => btn.addEventListener("click", closeMeetupDetail));
+  if (detailModal) {
+    detailModal.addEventListener("click", (evt) => {
+      if (evt.target === detailModal.querySelector(".modal__overlay")) {
+        closeMeetupDetail();
+      }
+    });
+  }
 });
 </script>
 
