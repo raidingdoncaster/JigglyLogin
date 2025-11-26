@@ -36,6 +36,9 @@
 <!-- Filters -->
 <form method="get" class="filters">
   <input type="hidden" name="view" value="{{ view_mode }}">
+  {% if view_mode == 'prize-buckets' and bucket_scope and bucket_scope != 'active' %}
+    <input type="hidden" name="bucket_scope" value="{{ bucket_scope }}">
+  {% endif %}
   <label>
     Status:
     <select name="status" onchange="this.form.submit()">
@@ -106,6 +109,27 @@
 {% else %}
   <!-- Prize Buckets -->
   <h2>🏆 Prize Buckets</h2>
+  <div class="bucket-scope-controls">
+    <div class="bucket-scope-label">
+      {% if bucket_scope == 'inactive' %}
+        Viewing past & inactive meetup buckets
+      {% elif bucket_scope == 'all' %}
+        Viewing all meetup buckets
+      {% else %}
+        Viewing active meetup buckets
+      {% endif %}
+    </div>
+    {% if bucket_scope == 'inactive' %}
+      <a href="{{ bucket_scope_active_url }}" class="bucket-scope-btn">Back to active meetups</a>
+    {% else %}
+      <a href="{{ bucket_scope_inactive_url }}" class="bucket-scope-btn {% if bucket_scope_counts.inactive == 0 %}is-disabled{% endif %}" {% if bucket_scope_counts.inactive == 0 %}aria-disabled="true"{% endif %}>
+        View past meetups
+        {% if bucket_scope_counts.inactive > 0 %}
+          ({{ bucket_scope_counts.inactive }})
+        {% endif %}
+      </a>
+    {% endif %}
+  </div>
   <div class="bucket-grid">
     {% for bucket in prize_buckets %}
       <div class="bucket-card {% if bucket.has_redemptions %}has-redemptions{% endif %}" data-bucket-id="{{ bucket.id }}" data-has-redemptions="{{ 'true' if bucket.has_redemptions else 'false' }}">
@@ -176,7 +200,15 @@
         </div>
       </div>
     {% else %}
-      <p class="muted">No meetups found.</p>
+      <p class="muted empty-state">
+        {% if bucket_scope == 'inactive' %}
+          No past or inactive meetups found.
+        {% elif bucket_scope == 'active' %}
+          No active meetups available right now.
+        {% else %}
+          No meetups found.
+        {% endif %}
+      </p>
     {% endfor %}
   </div>
 {% endif %}
@@ -206,6 +238,11 @@
 .action-btn.is-busy{opacity:0.6;pointer-events:none;}
 .pagination{margin-top:18px;display:flex;justify-content:center;gap:12px;align-items:center;}
 .pagination a{color:#1d4ed8;text-decoration:none;font-weight:600;}
+.bucket-scope-controls{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:16px;}
+.bucket-scope-label{font-weight:600;color:#1f2937;}
+.bucket-scope-btn{background:#e0e7ff;color:#1d4ed8;border:1px solid #c7d2fe;padding:8px 16px;border-radius:999px;font-weight:600;text-decoration:none;display:inline-flex;gap:6px;align-items:center;box-shadow:0 6px 18px rgba(79,70,229,0.18);}
+.bucket-scope-btn:hover{background:#c7d2fe;color:#312e81;}
+.bucket-scope-btn.is-disabled{opacity:0.5;pointer-events:none;}
 .bucket-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px;}
 .bucket-card{background:#fff;border-radius:18px;padding:18px;box-shadow:0 12px 26px rgba(15,23,42,0.12);display:flex;flex-direction:column;gap:12px;border:1px solid transparent;transition:border-color 0.2s ease,box-shadow 0.2s ease;}
 .bucket-card.has-redemptions{border-color:#c7d2fe;}

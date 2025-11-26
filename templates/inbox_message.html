@@ -25,8 +25,13 @@
     </div>
   </div>
 
+  {% set body_content = msg.message or '' %}
   <div class="body">
-    {{ msg.message|nl2br }}
+    {% if '<' in body_content %}
+      {{ body_content|safe }}
+    {% else %}
+      {{ body_content|nl2br }}
+    {% endif %}
 
     {% if msg.metadata and msg.metadata.url %}
     <div class="cta">

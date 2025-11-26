@@ -6,73 +6,233 @@
 
 {% block content %}
 
+{% set all_meetups = meetups or [] %}
+{% set current_meetups = all_meetups | selectattr('active') | list %}
+{% set past_meetups = all_meetups | rejectattr('active') | list %}
+{% set default_tab = 'current' if current_meetups else 'past' %}
+
 <h1>📅 Catalog Meetup Manager</h1>
 <p>Create, edit, delete, and manage active meetups for prize redemptions.</p>
 
-<!-- Create Meetup -->
-<div class="card">
-  <h3>➕ Create Meetup</h3>
-  <form action="{{ url_for('admin_meetups_create') }}" method="post" class="grid two">
-    <label>Name <input type="text" name="name" required></label>
-    <label>Location <input type="text" name="location" required></label>
-    <label>Date <input type="date" name="date" required></label>
-    <label>Start Time <input type="time" name="start_time" required></label>
-    <div class="actions colspan">
-      <button type="submit">Create Meetup</button>
+<details class="card create-card" id="create-meetup">
+  <summary class="create-card__summary">
+    <div>
+      <p class="eyebrow">Organizer toolbox</p>
+      <h3>➕ Create Meetup</h3>
+      <p class="muted">Draft a fresh redemption meetup without leaving the dashboard.</p>
     </div>
-  </form>
-</div>
-
-<!-- List of Meetups -->
-<h2>📋 Current Meetups</h2>
-{% if meetups %}
-<div class="meetup-list">
-  {% for m in meetups %}
-  <div class="meetup-card {{ 'inactive' if not m.active }}">
-    <div class="meta">
-      <strong>{{ m.name }}</strong>
-      <p>📍 {{ m.location }}</p>
-      <p>📅 {{ m.date|to_date }} at 🕒 {{ m.start_time }}</p>
-      <span class="badge {{ 'on' if m.active else 'off' }}">
-        {{ 'Active' if m.active else 'Inactive' }}
-      </span>
-    </div>
-    <form action="{{ url_for('admin_meetups_update', meetup_id=m.id) }}" method="post" class="inline-form">
-      <input type="hidden" name="name" value="{{ m.name }}">
-      <input type="hidden" name="location" value="{{ m.location }}">
-      <input type="hidden" name="date" value="{{ m.date }}">
-      <input type="hidden" name="start_time" value="{{ m.start_time }}">
-      <label class="check small">
-        <input type="checkbox" name="active" {% if m.active %}checked{% endif %} onchange="this.form.submit()"> Active
+    <span class="summary-action" aria-hidden="true"></span>
+  </summary>
+  <div class="create-card__body">
+    <form action="{{ url_for('admin_meetups_create') }}" method="post" class="form-grid">
+      <label>Name
+        <input type="text" name="name" placeholder="Meetup name" required>
       </label>
-    </form>
-    <form action="{{ url_for('admin_meetups_delete', meetup_id=m.id) }}" method="post" onsubmit="return confirm('Delete {{ m.name }}?');">
-      <button type="submit" class="danger">Delete</button>
+      <label>Location
+        <input type="text" name="location" placeholder="City, venue, or URL" required>
+      </label>
+      <label>Date
+        <input type="date" name="date" required>
+      </label>
+      <label>Start Time
+        <input type="time" name="start_time" required>
+      </label>
+      <div class="actions colspan">
+        <button type="submit">Create Meetup</button>
+      </div>
     </form>
   </div>
-  {% endfor %}
+</details>
+
+<div class="meetup-tabs">
+  <div class="tab-buttons" role="tablist">
+    <button
+      type="button"
+      role="tab"
+      id="tab-btn-current"
+      class="tab {{ 'is-active' if default_tab == 'current' }}"
+      data-tab-target="current"
+      aria-controls="tab-current"
+      aria-selected="{{ 'true' if default_tab == 'current' else 'false' }}">
+      Current Meet-ups
+    </button>
+    <button
+      type="button"
+      role="tab"
+      id="tab-btn-past"
+      class="tab {{ 'is-active' if default_tab == 'past' }}"
+      data-tab-target="past"
+      aria-controls="tab-past"
+      aria-selected="{{ 'true' if default_tab == 'past' else 'false' }}">
+      Past Meet-ups
+    </button>
+  </div>
+
+  <section
+    id="tab-current"
+    role="tabpanel"
+    class="tab-panel {{ 'is-active' if default_tab == 'current' }}"
+    data-tab-panel="current"
+    aria-labelledby="tab-btn-current"
+    aria-hidden="{{ 'false' if default_tab == 'current' else 'true' }}">
+    {% if current_meetups %}
+      <div class="meetup-list">
+        {% for m in current_meetups %}
+        <div class="meetup-card">
+          <div class="meta">
+            <div class="meta__title-row">
+              <strong>{{ m.name }}</strong>
+              <span class="badge on">Active</span>
+            </div>
+            <p>📍 {{ m.location }}</p>
+            <p>📅 {{ m.date|to_date }} · 🕒 {{ m.start_time }}</p>
+          </div>
+          <div class="meetup-card__footer">
+            <form action="{{ url_for('admin_meetups_update', meetup_id=m.id) }}" method="post" class="inline-form">
+              <input type="hidden" name="name" value="{{ m.name }}">
+              <input type="hidden" name="location" value="{{ m.location }}">
+              <input type="hidden" name="date" value="{{ m.date }}">
+              <input type="hidden" name="start_time" value="{{ m.start_time }}">
+              <label class="check small">
+                <input type="checkbox" name="active" checked onchange="this.form.submit()"> Active
+              </label>
+            </form>
+            <form action="{{ url_for('admin_meetups_delete', meetup_id=m.id) }}" method="post" onsubmit="return confirm('Delete {{ m.name }}?');">
+              <button type="submit" class="danger">Delete</button>
+            </form>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="empty-state">No active meet-ups — spin one up above.</p>
+    {% endif %}
+  </section>
+
+  <section
+    id="tab-past"
+    role="tabpanel"
+    class="tab-panel {{ 'is-active' if default_tab == 'past' }}"
+    data-tab-panel="past"
+    aria-labelledby="tab-btn-past"
+    aria-hidden="{{ 'false' if default_tab == 'past' else 'true' }}">
+    {% if past_meetups %}
+      <div class="meetup-list">
+        {% for m in past_meetups %}
+        <div class="meetup-card inactive">
+          <div class="meta">
+            <div class="meta__title-row">
+              <strong>{{ m.name }}</strong>
+              <span class="badge off">Inactive</span>
+            </div>
+            <p>📍 {{ m.location }}</p>
+            <p>📅 {{ m.date|to_date }} · 🕒 {{ m.start_time }}</p>
+          </div>
+          <div class="meetup-card__footer">
+            <form action="{{ url_for('admin_meetups_update', meetup_id=m.id) }}" method="post" class="inline-form">
+              <input type="hidden" name="name" value="{{ m.name }}">
+              <input type="hidden" name="location" value="{{ m.location }}">
+              <input type="hidden" name="date" value="{{ m.date }}">
+              <input type="hidden" name="start_time" value="{{ m.start_time }}">
+              <label class="check small">
+                <input type="checkbox" name="active" onchange="this.form.submit()"> Active
+              </label>
+            </form>
+            <form action="{{ url_for('admin_meetups_delete', meetup_id=m.id) }}" method="post" onsubmit="return confirm('Delete {{ m.name }}?');">
+              <button type="submit" class="danger">Delete</button>
+            </form>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="empty-state">No past meet-ups yet.</p>
+    {% endif %}
+  </section>
 </div>
-{% else %}
-<p>No meetups yet.</p>
-{% endif %}
 
 <style>
-.card { background:#fff; border-radius:14px; padding:18px; box-shadow:0 8px 20px rgba(15,23,42,0.12); margin-bottom:20px; }
-.grid.two { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:14px; }
-.grid.two .colspan { grid-column:1/-1; }
+.card { background:#fff; border-radius:16px; padding:20px; box-shadow:0 16px 40px rgba(15,23,42,0.12); margin-bottom:24px; border:1px solid rgba(148,163,184,0.25); }
+.create-card { background:linear-gradient(135deg,#f1f5ff,#fff0fb); border:1px solid rgba(59,130,246,0.2); }
+.create-card__summary { display:flex; justify-content:space-between; gap:20px; align-items:flex-start; cursor:pointer; position:relative; list-style:none; }
+.create-card__summary::-webkit-details-marker { display:none; }
+.create-card__summary h3 { margin:4px 0; }
+.create-card__summary .eyebrow { text-transform:uppercase; letter-spacing:0.08em; font-size:0.75rem; margin:0; color:#475569; }
+.create-card__summary .muted { margin:0; color:#475569; font-size:0.9rem; }
+.summary-action { display:inline-flex; align-items:center; justify-content:center; background:#fff; border-radius:999px; padding:8px 16px; font-weight:600; color:#2563eb; border:1px solid rgba(37,99,235,0.15); box-shadow:0 6px 16px rgba(37,99,235,0.15); }
+.summary-action::after { content:"Expand form"; }
+details[open] .summary-action::after { content:"Hide form"; }
+.create-card__body { margin-top:20px; padding-top:16px; border-top:1px dashed rgba(71,85,105,0.2); }
+.form-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:16px; }
+.form-grid label { font-weight:600; font-size:0.9rem; color:#0f172a; display:flex; flex-direction:column; gap:6px; }
+.form-grid input { border:1px solid #cbd5f5; border-radius:12px; padding:10px 12px; font-size:0.95rem; background:#fff; }
+.form-grid .colspan { grid-column:1/-1; }
 .actions { text-align:right; }
-.actions button { background:#3a8dde; color:#fff; border:none; padding:10px 16px; border-radius:999px; font-weight:600; cursor:pointer; box-shadow:0 6px 16px rgba(58,141,222,0.25); }
+.actions button { background:#2563eb; color:#fff; border:none; padding:12px 20px; border-radius:999px; font-weight:600; cursor:pointer; box-shadow:0 8px 20px rgba(37,99,235,0.3); }
 
-.meetup-list { display:flex; flex-direction:column; gap:12px; margin-top:18px; }
-.meetup-card { background:#fff; border-radius:16px; padding:16px; box-shadow:0 8px 20px rgba(15,23,42,0.12); display:flex; flex-direction:column; gap:10px; }
-.meetup-card.inactive { opacity:0.7; }
-.meetup-card .meta p { margin:2px 0; font-size:0.9em; color:#555; }
-.badge { font-size:0.75em; padding:4px 10px; border-radius:999px; }
-.badge.on { background:#e7f3ff; color:#2563eb; }
-.badge.off { background:#f3f4f6; color:#6b7280; }
-.inline-form { margin-top:4px; }
+.meetup-tabs { margin-top:32px; }
+.tab-buttons { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:10px; }
+.tab { border:none; border-radius:999px; padding:10px 16px; font-weight:600; cursor:pointer; background:#f1f5f9; color:#475569; transition:all 0.2s ease; }
+.tab.is-active { background:#1d4ed8; color:#fff; box-shadow:0 10px 20px rgba(30,64,175,0.25); }
+.tab-panel { margin-top:18px; }
+.has-tabs-js .tab-panel { display:none; }
+.has-tabs-js .tab-panel.is-active { display:block; }
+
+.meetup-list { display:flex; flex-direction:column; gap:14px; }
+.meetup-card { background:#fff; border-radius:18px; padding:18px; box-shadow:0 12px 28px rgba(15,23,42,0.12); border:1px solid rgba(15,23,42,0.05); display:flex; flex-direction:column; gap:12px; }
+.meetup-card.inactive { opacity:0.85; border-color:rgba(148,163,184,0.4); background:#f8fafc; }
+.meta__title-row { display:flex; justify-content:space-between; gap:12px; align-items:flex-start; flex-wrap:wrap; }
+.meetup-card .meta p { margin:2px 0; font-size:0.9em; color:#475569; }
+.meetup-card__footer { display:flex; gap:12px; flex-wrap:wrap; align-items:center; }
+.badge { font-size:0.75em; padding:4px 10px; border-radius:999px; white-space:nowrap; }
+.badge.on { background:#dcfce7; color:#166534; }
+.badge.off { background:#e2e8f0; color:#475569; }
+.empty-state { margin:24px 0; padding:24px; text-align:center; background:#f8fafc; border-radius:16px; border:1px dashed #cbd5f5; color:#475569; }
+
+.inline-form label { display:flex; align-items:center; gap:8px; font-weight:600; color:#1f2937; }
+.inline-form input[type="checkbox"] { width:18px; height:18px; }
 .inline-form .check.small { font-size:0.9em; }
 .danger { background:#ef4444; color:#fff; border:none; padding:10px 16px; border-radius:999px; font-weight:600; cursor:pointer; box-shadow:0 6px 18px rgba(239,68,68,0.25); }
 </style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const root = document.documentElement;
+  root.classList.add('has-tabs-js');
+  const tabButtons = Array.from(document.querySelectorAll('[data-tab-target]'));
+  const panels = Array.from(document.querySelectorAll('[data-tab-panel]'));
+  if (!tabButtons.length || !panels.length) {
+    return;
+  }
+
+  const syncPanels = (activeTarget) => {
+    panels.forEach((panel) => {
+      const isActive = panel.dataset.tabPanel === activeTarget;
+      panel.classList.toggle('is-active', isActive);
+      panel.setAttribute('aria-hidden', String(!isActive));
+    });
+  };
+
+  const syncButtons = (activeButton) => {
+    tabButtons.forEach((btn) => {
+      const isActive = btn === activeButton;
+      btn.classList.toggle('is-active', isActive);
+      btn.setAttribute('aria-selected', String(isActive));
+    });
+  };
+
+  const initialButton = tabButtons.find((btn) => btn.classList.contains('is-active')) || tabButtons[0];
+  if (initialButton) {
+    syncPanels(initialButton.dataset.tabTarget);
+  }
+
+  tabButtons.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      syncButtons(btn);
+      syncPanels(btn.dataset.tabTarget);
+    });
+  });
+});
+</script>
 
 {% endblock %}

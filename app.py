@@ -1741,14 +1741,47 @@ def get_inbox_preview(trainer: str, limit: int = 3):
         print("⚠️ Supabase inbox preview fetch failed:", e)
         return {"preview": [], "unread_count": 0}
 
-def send_notification(audience, subject, message, notif_type="system"):
+NOTIFICATION_ALLOWED_TAGS = [
+    "a",
+    "b",
+    "br",
+    "em",
+    "i",
+    "li",
+    "p",
+    "strong",
+    "u",
+    "ul",
+    "ol",
+]
+NOTIFICATION_ALLOWED_ATTRS = {
+    "a": ["href", "target", "rel", "title"],
+}
+
+
+def sanitize_notification_html(body: str | None) -> str:
+    if not body:
+        return ""
+    normalized = body.replace("\r\n", "\n")
+    normalized = normalized.replace("\n", "<br>")
+    cleaned = bleach.clean(
+        normalized,
+        tags=NOTIFICATION_ALLOWED_TAGS,
+        attributes=NOTIFICATION_ALLOWED_ATTRS,
+        strip=True,
+    )
+    return cleaned
+
+
+def send_notification(audience, subject, message, notif_type="system", metadata=None):
+    message_html = sanitize_notification_html(message)
     try:
         supabase.table("notifications").insert({
             "type": notif_type,
             "audience": audience,
             "subject": subject,
-            "message": message,
-            "metadata": {},
+            "message": message_html,
+            "metadata": metadata or {},
             "sent_at": datetime.utcnow().isoformat(),
             "read_by": []
         }).execute()
@@ -2581,6 +2614,53 @@ def _save_catalog_image(file_storage):
     return f"/static/catalog/{fname}"
 
 # ====== Admin Catalog Manager ======
+CATALOG_SORT_CHOICES = [
+    ("newest", "Newest (recent first)"),
+    ("oldest", "Oldest (oldest first)"),
+    ("name_az", "Name A → Z"),
+    ("name_za", "Name Z → A"),
+    ("cost_low", "Cost: low → high"),
+    ("cost_high", "Cost: high → low"),
+    ("stock_high", "Stock: high → low"),
+    ("stock_low", "Stock: low → high"),
+]
+
+CATALOG_STATUS_CHOICES = [
+    ("all", "All items"),
+    ("online", "Online only"),
+    ("offline", "Offline only"),
+]
+CATALOG_STATUS_VALUES = {choice[0] for choice in CATALOG_STATUS_CHOICES}
+
+CATALOG_SORT_CONFIG = {
+    "newest": {"key": lambda it: parse_dt_safe(it.get("created_at")), "reverse": True},
+    "oldest": {"key": lambda it: parse_dt_safe(it.get("created_at")), "reverse": False},
+    "name_az": {"key": lambda it: (it.get("name") or "").lower(), "reverse": False},
+    "name_za": {"key": lambda it: (it.get("name") or "").lower(), "reverse": True},
+    "cost_low": {"key": lambda it: it.get("cost_stamps") or 0, "reverse": False},
+    "cost_high": {"key": lambda it: it.get("cost_stamps") or 0, "reverse": True},
+    "stock_high": {"key": lambda it: it.get("stock") or 0, "reverse": True},
+    "stock_low": {"key": lambda it: it.get("stock") or 0, "reverse": False},
+}
+
+def wants_json_response() -> bool:
+    best = request.accept_mimetypes.best_match(["application/json", "text/html"])
+    if not best:
+        return False
+    return best == "application/json" and request.accept_mimetypes[best] > request.accept_mimetypes["text/html"]
+
+def _catalog_json_error(message: str, status: int = 400):
+    return jsonify({"success": False, "error": message}), status
+
+def _fetch_catalog_item(item_id: str):
+    try:
+        resp = supabase.table("catalog_items").select("*").eq("id", item_id).limit(1).execute()
+        if resp.data:
+            return resp.data[0]
+    except Exception as exc:
+        print("⚠️ Failed fetching catalog detail:", exc)
+    return None
+
 @app.route("/admin/catalog")
 def admin_catalog():
     if "trainer" not in session:
@@ -2592,6 +2672,18 @@ def admin_catalog():
         flash("Access denied. Admins only.", "error")
         return redirect(url_for("dashboard"))
 
+    sort_choice = request.args.get("sort", CATALOG_SORT_CHOICES[0][0])
+    if sort_choice not in CATALOG_SORT_CONFIG:
+        sort_choice = CATALOG_SORT_CHOICES[0][0]
+
+    status_filter = request.args.get("status", CATALOG_STATUS_CHOICES[0][0])
+    if status_filter not in CATALOG_STATUS_VALUES:
+        status_filter = CATALOG_STATUS_CHOICES[0][0]
+
+    view_mode = request.args.get("view", "grid")
+    if view_mode not in {"grid", "list"}:
+        view_mode = "grid"
+
     items = []
     try:
         resp = supabase.table("catalog_items").select("*").order("created_at", desc=True).execute()
@@ -2599,7 +2691,36 @@ def admin_catalog():
     except Exception as e:
         print("⚠️ Failed fetching catalog items:", e)
 
-    return render_template("admin_catalog.html", items=items)
+    if status_filter == "online":
+        items = [it for it in items if it.get("active")]
+    elif status_filter == "offline":
+        items = [it for it in items if not it.get("active")]
+
+    sort_config = CATALOG_SORT_CONFIG.get(sort_choice)
+    if sort_config:
+        items = sorted(items, key=sort_config["key"], reverse=sort_config.get("reverse", False))
+
+    return render_template(
+        "admin_catalog.html",
+        items=items,
+        sort_choices=CATALOG_SORT_CHOICES,
+        status_choices=CATALOG_STATUS_CHOICES,
+        current_sort=sort_choice,
+        current_status=status_filter,
+        view_mode=view_mode,
+    )
+
+
+@app.route("/admin/catalog/<item_id>.json")
+def admin_catalog_detail_json(item_id):
+    if not _is_admin():
+        return _catalog_json_error("Unauthorized", status=403)
+
+    item = _fetch_catalog_item(item_id)
+    if not item:
+        return _catalog_json_error("Item not found", status=404)
+
+    return jsonify({"success": True, "item": item})
 
 
 @app.route("/admin/catalog/<item_id>")
@@ -2613,15 +2734,9 @@ def admin_catalog_detail(item_id):
         flash("Access denied. Admins only.", "error")
         return redirect(url_for("dashboard"))
 
-    try:
-        resp = supabase.table("catalog_items").select("*").eq("id", item_id).limit(1).execute()
-        if not resp.data:
-            flash("Item not found.", "error")
-            return redirect(url_for("admin_catalog"))
-        item = resp.data[0]
-    except Exception as e:
-        print("⚠️ Failed fetching catalog detail:", e)
-        flash("Error loading item.", "error")
+    item = _fetch_catalog_item(item_id)
+    if not item:
+        flash("Item not found.", "error")
         return redirect(url_for("admin_catalog"))
 
     return render_template("admin_catalog_detail.html", item=item)
@@ -2655,10 +2770,17 @@ def admin_catalog_update(item_id):
             data["image_url"] = saved_url
 
     try:
-        supabase.table("catalog_items").update(data).eq("id", item_id).execute()
+        resp = supabase.table("catalog_items").update(data).eq("id", item_id).execute()
+        updated_item = resp.data[0] if resp.data else _fetch_catalog_item(item_id)
+        if wants_json_response():
+            if not updated_item:
+                return _catalog_json_error("Item updated but refreshed data missing. Reload the page.", status=500)
+            return jsonify({"success": True, "item": updated_item})
         flash("✅ Item updated successfully!", "success")
     except Exception as e:
         print("⚠️ Catalog update failed:", e)
+        if wants_json_response():
+            return _catalog_json_error("Failed to update item.", status=500)
         flash("❌ Failed to update item.", "error")
 
     return redirect(url_for("admin_catalog_detail", item_id=item_id))
@@ -2678,7 +2800,12 @@ def admin_catalog_delete(item_id):
         flash("🗑️ Item deleted.", "success")
     except Exception as e:
         print("⚠️ Catalog delete failed:", e)
+        if wants_json_response():
+            return _catalog_json_error("Failed to delete item.", status=500)
         flash("❌ Failed to delete item.", "error")
+
+    if wants_json_response():
+        return jsonify({"success": True, "item_id": item_id})
 
     return redirect(url_for("admin_catalog"))
 
@@ -2987,6 +3114,10 @@ def admin_redemptions():
     if view_mode not in {"list", "prize-buckets"}:
         view_mode = "list"
 
+    bucket_scope = (request.args.get("bucket_scope") or "active").lower()
+    if bucket_scope not in {"active", "inactive", "all"}:
+        bucket_scope = "active"
+
     status_filter = request.args.get("status", "ALL")
     search_user = request.args.get("search", "").strip()
     try:
@@ -3001,13 +3132,18 @@ def admin_redemptions():
     redemptions: list[dict] = []
     filtered_redemptions: list[dict] = []
     prize_buckets: list[dict] = []
+    bucket_scope_counts = {"active": 0, "inactive": 0}
     total_filtered = 0
     total_pages = 1
     has_more = False
     meetup_lookup: dict[str, dict] = {}
     all_meetups: list[dict] = []
 
-    def build_tab_url(view_name: str, page_override: int | None = None) -> str:
+    def build_tab_url(
+        view_name: str,
+        page_override: int | None = None,
+        bucket_scope_override: str | None = None,
+    ) -> str:
         params: dict[str, object] = {"view": view_name}
         if status_filter != "ALL":
             params["status"] = status_filter
@@ -3017,10 +3153,16 @@ def admin_redemptions():
             params["page"] = page_override
         elif view_name == "list":
             params["page"] = page
+        if view_name == "prize-buckets":
+            scope_value = (bucket_scope_override or bucket_scope or "active").lower()
+            if scope_value != "active":
+                params["bucket_scope"] = scope_value
         return url_for("admin_redemptions", **params)
 
     list_tab_url = build_tab_url("list")
     bucket_tab_url = build_tab_url("prize-buckets", page_override=1)
+    bucket_scope_active_url = build_tab_url("prize-buckets", page_override=1, bucket_scope_override="active")
+    bucket_scope_inactive_url = build_tab_url("prize-buckets", page_override=1, bucket_scope_override="inactive")
 
     def build_prize_buckets(
         meetups_list: list[dict], redemptions_list: list[dict], lookup: dict[str, dict]
@@ -3088,9 +3230,10 @@ def admin_redemptions():
             date_str = (meetup_row.get("date") or "").strip() if meetup_row else ""
             start_time_str = (meetup_row.get("start_time") or "").strip() if meetup_row else ""
             try:
-                sort_date = date.fromisoformat(date_str) if date_str else date.max
+                parsed_date = date.fromisoformat(date_str) if date_str else None
             except ValueError:
-                sort_date = date.max
+                parsed_date = None
+            sort_date_value = parsed_date.toordinal() if parsed_date else 0
 
             if meetup_row:
                 sort_weight = 0 if entries else 2
@@ -3109,7 +3252,12 @@ def admin_redemptions():
                 "has_redemptions": bool(entries),
                 "is_unassigned": is_unassigned,
                 "is_active": bool((meetup_row or {}).get("active")),
-                "sort_key": (sort_date, start_time_str, title.lower()),
+                "sort_key": (
+                    sort_weight,
+                    -sort_date_value,
+                    start_time_str or "",
+                    title.lower(),
+                ),
                 "sort_weight": sort_weight,
                 "meetup": meetup_row,
             }
@@ -3129,7 +3277,7 @@ def admin_redemptions():
                 continue
             buckets.append(make_bucket(bucket_id, lookup.get(bucket_id), entries))
 
-        buckets.sort(key=lambda bucket: (bucket["sort_weight"], bucket["sort_key"]))
+        buckets.sort(key=lambda bucket: bucket["sort_key"])
         return buckets
 
     if USE_SUPABASE and supabase:
@@ -3159,6 +3307,7 @@ def admin_redemptions():
                     r for r in filtered_redemptions
                     if needle in (r.get("trainer_username") or "").lower()
                 ]
+            filtered_redemptions.sort(key=lambda r: r.get("created_at") or "", reverse=True)
 
             total_filtered = len(filtered_redemptions)
             total_pages = max(1, (total_filtered + per_page - 1) // per_page)
@@ -3185,7 +3334,22 @@ def admin_redemptions():
                 record["meetup_display"] = _format_meetup_summary(meetup_lookup.get(meetup_key))
 
             if view_mode == "prize-buckets":
-                prize_buckets = build_prize_buckets(all_meetups, filtered_redemptions, meetup_lookup)
+                raw_buckets = build_prize_buckets(all_meetups, filtered_redemptions, meetup_lookup)
+                def _bucket_matches_scope(bucket: dict) -> bool:
+                    if bucket_scope == "inactive":
+                        return (not bucket.get("is_unassigned")) and (not bucket.get("is_active"))
+                    if bucket_scope == "all":
+                        return True
+                    # Default to active buckets; always include unassigned buckets for visibility.
+                    return bucket.get("is_unassigned") or bucket.get("is_active")
+
+                prize_buckets = [bucket for bucket in raw_buckets if _bucket_matches_scope(bucket)]
+                bucket_scope_counts["active"] = sum(
+                    1 for bucket in raw_buckets if bucket.get("is_unassigned") or bucket.get("is_active")
+                )
+                bucket_scope_counts["inactive"] = sum(
+                    1 for bucket in raw_buckets if (not bucket.get("is_unassigned")) and (not bucket.get("is_active"))
+                )
         except Exception as e:
             print("⚠️ Failed fetching redemptions:", e)
     else:
@@ -3204,6 +3368,10 @@ def admin_redemptions():
         has_more=has_more,
         list_tab_url=list_tab_url,
         bucket_tab_url=bucket_tab_url,
+        bucket_scope=bucket_scope,
+        bucket_scope_counts=bucket_scope_counts,
+        bucket_scope_active_url=bucket_scope_active_url,
+        bucket_scope_inactive_url=bucket_scope_inactive_url,
     )
 
 
@@ -3270,14 +3438,7 @@ def update_redemption_ajax(redemption_id, action):
             message = f"Thanks for picking up your {item_name}! "
             message += "We hope you like it — contact us if you have any issues."
 
-        supabase.table("notifications").insert({
-            "type": "system",
-            "audience": trainer,
-            "subject": subject,
-            "message": message,
-            "metadata": {},
-            "sent_at": datetime.utcnow().isoformat()
-        }).execute()
+        send_notification(trainer, subject, message, notif_type="system")
 
         stats_payload = None
         try:
@@ -3325,12 +3486,13 @@ def admin_trainers():
     # 📋 Fetch all accounts from Supabase.sheet1
     try:
         resp = supabase.table("sheet1").select(
-            "trainer_username, campfire_username, account_type, stamps, avatar_icon"
+            "trainer_username, campfire_username, account_type, stamps, avatar_icon, trainer_card_background"
         ).execute()
         all_trainers = resp.data or []
         for entry in all_trainers:
             entry["account_type"] = normalize_account_type(entry.get("account_type"))
             entry.setdefault("avatar_icon", "avatar1.png")
+            entry.setdefault("trainer_card_background", "default.png")
             if entry["account_type"]:
                 account_types.add(entry["account_type"])
     except Exception as e:
@@ -3343,27 +3505,50 @@ def admin_trainers():
         account_types=sorted(account_types),
     )
 
-@app.route("/admin/trainers/<username>")
-def admin_trainer_detail(username):
+def _load_trainer_for_admin(username):
+    """Common loader for trainer detail endpoints that enforces admin access."""
     if "trainer" not in session:
         flash("Please log in.", "warning")
-        return redirect(url_for("home"))
+        return None, redirect(url_for("home"))
 
-    # ✅ Require Admin account_type
     _, user = find_user(session["trainer"])
     if not user or user.get("account_type") != "Admin":
         flash("Access denied. Admins only.", "error")
-        return redirect(url_for("dashboard"))
+        return None, redirect(url_for("dashboard"))
 
-    # 🔎 Find trainer
     _, trainer_data = find_user(username)
     if not trainer_data:
         flash(f"No trainer found with username '{username}'", "warning")
-        return redirect(url_for("admin_trainers"))
+        return None, redirect(url_for("admin_trainers"))
+
+    return trainer_data, None
+
+
+@app.route("/admin/trainers/<username>")
+def admin_trainer_detail(username):
+    trainer_data, error_response = _load_trainer_for_admin(username)
+    if error_response:
+        return error_response
 
     return render_template(
         "admin_trainer_detail.html",
-        trainer=trainer_data
+        trainer=trainer_data,
+        show_back_link=True,
+        modal_view=False,
+    )
+
+
+@app.route("/admin/trainers/<username>/panel")
+def admin_trainer_panel(username):
+    trainer_data, error_response = _load_trainer_for_admin(username)
+    if error_response:
+        return error_response
+
+    return render_template(
+        "partials/admin_trainer_panel.html",
+        trainer=trainer_data,
+        show_back_link=False,
+        modal_view=True,
     )
 
 @app.route("/admin/trainers/<username>/change_account_type", methods=["POST"])
@@ -3782,6 +3967,56 @@ def admin_classic_stamps_reject(submission_id):
     return _redirect_to_classic_dashboard("REJECTED")
 
 # ====== Admin: Notification Center ======
+def fetch_trainer_roster():
+    roster: list[dict] = []
+    account_types: set[str] = set()
+    if not supabase:
+        return roster, []
+    try:
+        resp = supabase.table("sheet1").select("trainer_username, account_type").execute()
+        for row in resp.data or []:
+            username = (row.get("trainer_username") or "").strip()
+            if not username:
+                continue
+            acct = normalize_account_type(row.get("account_type"))
+            roster.append({
+                "trainer_username": username,
+                "account_type": acct,
+            })
+            if acct:
+                account_types.add(acct)
+        roster.sort(key=lambda item: item["trainer_username"].lower())
+    except Exception as exc:
+        print("⚠️ Failed fetching trainer roster for notifications:", exc)
+    return roster, sorted(account_types)
+
+
+NOTIFICATION_TYPE_CHOICES = [
+    ("announcement", "Announcement"),
+    ("system", "System"),
+    ("prize", "Prize"),
+]
+
+def _notification_json_error(message: str, status: int = 400):
+    return jsonify({"success": False, "error": message}), status
+
+def _fetch_notification(notification_id: str):
+    try:
+        resp = (
+            supabase.table("notifications")
+            .select("*")
+            .eq("id", notification_id)
+            .limit(1)
+            .execute()
+        )
+        rows = resp.data or []
+        if rows:
+            return rows[0]
+    except Exception as exc:
+        print("⚠️ Failed fetching notification:", exc)
+    return None
+
+
 @app.route("/admin/notifications", methods=["GET", "POST"])
 def admin_notifications():
     if "trainer" not in session:
@@ -3793,52 +4028,145 @@ def admin_notifications():
         flash("⛔ Access denied. Admins only.", "error")
         return redirect(url_for("dashboard"))
 
+    trainer_roster, account_types = fetch_trainer_roster()
+
     if request.method == "POST":
         notif_type = request.form.get("type", "announcement")
-        audience   = request.form.get("audience", "ALL").strip()
-        subject    = request.form.get("subject", "").strip()
-        message    = request.form.get("message", "").strip()
+        subject = request.form.get("subject", "").strip()
+        raw_message = request.form.get("message", "").strip()
+        audience_mode = request.form.get("audience_mode", "all")
+        selected = [a.strip() for a in request.form.getlist("audience_multi") if a.strip()]
+        manual_entry = request.form.get("audience_manual", "")
+        manual_list = [name.strip() for name in manual_entry.split(",") if name.strip()]
 
-        if not subject or not message:
+        if not subject or not raw_message:
             flash("Subject and message are required.", "warning")
             return redirect(url_for("admin_notifications"))
 
-        try:
-            # Insert into Supabase notifications
-            supabase.table("notifications").insert({
+        recipients: list[str]
+        if audience_mode == "all":
+            recipients = ["ALL"]
+        else:
+            recipients = selected + manual_list
+            recipients = [name for name in recipients if name]
+            if any(name.upper() == "ALL" for name in recipients):
+                recipients = ["ALL"]
+            else:
+                deduped = []
+                seen = set()
+                for name in recipients:
+                    key = name.lower()
+                    if key in seen:
+                        continue
+                    seen.add(key)
+                    deduped.append(name)
+                recipients = deduped
+
+        if not recipients:
+            flash("Select at least one trainer or choose All Trainers.", "warning")
+            return redirect(url_for("admin_notifications"))
+
+        sanitized_message = sanitize_notification_html(raw_message)
+        payloads = []
+        sent_at = datetime.utcnow().isoformat()
+        for recipient in recipients:
+            payloads.append({
                 "type": notif_type,
-                "audience": audience,   # could be "ALL" or a specific trainer_username
+                "audience": recipient,
                 "subject": subject,
-                "message": message,
-                "metadata": {},         # JSONB for future (attachments, deep links, etc.)
-                "sent_at": datetime.utcnow().isoformat(),
-                "read_by": []
-            }).execute()
+                "message": sanitized_message,
+                "metadata": {},
+                "sent_at": sent_at,
+                "read_by": [],
+            })
 
-            # 📡 Future: send to Telegram here
-            # if audience == "ALL":
-            #     send_to_telegram(subject, message)
-
-            flash("✅ Notification sent!", "success")
+        try:
+            supabase.table("notifications").insert(payloads).execute()
+            if recipients == ["ALL"]:
+                flash("✅ Notification sent to all trainers.", "success")
+            else:
+                total = len(recipients)
+                flash(f"✅ Notification sent to {total} trainer{'s' if total != 1 else ''}.", "success")
         except Exception as e:
             print("⚠️ Failed sending notification:", e)
             flash("❌ Failed to send notification.", "error")
 
         return redirect(url_for("admin_notifications"))
 
-    # Show recent notifications
     notifications = []
     try:
-        resp = supabase.table("notifications") \
-            .select("*") \
-            .order("sent_at", desc=True) \
-            .limit(20) \
-            .execute()
+        resp = (supabase.table("notifications")
+                .select("*")
+                .order("sent_at", desc=True)
+                .limit(100)
+                .execute())
         notifications = resp.data or []
     except Exception as e:
         print("⚠️ Failed loading notifications:", e)
 
-    return render_template("admin_notifications.html", notifications=notifications)
+    type_lookup = {value: label for value, label in NOTIFICATION_TYPE_CHOICES}
+    notification_categories = []
+    for value, label in NOTIFICATION_TYPE_CHOICES:
+        notification_categories.append({"value": value, "label": label})
+    for entry in notifications:
+        raw_type = (entry.get("type") or "").strip().lower()
+        if not raw_type or raw_type in type_lookup:
+            continue
+        label = raw_type.title()
+        type_lookup[raw_type] = label
+        notification_categories.append({"value": raw_type, "label": label})
+
+    return render_template(
+        "admin_notifications.html",
+        notifications=notifications,
+        trainer_roster=trainer_roster,
+        account_types=account_types,
+        notification_types=NOTIFICATION_TYPE_CHOICES,
+        notification_categories=notification_categories,
+    )
+
+@app.route("/admin/notifications/<notification_id>/update", methods=["POST"])
+def admin_notifications_update(notification_id):
+    if not _is_admin():
+        return _notification_json_error("Admins only.", status=403)
+
+    payload = request.get_json(silent=True) or {}
+    subject = (payload.get("subject") or request.form.get("subject") or "").strip()
+    notif_type = (payload.get("type") or request.form.get("type") or "announcement").strip().lower()
+    message_raw = (payload.get("message") or request.form.get("message") or "").strip()
+
+    if not subject or not message_raw:
+        return _notification_json_error("Subject and message are required.", status=400)
+
+    sanitized_message = sanitize_notification_html(message_raw)
+    update_data = {
+        "subject": subject,
+        "type": notif_type,
+        "message": sanitized_message,
+        "updated_at": datetime.utcnow().isoformat(),
+    }
+
+    try:
+        resp = supabase.table("notifications").update(update_data).eq("id", notification_id).execute()
+        updated = resp.data[0] if resp.data else _fetch_notification(notification_id)
+        if not updated:
+            return _notification_json_error("Notification updated but not found. Refresh the page.", status=404)
+        return jsonify({"success": True, "notification": updated})
+    except Exception as exc:
+        print("⚠️ Failed to update notification:", exc)
+        return _notification_json_error("Failed to update notification.", status=500)
+
+@app.route("/admin/notifications/<notification_id>/delete", methods=["POST"])
+def admin_notifications_delete(notification_id):
+    if not _is_admin():
+        return _notification_json_error("Admins only.", status=403)
+
+    try:
+        supabase.table("notifications").delete().eq("id", notification_id).execute()
+        return jsonify({"success": True, "notification_id": notification_id})
+    except Exception as exc:
+        print("⚠️ Failed to delete notification:", exc)
+        return _notification_json_error("Failed to delete notification.", status=500)
 
 # ==== Login ====
 @app.route("/login", methods=["GET", "POST"])
@@ -5365,15 +5693,13 @@ def catalog_redeem(item_id):
             f"Receipt: {receipt_url}\n"
             f"Status: PENDING"
         )
-        supabase.table("notifications").insert({
-            "type": "prize",
-            "audience": trainer,
-            "subject": subj,
-            "message": msg,
-            "metadata": {"url": receipt_url, "redemption_id": red_id},
-            "sent_at": datetime.now(timezone.utc).isoformat(),
-            "read_by": [],
-        }).execute()
+        send_notification(
+            trainer,
+            subj,
+            msg,
+            notif_type="prize",
+            metadata={"url": receipt_url, "redemption_id": red_id},
+        )
     except Exception as e:
         print("⚠️ redeem: inbox notify failed:", e)
 

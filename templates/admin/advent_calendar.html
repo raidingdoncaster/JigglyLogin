@@ -25,44 +25,59 @@
   {% set opened_days = state.opened_days %}
   {% set openable_day = state.openable_day %}
 
-  <div class="advent-grid compact">
+  <div
+    class="advent-grid compact"
+    data-stamp-base="{{ url_for('static', filename='advent/') }}"
+    data-day-override="{{ day_override or '' }}"
+  >
     {% for day in range(1, 26) %}
       {% set day_config = config.get(day) %}
       {% set opened = day in opened_days %}
       {% set is_openable = day == openable_day %}
-      <div class="advent-cell{% if opened %} is-opened{% elif is_openable %} is-openable{% else %} is-locked{% endif %}">
+      <div
+        class="advent-cell{% if opened %} is-opened{% elif is_openable %} is-openable{% else %} is-locked{% endif %}"
+        data-day="{{ day }}"
+        data-open-url="{{ url_for('admin_advent.open_day', day=day) }}"
+      >
         <div class="advent-day-label">
           <span>Day {{ "%02d"|format(day) }}</span>
-          {% if opened %}
-            <span class="advent-badge">✨</span>
-          {% elif is_openable %}
-            <span class="advent-badge is-today">★</span>
-          {% endif %}
+          <span class="advent-badge{% if is_openable %} is-today{% endif %}">
+            {% if opened %}
+              ✨
+            {% elif is_openable %}
+              ★
+            {% else %}
+              &nbsp;
+            {% endif %}
+          </span>
         </div>
 
-        {% if opened and day_config %}
-          <img src="{{ url_for('static', filename='advent/' ~ day_config.stamp_png) }}" alt="Stamp for day {{ day }}">
-          <button
-            type="button"
-            class="message-btn"
-            data-day="{{ day }}"
-            data-message="{{ day_config.message|e }}"
-          >
-            View quote
-          </button>
-          <small class="advent-status">Opened</small>
-        {% elif is_openable %}
-          <form class="open-day-form" method="POST" action="{{ url_for('admin_advent.open_day', day=day) }}">
-            {% if day_override %}
-              <input type="hidden" name="day_override" value="{{ day_override }}">
-            {% endif %}
-            <button type="submit" data-day="{{ day }}">Open</button>
-          </form>
-          <small class="advent-hint">Ready to unlock</small>
-        {% else %}
-          <div class="advent-placeholder">🔒</div>
-          <small class="advent-status">Locked</small>
-        {% endif %}
+        <div class="advent-cell-content">
+          {% if opened and day_config %}
+            <img src="{{ url_for('static', filename='advent/' ~ day_config.stamp_png) }}" alt="Stamp for day {{ day }}">
+            <button
+              type="button"
+              class="message-btn"
+              data-day="{{ day }}"
+              data-message="{{ day_config.message|e }}"
+              data-stamp="{{ url_for('static', filename='advent/' ~ day_config.stamp_png) }}"
+            >
+              View quote
+            </button>
+            <small class="advent-status">Opened</small>
+          {% elif is_openable %}
+            <form class="open-day-form" method="POST" action="{{ url_for('admin_advent.open_day', day=day) }}">
+              {% if day_override %}
+                <input type="hidden" name="day_override" value="{{ day_override }}">
+              {% endif %}
+              <button type="submit" data-day="{{ day }}">Open</button>
+            </form>
+            <small class="advent-hint">Ready to unlock</small>
+          {% else %}
+            <div class="advent-placeholder">🔒</div>
+            <small class="advent-status">Locked</small>
+          {% endif %}
+        </div>
       </div>
     {% endfor %}
   </div>
@@ -73,6 +88,7 @@
       <button type="button" class="advent-modal__close" aria-label="Close">&times;</button>
       <div class="advent-modal__body">
         <p class="advent-modal__eyebrow">Unlocked Quote</p>
+        <img id="advent-modal-stamp" alt="Advent stamp" hidden>
         <h2 id="advent-modal-day"></h2>
         <p id="advent-modal-message"></p>
       </div>
@@ -185,7 +201,7 @@
 }
 .advent-grid.compact {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
   margin-top: 24px;
   position: relative;
@@ -248,11 +264,34 @@
   border-style: dotted;
   animation-duration: 4s;
 }
+.advent-cell.is-openable::before,
+.advent-cell.is-openable::after {
+  content: "";
+  position: absolute;
+  inset: 8px;
+  border-radius: inherit;
+  border: 1px dashed rgba(255, 255, 255, 0.25);
+  animation: orbit 6s linear infinite;
+  pointer-events: none;
+}
+.advent-cell.is-openable::after {
+  inset: 14px;
+  border-style: dotted;
+  animation-duration: 4s;
+}
 .advent-cell.is-locked {
   border-color: rgba(255, 255, 255, 0.08);
   color: rgba(255, 255, 255, 0.7);
 }
 .advent-placeholder { font-size: 2rem; }
+.advent-cell-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
 .advent-day-label {
   font-weight: bold;
   text-transform: uppercase;
@@ -267,6 +306,8 @@
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.15);
   font-size: 0.85rem;
+  min-width: 28px;
+  text-align: center;
 }
 .advent-badge.is-today {
   background: rgba(255, 255, 255, 0.35);
@@ -326,6 +367,51 @@
 }
 .advent-modal__body p {
   margin: 0;
+}
+.advent-modal__body img {
+  max-height: 120px;
+  margin: 0 auto 12px auto;
+  display: block;
+}
+.advent-cell.is-openable.unlocking {
+  animation: unlockBurst 0.8s forwards;
+  pointer-events: none;
+}
+.advent-cell.is-openable.unlocking::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(circle, rgba(255,255,255,0.9) 0%, transparent 65%);
+  animation: shimmer 0.8s forwards;
+}
+.magic-burst {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.magic-burst__spark {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff 0%, rgba(255,255,255,0) 70%);
+  animation: sparkleDrift 1.2s ease-out forwards;
+  mix-blend-mode: screen;
+}
+.magic-burst__spark.is-heart::after {
+  content: "❤";
+  font-size: 0.9rem;
+  color: #ff9fb3;
+  position: absolute;
+  inset: -4px;
+}
+.magic-burst__spark.is-star::after {
+  content: "★";
+  font-size: 0.9rem;
+  color: #ffd93d;
+  position: absolute;
+  inset: -4px;
 }
 .advent-cell.is-openable.unlocking {
   animation: unlockBurst 0.8s forwards;
@@ -414,13 +500,49 @@
     opacity: 0;
   }
 }
+@keyframes unlockBurst {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 rgba(255,255,255,0);
+  }
+  40% {
+    transform: scale(1.05);
+    box-shadow: 0 0 25px rgba(255,255,255,0.6);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 rgba(255,255,255,0);
+  }
+}
+@keyframes shimmer {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+@keyframes orbit {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+@keyframes sparkleDrift {
+  0% {
+    transform: translate(0, 0) scale(0.6);
+    opacity: 1;
+  }
+  70% { opacity: 1; }
+  100% {
+    transform: translate(var(--dx, 0), var(--dy, -40px)) scale(1.4);
+    opacity: 0;
+  }
+}
 @media (max-width: 900px) {
   .advent-grid.compact { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .advent-scene { padding: 16px; }
   .header-tree { width: 120px; height: 110px; }
 }
-@media (max-width: 600px) {
+@media (max-width: 640px) {
   .advent-grid.compact { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 420px) {
+  .advent-grid.compact { grid-template-columns: repeat(1, minmax(0, 1fr)); }
 }
 </style>
 
@@ -429,13 +551,31 @@
   const modal = document.getElementById("advent-modal");
   if (!modal) return;
 
+  const grid = document.querySelector(".advent-grid");
+  const stampBase = grid ? grid.dataset.stampBase || "" : "";
+  const dayOverride = grid ? grid.dataset.dayOverride || "" : "";
   const dayEl = document.getElementById("advent-modal-day");
   const messageEl = document.getElementById("advent-modal-message");
+  const stampImg = document.getElementById("advent-modal-stamp");
   const closeButtons = modal.querySelectorAll(".advent-modal__close, .advent-modal__backdrop");
 
-  function openModal(day, message) {
+  function buildStampUrl(stampName) {
+    if (!stampName) return "";
+    if (/^https?:/i.test(stampName) || stampName.startsWith("/")) {
+      return stampName;
+    }
+    return `${stampBase}${stampName}`;
+  }
+
+  function openModal(day, message, stampUrl) {
     dayEl.textContent = `Day ${day}`;
     messageEl.textContent = message;
+    if (stampUrl) {
+      stampImg.hidden = false;
+      stampImg.src = stampUrl;
+    } else {
+      stampImg.hidden = true;
+    }
     modal.hidden = false;
   }
 
@@ -448,7 +588,8 @@
     if (trigger) {
       const day = trigger.dataset.day;
       const message = trigger.dataset.message || "No message provided.";
-      openModal(day, message);
+      const stamp = trigger.dataset.stamp || "";
+      openModal(day, message, stamp);
     }
   });
 
@@ -477,20 +618,131 @@
     setTimeout(() => burst.remove(), 1200);
   };
 
-  document.querySelectorAll(".open-day-form").forEach((form) => {
-    form.addEventListener("submit", () => {
+  function updateBadge(cell, symbol, highlight = false) {
+    const badge = cell.querySelector(".advent-badge");
+    if (!badge) return;
+    badge.textContent = symbol || "";
+    if (highlight) {
+      badge.classList.add("is-today");
+    } else {
+      badge.classList.remove("is-today");
+    }
+  }
+
+  function convertCellToOpened(cell, payload) {
+    if (!cell) return;
+    cell.classList.remove("is-openable", "unlocking");
+    cell.classList.add("is-opened");
+    updateBadge(cell, "✨");
+    const content = cell.querySelector(".advent-cell-content");
+    if (!content) return;
+    content.innerHTML = "";
+    const stampUrl = buildStampUrl(payload.stamp_png);
+    if (stampUrl) {
+      const img = document.createElement("img");
+      img.src = stampUrl;
+      img.alt = `Stamp for day ${payload.day}`;
+      content.appendChild(img);
+    }
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "message-btn";
+    btn.textContent = "View quote";
+    btn.dataset.day = payload.day;
+    btn.dataset.message = payload.message || "";
+    if (stampUrl) {
+      btn.dataset.stamp = stampUrl;
+    }
+    content.appendChild(btn);
+    const status = document.createElement("small");
+    status.className = "advent-status";
+    status.textContent = "Opened";
+    content.appendChild(status);
+  }
+
+  function activateNextCell(day) {
+    if (!day) return;
+    const cell = document.querySelector(`.advent-cell[data-day="${day}"]`);
+    if (!cell) return;
+    cell.classList.remove("is-locked");
+    cell.classList.add("is-openable");
+    const content = cell.querySelector(".advent-cell-content");
+    if (!content) return;
+    content.innerHTML = "";
+    const form = document.createElement("form");
+    form.className = "open-day-form";
+    form.method = "POST";
+    form.action = cell.dataset.openUrl;
+    if (dayOverride) {
+      const hidden = document.createElement("input");
+      hidden.type = "hidden";
+      hidden.name = "day_override";
+      hidden.value = dayOverride;
+      form.appendChild(hidden);
+    }
+    const button = document.createElement("button");
+    button.type = "submit";
+    button.textContent = "Open";
+    button.dataset.day = day;
+    form.appendChild(button);
+    content.appendChild(form);
+    const hint = document.createElement("small");
+    hint.className = "advent-hint";
+    hint.textContent = "Ready to unlock";
+    content.appendChild(hint);
+    updateBadge(cell, "★", true);
+    bindOpenForm(form);
+  }
+
+  function handleOpenError(cell, button, message) {
+    if (cell) {
+      cell.classList.remove("unlocking");
+    }
+    if (button) {
+      button.disabled = false;
+      button.textContent = "Open";
+    }
+    alert(message || "Something went wrong opening this day.");
+  }
+
+  function bindOpenForm(form) {
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
       const cell = form.closest(".advent-cell");
+      const button = form.querySelector("button[type='submit']");
       if (cell) {
         cell.classList.add("unlocking");
         createMagicBurst(cell);
-        const button = form.querySelector("button[type='submit']");
-        if (button) {
-          button.disabled = true;
-          button.textContent = "Opening...";
-        }
       }
+      if (button) {
+        button.disabled = true;
+        button.textContent = "Opening...";
+      }
+
+      const formData = new FormData(form);
+      fetch(form.action, {
+        method: "POST",
+        headers: {
+          "Accept": "application/json",
+          "X-Requested-With": "XMLHttpRequest",
+        },
+        body: formData,
+      })
+        .then((resp) => resp.json())
+        .then((payload) => {
+          if (payload.status === "ok") {
+            convertCellToOpened(cell, payload);
+            activateNextCell(payload.next_openable_day);
+            openModal(payload.day, payload.message, buildStampUrl(payload.stamp_png));
+          } else {
+            handleOpenError(cell, button, payload.reason);
+          }
+        })
+        .catch(() => handleOpenError(cell, button));
     });
-  });
+  }
+
+  document.querySelectorAll(".open-day-form").forEach(bindOpenForm);
 })();
 </script>
 {% endblock %}

@@ -5,85 +5,1172 @@
 {% endblock %}
 
 {% block content %}
+{% set roster = trainer_roster or [] %}
+{% set categories = notification_categories or [] %}
+{% set type_choices = notification_types or [] %}
 
 <h1>📢 Notifications Center</h1>
-<p>Send announcements to trainers’ in-app inbox. Telegram integration coming soon.</p>
+<p>Compose inbox announcements, target the right trainers, and review recent sends.</p>
+<div id="notifAlert" class="inline-toast is-hidden" role="status" aria-live="polite"></div>
 
-<!-- Send Notification Form -->
-<div class="notif-form">
-  <form method="post">
-    <label>Type:</label>
-    <select name="type">
-      <option value="announcement">Announcement</option>
-      <option value="system">System</option>
-      <option value="prize">Prize</option>
-    </select>
+<!-- Compose -->
+<div class="card compose-card" id="composeCard">
+  <div class="compose-card__header">
+    <div>
+      <h3>➕ Compose notification</h3>
+      <p>Write rich HTML-friendly messages and choose the perfect audience.</p>
+    </div>
+    <button type="button" class="compose-card__toggle" id="composeToggle" aria-expanded="false" aria-controls="composeBody">
+      <span class="toggle-label">Open form</span>
+      <span class="toggle-icon">▸</span>
+    </button>
+  </div>
+  <div class="compose-card__body is-collapsed" id="composeBody">
+    <form method="post" class="compose-form" id="composeForm">
+      <div class="form-grid">
+        <label>
+          <span>Type</span>
+          <select name="type">
+            {% for value, label in type_choices %}
+              <option value="{{ value }}">{{ label }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label class="subject-field">
+          <span>Subject</span>
+          <input type="text" name="subject" placeholder="Weekly meetup update" required>
+        </label>
+      </div>
 
-    <label>Audience:</label>
-    <input type="text" name="audience" placeholder="ALL or trainer_username">
+      <div class="editor">
+        <div class="editor-toolbar" data-editor="message">
+          <button type="button" data-format="strong" title="Bold"><strong>B</strong></button>
+          <button type="button" data-format="em" title="Italic"><em>I</em></button>
+          <button type="button" data-format="ul" title="Bullet list">• List</button>
+          <button type="button" data-format="a" title="Link">🔗 Link</button>
+          <button type="button" data-format="br" title="Line break">↵</button>
+        </div>
+        <textarea id="notifMessage" name="message" rows="6" required placeholder="Hi trainers! &lt;strong&gt;Saturday meetup&lt;/strong&gt; starts at 10:00."></textarea>
+        <p class="editor-helper">
+          Supports <code>&lt;strong&gt;</code>, <code>&lt;em&gt;</code>, lists, and links. HTML is sanitized automatically.
+        </p>
+      </div>
 
-    <label>Subject:</label>
-    <input type="text" name="subject" required>
+      <div class="audience-section">
+        <div class="audience-header">
+          <div>
+            <h4>Audience</h4>
+            <p>Target everyone or hand-pick trainers. Use the quick chips for select all/clear.</p>
+          </div>
+          <p class="audience-selected">
+            Selected: <span id="audienceSelectedCount">0</span>
+          </p>
+        </div>
+        <div class="audience-mode">
+          <label class="chip-option">
+            <input type="radio" name="audience_mode" value="all" checked>
+            <span>All trainers</span>
+          </label>
+          <label class="chip-option">
+            <input type="radio" name="audience_mode" value="targeted">
+            <span>Targeted trainers</span>
+          </label>
+        </div>
 
-    <label>Message:</label>
-    <textarea name="message" rows="4" required></textarea>
+        <div class="audience-panel" id="audiencePanel" hidden>
+          <div class="audience-controls">
+            <input type="search" id="audienceSearch" placeholder="Search trainers…" aria-label="Search trainers">
+            <div class="chip-row">
+              <button type="button" class="chip" data-select="all">Select All</button>
+              <button type="button" class="chip" data-select="none">Clear</button>
+              {% for acct in account_types or [] %}
+                <button type="button" class="chip" data-select-group="{{ acct|lower }}">{{ acct }}</button>
+              {% endfor %}
+            </div>
+          </div>
+          <div class="audience-list" id="audienceList" aria-live="polite">
+            {% if roster %}
+              {% for trainer in roster %}
+                <label class="audience-option"
+                       data-username="{{ trainer.trainer_username|lower }}"
+                       data-account-type="{{ trainer.account_type|lower }}">
+                  <input type="checkbox" name="audience_multi" value="{{ trainer.trainer_username }}">
+                  <div class="option-details">
+                    <span class="name">{{ trainer.trainer_username }}</span>
+                    <span class="meta">{{ trainer.account_type }}</span>
+                  </div>
+                </label>
+              {% endfor %}
+            {% else %}
+              <p class="empty-note">Trainer roster unavailable. Use manual entry below.</p>
+            {% endif %}
+          </div>
+          <label class="manual-entry">
+            <span>Manual usernames (comma separated)</span>
+            <input type="text" name="audience_manual" placeholder="e.g. Psyduck, Misty">
+          </label>
+        </div>
+      </div>
 
-    <button type="submit">Send Notification</button>
-  </form>
+      <div class="form-actions">
+        <button type="submit" class="btn primary">🚀 Send notification</button>
+      </div>
+    </form>
+  </div>
 </div>
 
 <!-- Recent Notifications -->
-<h2>🗂️ Recent Notifications</h2>
-<div class="table-scroll">
-  <table class="stats-table">
-    <thead>
-      <tr>
-        <th>Sent</th>
-        <th>Audience</th>
-        <th>Subject</th>
-        <th>Message</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for n in notifications %}
-      <tr>
-        <td>{{ n.sent_at|to_date }}</td>
-        <td>{{ n.audience }}</td>
-        <td>{{ n.subject }}</td>
-        <td>{{ n.message }}</td>
-      </tr>
-      {% else %}
-      <tr><td colspan="4">No notifications yet.</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
+<section class="recent">
+  <div class="section-header">
+    <h2>🗂️ Recent Notifications</h2>
+    <div class="section-tools">
+      <input type="search" id="notificationSearch" placeholder="Search notifications…" aria-label="Search notifications">
+      <select id="notificationSort" aria-label="Sort notifications">
+        <option value="newest">Newest first</option>
+        <option value="oldest">Oldest first</option>
+        <option value="audience">Audience A → Z</option>
+        <option value="type">Type</option>
+      </select>
+    </div>
+  </div>
+  <div class="category-pills" id="notificationCategories">
+    <button type="button" class="pill active" data-type="all">All</button>
+    {% for cat in categories %}
+      <button type="button" class="pill" data-type="{{ cat.value }}">{{ cat.label }}</button>
+    {% endfor %}
+  </div>
+  <div class="table-scroll">
+    <table class="notif-table" id="notificationTable">
+      <thead>
+        <tr>
+          <th scope="col">Type</th>
+          <th scope="col">Audience</th>
+          <th scope="col">Sent</th>
+          <th scope="col" class="sr-only">Open</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for n in notifications %}
+          {% set row_type = (n.type or 'announcement')|lower %}
+          {% set data_payload = {
+            "id": n.id,
+            "subject": n.subject,
+            "message": n.message,
+            "type": n.type,
+            "audience": n.audience,
+            "sent_at": n.sent_at
+          } %}
+          <tr data-id="{{ n.id }}"
+              data-type="{{ row_type }}"
+              data-audience="{{ n.audience or 'ALL' }}"
+              data-date="{{ n.sent_at or '' }}"
+              data-search="{{ (n.subject ~ ' ' ~ (n.message or ''))|striptags|lower }}"
+              data-notification='{{ data_payload|tojson|forceescape }}'
+              tabindex="0">
+            <td>
+              <span class="type-pill">{{ n.type or 'Announcement' }}</span>
+            </td>
+            <td>
+              <div class="aud-cell">
+                <span class="aud-label">
+                  {{ 'All Trainers' if n.audience == 'ALL' else n.audience }}
+                </span>
+                <span class="sr-only">Subject: {{ n.subject }}</span>
+              </div>
+            </td>
+            <td>{{ n.sent_at|to_date }}</td>
+            <td><span class="chevron">↗</span></td>
+          </tr>
+        {% else %}
+          <tr class="empty-row">
+            <td colspan="4">No notifications yet.</td>
+          </tr>
+        {% endfor %}
+        <tr id="notificationsEmptyRow" class="empty-row is-hidden">
+          <td colspan="4">No notifications match the filters.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- Notification Modal -->
+<div id="notificationModal" class="modal" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="notificationModalSubject">
+  <div class="modal__overlay" data-modal-close></div>
+  <div class="modal__dialog">
+    <div class="modal__header">
+      <div>
+        <h3 id="notificationModalSubject">Notification</h3>
+        <p class="modal__meta">
+          <span class="type-pill" id="notificationModalType"></span>
+          <span id="notificationModalDate"></span>
+          <span id="notificationModalAudience"></span>
+        </p>
+      </div>
+      <button type="button" class="modal__close" data-modal-close aria-label="Close">&times;</button>
+    </div>
+    <div class="modal__body">
+      <div id="notificationModalView"></div>
+      <form id="notificationEditForm" class="modal-form" hidden>
+        <label>
+          <span>Type</span>
+          <select id="notificationEditType">
+            {% for value, label in type_choices %}
+              <option value="{{ value }}">{{ label }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label>
+          <span>Subject</span>
+          <input type="text" id="notificationEditSubject" required>
+        </label>
+        <label>
+          <span>Message (HTML allowed)</span>
+          <textarea id="notificationEditMessage" rows="6" required></textarea>
+        </label>
+        <div class="modal-form-actions">
+          <button type="submit" class="btn primary" id="notificationSaveBtn">💾 Save changes</button>
+        </div>
+      </form>
+      <p class="modal-status" id="notificationModalStatus"></p>
+    </div>
+    <div class="modal__actions">
+      <button type="button" class="btn outline" data-modal-close>Close</button>
+      <button type="button" class="btn secondary" id="notificationEditBtn">Edit</button>
+      <button type="button" class="btn danger" id="notificationDeleteBtn">Delete</button>
+    </div>
+  </div>
 </div>
 
 <style>
-.notif-form {
-  background:#fff; padding:20px; border-radius:16px; margin-bottom:24px;
-  box-shadow:0 10px 24px rgba(15,23,42,0.12);
+.inline-toast {
+  margin: 12px 0;
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-weight: 600;
+  background: #ecfdf3;
+  color: #027a48;
+  box-shadow: 0 8px 20px rgba(2, 122, 72, 0.15);
 }
-.notif-form form { display:grid; gap:14px; }
-.notif-form label { font-weight:600; font-size:0.9rem; }
-.notif-form input, .notif-form select, .notif-form textarea {
-  width:100%; padding:10px 12px; border:1px solid #d7dbe6; border-radius:12px;
-  font-size:0.95rem; transition:border-color .2s ease, box-shadow .2s ease;
+.inline-toast.is-hidden { display: none; }
+.inline-toast.is-error { background:#fef3f2; color:#b42318; box-shadow:0 8px 20px rgba(180,35,24,0.15); }
+.is-hidden { display:none !important; }
+body.modal-open { overflow:hidden; }
+
+.card {
+  background:#fff;
+  border-radius:18px;
+  padding:20px;
+  box-shadow:0 14px 30px rgba(15,23,42,0.12);
 }
-.notif-form input:focus, .notif-form select:focus, .notif-form textarea:focus {
-  outline:none; border-color:#3a8dde; box-shadow:0 0 0 3px rgba(58,141,222,0.2);
+.compose-card { margin-top:18px; }
+.compose-card__header {
+  display:flex;
+  justify-content:space-between;
+  gap:16px;
+  align-items:flex-start;
 }
-.notif-form button {
-  justify-self:flex-start; margin-top:4px; padding:10px 18px; background:#3a8dde; color:#fff;
-  border:none; border-radius:999px; font-weight:600; cursor:pointer; box-shadow:0 8px 20px rgba(58,141,222,0.25);
+.compose-card__header h3 { margin:0; }
+.compose-card__header p { margin:4px 0 0; color:#475467; }
+.compose-card__toggle {
+  border:none;
+  background:#f4f6fb;
+  border-radius:999px;
+  padding:6px 12px;
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  font-weight:600;
+  cursor:pointer;
+}
+.compose-card__body {
+  margin-top:18px;
+  transition:max-height .3s ease, opacity .25s ease;
+}
+.compose-card__body.is-collapsed {
+  max-height:0;
+  opacity:0;
+  overflow:hidden;
+  pointer-events:none;
+}
+.toggle-icon { transition:transform .2s ease; }
+.compose-card__toggle[aria-expanded="true"] .toggle-icon { transform:rotate(90deg); }
+
+.compose-form { display:flex; flex-direction:column; gap:20px; }
+.form-grid {
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+  gap:16px;
+}
+.form-grid label span,
+.audience-section label span {
+  font-weight:600;
+  font-size:.9em;
+  color:#475467;
+  margin-bottom:4px;
+  display:block;
+}
+.form-grid select,
+.subject-field input,
+.manual-entry input {
+  width:100%;
+  padding:10px 14px;
+  border-radius:12px;
+  border:1px solid #d0d5dd;
+  font-size:0.95em;
 }
 
-.table-scroll { overflow-x:auto; margin-top:16px; border-radius:16px; box-shadow:0 8px 20px rgba(15,23,42,0.12); }
-.stats-table { width:100%; border-collapse:separate; border-spacing:0; min-width:480px; }
-.stats-table thead th { text-align:left; font-size:0.85rem; font-weight:700; padding:12px 14px; background:#f1f5f9; color:#1f2937; }
-.stats-table tbody td { padding:12px 14px; border-top:1px solid #e2e8f0; font-size:0.9rem; color:#334155; }
-.stats-table tbody tr:nth-child(even){ background:#f8fafc; }
-.stats-table tbody tr:hover{ background:#eef2ff; }
+.editor { display:flex; flex-direction:column; gap:8px; }
+.editor-toolbar {
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+}
+.editor-toolbar button {
+  border:1px solid #d0d5dd;
+  background:#fff;
+  border-radius:8px;
+  padding:6px 10px;
+  cursor:pointer;
+  font-weight:600;
+}
+.editor textarea {
+  width:100%;
+  border-radius:16px;
+  border:1px solid #d0d5dd;
+  padding:12px 14px;
+  min-height:140px;
+  font-size:0.95em;
+  resize:vertical;
+}
+.editor-helper {
+  margin:0;
+  font-size:0.85em;
+  color:#475467;
+}
+.editor-helper code {
+  background:#f4f4f5;
+  padding:2px 6px;
+  border-radius:6px;
+}
+
+.audience-section {
+  border:1px solid #e4e7ec;
+  border-radius:18px;
+  padding:16px;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+.audience-header {
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  flex-wrap:wrap;
+}
+.audience-header h4 { margin:0; }
+.audience-header p { margin:0; color:#475467; }
+.audience-selected { font-weight:600; color:#1d2939; }
+.audience-mode {
+  display:flex;
+  gap:12px;
+  flex-wrap:wrap;
+}
+.chip-option {
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:8px 12px;
+  border-radius:999px;
+  border:1px solid #d0d5dd;
+  cursor:pointer;
+  font-weight:600;
+}
+.chip-option input { accent-color:#3a8dde; }
+
+.audience-panel {
+  border-top:1px solid #e4e7ec;
+  padding-top:12px;
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+}
+.audience-controls {
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+#audienceSearch {
+  width:100%;
+  padding:10px 14px;
+  border-radius:12px;
+  border:1px solid #d0d5dd;
+}
+.chip-row {
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+}
+.chip {
+  border:none;
+  background:#eef2ff;
+  color:#344054;
+  border-radius:999px;
+  padding:6px 12px;
+  font-weight:600;
+  cursor:pointer;
+}
+.audience-list {
+  max-height:260px;
+  overflow:auto;
+  border:1px solid #e4e7ec;
+  border-radius:16px;
+  padding:10px;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+.audience-option {
+  display:flex;
+  gap:10px;
+  align-items:center;
+  border-radius:12px;
+  padding:10px;
+  border:1px solid #e4e7ec;
+}
+.audience-option input { accent-color:#3a8dde; }
+.option-details { display:flex; flex-direction:column; }
+.option-details .name { font-weight:700; }
+.option-details .meta { font-size:0.8em; color:#475467; }
+.manual-entry input { margin-top:4px; }
+.empty-note { margin:0; color:#9ca3af; font-style:italic; }
+
+.form-actions {
+  display:flex;
+  justify-content:flex-end;
+}
+.btn {
+  border:none;
+  border-radius:999px;
+  padding:10px 18px;
+  font-weight:700;
+  cursor:pointer;
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+}
+.btn.primary {
+  border:none;
+  background:#3a8dde;
+  color:#fff;
+  border-radius:999px;
+  padding:12px 20px;
+  font-weight:700;
+  cursor:pointer;
+  box-shadow:0 12px 24px rgba(58,141,222,0.3);
+}
+.btn.secondary {
+  background:#eef2ff;
+  color:#1d2939;
+}
+.btn.outline {
+  background:#fff;
+  border:1px solid #d0d5dd;
+  color:#1d2939;
+}
+.btn.danger {
+  background:#fef3f2;
+  color:#b42318;
+}
+.btn:disabled {
+  opacity:0.6;
+  cursor:not-allowed;
+}
+
+.recent { margin-top:32px; }
+.section-header {
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-end;
+  flex-wrap:wrap;
+  gap:12px;
+}
+.section-header h2 { margin:0; }
+.section-tools {
+  display:flex;
+  gap:12px;
+  flex-wrap:wrap;
+}
+.section-tools input,
+.section-tools select {
+  padding:8px 12px;
+  border-radius:12px;
+  border:1px solid #d0d5dd;
+}
+.category-pills {
+  margin:14px 0;
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+}
+.pill {
+  border:none;
+  border-radius:999px;
+  padding:6px 12px;
+  background:#f4f4f5;
+  font-weight:600;
+  cursor:pointer;
+}
+.pill.active {
+  background:#3a8dde;
+  color:#fff;
+}
+
+.table-scroll {
+  border-radius:18px;
+  overflow:hidden;
+  box-shadow:0 14px 30px rgba(15,23,42,0.12);
+}
+.notif-table {
+  width:100%;
+  border-collapse:collapse;
+}
+.notif-table thead {
+  background:#f8fafc;
+  text-transform:uppercase;
+  font-size:0.8em;
+  letter-spacing:0.08em;
+  color:#475467;
+}
+.notif-table th,
+.notif-table td {
+  padding:14px 16px;
+  text-align:left;
+}
+.notif-table tbody tr {
+  border-top:1px solid #e4e7ec;
+  cursor:pointer;
+}
+.notif-table tbody tr:hover,
+.notif-table tbody tr:focus {
+  background:#eef2ff;
+  outline:none;
+}
+.type-pill {
+  display:inline-block;
+  padding:4px 10px;
+  border-radius:999px;
+  background:#eef2ff;
+  font-size:0.75em;
+  font-weight:700;
+  text-transform:uppercase;
+}
+.aud-cell { display:flex; flex-direction:column; }
+.aud-label { font-weight:600; }
+.chevron { font-size:1.1em; color:#98a2b3; }
+.sr-only {
+  position:absolute;
+  width:1px;
+  height:1px;
+  padding:0;
+  margin:-1px;
+  overflow:hidden;
+  clip:rect(0,0,0,0);
+  border:0;
+}
+.empty-row td {
+  text-align:center;
+  color:#94a3b8;
+}
+
+.modal {
+  position:fixed;
+  inset:0;
+  background:rgba(15,23,42,0.55);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:20px;
+  opacity:0;
+  pointer-events:none;
+  transition:opacity .2s ease;
+  z-index:1000;
+}
+.modal.is-visible {
+  opacity:1;
+  pointer-events:auto;
+}
+.modal__overlay {
+  position:absolute;
+  inset:0;
+}
+.modal__dialog {
+  position:relative;
+  background:#fff;
+  border-radius:20px;
+  max-width:640px;
+  width:100%;
+  max-height:90vh;
+  overflow:auto;
+  padding:24px;
+  box-shadow:0 30px 60px rgba(15,23,42,0.35);
+}
+.modal__header {
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  align-items:flex-start;
+}
+.modal__header h3 { margin:0; }
+.modal__meta {
+  margin:6px 0 0;
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  font-size:0.85em;
+  color:#475467;
+}
+.modal__close {
+  border:none;
+  background:#f4f4f5;
+  width:36px;
+  height:36px;
+  border-radius:50%;
+  font-size:1.2rem;
+  cursor:pointer;
+}
+.modal__body {
+  margin-top:18px;
+  line-height:1.6;
+  color:#1d2939;
+}
+.modal__body p { margin:0 0 12px; }
+.modal__body ul { margin:0 0 12px 18px; }
+.modal__body a { color:#2563eb; font-weight:600; text-decoration:underline; }
+.modal__actions {
+  display:flex;
+  justify-content:flex-end;
+  gap:10px;
+  margin-top:18px;
+  flex-wrap:wrap;
+}
+#notificationModalView {
+  word-break:break-word;
+}
+.modal-form {
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  margin-top:16px;
+}
+.modal-form label span {
+  font-weight:600;
+  font-size:0.9em;
+  color:#475467;
+  display:block;
+  margin-bottom:4px;
+}
+.modal-form input,
+.modal-form select,
+.modal-form textarea {
+  width:100%;
+  border-radius:12px;
+  border:1px solid #d0d5dd;
+  padding:10px 12px;
+  font-size:0.95em;
+}
+.modal-form textarea {
+  min-height:140px;
+  resize:vertical;
+}
+.modal-form-actions {
+  display:flex;
+  justify-content:flex-end;
+}
+.modal-status {
+  min-height:1.25em;
+  font-size:0.9em;
+  margin-top:10px;
+  color:#475467;
+}
+.modal-status.success { color:#027a48; }
+.modal-status.error { color:#b42318; }
+
+@media(max-width:640px){
+  .form-grid { grid-template-columns:repeat(1,minmax(0,1fr)); }
+  .audience-section { padding:12px; }
+  .section-header { flex-direction:column; align-items:flex-start; }
+  .section-tools { width:100%; }
+  .section-tools input,
+  .section-tools select { flex:1; }
+  .modal__dialog { padding:18px; }
+}
 </style>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const notifAlert = document.getElementById("notifAlert");
+  const composeToggle = document.getElementById("composeToggle");
+  const composeBody = document.getElementById("composeBody");
+  const composeForm = document.getElementById("composeForm");
+  const messageField = document.getElementById("notifMessage");
+  const editorToolbar = document.querySelector(".editor-toolbar");
+  const audienceRadios = Array.from(document.querySelectorAll("input[name='audience_mode']"));
+  const audiencePanel = document.getElementById("audiencePanel");
+  const audienceCheckboxes = Array.from(document.querySelectorAll("input[name='audience_multi']"));
+  const audienceSearch = document.getElementById("audienceSearch");
+  const selectAllBtn = document.querySelector("[data-select='all']");
+  const clearBtn = document.querySelector("[data-select='none']");
+  const groupButtons = Array.from(document.querySelectorAll("[data-select-group]"));
+  const audienceCount = document.getElementById("audienceSelectedCount");
+  const manualInput = document.querySelector("input[name='audience_manual']");
+
+  const notificationTable = document.getElementById("notificationTable");
+  const tableBody = notificationTable ? notificationTable.querySelector("tbody") : null;
+  const emptyRow = document.getElementById("notificationsEmptyRow");
+  const notificationSearch = document.getElementById("notificationSearch");
+  const notificationSort = document.getElementById("notificationSort");
+  const categoryWrap = document.getElementById("notificationCategories");
+
+  const modal = document.getElementById("notificationModal");
+  const modalSubject = document.getElementById("notificationModalSubject");
+  const modalType = document.getElementById("notificationModalType");
+  const modalAudience = document.getElementById("notificationModalAudience");
+  const modalDate = document.getElementById("notificationModalDate");
+  const modalView = document.getElementById("notificationModalView");
+  const editForm = document.getElementById("notificationEditForm");
+  const editType = document.getElementById("notificationEditType");
+  const editSubject = document.getElementById("notificationEditSubject");
+  const editMessage = document.getElementById("notificationEditMessage");
+  const editBtn = document.getElementById("notificationEditBtn");
+  const deleteBtn = document.getElementById("notificationDeleteBtn");
+  const saveBtn = document.getElementById("notificationSaveBtn");
+  const modalStatus = document.getElementById("notificationModalStatus");
+  const modalCloseButtons = modal ? modal.querySelectorAll("[data-modal-close]") : [];
+
+  const filters = { search: "", category: "all", sort: "newest" };
+  const state = { current: null, activeRow: null, editing: false };
+
+  const setAlert = (message = "", tone = "success") => {
+    if (!notifAlert) return;
+    if (!message) {
+      notifAlert.classList.add("is-hidden");
+      notifAlert.textContent = "";
+      notifAlert.classList.remove("is-error");
+      return;
+    }
+    notifAlert.textContent = message;
+    notifAlert.classList.remove("is-hidden");
+    notifAlert.classList.toggle("is-error", tone === "error");
+  };
+
+  const getNotificationRows = () => {
+    if (!tableBody) return [];
+    return Array.from(tableBody.querySelectorAll("tr[data-notification]"));
+  };
+
+  const findRowById = (id) => getNotificationRows().find((row) => row.dataset.id === id) || null;
+
+  const setModalStatus = (message = "", tone = "") => {
+    if (!modalStatus) return;
+    modalStatus.textContent = message;
+    modalStatus.classList.remove("success", "error");
+    if (tone) modalStatus.classList.add(tone);
+  };
+
+  const toggleEditMode = (editing) => {
+    state.editing = editing;
+    if (editForm) editForm.hidden = !editing;
+    if (modalView) modalView.hidden = editing;
+    if (editBtn) editBtn.textContent = editing ? "Cancel Edit" : "Edit";
+  };
+
+  const sanitizeDatasetSearch = (notification) => {
+    const div = document.createElement("div");
+    div.innerHTML = notification.message || "";
+    const text = (div.textContent || div.innerText || "").toLowerCase();
+    return `${(notification.subject || "").toLowerCase()} ${text}`;
+  };
+
+  const formatTypeLabel = (value) => {
+    if (!value) return "Announcement";
+    return value
+      .toString()
+      .replace(/[_-]+/g, " ")
+      .replace(/\w/g, (char) => char.toUpperCase());
+  };
+
+  const formatMessageHtml = (body) => {
+    if (!body) return "<p>No message provided.</p>";
+    if (/<[a-z][\s\S]*>/i.test(body)) return body;
+    return body.replace(/?
+/g, "<br>");
+  };
+
+  const formatDate = (value) => {
+    if (!value) return "Unknown date";
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return value;
+    return parsed.toLocaleString();
+  };
+
+  const setActionButtonsDisabled = (disabled) => {
+    if (saveBtn) saveBtn.disabled = disabled;
+    if (editBtn) editBtn.disabled = disabled;
+    if (deleteBtn) deleteBtn.disabled = disabled;
+  };
+
+  const populateModalView = (notification) => {
+    state.current = notification;
+    if (modalSubject) modalSubject.textContent = notification.subject || "Notification";
+    if (modalType) modalType.textContent = formatTypeLabel(notification.type);
+    if (modalAudience) {
+      modalAudience.textContent = notification.audience === "ALL"
+        ? "All Trainers"
+        : `To: ${notification.audience || "Unknown"}`;
+    }
+    if (modalDate) modalDate.textContent = formatDate(notification.sent_at);
+    if (modalView) modalView.innerHTML = formatMessageHtml(notification.message);
+    if (editType) editType.value = (notification.type || "announcement").toLowerCase();
+    if (editSubject) editSubject.value = notification.subject || "";
+    if (editMessage) editMessage.value = notification.message || "";
+    toggleEditMode(false);
+    setModalStatus("");
+  };
+
+  const updateRowDataset = (row, notification) => {
+    if (!row) return;
+    row.dataset.notification = JSON.stringify(notification);
+    row.dataset.type = (notification.type || "announcement").toLowerCase();
+    row.dataset.date = notification.sent_at || "";
+    row.dataset.search = sanitizeDatasetSearch(notification);
+    const pill = row.querySelector(".type-pill");
+    if (pill) pill.textContent = formatTypeLabel(notification.type);
+  };
+
+  const toggleModal = (show) => {
+    if (!modal) return;
+    modal.classList.toggle("is-visible", show);
+    modal.setAttribute("aria-hidden", String(!show));
+    document.body.classList.toggle("modal-open", show);
+    if (!show) {
+      state.activeRow = null;
+      state.current = null;
+      toggleEditMode(false);
+      if (editForm) editForm.reset();
+      setModalStatus("");
+    }
+  };
+
+  const sortRows = () => {
+    if (!tableBody) return;
+    const rows = getNotificationRows();
+    rows.sort((a, b) => {
+      switch (filters.sort) {
+        case "oldest":
+          return Date.parse(a.dataset.date || "0") - Date.parse(b.dataset.date || "0");
+        case "audience":
+          return (a.dataset.audience || "").localeCompare(b.dataset.audience || "");
+        case "type":
+          return (a.dataset.type || "").localeCompare(b.dataset.type || "");
+        case "newest":
+        default:
+          return Date.parse(b.dataset.date || "0") - Date.parse(a.dataset.date || "0");
+      }
+    });
+    rows.forEach((row) => tableBody.insertBefore(row, emptyRow || null));
+  };
+
+  const applyFilters = () => {
+    sortRows();
+    const rows = getNotificationRows();
+    let visible = 0;
+    rows.forEach((row) => {
+      const matchesCategory = filters.category === "all" || row.dataset.type === filters.category;
+      const haystack = `${row.dataset.search || ""} ${(row.dataset.audience || "").toLowerCase()}`;
+      const matchesSearch = !filters.search || haystack.includes(filters.search);
+      const show = matchesCategory && matchesSearch;
+      row.hidden = !show;
+      if (show) visible += 1;
+    });
+    if (emptyRow) {
+      emptyRow.classList.toggle("is-hidden", visible !== 0);
+    }
+  };
+
+  if (composeToggle && composeBody) {
+    composeToggle.addEventListener("click", () => {
+      const expanded = composeToggle.getAttribute("aria-expanded") === "true";
+      composeToggle.setAttribute("aria-expanded", String(!expanded));
+      composeBody.classList.toggle("is-collapsed", expanded);
+      const label = composeToggle.querySelector(".toggle-label");
+      if (label) label.textContent = expanded ? "Open form" : "Hide form";
+    });
+  }
+
+  const getAudienceMode = () => {
+    const checked = audienceRadios.find((radio) => radio.checked);
+    return checked ? checked.value : "all";
+  };
+
+  const updateAudiencePanelVisibility = () => {
+    if (!audiencePanel) return;
+    audiencePanel.hidden = getAudienceMode() !== "targeted";
+  };
+
+  const updateAudienceCount = () => {
+    if (!audienceCount) return;
+    const count = audienceCheckboxes.filter((cb) => cb.checked).length;
+    audienceCount.textContent = count;
+  };
+
+  audienceRadios.forEach((radio) => radio.addEventListener("change", () => {
+    updateAudiencePanelVisibility();
+    updateAudienceCount();
+  }));
+  updateAudiencePanelVisibility();
+  updateAudienceCount();
+
+  if (audienceSearch) {
+    audienceSearch.addEventListener("input", () => {
+      const query = audienceSearch.value.trim().toLowerCase();
+      audienceCheckboxes.forEach((cb) => {
+        const option = cb.closest(".audience-option");
+        if (!option) return;
+        const haystack = `${option.dataset.username || ""} ${option.dataset.accountType || ""}`;
+        option.style.display = !query || haystack.includes(query) ? "" : "none";
+      });
+    });
+  }
+
+  if (selectAllBtn) {
+    selectAllBtn.addEventListener("click", () => {
+      audienceCheckboxes.forEach((cb) => { cb.checked = true; });
+      updateAudienceCount();
+    });
+  }
+
+  if (clearBtn) {
+    clearBtn.addEventListener("click", () => {
+      audienceCheckboxes.forEach((cb) => { cb.checked = false; });
+      updateAudienceCount();
+    });
+  }
+
+  groupButtons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const group = btn.dataset.selectGroup;
+      const targets = audienceCheckboxes.filter((cb) => {
+        const option = cb.closest(".audience-option");
+        return option && option.dataset.accountType === group;
+      });
+      if (!targets.length) return;
+      const shouldUncheck = targets.every((cb) => cb.checked);
+      targets.forEach((cb) => { cb.checked = !shouldUncheck; });
+      updateAudienceCount();
+    });
+  });
+
+  if (composeForm) {
+    composeForm.addEventListener("submit", (event) => {
+      if (getAudienceMode() !== "targeted") {
+        setAlert("");
+        return;
+      }
+      const manualValues = (manualInput?.value || "")
+        .split(",")
+        .map((name) => name.trim())
+        .filter(Boolean);
+      const selected = audienceCheckboxes.filter((cb) => cb.checked);
+      if (!selected.length && !manualValues.length) {
+        event.preventDefault();
+        setAlert("Select at least one trainer or provide manual usernames.", "error");
+        return;
+      }
+      setAlert("");
+    });
+  }
+
+  const wrapSelection = (format) => {
+    if (!messageField) return;
+    const { selectionStart, selectionEnd, value } = messageField;
+    const selected = value.slice(selectionStart, selectionEnd);
+    let insertText = selected;
+
+    switch (format) {
+      case "strong":
+        insertText = `<strong>${selected || "Bold text"}</strong>`;
+        break;
+      case "em":
+        insertText = `<em>${selected || "Italic text"}</em>`;
+        break;
+      case "ul":
+        insertText = `<ul>
+<li>${selected || "List item"}</li>
+</ul>`;
+        break;
+      case "a": {
+        const url = prompt("Enter URL", "https://");
+        if (!url) return;
+        insertText = `<a href="${url}" target="_blank" rel="noopener noreferrer">${selected || "Link text"}</a>`;
+        break;
+      }
+      case "br":
+        insertText = `${selected}<br>`;
+        break;
+      default:
+        insertText = selected;
+    }
+
+    messageField.setRangeText(insertText, selectionStart, selectionEnd, "end");
+    messageField.focus();
+  };
+
+  if (editorToolbar) {
+    editorToolbar.addEventListener("click", (event) => {
+      const btn = event.target.closest("button[data-format]");
+      if (!btn) return;
+      event.preventDefault();
+      wrapSelection(btn.dataset.format);
+    });
+  }
+
+  if (notificationSearch) {
+    notificationSearch.addEventListener("input", () => {
+      filters.search = notificationSearch.value.trim().toLowerCase();
+      applyFilters();
+    });
+  }
+
+  if (notificationSort) {
+    notificationSort.addEventListener("change", () => {
+      filters.sort = notificationSort.value;
+      applyFilters();
+    });
+  }
+
+  if (categoryWrap) {
+    categoryWrap.addEventListener("click", (event) => {
+      const button = event.target.closest(".pill[data-type]");
+      if (!button) return;
+      filters.category = button.dataset.type || "all";
+      categoryWrap.querySelectorAll(".pill").forEach((pill) => pill.classList.toggle("active", pill === button));
+      applyFilters();
+    });
+  }
+
+  applyFilters();
+
+  const openModal = (row, payload) => {
+    state.activeRow = row;
+    populateModalView(payload);
+    toggleModal(true);
+  };
+
+  if (notificationTable) {
+    notificationTable.addEventListener("click", (event) => {
+      const row = event.target.closest("tr[data-notification]");
+      if (!row) return;
+      const payload = row.dataset.notification ? JSON.parse(row.dataset.notification) : null;
+      if (payload) openModal(row, payload);
+    });
+    notificationTable.addEventListener("keydown", (event) => {
+      if (!["Enter", " "].includes(event.key)) return;
+      const row = event.target.closest("tr[data-notification]");
+      if (!row) return;
+      event.preventDefault();
+      const payload = row.dataset.notification ? JSON.parse(row.dataset.notification) : null;
+      if (payload) openModal(row, payload);
+    });
+  }
+
+  if (editBtn) {
+    editBtn.addEventListener("click", () => {
+      if (!state.current) return;
+      toggleEditMode(!state.editing);
+      if (state.editing && editSubject) editSubject.focus();
+    });
+  }
+
+  if (editForm) {
+    editForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      if (!state.current) return;
+      const subject = editSubject.value.trim();
+      const message = editMessage.value.trim();
+      if (!subject || !message) {
+        setModalStatus("Subject and message are required.", "error");
+        return;
+      }
+      setModalStatus("Saving…");
+      setActionButtonsDisabled(true);
+      try {
+        const response = await fetch(`/admin/notifications/${state.current.id}/update`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Accept: "application/json" },
+          body: JSON.stringify({ subject, message, type: editType.value }),
+        });
+        const payload = await response.json();
+        if (!response.ok || !payload.success) {
+          throw new Error(payload.error || "Failed to update notification.");
+        }
+        const updated = payload.notification;
+        state.current = updated;
+        state.activeRow = state.activeRow || findRowById(updated.id);
+        if (state.activeRow) updateRowDataset(state.activeRow, updated);
+        populateModalView(updated);
+        setModalStatus("Notification updated.", "success");
+        setAlert("Notification updated.", "success");
+        applyFilters();
+      } catch (err) {
+        setModalStatus(err.message || "Failed to update notification.", "error");
+      } finally {
+        setActionButtonsDisabled(false);
+      }
+    });
+  }
+
+  if (deleteBtn) {
+    deleteBtn.addEventListener("click", async () => {
+      if (!state.current || !state.current.id) return;
+      if (!confirm("Delete this notification?")) return;
+      setModalStatus("Deleting…");
+      setActionButtonsDisabled(true);
+      try {
+        const response = await fetch(`/admin/notifications/${state.current.id}/delete`, {
+          method: "POST",
+          headers: { Accept: "application/json" },
+        });
+        const payload = await response.json();
+        if (!response.ok || !payload.success) {
+          throw new Error(payload.error || "Failed to delete notification.");
+        }
+        const row = state.activeRow || findRowById(state.current.id);
+        if (row) row.remove();
+        toggleModal(false);
+        setAlert("Notification deleted.", "success");
+        applyFilters();
+      } catch (err) {
+        setModalStatus(err.message || "Failed to delete notification.", "error");
+        setActionButtonsDisabled(false);
+      }
+    });
+  }
+
+  modalCloseButtons.forEach((btn) => btn.addEventListener("click", () => toggleModal(false)));
+  if (modal) {
+    modal.addEventListener("click", (event) => {
+      if (event.target.classList.contains("modal__overlay")) {
+        toggleModal(false);
+      }
+    });
+  }
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      toggleModal(false);
+    }
+  });
+});
+</script>
 
 {% endblock %}

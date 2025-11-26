@@ -6,103 +6,262 @@
 
 {% block content %}
 
+{% set catalog_placeholder = url_for('static', filename='icons/catalog-app.png') %}
+
 <h1>🛒 Catalog Manager</h1>
 <p>Create, toggle online/offline, and manage stock & tags.</p>
+<div id="catalogNotice" class="inline-toast is-hidden" role="status" aria-live="polite"></div>
 
 <!-- Create New Item -->
-<div class="card">
-  <h3>➕ Create New Item</h3>
-  <form action="{{ url_for('admin_catalog_create') }}" method="post" enctype="multipart/form-data" class="grid two">
-    <label>
-      Name
-      <input type="text" name="name" required>
-    </label>
-    <label>
-      Cost (stamps)
-      <input type="number" name="cost_stamps" min="0" value="0">
-    </label>
-    <label class="colspan">
-      Description
-      <textarea name="description" rows="3" placeholder="What is it? Any limits, expiry, etc."></textarea>
-    </label>
-    <label>
-      Stock
-      <input type="number" name="stock" min="0" value="0">
-    </label>
-    <label>
-      Tags (comma-separated)
-      <input type="text" name="tags" placeholder="e.g. plush,shiny,limited">
-    </label>
-    <label>
-      Image URL (optional)
-      <input type="url" name="image_url" placeholder="https://…">
-    </label>
-    <label>
-      Or Upload Image
-      <input type="file" name="image_file" accept="image/*">
-    </label>
-    <label class="check">
-      <input type="checkbox" name="active" checked> Online (active)
-    </label>
-    <div class="actions colspan">
-      <button type="submit">Create Item</button>
+<div class="card create-card is-open" id="createItemCard">
+  <div class="create-card__header">
+    <div>
+      <h3>➕ Create New Item</h3>
+      <p>Keep the catalog fresh—collapse when you just need to browse.</p>
     </div>
-  </form>
+    <button type="button" class="create-card__toggle" id="createItemToggle" aria-expanded="true" aria-controls="createItemForm">
+      <span class="toggle-label">Hide form</span>
+      <span class="toggle-icon">▾</span>
+    </button>
+  </div>
+  <div class="create-card__body" id="createItemForm">
+    <form action="{{ url_for('admin_catalog_create') }}" method="post" enctype="multipart/form-data" class="grid two">
+      <label>
+        Name
+        <input type="text" name="name" required>
+      </label>
+      <label>
+        Cost (stamps)
+        <input type="number" name="cost_stamps" min="0" value="0">
+      </label>
+      <label class="colspan">
+        Description
+        <textarea name="description" rows="3" placeholder="What is it? Any limits, expiry, etc."></textarea>
+      </label>
+      <label>
+        Stock
+        <input type="number" name="stock" min="0" value="0">
+      </label>
+      <label>
+        Tags (comma-separated)
+        <input type="text" name="tags" placeholder="e.g. plush,shiny,limited">
+      </label>
+      <label>
+        Image URL (optional)
+        <input type="url" name="image_url" placeholder="https://…">
+      </label>
+      <label>
+        Or Upload Image
+        <input type="file" name="image_file" accept="image/*">
+      </label>
+      <label class="check">
+        <input type="checkbox" name="active" checked> Online (active)
+      </label>
+      <div class="actions colspan">
+        <button type="submit">Create Item</button>
+      </div>
+    </form>
+  </div>
 </div>
 
 <!-- Current Catalog -->
 <div class="toolbar">
   <h2>📦 Current Stock</h2>
   <div>
-    <button id="gridViewBtn" class="view-btn active">🔳 Grid</button>
-    <button id="listViewBtn" class="view-btn">📋 List</button>
+    <button id="gridViewBtn" type="button" class="view-btn {{ 'active' if view_mode == 'grid' else '' }}">🔳 Grid</button>
+    <button id="listViewBtn" type="button" class="view-btn {{ 'active' if view_mode == 'list' else '' }}">📋 List</button>
   </div>
 </div>
 
-{% if items %}
-<div id="catalog" class="catalog-grid">
+<form id="catalogFilters" class="filter-controls" method="get">
+  <label>
+    <span>Sort by</span>
+    <select name="sort" class="filter-select">
+      {% for value, label in sort_choices %}
+      <option value="{{ value }}" {{ 'selected' if current_sort == value else '' }}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label>
+    <span>Status</span>
+    <select name="status" class="filter-select">
+      {% for value, label in status_choices %}
+      <option value="{{ value }}" {{ 'selected' if current_status == value else '' }}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <input type="hidden" name="view" id="viewInput" value="{{ view_mode }}">
+  <noscript><button type="submit" class="view-btn">Apply</button></noscript>
+</form>
+
+<div id="catalog" class="catalog {{ 'catalog-grid' if view_mode == 'grid' else 'catalog-list' }}">
   {% for it in items %}
-  <a href="{{ url_for('admin_catalog_detail', item_id=it.id) }}" class="item-card {{ 'offline' if not it.active }}">
-    <div class="thumb" style="background-image:url('{{ it.image_url or url_for('static', filename='icons/catalog-app.png') }}');"></div>
+  <a href="{{ url_for('admin_catalog_detail', item_id=it.id) }}" class="item-card {{ 'offline' if not it.active }}" data-item-id="{{ it.id }}">
+    <div class="thumb" data-thumb style="background-image:url('{{ it.image_url or catalog_placeholder }}');"></div>
     <div class="meta">
       <div class="title-row">
-        <strong>{{ it.name }}</strong>
-        <span class="badge {{ 'on' if it.active else 'off' }}">{{ 'Online' if it.active else 'Offline' }}</span>
+        <strong data-item-name>{{ it.name }}</strong>
+        <span class="badge {{ 'on' if it.active else 'off' }}" data-status-badge>{{ 'Online' if it.active else 'Offline' }}</span>
       </div>
       <div class="pill-row">
-        <span class="pill">🪙 {{ it.cost_stamps or 0 }}</span>
-        <span class="pill {{ 'low' if (it.stock or 0) <= 3 else '' }}">📦 {{ it.stock or 0 }}</span>
+        <span class="pill pill-cost" data-cost>🪙 {{ it.cost_stamps or 0 }}</span>
+        <span class="pill pill-stock {{ 'low' if (it.stock or 0) <= 3 else '' }}" data-stock>📦 {{ it.stock or 0 }}</span>
       </div>
-      {% if it.tags and it.tags|length %}
-      <div class="tags">
-        {% for t in it.tags %}
-        <span class="tag">#{{ t }}</span>
-        {% endfor %}
+      <div class="tags" data-tags-wrapper>
+        {% if it.tags and it.tags|length %}
+          {% for t in it.tags %}
+          <span class="tag">#{{ t }}</span>
+          {% endfor %}
+        {% endif %}
       </div>
-      {% endif %}
     </div>
   </a>
   {% endfor %}
 </div>
-{% else %}
-<p>No catalog items yet.</p>
-{% endif %}
+<p id="catalogEmptyMessage" class="empty-state {{ '' if not items else 'is-hidden' }}">No catalog items yet.</p>
+
+<!-- Item modal -->
+<div id="itemModal" class="modal" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="modalTitle">
+  <div class="modal__overlay" data-modal-close></div>
+  <div class="modal__dialog">
+    <div class="modal__header">
+      <h3 class="modal__title" id="modalTitle">Edit Item</h3>
+      <button type="button" class="modal__close" data-modal-close aria-label="Close">&times;</button>
+    </div>
+    <div class="modal-thumb" id="modalThumb" style="background-image:url('{{ catalog_placeholder }}');"></div>
+    <form id="editItemForm" class="grid two" enctype="multipart/form-data" method="post">
+      <label>
+        Name
+        <input id="modalName" type="text" name="name" required>
+      </label>
+      <label>
+        Cost (stamps)
+        <input id="modalCost" type="number" name="cost_stamps" min="0" value="0">
+      </label>
+      <label class="colspan">
+        Description
+        <textarea id="modalDescription" name="description" rows="3"></textarea>
+      </label>
+      <label>
+        Stock
+        <input id="modalStock" type="number" name="stock" min="0" value="0">
+      </label>
+      <label>
+        Tags (comma-separated)
+        <input id="modalTags" type="text" name="tags" placeholder="e.g. plush,shiny,limited">
+      </label>
+      <label>
+        Image URL (optional)
+        <input id="modalImageUrl" type="url" name="image_url" placeholder="https://…">
+      </label>
+      <label>
+        Or Upload Image
+        <input id="modalImageFile" type="file" name="image_file" accept="image/*">
+      </label>
+      <label class="check">
+        <input id="modalActive" type="checkbox" name="active"> Online (active)
+      </label>
+      <div class="actions colspan">
+        <button type="submit" class="btn primary" id="saveItemBtn">💾 Save Changes</button>
+      </div>
+    </form>
+    <div class="modal-actions">
+      <button type="button" class="btn outline" data-modal-close>Close</button>
+      <button type="button" class="btn danger" id="deleteItemBtn">🗑️ Delete Item</button>
+    </div>
+    <p class="modal-status" id="modalStatus"></p>
+  </div>
+</div>
 
 <style>
+.inline-toast {
+  margin-bottom:12px;
+  border-radius:12px;
+  padding:10px 14px;
+  font-weight:600;
+  background:#eef2ff;
+  color:#353c6d;
+  box-shadow:0 6px 16px rgba(53,60,109,0.15);
+}
+.inline-toast.is-success { background:#ecfdf3; color:#027a48; }
+.inline-toast.is-error { background:#fef3f2; color:#b42318; }
+.inline-toast.is-hidden { display:none; }
+body.modal-open { overflow:hidden; }
+
 .card { background:#fff; border-radius:14px; padding:18px; box-shadow:0 8px 20px rgba(15,23,42,0.12); margin-bottom:20px; }
+.create-card { overflow:hidden; transition:box-shadow .2s ease; }
+.create-card__header { display:flex; justify-content:space-between; align-items:flex-start; gap:16px; }
+.create-card__header p { margin:4px 0 0; color:#475467; font-size:0.9em; }
+.create-card__toggle {
+  border:none;
+  background:#f5f6fa;
+  border-radius:999px;
+  padding:6px 14px;
+  font-weight:600;
+  display:flex;
+  align-items:center;
+  gap:6px;
+  cursor:pointer;
+}
+.create-card__body {
+  margin-top:16px;
+  max-height:1200px;
+  transition:max-height .35s ease, opacity .25s ease;
+  opacity:1;
+}
+.create-card:not(.is-open) .create-card__body {
+  max-height:0;
+  opacity:0;
+  overflow:hidden;
+  pointer-events:none;
+}
+.create-card:not(.is-open) .toggle-icon { transform:rotate(-90deg); }
+.create-card__toggle .toggle-icon { transition:transform .2s ease; }
+
 .grid.two { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:14px; }
 .grid.two .colspan { grid-column:1 / -1; }
 .check { display:flex; align-items:center; gap:8px; }
 .actions { text-align:right; }
 .actions button { background:#3a8dde; color:#fff; border:none; padding:10px 16px; border-radius:999px; font-weight:600; cursor:pointer; box-shadow:0 6px 16px rgba(58,141,222,0.25); }
 
-.toolbar { display:flex; justify-content:space-between; align-items:center; margin-top:18px; margin-bottom:10px; }
+.toolbar { display:flex; justify-content:space-between; align-items:center; margin-top:18px; margin-bottom:10px; gap:12px; flex-wrap:wrap; }
 .view-btn { border:none; background:#f4f7fa; padding:6px 10px; border-radius:6px; cursor:pointer; font-weight:600; margin-left:6px; }
 .view-btn.active { background:#3a8dde; color:#fff; }
 
-.catalog-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:14px; }
-.catalog-list { display:block; }
-.catalog-list .item-card { display:flex; flex-direction:row; align-items:center; }
+.filter-controls {
+  display:flex;
+  gap:12px;
+  flex-wrap:wrap;
+  margin-bottom:12px;
+}
+.filter-controls label {
+  display:flex;
+  flex-direction:column;
+  font-size:0.85em;
+  color:#475467;
+}
+.filter-controls select {
+  margin-top:4px;
+  padding:8px 10px;
+  border-radius:8px;
+  border:1px solid #d0d5dd;
+  min-width:180px;
+  font-size:0.95em;
+  background:#fff;
+}
+
+.catalog { width:100%; }
+.catalog-grid {
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:16px;
+}
+.catalog-list {
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+}
+.catalog-list .item-card { flex-direction:row; align-items:center; }
 
 .item-card {
   background:#fff; border-radius:16px; overflow:hidden;
@@ -123,26 +282,424 @@
 .pill.low { background:#fff5f5; color:#b91c1c; }
 .tags { margin-top:6px; display:flex; gap:6px; flex-wrap:wrap; }
 .tag { font-size:0.75em; background:#f4f4f5; padding:3px 6px; border-radius:6px; }
+.tags:empty { display:none; }
+
+.empty-state { margin-top:14px; text-align:center; color:#667085; font-weight:500; }
+.is-hidden { display:none !important; }
+
+.modal {
+  position:fixed;
+  inset:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:20px;
+  background:rgba(15,23,42,0.55);
+  opacity:0;
+  pointer-events:none;
+  transition:opacity .2s ease;
+  z-index:1000;
+}
+.modal__overlay {
+  position:absolute;
+  inset:0;
+  cursor:pointer;
+}
+.modal.is-visible { opacity:1; pointer-events:auto; }
+.modal__dialog {
+  position:relative;
+  z-index:1;
+  background:#fff;
+  border-radius:20px;
+  max-width:720px;
+  width:100%;
+  max-height:90vh;
+  overflow:auto;
+  box-shadow:0 30px 60px rgba(15,23,42,0.35);
+  padding:24px;
+}
+.modal__header { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:14px; }
+.modal__title { margin:0; font-size:1.35rem; }
+.modal__close {
+  border:none;
+  background:#f4f4f5;
+  width:36px;
+  height:36px;
+  border-radius:50%;
+  font-size:1.2rem;
+  cursor:pointer;
+}
+.modal-thumb {
+  width:100%;
+  height:180px;
+  border-radius:16px;
+  background:#f3f4f6 center/cover no-repeat;
+  margin-bottom:16px;
+}
+.modal-actions {
+  display:flex;
+  justify-content:space-between;
+  flex-wrap:wrap;
+  gap:12px;
+  margin-top:10px;
+}
+.btn {
+  border:none;
+  padding:10px 18px;
+  border-radius:999px;
+  font-weight:600;
+  cursor:pointer;
+}
+.btn.primary { background:#2563eb; color:#fff; box-shadow:0 8px 20px rgba(37,99,235,0.35); }
+.btn.outline { background:#fff; border:1px solid #d0d5dd; color:#101828; }
+.btn.danger { background:#ef4444; color:#fff; box-shadow:0 8px 20px rgba(239,68,68,0.35); }
+.modal-status {
+  margin-top:8px;
+  font-size:0.9em;
+  min-height:1.2em;
+}
+.modal-status.success { color:#047857; }
+.modal-status.error { color:#b42318; }
+
+@media(max-width:1024px){
+  .catalog-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
+@media(max-width:640px){
+  .catalog-grid { grid-template-columns:repeat(1,minmax(0,1fr)); }
+  .filter-controls label { width:100%; }
+  .modal__dialog { max-height:95vh; padding:18px; }
+}
 </style>
 
 <script>
 document.addEventListener("DOMContentLoaded", () => {
+  const fallbackImage = {{ catalog_placeholder | tojson }};
   const gridBtn = document.getElementById("gridViewBtn");
   const listBtn = document.getElementById("listViewBtn");
   const catalog = document.getElementById("catalog");
+  const filtersForm = document.getElementById("catalogFilters");
+  const viewInput = document.getElementById("viewInput");
+  const filterSelects = filtersForm ? filtersForm.querySelectorAll(".filter-select") : [];
+  const notice = document.getElementById("catalogNotice");
+  const createCard = document.getElementById("createItemCard");
+  const createToggle = document.getElementById("createItemToggle");
+  const toggleLabel = createToggle ? createToggle.querySelector(".toggle-label") : null;
+  const modal = document.getElementById("itemModal");
+  const modalThumb = document.getElementById("modalThumb");
+  const modalTitle = document.getElementById("modalTitle");
+  const modalStatus = document.getElementById("modalStatus");
+  const editForm = document.getElementById("editItemForm");
+  const modalCloseButtons = modal ? modal.querySelectorAll("[data-modal-close]") : [];
+  const deleteBtn = document.getElementById("deleteItemBtn");
+  const saveBtn = document.getElementById("saveItemBtn");
+  const emptyMessage = document.getElementById("catalogEmptyMessage");
+  const modalFields = {
+    name: document.getElementById("modalName"),
+    cost: document.getElementById("modalCost"),
+    description: document.getElementById("modalDescription"),
+    stock: document.getElementById("modalStock"),
+    tags: document.getElementById("modalTags"),
+    imageUrl: document.getElementById("modalImageUrl"),
+    imageFile: document.getElementById("modalImageFile"),
+    active: document.getElementById("modalActive"),
+  };
 
-  gridBtn.addEventListener("click", () => {
-    catalog.classList.add("catalog-grid");
-    catalog.classList.remove("catalog-list");
-    gridBtn.classList.add("active");
-    listBtn.classList.remove("active");
+  const state = {
+    currentItemId: null,
+    currentItemName: "",
+  };
+
+  const setView = (mode) => {
+    if (!mode) return;
+    if (catalog) {
+      catalog.classList.toggle("catalog-grid", mode === "grid");
+      catalog.classList.toggle("catalog-list", mode === "list");
+    }
+    if (gridBtn && listBtn) {
+      gridBtn.classList.toggle("active", mode === "grid");
+      listBtn.classList.toggle("active", mode === "list");
+    }
+    if (viewInput) {
+      viewInput.value = mode;
+    }
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.set("view", mode);
+      window.history.replaceState({}, "", url);
+    } catch (err) {
+      console.warn("Catalog view state not saved:", err);
+    }
+  };
+
+  const submitFilters = () => {
+    if (!filtersForm) return;
+    if (typeof filtersForm.requestSubmit === "function") {
+      filtersForm.requestSubmit();
+    } else {
+      filtersForm.submit();
+    }
+  };
+
+  filterSelects.forEach((select) => {
+    select.addEventListener("change", submitFilters);
   });
 
-  listBtn.addEventListener("click", () => {
-    catalog.classList.add("catalog-list");
-    catalog.classList.remove("catalog-grid");
-    listBtn.classList.add("active");
-    gridBtn.classList.remove("active");
+  if (gridBtn) {
+    gridBtn.addEventListener("click", () => setView("grid"));
+  }
+  if (listBtn) {
+    listBtn.addEventListener("click", () => setView("list"));
+  }
+
+  if (createCard && createToggle) {
+    createToggle.addEventListener("click", () => {
+      const isOpen = createCard.classList.toggle("is-open");
+      createToggle.setAttribute("aria-expanded", String(isOpen));
+      if (toggleLabel) {
+        toggleLabel.textContent = isOpen ? "Hide form" : "Show form";
+      }
+    });
+  }
+
+  const showNotice = (message, type = "success") => {
+    if (!notice) return;
+    notice.textContent = message || "";
+    notice.classList.remove("is-hidden", "is-success", "is-error");
+    if (!message) {
+      notice.classList.add("is-hidden");
+      return;
+    }
+    notice.classList.add(type === "error" ? "is-error" : "is-success");
+  };
+
+  const setModalStatus = (message = "", type = "") => {
+    if (!modalStatus) return;
+    modalStatus.textContent = message;
+    modalStatus.classList.remove("success", "error");
+    if (type) {
+      modalStatus.classList.add(type);
+    }
+  };
+
+  const toggleModal = (show) => {
+    if (!modal) return;
+    modal.classList.toggle("is-visible", show);
+    modal.setAttribute("aria-hidden", String(!show));
+    document.body.classList.toggle("modal-open", show);
+    if (!show) {
+      if (editForm) {
+        editForm.reset();
+      }
+      if (modalThumb) {
+        modalThumb.style.backgroundImage = `url('${fallbackImage}')`;
+      }
+      state.currentItemId = null;
+      state.currentItemName = "";
+      setModalStatus("");
+      if (modalFields.imageFile) {
+        modalFields.imageFile.value = "";
+      }
+    }
+  };
+
+  const setActionButtonsDisabled = (disabled) => {
+    if (saveBtn) saveBtn.disabled = disabled;
+    if (deleteBtn) deleteBtn.disabled = disabled;
+  };
+
+  const populateModal = (item) => {
+    state.currentItemId = item.id;
+    state.currentItemName = item.name || "catalog item";
+    if (modalTitle) {
+      modalTitle.textContent = `Edit ${item.name || "Item"}`;
+    }
+    modalFields.name.value = item.name || "";
+    modalFields.cost.value = item.cost_stamps ?? 0;
+    modalFields.description.value = item.description || "";
+    modalFields.stock.value = item.stock ?? 0;
+    modalFields.tags.value = Array.isArray(item.tags) ? item.tags.join(",") : (item.tags || "");
+    modalFields.imageUrl.value = item.image_url || "";
+    modalFields.active.checked = Boolean(item.active);
+    if (modalFields.imageFile) {
+      modalFields.imageFile.value = "";
+    }
+    const img = item.image_url || fallbackImage;
+    if (modalThumb) {
+      modalThumb.style.backgroundImage = `url('${img}')`;
+    }
+  };
+
+  const handleCardClick = (event) => {
+    if (!catalog) return;
+    const card = event.target.closest(".item-card");
+    if (!card || !catalog.contains(card)) return;
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) {
+      return;
+    }
+    event.preventDefault();
+    const itemId = card.getAttribute("data-item-id");
+    if (!itemId) return;
+    toggleModal(true);
+    setModalStatus("Loading item…");
+    fetch(`/admin/catalog/${encodeURIComponent(itemId)}.json`, {
+      headers: { Accept: "application/json" },
+    })
+      .then(async (response) => {
+        if (!response.ok) {
+          const payload = await response.json().catch(() => ({}));
+          throw new Error(payload.error || "Failed to load item.");
+        }
+        return response.json();
+      })
+      .then((payload) => {
+        if (!payload.item) throw new Error("Missing item data.");
+        populateModal(payload.item);
+        setModalStatus("");
+      })
+      .catch((error) => {
+        setModalStatus(error.message || "Unable to load item.", "error");
+      });
+  };
+
+  const updateCardDom = (item) => {
+    if (!catalog) return;
+    const card = catalog.querySelector(`.item-card[data-item-id="${item.id}"]`);
+    if (!card) return;
+    card.classList.toggle("offline", !item.active);
+    const thumb = card.querySelector("[data-thumb]");
+    if (thumb) {
+      thumb.style.backgroundImage = `url('${item.image_url || fallbackImage}')`;
+    }
+    const nameEl = card.querySelector("[data-item-name]");
+    if (nameEl) nameEl.textContent = item.name || "";
+    const badge = card.querySelector("[data-status-badge]");
+    if (badge) {
+      badge.textContent = item.active ? "Online" : "Offline";
+      badge.classList.toggle("on", Boolean(item.active));
+      badge.classList.toggle("off", !item.active);
+    }
+    const costEl = card.querySelector("[data-cost]");
+    if (costEl) costEl.textContent = `🪙 ${item.cost_stamps ?? 0}`;
+    const stockEl = card.querySelector("[data-stock]");
+    if (stockEl) {
+      stockEl.textContent = `📦 ${item.stock ?? 0}`;
+      stockEl.classList.toggle("low", (item.stock ?? 0) <= 3);
+    }
+    const tagsWrapper = card.querySelector("[data-tags-wrapper]");
+    if (tagsWrapper) {
+      tagsWrapper.innerHTML = "";
+      const tags = Array.isArray(item.tags) ? item.tags : [];
+      tags.forEach((tag) => {
+        const span = document.createElement("span");
+        span.className = "tag";
+        span.textContent = `#${tag}`;
+        tagsWrapper.appendChild(span);
+      });
+    }
+  };
+
+  const removeCardDom = (itemId) => {
+    if (!catalog) return;
+    const card = catalog.querySelector(`.item-card[data-item-id="${itemId}"]`);
+    if (card) {
+      card.remove();
+    }
+    const hasItems = Boolean(catalog.querySelector(".item-card"));
+    if (emptyMessage) {
+      emptyMessage.classList.toggle("is-hidden", hasItems);
+    }
+  };
+
+  const handleSave = (event) => {
+    event.preventDefault();
+    if (!state.currentItemId) return;
+    setModalStatus("Saving…");
+    setActionButtonsDisabled(true);
+    const formData = new FormData(editForm);
+    if (!modalFields.active.checked) {
+      formData.delete("active");
+    }
+    fetch(`/admin/catalog/${encodeURIComponent(state.currentItemId)}/update`, {
+      method: "POST",
+      body: formData,
+      headers: { Accept: "application/json" },
+    })
+      .then(async (response) => {
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok || !payload.success) {
+          throw new Error(payload.error || "Failed to save changes.");
+        }
+        return payload.item;
+      })
+      .then((item) => {
+        updateCardDom(item);
+        setModalStatus("Changes saved!", "success");
+        showNotice(`Saved ${item.name}.`);
+        setTimeout(() => toggleModal(false), 900);
+      })
+      .catch((error) => {
+        setModalStatus(error.message || "Save failed.", "error");
+      })
+      .finally(() => {
+        setActionButtonsDisabled(false);
+      });
+  };
+
+  const handleDelete = () => {
+    if (!state.currentItemId) return;
+    if (!confirm(`Delete ${state.currentItemName || "this item"}?`)) return;
+    setModalStatus("Deleting…");
+    setActionButtonsDisabled(true);
+    fetch(`/admin/catalog/${encodeURIComponent(state.currentItemId)}/delete`, {
+      method: "POST",
+      headers: { Accept: "application/json" },
+    })
+      .then(async (response) => {
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok || !payload.success) {
+          throw new Error(payload.error || "Failed to delete item.");
+        }
+        return payload;
+      })
+      .then(() => {
+        removeCardDom(state.currentItemId);
+        toggleModal(false);
+        showNotice(`Deleted ${state.currentItemName}.`);
+      })
+      .catch((error) => {
+        setModalStatus(error.message || "Delete failed.", "error");
+      })
+      .finally(() => {
+        setActionButtonsDisabled(false);
+      });
+  };
+
+  if (catalog) {
+    catalog.addEventListener("click", handleCardClick);
+  }
+
+  if (editForm) {
+    editForm.addEventListener("submit", handleSave);
+  }
+
+  if (deleteBtn) {
+    deleteBtn.addEventListener("click", handleDelete);
+  }
+
+  modalCloseButtons.forEach((btn) => btn.addEventListener("click", () => toggleModal(false)));
+
+  if (modal) {
+    modal.addEventListener("click", (event) => {
+      if (event.target.classList.contains("modal__overlay")) {
+        toggleModal(false);
+      }
+    });
+  }
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      toggleModal(false);
+    }
   });
 });
 </script>

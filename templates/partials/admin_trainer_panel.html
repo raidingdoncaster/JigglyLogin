@@ -1,0 +1,275 @@
+{% set background_file = trainer.trainer_card_background or 'default.png' %}
+{% set background_url = url_for('static', filename='backgrounds/' ~ background_file) %}
+
+<div class="trainer-panel" data-trainer-panel>
+  <div class="admin-header">
+    <h1>👤 Manage Trainer</h1>
+    <p>Update details and stamps for <strong class="identity-text">{{ trainer.trainer_username }}</strong></p>
+  </div>
+
+  <div class="trainer-detail-card" style="--trainer-panel-bg: url('{{ background_url }}');">
+    <div class="trainer-card-overlay"></div>
+    <img src="{{ url_for('static', filename='avatars/' ~ trainer.avatar_icon) }}"
+         alt="Avatar" class="avatar-lg">
+    <h2 class="trainer-username">{{ trainer.trainer_username }}</h2>
+    <p><strong>Account Type:</strong> {{ 'Standard' if trainer.account_type|lower == 'standard' else trainer.account_type }}</p>
+    <p><strong>Campfire Username:</strong> <span class="identity-text">{{ trainer.campfire_username or 'N/A' }}</span></p>
+    <p><strong>Current Stamps:</strong> {{ trainer.stamps or 0 }}</p>
+    <p class="trainer-background-label">Background: <span class="identity-text">{{ background_file }}</span></p>
+  </div>
+
+  <div class="management-actions">
+    <div class="action-box" data-action-box>
+      <button type="button" class="action-toggle" data-action-toggle aria-expanded="false">
+        <span>🆔 Change Trainer Username</span>
+        <span class="chevron" aria-hidden="true"></span>
+      </button>
+      <div class="action-box-body" data-action-body hidden>
+        <form action="{{ url_for('admin_change_trainer_username_v2', username=trainer.trainer_username) }}" method="post">
+          <input type="text" name="new_trainer_username" value="{{ trainer.trainer_username }}" placeholder="New trainer username" required>
+          <button type="submit">Update Username</button>
+        </form>
+        <p class="action-note">Updates their login name. Make sure the new username is unique.</p>
+      </div>
+    </div>
+
+    <div class="action-box" data-action-box>
+      <button type="button" class="action-toggle" data-action-toggle aria-expanded="false">
+        <span>🎟️ Adjust Stamps</span>
+        <span class="chevron" aria-hidden="true"></span>
+      </button>
+      <div class="action-box-body" data-action-body hidden>
+        <form action="{{ url_for('admin_adjust_stamps_v2', username=trainer.trainer_username) }}" method="post">
+          <input type="number" name="count" placeholder="Amount" required>
+          <input type="text" name="reason" placeholder="Reason (optional)">
+          <select name="action" required>
+            <option value="award">➕ Award</option>
+            <option value="remove">➖ Remove</option>
+          </select>
+          <button type="submit">Update Stamps</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="action-box" data-action-box>
+      <button type="button" class="action-toggle" data-action-toggle aria-expanded="false">
+        <span>👑 Change Account Type</span>
+        <span class="chevron" aria-hidden="true"></span>
+      </button>
+      <div class="action-box-body" data-action-body hidden>
+        <form action="{{ url_for('admin_change_account_type_v2', username=trainer.trainer_username) }}" method="post">
+          <select name="account_type" required>
+            <option value="standard" {% if trainer.account_type|lower == "standard" %}selected{% endif %}>Standard</option>
+            <option value="Kids Account" {% if trainer.account_type == "Kids Account" %}selected{% endif %}>Kids Account</option>
+            <option value="Admin" {% if trainer.account_type == "Admin" %}selected{% endif %}>Admin</option>
+          </select>
+          <button type="submit">Update Type</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="action-box" data-action-box>
+      <button type="button" class="action-toggle" data-action-toggle aria-expanded="false">
+        <span>🔑 Reset PIN</span>
+        <span class="chevron" aria-hidden="true"></span>
+      </button>
+      <div class="action-box-body" data-action-body hidden>
+        <form action="{{ url_for('admin_reset_pin_v2', username=trainer.trainer_username) }}" method="post">
+          <input type="password" name="new_pin" maxlength="4" pattern="\d{4}" placeholder="New 4-digit PIN" required>
+          <button type="submit">Reset PIN</button>
+        </form>
+        <p class="action-note">PINs are required to be exactly 4 digits.</p>
+      </div>
+    </div>
+
+    <div class="action-box" data-action-box>
+      <button type="button" class="action-toggle" data-action-toggle aria-expanded="false">
+        <span>🔥 Campfire Username</span>
+        <span class="chevron" aria-hidden="true"></span>
+      </button>
+      <div class="action-box-body" data-action-body hidden>
+        <form action="{{ url_for('admin_change_campfire_username_v2', username=trainer.trainer_username) }}" method="post">
+          <input type="text" name="new_campfire_username" value="{{ trainer.campfire_username }}" placeholder="Campfire username (optional)">
+          <button type="submit">Save Campfire</button>
+        </form>
+        <p class="action-note">Enter without the @ symbol. Leave blank to clear the saved Campfire username.</p>
+      </div>
+    </div>
+
+    <div class="action-box" data-action-box>
+      <button type="button" class="action-toggle" data-action-toggle aria-expanded="false">
+        <span>🧠 Memorable Password</span>
+        <span class="chevron" aria-hidden="true"></span>
+      </button>
+      <div class="action-box-body" data-action-body hidden>
+        <form action="{{ url_for('admin_change_memorable_password_v2', username=trainer.trainer_username) }}" method="post">
+          <input type="text" name="new_memorable_password" placeholder="New memorable password" required>
+          <button type="submit">Update Memorable</button>
+        </form>
+        <p class="action-note">Players use this during recovery. Keep it easy to remember.</p>
+      </div>
+    </div>
+  </div>
+
+  {% if show_back_link %}
+    <div class="panel-back-link">
+      <a href="{{ url_for('admin_trainers') }}" class="btn">⬅ Back to Trainer Manager</a>
+    </div>
+  {% endif %}
+</div>
+
+<style>
+.trainer-panel {
+  display:flex;
+  flex-direction:column;
+  gap:18px;
+}
+.trainer-detail-card {
+  position:relative;
+  border-radius:18px;
+  padding:24px;
+  text-align:center;
+  box-shadow:0 12px 28px rgba(15,23,42,0.14);
+  background-size:cover;
+  background-position:center;
+  background-image:var(--trainer-panel-bg, none);
+  overflow:hidden;
+}
+.trainer-card-overlay {
+  position:absolute;
+  inset:0;
+  background:rgba(255,255,255,0.88);
+  border-radius:inherit;
+}
+.trainer-detail-card > * {
+  position:relative;
+  z-index:1;
+}
+.trainer-background-label {
+  font-size:0.85em;
+  color:#4b5563;
+  margin-top:12px;
+}
+.avatar-lg {
+  width:100px;
+  height:100px;
+  border-radius:50%;
+  border:3px solid #3a8dde;
+  margin-bottom:12px;
+  box-shadow:0 8px 20px rgba(58,141,222,0.25);
+}
+.management-actions {
+  display:grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap:18px;
+}
+.action-box {
+  background:#fff;
+  border-radius:16px;
+  box-shadow:0 10px 24px rgba(15,23,42,0.12);
+  overflow:hidden;
+}
+.action-toggle {
+  width:100%;
+  border:0;
+  background:transparent;
+  font-size:1em;
+  font-weight:600;
+  color:#1f2937;
+  padding:16px 18px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  cursor:pointer;
+}
+.action-toggle:focus-visible {
+  outline:2px solid #3a8dde;
+  outline-offset:2px;
+}
+.chevron {
+  width:18px;
+  height:18px;
+  border:2px solid #94a3b8;
+  border-left:0;
+  border-top:0;
+  transform:rotate(45deg);
+  transition:transform .2s ease;
+}
+.action-box.is-open .chevron {
+  transform:rotate(-135deg);
+}
+.action-box-body {
+  padding:0 18px 18px;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+.action-box form {
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+.action-box input,
+.action-box select {
+  padding:10px 12px;
+  border-radius:12px;
+  border:1px solid #d7dbe6;
+  font-size:0.95rem;
+  transition:border-color .2s ease, box-shadow .2s ease;
+}
+.action-box input:focus,
+.action-box select:focus {
+  outline:none;
+  border-color:#3a8dde;
+  box-shadow:0 0 0 3px rgba(58,141,222,0.2);
+}
+.action-box button[type="submit"] {
+  padding:10px 16px;
+  border:none;
+  background:#3a8dde;
+  color:white;
+  font-weight:600;
+  border-radius:999px;
+  cursor:pointer;
+  box-shadow:0 8px 20px rgba(58,141,222,0.25);
+  transition:transform .2s ease, box-shadow .2s ease;
+}
+.action-box button[type="submit"]:hover {
+  transform:translateY(-1px);
+  box-shadow:0 12px 26px rgba(58,141,222,0.3);
+}
+.action-note {
+  margin:0;
+  font-size:0.78rem;
+  color:#6b7280;
+}
+.panel-back-link {
+  text-align:center;
+}
+.trainer-panel .btn {
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:10px 18px;
+  background:#3a8dde;
+  color:#fff;
+  border-radius:999px;
+  text-decoration:none;
+  font-weight:600;
+  box-shadow:0 8px 20px rgba(58,141,222,0.25);
+}
+.trainer-panel .btn:hover {
+  filter:brightness(1.05);
+}
+
+@media(max-width:640px) {
+  .action-toggle {
+    font-size:0.95em;
+  }
+  .chevron {
+    width:14px;
+    height:14px;
+  }
+}
+</style>

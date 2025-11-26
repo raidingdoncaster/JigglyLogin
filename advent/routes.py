@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Callable, Optional, Union
 
-from flask import Blueprint, flash, redirect, render_template, request, url_for
+from flask import Blueprint, flash, jsonify, redirect, render_template, request, url_for
 
 from advent.service import (
     get_advent_state_for_user,
@@ -84,12 +84,20 @@ def create_advent_blueprint(current_admin_provider: AdminProvider) -> Blueprint:
             state=state,
         )
 
+    def _wants_json() -> bool:
+        accepts = request.accept_mimetypes
+        return (
+            request.headers.get("X-Requested-With") == "XMLHttpRequest"
+            or accepts["application/json"] >= accepts["text/html"]
+        )
+
     @bp.post("/advent/open/<int:day>")
     def open_day(day: int):
         admin_user = _require_admin()
         if not isinstance(admin_user, dict):
             return admin_user
 
+        json_mode = _wants_json()
         raw_override = request.form.get("day_override") or request.args.get("day_override")
         today_day, day_error = _resolve_day(raw_override)
         if day_error:
@@ -98,20 +106,47 @@ def create_advent_blueprint(current_admin_provider: AdminProvider) -> Blueprint:
 
         user_id = _extract_user_id(admin_user)
         if not user_id:
-            flash("Admin user is missing an ID — cannot open Advent day.", "error")
+            msg = "Admin user is missing an ID — cannot open Advent day."
+            if json_mode:
+                return jsonify({"status": "error", "reason": msg}), 403
+            flash(msg, "error")
             return redirect(url_for("admin_advent.view_calendar"))
+
+        try:
+            config = load_advent_config()
+        except FileNotFoundError as exc:
+            if json_mode:
+                return jsonify({"status": "error", "reason": str(exc)}), 500
+            flash(str(exc), "error")
+            return _redirect_back(raw_override)
 
         state = get_advent_state_for_user(user_id, today_day)
         openable_day = state.get("openable_day")
 
         if openable_day != day:
-            flash("You can only open the next available Advent day.", "error")
+            msg = "You can only open the next available Advent day."
+            if json_mode:
+                return jsonify({"status": "error", "reason": msg}), 400
+            flash(msg, "error")
             return _redirect_back(raw_override)
 
         if open_advent_day(user_id, day):
+            state = get_advent_state_for_user(user_id, today_day)
+            payload = {
+                "status": "ok",
+                "day": day,
+                "message": (config.get(day) or {}).get("message", ""),
+                "stamp_png": (config.get(day) or {}).get("stamp_png", ""),
+                "next_openable_day": state.get("openable_day"),
+            }
+            if json_mode:
+                return jsonify(payload)
             flash(f"Day {day} unlocked!", "success")
         else:
-            flash("Day was already opened or could not be saved.", "warning")
+            msg = "Day was already opened or could not be saved."
+            if json_mode:
+                return jsonify({"status": "error", "reason": msg}), 400
+            flash(msg, "warning")
 
         return _redirect_back(raw_override)
 
@@ -122,4 +157,3 @@ def create_advent_blueprint(current_admin_provider: AdminProvider) -> Blueprint:
         return redirect(target)
 
     return bp
-
