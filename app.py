@@ -20,12 +20,13 @@ from zoneinfo import ZoneInfo
 from urllib.parse import urlencode, quote_plus
 import bleach
 from bleach.linkifier import DEFAULT_CALLBACKS
-from typing import Any
+from typing import Any, Optional
 from sqlalchemy import or_
 
 from rdab.trainer_detection import extract_trainer_name
 from extensions import db
 from advent import create_advent_blueprint, create_player_advent_blueprint
+from advent.service import load_advent_config
 from city_perks import (
     city_perks_api_blueprint,
     create_city_perks_admin_blueprint,
@@ -1528,6 +1529,82 @@ def list_classic_submissions(status: str | None = None) -> list[dict]:
         return []
 
 # ====== Data: stamps, inbox & meetups ======
+def _advent_day_from_reason(reason: str) -> Optional[int]:
+    if not reason:
+        return None
+    match = re.search(r"advent\s+(\d{1,2})", reason, re.IGNORECASE)
+    if not match:
+        return None
+    try:
+        day = int(match.group(1))
+    except ValueError:
+        return None
+    if 1 <= day <= 25:
+        return day
+    return None
+
+
+def _advent_stamp_icon(day: int) -> Optional[str]:
+    try:
+        config = load_advent_config()
+    except FileNotFoundError:
+        return None
+    entry = config.get(day) if isinstance(config, dict) else None
+    if not entry:
+        return None
+    stamp_png = (entry.get("stamp_png") or "").strip()
+    if not stamp_png:
+        return None
+    return url_for("static", filename=f"advent/{stamp_png}")
+
+
+def _passport_advent_icon(reason: str) -> Optional[str]:
+    day = _advent_day_from_reason(reason or "")
+    if day is None:
+        return None
+    return _advent_stamp_icon(day)
+
+
+def _describe_passport_reason(reason: str, event_name: str | None = None) -> tuple[str, str]:
+    """Return a short label + explanation for how a stamp was earned."""
+    stamp_name = (reason or "").strip() or "Passport stamp"
+    event_title = (event_name or "").strip()
+    rl = stamp_name.lower()
+
+    if event_title and event_title.lower() == rl:
+        return "Meetup check-in", f"You checked in at {event_title} to receive this stamp."
+
+    reason_map = [
+        ("win", "Win", "Winning a competition in the community."),
+        ("cdl", "CDL", "Stamps for your participation and leaderboard scoring in the CDL."),
+        ("classic", "Classic", "Classic passport stamps converted to digital."),
+        ("owed", "Owed", "Owed stamps added by the admin team."),
+        ("normal", "Normal", "A strange stamp unlocked by strange means. Congrats!"),
+    ]
+
+    for needle, label, description in reason_map:
+        if needle in rl:
+            return label, description
+
+    return stamp_name, "Passport stamp unlocked during the RDAB community events."
+
+
+def _format_passport_awarded_at(raw_ts: str | None) -> tuple[str, str]:
+    """Return ISO + human-readable date strings for stamp timestamps."""
+    if not raw_ts:
+        return "", ""
+    try:
+        dt = parser.isoparse(raw_ts)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        local_dt = dt.astimezone(LONDON_TZ)
+        iso_value = local_dt.isoformat()
+        display_value = local_dt.strftime("%d %b %Y")
+        return iso_value, display_value
+    except Exception:
+        return raw_ts, raw_ts
+
+
 def get_passport_stamps(username: str, campfire_username: str | None = None):
     try:
         # 🔑 Pull all ledger rows where trainer OR campfire matches
@@ -1552,6 +1629,7 @@ def get_passport_stamps(username: str, campfire_username: str | None = None):
         stamps, total_count = [], 0
         for r in records:
             reason = (r.get("reason") or "").strip()
+            event_name = (r.get("eventname") or r.get("event_name") or "").strip()
             try:
                 count = int(r.get("count") or 1)
             except (ValueError, TypeError):
@@ -1567,7 +1645,10 @@ def get_passport_stamps(username: str, campfire_username: str | None = None):
             event_id = str(r.get("eventid") or r.get("event_id") or "").strip().lower()
 
             rl = reason.lower()
-            if rl == "signup bonus":
+            advent_icon = _passport_advent_icon(reason)
+            if advent_icon:
+                icon = advent_icon
+            elif rl == "signup bonus":
                 icon = url_for("static", filename="icons/signup.png")
             elif "cdl" in rl:
                 icon = url_for("static", filename="icons/cdl.png")
@@ -1585,7 +1666,20 @@ def get_passport_stamps(username: str, campfire_username: str | None = None):
             else:
                 icon = url_for("static", filename="icons/tickstamp.png")
 
-            stamps.append({"name": reason, "count": count, "icon": icon})
+            reason_label, reason_description = _describe_passport_reason(reason, event_name)
+            awarded_iso, awarded_display = _format_passport_awarded_at(r.get("created_at"))
+            stamp_name = reason or event_name or "Passport stamp"
+            stamps.append(
+                {
+                    "name": stamp_name,
+                    "count": count,
+                    "icon": icon,
+                    "reason_label": reason_label,
+                    "reason_description": reason_description,
+                    "awarded_at_iso": awarded_iso,
+                    "awarded_at": awarded_display,
+                }
+            )
 
         most_recent = stamps[-1] if stamps else None
         return total_count, stamps, most_recent
@@ -5113,8 +5207,7 @@ def city_perks_page():
 
     area = (request.args.get("area") or "").strip() or None
     category = (request.args.get("category") or "").strip() or None
-    featured_raw = (request.args.get("featured") or "").strip().lower()
-    featured_only = featured_raw in {"1", "true", "yes", "on"}
+    search_term = (request.args.get("q") or "").strip()
 
     now = datetime.now(timezone.utc)
     query = _live_query(now)
@@ -5122,14 +5215,27 @@ def city_perks_page():
         query = query.filter(CityPerk.area == area)
     if category:
         query = query.filter(CityPerk.category == category)
-    if featured_only:
-        query = query.filter(CityPerk.is_featured.is_(True))
+    if search_term:
+        like = f"%{search_term.lower()}%"
+        query = query.filter(
+            or_(
+                db.func.lower(CityPerk.name).like(like),
+                db.func.lower(CityPerk.partner_name).like(like),
+                db.func.lower(CityPerk.short_tagline).like(like),
+            )
+        )
 
     perks = query.order_by(
         CityPerk.is_featured.desc(),
         CityPerk.start_date.asc(),
         CityPerk.name.asc(),
     ).all()
+
+    map_ready_perks = [
+        perk.to_public_dict()
+        for perk in perks
+        if perk.show_on_map and perk.latitude is not None and perk.longitude is not None
+    ]
 
     areas = [
         value
@@ -5150,7 +5256,7 @@ def city_perks_page():
         .all()
     ]
 
-    filters_active = any([area, category, featured_only])
+    filters_active = any([area, category, search_term])
 
     return render_template(
         "city_perks.html",
@@ -5159,12 +5265,13 @@ def city_perks_page():
         categories=categories,
         selected_area=area,
         selected_category=category,
-        featured_only=featured_only,
+        search_term=search_term,
         filters_active=filters_active,
         perks_count=len(perks),
         featured_count=sum(1 for perk in perks if perk.is_featured),
         show_back=False,
         api_url=url_for("city_perks_api.list_live_city_perks"),
+        map_perks=map_ready_perks,
     )
 
 

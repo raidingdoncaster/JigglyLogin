@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Callable, Optional, Union
+from typing import Callable, Optional, Tuple, Union
 
 from flask import Blueprint, flash, jsonify, redirect, render_template, request, session, url_for
 
 from advent.service import (
+    award_advent_passport_stamp,
     get_advent_state_for_user,
     load_advent_config,
     open_advent_day,
@@ -33,6 +34,7 @@ def create_advent_blueprint(current_admin_provider: AdminProvider) -> Blueprint:
         missing_id_open_message="Admin user is missing an ID — cannot open Advent day.",
         dashboard_endpoint="admin_dashboard",
         success_flash_template="Day {day} unlocked!",
+        award_stamps=False,
     )
 
 
@@ -53,6 +55,7 @@ def create_player_advent_blueprint(current_trainer_provider: AdminProvider) -> B
         missing_id_open_message="Trainer account is missing an ID — cannot open Advent day.",
         dashboard_endpoint="dashboard",
         success_flash_template=None,
+        award_stamps=True,
     )
 
 
@@ -71,6 +74,7 @@ def _create_shared_advent_blueprint(
     missing_id_open_message: str,
     dashboard_endpoint: str,
     success_flash_template: Optional[str],
+    award_stamps: bool,
 ) -> Blueprint:
     bp = Blueprint(blueprint_name, __name__, url_prefix=url_prefix)
 
@@ -202,17 +206,30 @@ def _create_shared_advent_blueprint(
 
         if open_advent_day(user_id, day, trainer_username):
             state = get_advent_state_for_user(user_id, today_day)
+            award_result: Optional[Tuple[bool, Optional[str]]] = None
+            if award_stamps and trainer_username:
+                award_result = award_advent_passport_stamp(trainer_username, day)
+
             payload = {
                 "status": "ok",
                 "day": day,
                 "message": (config.get(day) or {}).get("message", ""),
                 "stamp_png": (config.get(day) or {}).get("stamp_png", ""),
                 "next_openable_day": state.get("openable_day"),
+                "stamp_awarded": award_result[0] if award_result else None,
             }
+            if award_result and award_result[1]:
+                payload["stamp_award_error"] = award_result[1]
+
             if json_mode:
                 return jsonify(payload)
             if success_flash_template:
                 flash(success_flash_template.format(day=day), "success")
+            if award_result and not award_result[0]:
+                flash(
+                    "We unlocked the door, but couldn't add the Advent stamp to your passport yet — we'll retry shortly.",
+                    "warning",
+                )
         else:
             msg = "Day was already opened or could not be saved."
             if json_mode:

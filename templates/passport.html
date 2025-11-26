@@ -56,15 +56,28 @@
           <div class="passport-slots">
             {% for i in range(12) %}
               {% if i < passport|length %}
-                <div class="stamp-slot filled">
-                  <img src="{{ passport[i].icon }}" alt="{{ passport[i].name }}" class="stamp-image">
-                  {% if passport[i].count > 1 %}
-                    <span class="stamp-count" aria-label="Awarded {{ passport[i].count }} stamps">{{ passport[i].count }}</span>
+                {% set stamp = passport[i] %}
+                <button
+                  type="button"
+                  class="stamp-slot filled"
+                  data-stamp-trigger
+                  data-stamp-name="{{ stamp.name | e }}"
+                  data-stamp-icon="{{ stamp.icon | e }}"
+                  data-stamp-date="{{ stamp.awarded_at | default('', true) | e }}"
+                  data-stamp-date-iso="{{ stamp.awarded_at_iso | default('', true) | e }}"
+                  data-stamp-reason="{{ stamp.reason_label | default('Passport stamp', true) | e }}"
+                  data-stamp-description="{{ stamp.reason_description | default('Passport stamp unlocked during the RDAB community events.', true) | e }}"
+                  data-stamp-count="{{ stamp.count }}"
+                  aria-label="View details for {{ stamp.name }}"
+                >
+                  <img src="{{ stamp.icon }}" alt="{{ stamp.name }}" class="stamp-image">
+                  {% if stamp.count > 1 %}
+                    <span class="stamp-count" aria-label="Awarded {{ stamp.count }} stamps">{{ stamp.count }}</span>
                   {% endif %}
-                  <p class="stamp-label" title="{{ passport[i].name }}">
-                    {{ passport[i].name }}
+                  <p class="stamp-label" title="{{ stamp.name }}">
+                    {{ stamp.name }}
                   </p>
-                </div>
+                </button>
               {% else %}
                 <div class="stamp-slot empty">
                   <div class="pokeball-placeholder"></div>
@@ -83,6 +96,20 @@
   <div class="passport-actions">
     <a href="{{ url_for('dashboard') }}" class="btn">⬅ Back to Dashboard</a>
   </div>
+  </div>
+</div>
+
+<!-- Stamp Detail Modal -->
+<div class="stamp-detail-modal" data-stamp-modal hidden>
+  <div class="stamp-detail-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="stamp-detail-title">
+    <button type="button" class="stamp-detail-modal__close" data-stamp-modal-close aria-label="Close stamp details">✕</button>
+    <div class="stamp-detail-modal__media">
+      <img src="{{ url_for('static', filename='icons/tickstamp.png') }}" alt="Selected stamp" data-stamp-modal-icon loading="lazy">
+    </div>
+    <p class="stamp-detail-modal__chip" data-stamp-modal-reason>Passport stamp</p>
+    <h3 id="stamp-detail-title" data-stamp-modal-name>Select a stamp</h3>
+    <p class="stamp-detail-modal__date" data-stamp-modal-date></p>
+    <p class="stamp-detail-modal__description" data-stamp-modal-description>Select any of your stamps to learn how you earned it.</p>
   </div>
 </div>
 
@@ -537,6 +564,21 @@ body.stat-info-modal-open {
   width: 80px;
   text-align: center;
   position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 4px;
+}
+button.stamp-slot {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+button.stamp-slot:focus-visible {
+  outline: 2px solid rgba(191,219,254,0.9);
+  outline-offset: 4px;
 }
 .stamp-slot.filled img {
   width: 64px;
@@ -607,6 +649,91 @@ body.stat-info-modal-open {
 .btn{display:inline-flex;align-items:center;gap:6px;padding:10px 18px;background:#3a8dde;color:#fff;border-radius:999px;text-decoration:none;font-weight:600;box-shadow:0 8px 20px rgba(58,141,222,0.25);}
 .passport-actions{text-align:center;}
 .btn-history{padding:10px 18px;border-radius:999px;box-shadow:0 12px 28px rgba(58,141,222,0.22);}
+
+.stamp-detail-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(4, 12, 24, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 1000;
+}
+.stamp-detail-modal[hidden] {
+  display: none;
+}
+.stamp-detail-modal__dialog {
+  background: #0f172a;
+  color: #e2e8f0;
+  border-radius: 24px;
+  width: min(420px, 100%);
+  padding: 30px 28px 26px;
+  position: relative;
+  box-shadow: 0 24px 60px rgba(2, 6, 23, 0.65);
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  text-align: center;
+}
+.stamp-detail-modal__media {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  margin: 0 auto 14px;
+  border: 2px solid rgba(148, 197, 255, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(30, 41, 59, 0.65);
+}
+.stamp-detail-modal__media img {
+  width: 92px;
+  height: 92px;
+  object-fit: cover;
+  border-radius: 50%;
+}
+.stamp-detail-modal__chip {
+  display: inline-flex;
+  margin: 0 auto 6px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: rgba(59,130,246,0.15);
+  color: #bfdbfe;
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.stamp-detail-modal__date {
+  margin: 0 0 10px;
+  font-size: 0.9rem;
+  color: #cbd5f5;
+}
+.stamp-detail-modal__description {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: #f8fafc;
+}
+.stamp-detail-modal__close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(15,23,42,0.9);
+  color: #f8fafc;
+  font-size: 1.1rem;
+  cursor: pointer;
+}
+.stamp-detail-modal__close:hover,
+.stamp-detail-modal__close:focus-visible {
+  background: rgba(59,130,246,0.95);
+}
+body.stamp-modal-open {
+  overflow: hidden;
+}
 </style>
 
 <script>
@@ -671,6 +798,95 @@ document.addEventListener("DOMContentLoaded", function(){
     window.addEventListener("keydown", function(event) {
       if (!dialog.hidden && event.key === "Escape") {
         closeDialog();
+      }
+    });
+  }
+
+  const stampModal = document.querySelector("[data-stamp-modal]");
+  if (stampModal) {
+    const stampButtons = document.querySelectorAll("[data-stamp-trigger]");
+    const closeBtn = stampModal.querySelector("[data-stamp-modal-close]");
+    const iconTarget = stampModal.querySelector("[data-stamp-modal-icon]");
+    const nameTarget = stampModal.querySelector("[data-stamp-modal-name]");
+    const reasonTarget = stampModal.querySelector("[data-stamp-modal-reason]");
+    const dateTarget = stampModal.querySelector("[data-stamp-modal-date]");
+    const descriptionTarget = stampModal.querySelector("[data-stamp-modal-description]");
+    let lastTrigger = null;
+
+    function openStampModal(trigger) {
+      lastTrigger = trigger;
+      const stampName = trigger.dataset.stampName || "Passport stamp";
+      const stampIcon = trigger.dataset.stampIcon || "";
+      const stampReason = trigger.dataset.stampReason || "Passport stamp";
+      const stampDescription = trigger.dataset.stampDescription || "Passport stamp unlocked during the RDAB community events.";
+      const stampDate = trigger.dataset.stampDate || "";
+      const stampCount = Number(trigger.dataset.stampCount || "0");
+
+      if (nameTarget) {
+        nameTarget.textContent = stampName;
+      }
+      if (reasonTarget) {
+        reasonTarget.textContent = stampReason;
+      }
+      if (descriptionTarget) {
+        descriptionTarget.textContent = stampDescription;
+      }
+      if (iconTarget && stampIcon) {
+        iconTarget.src = stampIcon;
+        iconTarget.alt = `${stampName} stamp art`;
+      }
+
+      if (dateTarget) {
+        let dateLine = "";
+        if (stampDate) {
+          dateLine = `Acquired ${stampDate}`;
+        }
+        if (stampCount > 1) {
+          const countLabel = `Awarded ×${stampCount}`;
+          dateLine = dateLine ? `${dateLine} • ${countLabel}` : countLabel;
+        }
+        dateTarget.textContent = dateLine;
+        dateTarget.hidden = !dateLine;
+      }
+
+      stampModal.hidden = false;
+      stampModal.setAttribute("aria-hidden", "false");
+      document.body.classList.add("stamp-modal-open");
+      if (closeBtn) {
+        closeBtn.focus();
+      }
+    }
+
+    function closeStampModal() {
+      if (stampModal.hidden) {
+        return;
+      }
+      stampModal.hidden = true;
+      stampModal.setAttribute("aria-hidden", "true");
+      document.body.classList.remove("stamp-modal-open");
+      if (lastTrigger && typeof lastTrigger.focus === "function") {
+        lastTrigger.focus();
+      }
+      lastTrigger = null;
+    }
+
+    stampButtons.forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        openStampModal(btn);
+      });
+    });
+
+    if (closeBtn) {
+      closeBtn.addEventListener("click", closeStampModal);
+    }
+    stampModal.addEventListener("click", function(event) {
+      if (event.target === stampModal) {
+        closeStampModal();
+      }
+    });
+    window.addEventListener("keydown", function(event) {
+      if (event.key === "Escape" && !stampModal.hidden) {
+        closeStampModal();
       }
     });
   }

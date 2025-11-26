@@ -6,7 +6,7 @@ import json
 import os
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 from sqlalchemy.exc import IntegrityError
 from flask import current_app, has_app_context
@@ -16,6 +16,7 @@ from advent.models import AdventClaim
 
 DEFAULT_CONFIG_BASENAME = "advent_2025.json"
 SUPABASE_TABLE = "advent_claims"
+ADVENT_AWARD_ACTOR = "Advent Calendar"
 _CONFIG_CACHE: Dict[str, object] = {"data": None, "mtime": None, "path": None}
 
 
@@ -226,3 +227,27 @@ def _log_supabase_warning(action: str, exc: Exception) -> None:
     logger = getattr(current_app, "logger", None)
     if logger:
         logger.warning("Advent Supabase error while %s: %s", action, exc)
+
+
+def award_advent_passport_stamp(trainer_username: Optional[str], day: int) -> Tuple[bool, Optional[str]]:
+    """Award a single Advent stamp to the trainer via Supabase."""
+    if not trainer_username:
+        return False, "Trainer username missing for Advent stamp award."
+
+    client = _get_supabase_client()
+    if not client:
+        return False, "Supabase client unavailable."
+
+    reason = f"Advent {day:02d}"
+    payload = {
+        "p_trainer": trainer_username,
+        "p_delta": 1,
+        "p_reason": reason,
+        "p_awardedby": ADVENT_AWARD_ACTOR,
+    }
+    try:
+        client.rpc("lugia_admin_adjust", payload).execute()
+        return True, None
+    except Exception as exc:  # pragma: no cover - external dependency
+        _log_supabase_warning("awarding advent passport stamp", exc)
+        return False, str(exc)

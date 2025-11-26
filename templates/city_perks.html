@@ -9,7 +9,7 @@
   <div>
     <p class="hero-eyebrow">City perks</p>
     <h1>Unlock local bonuses while you explore</h1>
-    <p>Partner cafés, shops, and gathering spots keep trainer adventures fresh. Filter by area or perk type and sync your next raid route.</p>
+    <p>Partner cafés, shops, and gathering spots keep trainer adventures fresh. Tap an icon to browse, search, or view the map.</p>
   </div>
   <div class="hero-meta">
     <div>
@@ -23,7 +23,22 @@
   </div>
 </div>
 
-<form class="perks-filters" method="get">
+<div class="city-perks-actions">
+  <a class="action-tile" href="{{ url_for('city_perks_page') }}">
+    <span class="action-icon">🌀</span>
+    <span>All perks</span>
+  </a>
+  <button class="action-tile" type="button" data-action="toggle-search">
+    <span class="action-icon">🔎</span>
+    <span>Search</span>
+  </button>
+  <button class="action-tile" type="button" data-action="open-map">
+    <span class="action-icon">🗺️</span>
+    <span>Interactive map</span>
+  </button>
+</div>
+
+<form class="perks-filters {% if filters_active %}is-visible{% endif %}" method="get" id="perks-filter-form">
   <div class="filter-field">
     <label for="area-select">Area</label>
     <select id="area-select" name="area">
@@ -42,12 +57,9 @@
       {% endfor %}
     </select>
   </div>
-  <div class="filter-field featured-toggle">
-    <label class="checkbox">
-      <input type="checkbox" name="featured" value="1" {% if featured_only %}checked{% endif %}>
-      <span>Featured only</span>
-    </label>
-    <small>Boost the top partner spots.</small>
+  <div class="filter-field">
+    <label for="search-input">Search</label>
+    <input type="search" id="search-input" name="q" placeholder="Partner or perk name" value="{{ search_term }}">
   </div>
   <div class="filter-actions">
     <button type="submit">Apply filters</button>
@@ -60,11 +72,19 @@
 {% if perks %}
   <div class="perks-grid">
     {% for perk in perks %}
-      <article class="perk-card {% if perk.is_featured %}is-featured{% endif %}">
-        {% if perk.is_featured %}
-          <span class="perk-badge">Featured</span>
-        {% endif %}
-        <div class="perk-card__header">
+      {% set perk_payload = perk.to_public_dict() %}
+      <article class="perk-card" data-perk='{{ perk_payload | tojson | safe }}'>
+        <div class="perk-cover">
+          {% if perk.cover_image_url %}
+            <img src="{{ perk.cover_image_url }}" alt="{{ perk.name }} cover image">
+          {% else %}
+            <div class="perk-cover--fallback">{{ perk.perk_mode_icon }}</div>
+          {% endif %}
+          {% if perk.is_featured %}
+            <span class="perk-chip">Featured</span>
+          {% endif %}
+        </div>
+        <div class="perk-summary">
           <div class="perk-logo">
             {% if perk.logo_url %}
               <img src="{{ perk.logo_url }}" alt="{{ perk.partner_name }} logo">
@@ -72,50 +92,18 @@
               <span class="perk-placeholder">{{ perk.partner_name[:1] }}</span>
             {% endif %}
           </div>
-          <div>
+          <div class="perk-copy">
             <p class="perk-partner">{{ perk.partner_name }}</p>
             <h2>{{ perk.name }}</h2>
             {% if perk.short_tagline %}
               <p class="perk-tagline">{{ perk.short_tagline }}</p>
-            {% endif %}
-            <p class="perk-meta">
-              {{ perk.perk_mode_icon }} {{ perk.perk_mode_label }}
-              {% if perk.category %} · {{ perk.category }}{% endif %}
-              {% if perk.area %} · {{ perk.area }}{% endif %}
-            </p>
-          </div>
-        </div>
-        {% if perk.cover_image_url %}
-          <div class="perk-cover">
-            <img src="{{ perk.cover_image_url }}" alt="{{ perk.name }} cover image">
-          </div>
-        {% endif %}
-        <div class="perk-body">
-          {% if perk.offer_text %}
-            <p class="perk-offer">{{ perk.offer_text }}</p>
-          {% elif perk.description_long %}
-            <p class="perk-offer">{{ perk.description_long }}</p>
-          {% endif %}
-          <ul class="perk-details">
-            {% if perk.address %}
-              <li>📍 {{ perk.address }}</li>
-            {% endif %}
-            <li>⏱️ Live since {{ perk.start_date.strftime("%d %b %Y") }}</li>
-            {% if perk.end_date %}
-              <li>🏁 Ends {{ perk.end_date.strftime("%d %b %Y") }}</li>
-            {% endif %}
-            <li>{{ "✅ Map ready" if perk.show_on_map else "🛑 Map hidden" }}</li>
-          </ul>
-          <div class="perk-links">
-            {% if perk.website_url %}
-              <a class="perk-cta" href="{{ perk.website_url }}" target="_blank" rel="noopener">Visit site</a>
-            {% endif %}
-            {% if perk.google_maps_link %}
-              <a class="perk-cta" href="{{ perk.google_maps_link }}" target="_blank" rel="noopener">Google Maps</a>
-            {% elif perk.apple_maps_link %}
-              <a class="perk-cta" href="{{ perk.apple_maps_link }}" target="_blank" rel="noopener">Apple Maps</a>
+            {% elif perk.offer_text %}
+              <p class="perk-tagline">{{ perk.offer_text }}</p>
             {% endif %}
           </div>
+          <button class="perk-expand" type="button" aria-label="View details">
+            →
+          </button>
         </div>
       </article>
     {% endfor %}
@@ -126,6 +114,38 @@
     <a class="perk-cta" href="{{ api_url }}" target="_blank" rel="noopener">View API feed</a>
   </div>
 {% endif %}
+
+<div class="perk-modal" id="perk-modal" aria-hidden="true">
+  <div class="perk-modal__backdrop" data-action="close-modal"></div>
+  <div class="perk-modal__dialog">
+    <button class="perk-modal__close" type="button" data-action="close-modal">&times;</button>
+    <div class="perk-modal__header">
+      <img src="" alt="" data-field="modal-cover">
+      <div class="perk-modal__logo" data-field="modal-logo"></div>
+    </div>
+    <div class="perk-modal__body">
+      <p class="modal-partner" data-field="modal-partner"></p>
+      <h2 data-field="modal-name"></h2>
+      <p class="modal-tagline" data-field="modal-tagline"></p>
+      <p class="modal-offer" data-field="modal-offer"></p>
+      <ul class="modal-details" data-field="modal-details"></ul>
+      <div class="modal-links" data-field="modal-links"></div>
+    </div>
+  </div>
+</div>
+
+<div class="perks-map-panel" id="perks-map-panel" aria-hidden="true">
+  <div class="perks-map-panel__inner">
+    <div class="perks-map-panel__header">
+      <div>
+        <p>Interactive map</p>
+        <h3>Plot your next perk stop</h3>
+      </div>
+      <button type="button" class="perks-map-panel__close" data-action="close-map">&times;</button>
+    </div>
+    <div id="perks-map"></div>
+  </div>
+</div>
 
 <style>
 .city-perks-hero {
@@ -155,6 +175,30 @@
   line-height:1;
 }
 
+.city-perks-actions {
+  margin:20px 0;
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+  gap:12px;
+}
+.action-tile {
+  border:1px solid #e2e8f0;
+  border-radius:16px;
+  padding:14px;
+  display:flex;
+  gap:12px;
+  align-items:center;
+  justify-content:center;
+  background:#fff;
+  font-weight:600;
+  color:#111827;
+  text-decoration:none;
+  cursor:pointer;
+  box-shadow:0 8px 16px rgba(15,23,42,0.08);
+}
+.action-icon {
+  font-size:1.4rem;
+}
 .perks-filters {
   margin:24px 0;
   display:grid;
@@ -163,6 +207,11 @@
   background:#f8fafc;
   padding:18px;
   border-radius:16px;
+  border:1px solid #e2e8f0;
+  display:none;
+}
+.perks-filters.is-visible {
+  display:grid;
 }
 .filter-field label {
   font-weight:600;
@@ -175,17 +224,6 @@
   padding:10px;
   border-radius:10px;
   border:1px solid #d0d5dd;
-}
-.featured-toggle {
-  display:flex;
-  flex-direction:column;
-  gap:6px;
-}
-.checkbox {
-  display:flex;
-  gap:8px;
-  align-items:center;
-  font-weight:600;
 }
 .filter-actions {
   display:flex;
@@ -207,44 +245,57 @@
   text-decoration:none;
   font-weight:600;
   color:#1d4ed8;
-}
-
 .perks-grid {
   display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
-  gap:18px;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:16px;
 }
 .perk-card {
-  position:relative;
   background:#fff;
-  border-radius:18px;
-  box-shadow:0 16px 32px rgba(15,23,42,0.12);
+  border-radius:20px;
+  box-shadow:0 18px 30px rgba(15,23,42,0.12);
+  overflow:hidden;
   display:flex;
   flex-direction:column;
-  overflow:hidden;
 }
-.perk-card.is-featured {
-  border:2px solid var(--brand);
+.perk-cover {
+  position:relative;
+  height:140px;
+  background:#e2e8f0;
 }
-.perk-badge {
+.perk-cover img {
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  display:block;
+}
+.perk-cover--fallback {
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  height:100%;
+  font-size:2rem;
+}
+.perk-chip {
   position:absolute;
   top:12px;
   right:12px;
   background:#f97316;
   color:#fff;
-  padding:4px 10px;
+  padding:4px 12px;
   border-radius:999px;
   font-size:0.75rem;
   font-weight:600;
 }
-.perk-card__header {
+.perk-summary {
   display:flex;
-  gap:14px;
-  padding:18px;
+  align-items:center;
+  gap:12px;
+  padding:14px;
 }
 .perk-logo {
-  width:64px;
-  height:64px;
+  width:56px;
+  height:56px;
   border-radius:16px;
   background:#f1f5f9;
   display:flex;
@@ -269,62 +320,29 @@
   letter-spacing:0.08em;
   font-size:0.75rem;
 }
-.perk-card__header h2 {
+.perk-summary h2 {
   margin:4px 0;
-  font-size:1.3rem;
+  font-size:1.1rem;
+  color:#0f172a;
 }
 .perk-tagline {
   margin:0;
-  color:#0f172a;
-  font-weight:600;
-}
-.perk-meta {
-  margin:6px 0 0;
-  font-size:0.85rem;
-  color:#475467;
-}
-.perk-cover img {
-  width:100%;
-  height:200px;
-  object-fit:cover;
-}
-.perk-body {
-  padding:18px;
-  display:flex;
-  flex-direction:column;
-  gap:12px;
-}
-.perk-offer {
-  margin:0;
-  font-size:1rem;
-  color:#0f172a;
-}
-.perk-details {
-  list-style:none;
-  margin:0;
-  padding:0;
   color:#475467;
   font-size:0.9rem;
-  display:flex;
-  flex-direction:column;
-  gap:4px;
 }
-.perk-links {
+.perk-expand {
+  margin-left:auto;
+  border:none;
+  background:#111827;
+  color:#fff;
+  width:36px;
+  height:36px;
+  border-radius:50%;
+  font-size:1.2rem;
+  cursor:pointer;
   display:flex;
-  gap:10px;
-  flex-wrap:wrap;
-}
-.perk-cta {
-  display:inline-flex;
   align-items:center;
   justify-content:center;
-  padding:8px 14px;
-  border-radius:10px;
-  background:var(--brand);
-  color:#fff;
-  text-decoration:none;
-  font-weight:600;
-  box-shadow:0 8px 16px rgba(58,141,222,0.35);
 }
 .perks-empty {
   padding:40px;
@@ -335,6 +353,168 @@
 .perks-empty p {
   margin:0 0 12px;
   color:#475467;
+}
+.perks-empty .perk-cta { margin-top:12px; }
+
+.perks-map-panel {
+  position:fixed;
+  inset:0;
+  background:rgba(15,23,42,0.65);
+  display:none;
+  align-items:center;
+  justify-content:center;
+  padding:20px;
+  z-index:3000;
+}
+.perks-map-panel.is-open {
+  display:flex;
+}
+.perks-map-panel__inner {
+  background:#fff;
+  border-radius:24px;
+  width:min(960px, 100%);
+  max-height:90vh;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+  box-shadow:0 24px 64px rgba(15,23,42,0.35);
+}
+.perks-map-panel__header {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:16px 20px;
+  border-bottom:1px solid #e2e8f0;
+}
+.perks-map-panel__header h3 {
+  margin:4px 0 0;
+}
+.perks-map-panel__header p {
+  margin:0;
+  text-transform:uppercase;
+  font-size:0.75rem;
+  letter-spacing:0.08em;
+  color:#64748b;
+}
+.perks-map-panel__close {
+  border:none;
+  background:#111827;
+  color:#fff;
+  width:40px;
+  height:40px;
+  border-radius:50%;
+  font-size:1.4rem;
+  cursor:pointer;
+}
+#perks-map {
+  flex:1;
+  min-height:520px;
+}
+
+.perk-modal {
+  position:fixed;
+  inset:0;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  padding:20px;
+  z-index:4000;
+}
+.perk-modal.is-open {
+  display:flex;
+}
+.perk-modal__backdrop {
+  position:absolute;
+  inset:0;
+  background:rgba(15,23,42,0.65);
+}
+.perk-modal__dialog {
+  position:relative;
+  background:#fff;
+  border-radius:24px;
+  max-width:540px;
+  width:100%;
+  overflow:hidden;
+  box-shadow:0 24px 64px rgba(15,23,42,0.35);
+  z-index:1;
+}
+.perk-modal__close {
+  position:absolute;
+  top:12px;
+  right:12px;
+  border:none;
+  background:rgba(15,23,42,0.6);
+  color:#fff;
+  width:36px;
+  height:36px;
+  border-radius:50%;
+  font-size:1.4rem;
+  cursor:pointer;
+}
+.perk-modal__header {
+  height:200px;
+  position:relative;
+}
+.perk-modal__header img {
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  display:block;
+}
+.perk-modal__logo {
+  position:absolute;
+  bottom:-28px;
+  left:24px;
+  width:72px;
+  height:72px;
+  border-radius:18px;
+  border:4px solid #fff;
+  background:#f8fafc;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+  font-weight:700;
+}
+.perk-modal__body {
+  padding:48px 24px 24px;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+.modal-partner {
+  margin:0;
+  text-transform:uppercase;
+  letter-spacing:0.08em;
+  font-size:0.75rem;
+  color:#475467;
+}
+.modal-tagline,
+.modal-offer {
+  margin:0;
+  color:#0f172a;
+}
+.modal-details {
+  list-style:none;
+  padding:0;
+  margin:8px 0;
+  color:#475467;
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+}
+.modal-links a {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:10px 16px;
+  border-radius:12px;
+  background:var(--brand);
+  color:#fff;
+  text-decoration:none;
+  font-weight:600;
+  margin-right:8px;
+  margin-bottom:8px;
 }
 
 @media (max-width:640px){
@@ -348,6 +528,173 @@
   .filter-actions{
     justify-content:flex-start;
   }
+  .perks-grid{
+    grid-template-columns:1fr;
+  }
 }
 </style>
+
+<link
+  rel="stylesheet"
+  href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  integrity="sha256-o9N1j7kGHTxG3bfsIk7QwHFEnC0hHUm4G1ZjF2PqXgw="
+  crossorigin=""
+/>
+<script
+  src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+  integrity="sha256-oP0QYv7QvNQ8QAtjaCj1ko8nDP+NE3A0j40n2gYs5Ys="
+  crossorigin=""
+></script>
+
+<script>
+(function () {
+  const filterForm = document.getElementById("perks-filter-form");
+  const searchToggle = document.querySelector("[data-action='toggle-search']");
+  const mapButton = document.querySelector("[data-action='open-map']");
+  const mapPanel = document.getElementById("perks-map-panel");
+  const mapCloseButtons = mapPanel ? mapPanel.querySelectorAll("[data-action='close-map']") : [];
+  const modal = document.getElementById("perk-modal");
+  const modalCover = modal.querySelector("[data-field='modal-cover']");
+  const modalLogo = modal.querySelector("[data-field='modal-logo']");
+  const modalPartner = modal.querySelector("[data-field='modal-partner']");
+  const modalName = modal.querySelector("[data-field='modal-name']");
+  const modalTagline = modal.querySelector("[data-field='modal-tagline']");
+  const modalOffer = modal.querySelector("[data-field='modal-offer']");
+  const modalDetails = modal.querySelector("[data-field='modal-details']");
+  const modalLinks = modal.querySelector("[data-field='modal-links']");
+
+  function toggleFilters() {
+    if (!filterForm) return;
+    filterForm.classList.toggle("is-visible");
+  }
+
+  const mapPerksData = {{ map_perks | tojson | safe }};
+  let mapInstance = null;
+  let mapInitialized = false;
+
+  function showMapPanel() {
+    if (!mapPanel) return;
+    mapPanel.classList.add("is-open");
+    mapPanel.setAttribute("aria-hidden", "false");
+    if (!mapInitialized) {
+      initMap();
+      mapInitialized = true;
+    }
+  }
+
+  function hideMapPanel() {
+    if (!mapPanel) return;
+    mapPanel.classList.remove("is-open");
+    mapPanel.setAttribute("aria-hidden", "true");
+  }
+
+  function closeModal() {
+    modal.classList.remove("is-open");
+    modal.setAttribute("aria-hidden", "true");
+  }
+
+  function openModal(perk) {
+    modalCover.src = perk.media.cover_image_url || "{{ url_for('static', filename='banner.jpg') }}";
+    modalCover.alt = perk.name + " cover";
+
+    if (perk.media.logo_url) {
+      modalLogo.innerHTML = '<img src="' + perk.media.logo_url + '" alt="' + perk.partner_name + ' logo">';
+    } else {
+      modalLogo.textContent = (perk.partner_name || "?").charAt(0).toUpperCase();
+    }
+
+    modalPartner.textContent = perk.partner_name || "";
+    modalName.textContent = perk.name || "City perk";
+    modalTagline.textContent = perk.short_tagline || perk.description_long || "";
+
+    const offerText = (perk.offer && perk.offer.offer_text) || "";
+    modalOffer.textContent = offerText;
+    modalOffer.style.display = offerText ? "block" : "none";
+
+    const detailLines = [];
+    if (perk.area) detailLines.push("📍 Area: " + perk.area);
+    if (perk.category) detailLines.push("🏷️ Category: " + perk.category);
+    if (perk.location.address) detailLines.push("🗺️ Address: " + perk.location.address);
+    if (perk.timing.start_date) detailLines.push("🕒 Starts: " + new Date(perk.timing.start_date).toLocaleString());
+    if (perk.timing.end_date) detailLines.push("🏁 Ends: " + new Date(perk.timing.end_date).toLocaleString());
+    modalDetails.innerHTML = detailLines.map((line) => "<li>" + line + "</li>").join("");
+
+    modalLinks.innerHTML = "";
+    if (perk.online.website_url) {
+      modalLinks.innerHTML += '<a href="' + perk.online.website_url + '" target="_blank" rel="noopener">Visit site</a>';
+    }
+    if (perk.location.google_maps_link) {
+      modalLinks.innerHTML += '<a href="' + perk.location.google_maps_link + '" target="_blank" rel="noopener">Google Maps</a>';
+    } else if (perk.location.apple_maps_link) {
+      modalLinks.innerHTML += '<a href="' + perk.location.apple_maps_link + '" target="_blank" rel="noopener">Apple Maps</a>';
+    }
+
+    modal.classList.add("is-open");
+    modal.setAttribute("aria-hidden", "false");
+  }
+
+  if (searchToggle && filterForm) {
+    searchToggle.addEventListener("click", toggleFilters);
+  }
+  if (mapButton) {
+    mapButton.addEventListener("click", showMapPanel);
+  }
+  mapCloseButtons.forEach((btn) => btn.addEventListener("click", hideMapPanel));
+  if (mapPanel) {
+    mapPanel.addEventListener("click", (event) => {
+      if (event.target === mapPanel) {
+        hideMapPanel();
+      }
+    });
+  }
+  modal.addEventListener("click", (event) => {
+    if (event.target.dataset.action === "close-modal" || event.target === modal) {
+      closeModal();
+    }
+  });
+  modal.querySelectorAll("[data-action='close-modal']").forEach((el) =>
+    el.addEventListener("click", closeModal)
+  );
+
+  function initMap() {
+    if (!window.L) {
+      console.error("Leaflet failed to load.");
+      return;
+    }
+    mapInstance = L.map("perks-map").setView([53.5228, -1.1285], 13);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 18,
+      attribution: "&copy; OpenStreetMap contributors",
+    }).addTo(mapInstance);
+
+    mapPerksData.forEach((perk) => {
+      const lat = perk.location.latitude;
+      const lng = perk.location.longitude;
+      if (typeof lat !== "number" || typeof lng !== "number") return;
+      const popup = `
+        <div class="map-popup">
+          <strong>${perk.partner_name || ""}</strong><br>
+          ${perk.name || ""}
+          ${perk.short_tagline ? `<p>${perk.short_tagline}</p>` : ""}
+          ${perk.location.address ? `<small>${perk.location.address}</small>` : ""}
+        </div>`;
+      L.marker([lat, lng]).addTo(mapInstance).bindPopup(popup);
+    });
+  }
+
+  document.querySelectorAll(".perk-expand").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const card = btn.closest(".perk-card");
+      if (!card) return;
+      const payload = card.dataset.perk;
+      if (!payload) return;
+      try {
+        openModal(JSON.parse(payload));
+      } catch (err) {
+        console.error("Failed to parse perk payload", err);
+      }
+    });
+  });
+})();
+</script>
 {% endblock %}
