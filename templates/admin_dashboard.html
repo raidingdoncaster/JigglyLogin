@@ -61,6 +61,12 @@
       <img src="{{ url_for('static', filename='icons/admin/catalog-manager.png') }}" alt="Catalog Manager">
       <span>Catalog Manager</span>
     </a>
+    {% if show_city_perks_app %}
+      <a class="explore-card" href="{{ url_for('admin_city_perks.list_city_perks') }}">
+        <img src="{{ url_for('static', filename='icons/perks-app.png') }}" alt="City Perks">
+        <span>City Perks</span>
+      </a>
+    {% endif %}
     <a class="explore-card" href="{{ url_for('admin_meetups') }}">
       <img src="{{ url_for('static', filename='icons/admin/meetups-manager.png') }}" alt="Meetup Manager">
       <span>Meetups Manager</span>

@@ -6,15 +6,33 @@
 {% endblock %}
 
 {% block content %}
+{% set is_test_mode = admin_mode|default(False) %}
+{% set open_endpoint = open_endpoint | default('admin_advent.open_day', true) %}
 <div class="advent-scene">
   <div class="admin-header advent-header">
     <div class="header-text">
-      <p class="advent-tag">RDAB Live Event</p>
-      <h1>🎄 Advent Calendar (Test Mode)</h1>
-      <p>Effective day: <strong>{{ effective_day }}</strong>{% if day_override %} (override active){% endif %}</p>
-      <div class="advent-controls">
-        <p>Use <code>?day_override=&lt;1-25&gt;</code> on the URL to simulate different December days.</p>
-      </div>
+      <p class="advent-tag">
+        {% if is_test_mode %}
+          RDAB Live Event
+        {% else %}
+          25 days of RDAB cheer
+        {% endif %}
+      </p>
+      <h1>
+        {% if is_test_mode %}
+          🎄 Advent Calendar (Test Mode)
+        {% else %}
+          🎁 Advent Calendar
+        {% endif %}
+      </h1>
+      {% if is_test_mode %}
+        <p>Effective day: <strong>{{ effective_day }}</strong>{% if day_override %} (override active){% endif %}</p>
+        <div class="advent-controls">
+          <p>Use <code>?day_override=&lt;1-25&gt;</code> on the URL to simulate different December days.</p>
+        </div>
+      {% else %}
+        <p>Open the door that matches today's date to collect your Advent stamp and quote.</p>
+      {% endif %}
     </div>
     <div class="header-tree">
       <div class="tree"></div>
@@ -37,7 +55,7 @@
       <div
         class="advent-cell{% if opened %} is-opened{% elif is_openable %} is-openable{% else %} is-locked{% endif %}"
         data-day="{{ day }}"
-        data-open-url="{{ url_for('admin_advent.open_day', day=day) }}"
+        data-open-url="{{ url_for(open_endpoint, day=day) }}"
       >
         <div class="advent-day-label">
           <span>Day {{ "%02d"|format(day) }}</span>
@@ -66,7 +84,7 @@
             </button>
             <small class="advent-status">Opened</small>
           {% elif is_openable %}
-            <form class="open-day-form" method="POST" action="{{ url_for('admin_advent.open_day', day=day) }}">
+            <form class="open-day-form" method="POST" action="{{ url_for(open_endpoint, day=day) }}">
               {% if day_override %}
                 <input type="hidden" name="day_override" value="{{ day_override }}">
               {% endif %}
@@ -87,7 +105,7 @@
     <div class="advent-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="advent-modal-day">
       <button type="button" class="advent-modal__close" aria-label="Close">&times;</button>
       <div class="advent-modal__body">
-        <p class="advent-modal__eyebrow">Unlocked Quote</p>
+        <p class="advent-modal__eyebrow">Advent stamp acquired</p>
         <img id="advent-modal-stamp" alt="Advent stamp" hidden>
         <h2 id="advent-modal-day"></h2>
         <p id="advent-modal-message"></p>
@@ -558,6 +576,7 @@
   const messageEl = document.getElementById("advent-modal-message");
   const stampImg = document.getElementById("advent-modal-stamp");
   const closeButtons = modal.querySelectorAll(".advent-modal__close, .advent-modal__backdrop");
+  const SUSPENSE_DELAY_MS = 900; // Let the unlock animation breathe before showing the modal.
 
   function buildStampUrl(stampName) {
     if (!stampName) return "";
@@ -733,7 +752,10 @@
           if (payload.status === "ok") {
             convertCellToOpened(cell, payload);
             activateNextCell(payload.next_openable_day);
-            openModal(payload.day, payload.message, buildStampUrl(payload.stamp_png));
+            setTimeout(
+              () => openModal(payload.day, payload.message, buildStampUrl(payload.stamp_png)),
+              SUSPENSE_DELAY_MS
+            );
           } else {
             handleOpenError(cell, button, payload.reason);
           }

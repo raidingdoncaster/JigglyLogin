@@ -1,0 +1,286 @@
+{% extends "base.html" %}
+
+{% block page_settings %}
+  {% set container_class = 'is-wide' %}
+{% endblock %}
+
+{% block content %}
+<div class="form-header">
+  <div>
+    <h1>{{ "Edit City Perk" if is_edit else "New City Perk" }}</h1>
+    <p>Fill in the partner details and timing to control when trainers see this perk.</p>
+  </div>
+  <a class="btn-secondary" href="{{ url_for('admin_city_perks.list_city_perks') }}">Back to list</a>
+</div>
+
+{% if errors %}
+  <div class="form-errors">
+    <strong>Please fix the following:</strong>
+    <ul>
+      {% for error in errors %}
+        <li>{{ error }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+{% endif %}
+
+<form class="city-perk-form" method="post" enctype="multipart/form-data">
+  <section>
+    <h3>Core Details</h3>
+    <div class="grid two">
+      <label>
+        <span>Name *</span>
+        <input type="text" name="name" value="{{ form_values.name }}" required>
+      </label>
+      <label>
+        <span>Partner name *</span>
+        <input type="text" name="partner_name" value="{{ form_values.partner_name }}" required>
+      </label>
+      <label>
+        <span>Category *</span>
+        <input type="text" name="category" value="{{ form_values.category }}" required placeholder="food_drink, shop, social...">
+      </label>
+      <label>
+        <span>Area</span>
+        <input type="text" name="area" value="{{ form_values.area }}" placeholder="City Centre, Lakeside">
+      </label>
+    </div>
+    <label>
+      <span>Short tagline</span>
+      <input type="text" name="short_tagline" value="{{ form_values.short_tagline }}">
+    </label>
+    <label>
+      <span>Long description</span>
+      <textarea name="description_long" rows="4">{{ form_values.description_long }}</textarea>
+    </label>
+  </section>
+
+  <section>
+    <h3>Perk Mode</h3>
+    <div class="grid three">
+      {% for mode in perk_modes %}
+        <label class="radio-card">
+          <input type="radio" name="perk_mode" value="{{ mode }}" {% if form_values.perk_mode == mode %}checked{% endif %}>
+          <span>{{ mode.replace("_", " ").title() }}</span>
+        </label>
+      {% endfor %}
+    </div>
+    <div class="grid two">
+      <label>
+        <span>Address {% if form_values.perk_mode != "online" %}*{% endif %}</span>
+        <input type="text" name="address" value="{{ form_values.address }}">
+      </label>
+      <label>
+        <span>Website URL {% if form_values.perk_mode != "in_store" %}*{% endif %}</span>
+        <input type="url" name="website_url" value="{{ form_values.website_url }}">
+      </label>
+    </div>
+    <div class="grid three">
+      <label>
+        <span>Latitude</span>
+        <input type="text" name="latitude" value="{{ form_values.latitude }}">
+      </label>
+      <label>
+        <span>Longitude</span>
+        <input type="text" name="longitude" value="{{ form_values.longitude }}">
+      </label>
+      <label>
+        <span>Google Maps link</span>
+        <input type="url" name="google_maps_link" value="{{ form_values.google_maps_link }}">
+      </label>
+    </div>
+    <label>
+      <span>Apple Maps link</span>
+      <input type="url" name="apple_maps_link" value="{{ form_values.apple_maps_link }}">
+    </label>
+  </section>
+
+  <section>
+    <h3>Offer Details</h3>
+    <div class="grid two">
+      <label>
+        <span>Offer type</span>
+        <input type="text" name="offer_type" value="{{ form_values.offer_type }}" placeholder="stamp_bonus, comfy_spot...">
+      </label>
+      <label>
+        <span>QR code slug</span>
+        <input type="text" name="qr_code_slug" value="{{ form_values.qr_code_slug }}" placeholder="auto-generated if blank">
+      </label>
+    </div>
+    <label>
+      <span>Offer copy</span>
+      <textarea name="offer_text" rows="3">{{ form_values.offer_text }}</textarea>
+    </label>
+    <label>
+      <span>Internal notes</span>
+      <textarea name="notes_internal" rows="3">{{ form_values.notes_internal }}</textarea>
+    </label>
+  </section>
+
+  <section>
+    <h3>Timing & Visibility</h3>
+    <div class="grid two">
+      <label>
+        <span>Start date *</span>
+        <input type="datetime-local" name="start_date" value="{{ form_values.start_date }}" required>
+      </label>
+      <label>
+        <span>End date</span>
+        <input type="datetime-local" name="end_date" value="{{ form_values.end_date }}">
+      </label>
+    </div>
+    <div class="checkbox-row">
+      <label><input type="checkbox" name="is_active" {% if form_values.is_active %}checked{% endif %}> Active</label>
+      <label><input type="checkbox" name="is_featured" {% if form_values.is_featured %}checked{% endif %}> Featured</label>
+      <label><input type="checkbox" name="show_on_map" {% if form_values.show_on_map %}checked{% endif %}> Show on map</label>
+    </div>
+  </section>
+
+  <section>
+    <h3>Media</h3>
+    <div class="grid two">
+      <label>
+        <span>Logo URL</span>
+        <input type="url" name="logo_url" value="{{ form_values.logo_url }}">
+      </label>
+      <label>
+        <span>Cover image URL</span>
+        <input type="url" name="cover_image_url" value="{{ form_values.cover_image_url }}">
+      </label>
+    </div>
+    <div class="grid two">
+      <label class="file-field">
+        <span>Upload logo</span>
+        <input type="file" name="logo_file" accept="image/*">
+        <small>Uploads to Supabase catalog/city-perks/logos</small>
+      </label>
+      <label class="file-field">
+        <span>Upload cover image</span>
+        <input type="file" name="cover_file" accept="image/*">
+        <small>Uploads to Supabase catalog/city-perks/covers</small>
+      </label>
+    </div>
+  </section>
+
+  <div class="form-actions">
+    <button type="submit" class="btn-primary">{{ "Save Changes" if is_edit else "Create City Perk" }}</button>
+    <a class="btn-ghost" href="{{ url_for('admin_city_perks.list_city_perks') }}">Cancel</a>
+  </div>
+</form>
+
+<style>
+.form-header {
+  display:flex;
+  justify-content:space-between;
+  gap:18px;
+  align-items:center;
+  flex-wrap:wrap;
+}
+.form-header h1 { margin:0; }
+.form-header p { margin:4px 0 0; color:#5f6b7c; }
+.form-errors {
+  background:#fee2e2;
+  color:#991b1b;
+  padding:16px;
+  border-radius:12px;
+  margin-bottom:18px;
+}
+.city-perk-form section {
+  background:#f8fafc;
+  padding:18px;
+  border-radius:16px;
+  margin-bottom:18px;
+}
+.city-perk-form h3 {
+  margin:0 0 12px;
+}
+.city-perk-form label {
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  font-weight:600;
+  font-size:0.9rem;
+  color:#475467;
+}
+.city-perk-form input,
+.city-perk-form textarea {
+  padding:10px;
+  border-radius:10px;
+  border:1px solid #d0d5dd;
+  font-size:0.95rem;
+  font-weight:500;
+}
+.city-perk-form textarea { resize:vertical; }
+.grid {
+  display:grid;
+  gap:16px;
+}
+.grid.two {
+  grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+}
+.grid.three {
+  grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+}
+.radio-card {
+  border:1px solid #d0d5dd;
+  border-radius:12px;
+  padding:12px;
+  background:#fff;
+  font-weight:600;
+  text-transform:capitalize;
+  gap:8px;
+  align-items:center;
+}
+.radio-card input { margin-right:8px; }
+.checkbox-row {
+  display:flex;
+  gap:18px;
+  flex-wrap:wrap;
+  font-weight:600;
+}
+.checkbox-row label {
+  flex-direction:row;
+  align-items:center;
+  gap:8px;
+}
+.form-actions {
+  display:flex;
+  gap:12px;
+  align-items:center;
+}
+.btn-primary, .btn-secondary, .btn-ghost {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:10px 18px;
+  border-radius:12px;
+  text-decoration:none;
+  font-weight:600;
+  border:0;
+}
+.btn-primary {
+  background:var(--brand);
+  color:#fff;
+  box-shadow:0 10px 20px rgba(58,141,222,0.35);
+}
+.btn-secondary {
+  background:#eef2ff;
+  color:#243073;
+}
+.btn-ghost {
+  background:transparent;
+  color:#1d4ed8;
+  border:1px solid #d0d5dd;
+}
+.file-field input[type="file"] {
+  padding:8px;
+  border:1px dashed #cbd5f5;
+  border-radius:10px;
+  background:#fff;
+}
+.file-field small {
+  font-weight:500;
+  color:#64748b;
+}
+</style>
+{% endblock %}

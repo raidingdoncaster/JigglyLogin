@@ -1,0 +1,353 @@
+{% extends "base.html" %}
+
+{% block page_settings %}
+  {% set container_class = 'is-wide' %}
+{% endblock %}
+
+{% block content %}
+<div class="city-perks-hero">
+  <div>
+    <p class="hero-eyebrow">City perks</p>
+    <h1>Unlock local bonuses while you explore</h1>
+    <p>Partner cafés, shops, and gathering spots keep trainer adventures fresh. Filter by area or perk type and sync your next raid route.</p>
+  </div>
+  <div class="hero-meta">
+    <div>
+      <strong>{{ perks_count }}</strong>
+      <span>Live perks</span>
+    </div>
+    <div>
+      <strong>{{ featured_count }}</strong>
+      <span>Featured spots</span>
+    </div>
+  </div>
+</div>
+
+<form class="perks-filters" method="get">
+  <div class="filter-field">
+    <label for="area-select">Area</label>
+    <select id="area-select" name="area">
+      <option value="">All areas</option>
+      {% for value in areas %}
+        <option value="{{ value }}" {% if selected_area == value %}selected{% endif %}>{{ value }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="filter-field">
+    <label for="category-select">Category</label>
+    <select id="category-select" name="category">
+      <option value="">All categories</option>
+      {% for value in categories %}
+        <option value="{{ value }}" {% if selected_category == value %}selected{% endif %}>{{ value }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="filter-field featured-toggle">
+    <label class="checkbox">
+      <input type="checkbox" name="featured" value="1" {% if featured_only %}checked{% endif %}>
+      <span>Featured only</span>
+    </label>
+    <small>Boost the top partner spots.</small>
+  </div>
+  <div class="filter-actions">
+    <button type="submit">Apply filters</button>
+    {% if filters_active %}
+      <a class="reset" href="{{ url_for('city_perks_page') }}">Reset</a>
+    {% endif %}
+  </div>
+</form>
+
+{% if perks %}
+  <div class="perks-grid">
+    {% for perk in perks %}
+      <article class="perk-card {% if perk.is_featured %}is-featured{% endif %}">
+        {% if perk.is_featured %}
+          <span class="perk-badge">Featured</span>
+        {% endif %}
+        <div class="perk-card__header">
+          <div class="perk-logo">
+            {% if perk.logo_url %}
+              <img src="{{ perk.logo_url }}" alt="{{ perk.partner_name }} logo">
+            {% else %}
+              <span class="perk-placeholder">{{ perk.partner_name[:1] }}</span>
+            {% endif %}
+          </div>
+          <div>
+            <p class="perk-partner">{{ perk.partner_name }}</p>
+            <h2>{{ perk.name }}</h2>
+            {% if perk.short_tagline %}
+              <p class="perk-tagline">{{ perk.short_tagline }}</p>
+            {% endif %}
+            <p class="perk-meta">
+              {{ perk.perk_mode_icon }} {{ perk.perk_mode_label }}
+              {% if perk.category %} · {{ perk.category }}{% endif %}
+              {% if perk.area %} · {{ perk.area }}{% endif %}
+            </p>
+          </div>
+        </div>
+        {% if perk.cover_image_url %}
+          <div class="perk-cover">
+            <img src="{{ perk.cover_image_url }}" alt="{{ perk.name }} cover image">
+          </div>
+        {% endif %}
+        <div class="perk-body">
+          {% if perk.offer_text %}
+            <p class="perk-offer">{{ perk.offer_text }}</p>
+          {% elif perk.description_long %}
+            <p class="perk-offer">{{ perk.description_long }}</p>
+          {% endif %}
+          <ul class="perk-details">
+            {% if perk.address %}
+              <li>📍 {{ perk.address }}</li>
+            {% endif %}
+            <li>⏱️ Live since {{ perk.start_date.strftime("%d %b %Y") }}</li>
+            {% if perk.end_date %}
+              <li>🏁 Ends {{ perk.end_date.strftime("%d %b %Y") }}</li>
+            {% endif %}
+            <li>{{ "✅ Map ready" if perk.show_on_map else "🛑 Map hidden" }}</li>
+          </ul>
+          <div class="perk-links">
+            {% if perk.website_url %}
+              <a class="perk-cta" href="{{ perk.website_url }}" target="_blank" rel="noopener">Visit site</a>
+            {% endif %}
+            {% if perk.google_maps_link %}
+              <a class="perk-cta" href="{{ perk.google_maps_link }}" target="_blank" rel="noopener">Google Maps</a>
+            {% elif perk.apple_maps_link %}
+              <a class="perk-cta" href="{{ perk.apple_maps_link }}" target="_blank" rel="noopener">Apple Maps</a>
+            {% endif %}
+          </div>
+        </div>
+      </article>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="perks-empty">
+    <p>No city perks match those filters yet. Try resetting or check back soon.</p>
+    <a class="perk-cta" href="{{ api_url }}" target="_blank" rel="noopener">View API feed</a>
+  </div>
+{% endif %}
+
+<style>
+.city-perks-hero {
+  display:flex;
+  justify-content:space-between;
+  gap:20px;
+  flex-wrap:wrap;
+  align-items:center;
+}
+.city-perks-hero h1 { margin:4px 0 8px; }
+.city-perks-hero p { margin:0; color:#475467; }
+.hero-meta {
+  display:flex;
+  gap:16px;
+  background:#111827;
+  color:#fff;
+  padding:16px 20px;
+  border-radius:16px;
+}
+.hero-meta div {
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+}
+.hero-meta strong {
+  font-size:1.8rem;
+  line-height:1;
+}
+
+.perks-filters {
+  margin:24px 0;
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+  gap:16px;
+  background:#f8fafc;
+  padding:18px;
+  border-radius:16px;
+}
+.filter-field label {
+  font-weight:600;
+  display:block;
+  margin-bottom:6px;
+  color:#475467;
+}
+.filter-field select {
+  width:100%;
+  padding:10px;
+  border-radius:10px;
+  border:1px solid #d0d5dd;
+}
+.featured-toggle {
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+.checkbox {
+  display:flex;
+  gap:8px;
+  align-items:center;
+  font-weight:600;
+}
+.filter-actions {
+  display:flex;
+  gap:8px;
+  align-items:flex-end;
+}
+.filter-actions button {
+  padding:10px 16px;
+  border-radius:10px;
+  border:none;
+  background:#111827;
+  color:#fff;
+  font-weight:600;
+}
+.filter-actions .reset {
+  padding:10px 16px;
+  border-radius:10px;
+  border:1px solid #d0d5dd;
+  text-decoration:none;
+  font-weight:600;
+  color:#1d4ed8;
+}
+
+.perks-grid {
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+  gap:18px;
+}
+.perk-card {
+  position:relative;
+  background:#fff;
+  border-radius:18px;
+  box-shadow:0 16px 32px rgba(15,23,42,0.12);
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+}
+.perk-card.is-featured {
+  border:2px solid var(--brand);
+}
+.perk-badge {
+  position:absolute;
+  top:12px;
+  right:12px;
+  background:#f97316;
+  color:#fff;
+  padding:4px 10px;
+  border-radius:999px;
+  font-size:0.75rem;
+  font-weight:600;
+}
+.perk-card__header {
+  display:flex;
+  gap:14px;
+  padding:18px;
+}
+.perk-logo {
+  width:64px;
+  height:64px;
+  border-radius:16px;
+  background:#f1f5f9;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+}
+.perk-logo img {
+  width:100%;
+  height:100%;
+  object-fit:cover;
+}
+.perk-placeholder {
+  font-size:1.5rem;
+  font-weight:700;
+}
+.perk-partner {
+  margin:0;
+  font-weight:600;
+  color:#475467;
+  text-transform:uppercase;
+  letter-spacing:0.08em;
+  font-size:0.75rem;
+}
+.perk-card__header h2 {
+  margin:4px 0;
+  font-size:1.3rem;
+}
+.perk-tagline {
+  margin:0;
+  color:#0f172a;
+  font-weight:600;
+}
+.perk-meta {
+  margin:6px 0 0;
+  font-size:0.85rem;
+  color:#475467;
+}
+.perk-cover img {
+  width:100%;
+  height:200px;
+  object-fit:cover;
+}
+.perk-body {
+  padding:18px;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+.perk-offer {
+  margin:0;
+  font-size:1rem;
+  color:#0f172a;
+}
+.perk-details {
+  list-style:none;
+  margin:0;
+  padding:0;
+  color:#475467;
+  font-size:0.9rem;
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+}
+.perk-links {
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+}
+.perk-cta {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:8px 14px;
+  border-radius:10px;
+  background:var(--brand);
+  color:#fff;
+  text-decoration:none;
+  font-weight:600;
+  box-shadow:0 8px 16px rgba(58,141,222,0.35);
+}
+.perks-empty {
+  padding:40px;
+  text-align:center;
+  background:#f8fafc;
+  border-radius:18px;
+}
+.perks-empty p {
+  margin:0 0 12px;
+  color:#475467;
+}
+
+@media (max-width:640px){
+  .hero-meta{
+    width:100%;
+    justify-content:space-around;
+  }
+  .perks-filters{
+    grid-template-columns:1fr;
+  }
+  .filter-actions{
+    justify-content:flex-start;
+  }
+}
+</style>
+{% endblock %}

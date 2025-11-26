@@ -21,10 +21,16 @@ from urllib.parse import urlencode, quote_plus
 import bleach
 from bleach.linkifier import DEFAULT_CALLBACKS
 from typing import Any
+from sqlalchemy import or_
 
 from rdab.trainer_detection import extract_trainer_name
 from extensions import db
-from advent import create_advent_blueprint
+from advent import create_advent_blueprint, create_player_advent_blueprint
+from city_perks import (
+    city_perks_api_blueprint,
+    create_city_perks_admin_blueprint,
+)
+from models import CityPerk
 
 # ====== Feature toggle ======
 def _env_flag(name: str, default: bool) -> bool:
@@ -82,7 +88,7 @@ if _gate_ttl_env:
 
 # ====== Dashboard feature visibility toggles ======
 SHOW_CATALOG_APP = True
-SHOW_CITY_PERKS_APP = False
+SHOW_CITY_PERKS_APP = True
 SHOW_CITY_GUIDES_APP = False
 SHOW_LEAGUES_APP = False
 
@@ -1132,7 +1138,7 @@ import mimetypes
 import io
 import uuid
 
-def _upload_to_supabase(file_storage, folder="catalog"):
+def _upload_to_supabase(file_storage, folder="catalog", bucket="catalog"):
     """
     Uploads a file to the Supabase 'catalog' bucket and returns its public URL.
     Compatible with supabase-py >= 2.0.
@@ -1156,20 +1162,17 @@ def _upload_to_supabase(file_storage, folder="catalog"):
         file_storage.stream.seek(0)
         file_bytes = file_storage.read()
 
+        storage = supabase.storage.from_(bucket)
+
         # 🔑 Upload — v2 client just takes path + bytes
-        res = supabase.storage.from_("catalog").upload(object_key, file_bytes)
+        res = storage.upload(object_key, file_bytes)
         print("➡️ Upload result:", res)
 
         # Return public URL
-        public_url = supabase.storage.from_("catalog").get_public_url(object_key)
+        public_url = storage.get_public_url(object_key)
         print("✅ Uploaded file URL:", public_url)
         return public_url
     except Exception as e:
-        print("❌ Supabase upload failed:", e)
-        return None
-
-    except Exception as e:
-        # Supabase errors sometimes wrap useful fields on .args[0]
         err_txt = str(e)
         try:
             if hasattr(e, "args") and e.args and isinstance(e.args[0], dict):
@@ -2889,25 +2892,37 @@ from datetime import datetime
 CATALOG_IMG_DIR = os.path.join(app.root_path, "static", "catalog")
 os.makedirs(CATALOG_IMG_DIR, exist_ok=True)
 
-def _is_admin():
-    if "trainer" not in session:
-        return False
-    _, u = find_user(session["trainer"])
-    return bool(u and u.get("account_type") == "Admin")
-
-
-def get_current_admin_user():
-    """Return the logged-in admin Supabase record or None."""
+def get_current_trainer_user():
+    """Return the logged-in trainer Supabase record or None."""
     trainer = session.get("trainer")
     if not trainer:
         return None
     _, user = find_user(trainer)
+    return user
+
+
+def _is_admin():
+    return bool(get_current_admin_user())
+
+
+def get_current_admin_user():
+    """Return the logged-in admin Supabase record or None."""
+    user = get_current_trainer_user()
     if not user or user.get("account_type") != "Admin":
         return None
     return user
 
 
 app.register_blueprint(create_advent_blueprint(get_current_admin_user))
+app.register_blueprint(create_player_advent_blueprint(get_current_trainer_user))
+app.register_blueprint(
+    create_city_perks_admin_blueprint(
+        admin_required,
+        get_current_admin_user,
+        _upload_to_supabase,
+    )
+)
+app.register_blueprint(city_perks_api_blueprint)
 
 with app.app_context():
     db.create_all()
@@ -5079,6 +5094,78 @@ def calendar_view():
         login_url=url_for("login"),
         title="Meetup Calendar",
     )
+
+
+@app.route("/city-perks")
+def city_perks_page():
+    session["last_page"] = request.path
+    if "trainer" not in session:
+        flash("Please log in to explore City Perks.", "warning")
+        return redirect(url_for("home"))
+
+    def _live_query(now_utc):
+        return CityPerk.query.filter(
+            CityPerk.is_active.is_(True),
+            CityPerk.start_date <= now_utc,
+            or_(CityPerk.end_date.is_(None), CityPerk.end_date >= now_utc),
+        )
+
+    area = (request.args.get("area") or "").strip() or None
+    category = (request.args.get("category") or "").strip() or None
+    featured_raw = (request.args.get("featured") or "").strip().lower()
+    featured_only = featured_raw in {"1", "true", "yes", "on"}
+
+    now = datetime.now(timezone.utc)
+    query = _live_query(now)
+    if area:
+        query = query.filter(CityPerk.area == area)
+    if category:
+        query = query.filter(CityPerk.category == category)
+    if featured_only:
+        query = query.filter(CityPerk.is_featured.is_(True))
+
+    perks = query.order_by(
+        CityPerk.is_featured.desc(),
+        CityPerk.start_date.asc(),
+        CityPerk.name.asc(),
+    ).all()
+
+    areas = [
+        value
+        for (value,) in _live_query(now)
+        .with_entities(CityPerk.area)
+        .filter(CityPerk.area.isnot(None))
+        .distinct()
+        .order_by(CityPerk.area.asc())
+        .all()
+    ]
+    categories = [
+        value
+        for (value,) in _live_query(now)
+        .with_entities(CityPerk.category)
+        .filter(CityPerk.category.isnot(None))
+        .distinct()
+        .order_by(CityPerk.category.asc())
+        .all()
+    ]
+
+    filters_active = any([area, category, featured_only])
+
+    return render_template(
+        "city_perks.html",
+        perks=perks,
+        areas=areas,
+        categories=categories,
+        selected_area=area,
+        selected_category=category,
+        featured_only=featured_only,
+        filters_active=filters_active,
+        perks_count=len(perks),
+        featured_count=sum(1 for perk in perks if perk.is_featured),
+        show_back=False,
+        api_url=url_for("city_perks_api.list_live_city_perks"),
+    )
+
 
 @app.route("/meetups")
 def calendar_public():

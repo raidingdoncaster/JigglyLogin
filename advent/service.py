@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -14,6 +15,7 @@ from extensions import db
 from advent.models import AdventClaim
 
 DEFAULT_CONFIG_BASENAME = "advent_2025.json"
+SUPABASE_TABLE = "advent_claims"
 _CONFIG_CACHE: Dict[str, object] = {"data": None, "mtime": None, "path": None}
 
 
@@ -53,12 +55,32 @@ def load_advent_config(force_refresh: bool = False) -> Dict[int, dict]:
 
 def get_user_opened_days(user_id: int) -> List[int]:
     """Return sorted list of days the user has opened."""
-    rows: List[AdventClaim] = (
-        AdventClaim.query.filter_by(user_id=user_id)
-        .order_by(AdventClaim.day.asc())
-        .all()
-    )
-    return [row.day for row in rows]
+    client = _get_supabase_client()
+    if client:
+        try:
+            resp = (
+                client.table(SUPABASE_TABLE)
+                .select("day")
+                .eq("trainer_id", user_id)
+                .order("day", desc=False)
+                .execute()
+            )
+            data = resp.data or []
+            days = sorted(
+                {
+                    day
+                    for day in (
+                        _coerce_day(entry.get("day"))
+                        for entry in data
+                    )
+                    if day is not None
+                }
+            )
+            return days
+        except Exception as exc:  # pragma: no cover - external service dependency
+            _log_supabase_warning("fetching advent claims", exc)
+
+    return _get_user_opened_days_sql(user_id)
 
 
 def get_advent_state_for_user(user_id: int, today_day: int) -> Dict[str, Optional[int] | List[int]]:
@@ -84,24 +106,30 @@ def get_advent_state_for_user(user_id: int, today_day: int) -> Dict[str, Optiona
     }
 
 
-def open_advent_day(user_id: int, day: int) -> bool:
+def open_advent_day(user_id: int, day: int, username: Optional[str] = None) -> bool:
     """Persist the newly opened day; returns False if already claimed or invalid."""
     if not 1 <= day <= 25:
         return False
 
-    existing = AdventClaim.query.filter_by(user_id=user_id, day=day).first()
-    if existing:
-        return False
+    client = _get_supabase_client()
+    if client:
+        payload = {
+            "trainer_id": user_id,
+            "day": day,
+            "opened_at": datetime.now(timezone.utc).isoformat(),
+        }
+        if username:
+            payload["trainer_username"] = username
+        try:
+            client.table(SUPABASE_TABLE).insert(payload, returning="minimal").execute()
+            return True
+        except Exception as exc:  # pragma: no cover - external service dependency
+            if _is_supabase_conflict(exc):
+                return False
+            _log_supabase_warning("inserting advent claim", exc)
+            return False
 
-    claim = AdventClaim(user_id=user_id, day=day)
-    db.session.add(claim)
-
-    try:
-        db.session.commit()
-        return True
-    except IntegrityError:
-        db.session.rollback()
-        return False
+    return _open_advent_day_sql(user_id, day)
 
 
 def _clamp_day(day: int) -> int:
@@ -141,3 +169,60 @@ def _resolve_config_path() -> Path:
 
     checked = ", ".join(str(path) for path in seen)
     raise FileNotFoundError(f"Advent config missing. Checked: {checked}")
+
+
+def _get_supabase_client():
+    if not has_app_context():
+        return None
+    if not current_app.config.get("USE_SUPABASE"):
+        return None
+    client = current_app.config.get("SUPABASE_CLIENT")
+    return client if client else None
+
+
+def _get_user_opened_days_sql(user_id: int) -> List[int]:
+    rows: List[AdventClaim] = (
+        AdventClaim.query.filter_by(user_id=user_id)
+        .order_by(AdventClaim.day.asc())
+        .all()
+    )
+    return [row.day for row in rows]
+
+
+def _open_advent_day_sql(user_id: int, day: int) -> bool:
+    existing = AdventClaim.query.filter_by(user_id=user_id, day=day).first()
+    if existing:
+        return False
+
+    claim = AdventClaim(user_id=user_id, day=day)
+    db.session.add(claim)
+
+    try:
+        db.session.commit()
+        return True
+    except IntegrityError:
+        db.session.rollback()
+        return False
+
+
+def _coerce_day(raw_day) -> Optional[int]:
+    try:
+        value = int(raw_day)
+    except (TypeError, ValueError):
+        return None
+    if 1 <= value <= 25:
+        return value
+    return None
+
+
+def _is_supabase_conflict(exc: Exception) -> bool:
+    message = str(exc).lower()
+    return "duplicate key value" in message or "unique constraint" in message
+
+
+def _log_supabase_warning(action: str, exc: Exception) -> None:
+    if not has_app_context():
+        return
+    logger = getattr(current_app, "logger", None)
+    if logger:
+        logger.warning("Advent Supabase error while %s: %s", action, exc)

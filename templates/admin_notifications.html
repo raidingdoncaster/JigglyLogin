@@ -117,12 +117,15 @@
   </div>
 </details>
 
-<!-- Recent Notifications -->
-<section class="recent">
-  <div class="section-header">
-    <h2>🗂️ Recent Notifications</h2>
-    <div class="section-tools">
-      <input type="search" id="notificationSearch" placeholder="Search notifications…" aria-label="Search notifications">
+<!-- Notification Hub -->
+<section class="card notification-hub">
+  <div class="hub-header">
+    <div>
+      <h2>🗂️ Recent notifications</h2>
+      <p>Browse the last 100 sends, search for keywords, or filter by type.</p>
+    </div>
+    <div class="hub-toolbar">
+      <input type="search" id="notificationSearch" placeholder="Search subject or body…" aria-label="Search notifications">
       <select id="notificationSort" aria-label="Sort notifications">
         <option value="newest">Newest first</option>
         <option value="oldest">Oldest first</option>
@@ -131,114 +134,93 @@
       </select>
     </div>
   </div>
+
   <div class="category-pills" id="notificationCategories">
     <button type="button" class="pill active" data-type="all">All</button>
     {% for cat in categories %}
       <button type="button" class="pill" data-type="{{ cat.value }}">{{ cat.label }}</button>
     {% endfor %}
   </div>
-  <div class="table-scroll">
-    <table class="notif-table" id="notificationTable">
-      <thead>
-        <tr>
-          <th scope="col">Type</th>
-          <th scope="col">Audience</th>
-          <th scope="col">Sent</th>
-          <th scope="col" class="sr-only">Open</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for n in notifications %}
-          {% set row_type = (n.type or 'announcement')|lower %}
-          <tr data-id="{{ n.id }}"
-              data-type="{{ row_type }}"
-              data-audience="{{ n.audience or 'ALL' }}"
-              data-date="{{ n.sent_at or '' }}"
-              data-search="{{ (n.subject ~ ' ' ~ (n.message or ''))|striptags|lower }}"
-              tabindex="0">
-            <td>
-              <span class="type-pill">{{ n.type or 'Announcement' }}</span>
-            </td>
-            <td>
-              <div class="aud-cell">
-                <span class="aud-label">
-                  {{ 'All Trainers' if n.audience == 'ALL' else n.audience }}
-                </span>
-                <span class="sr-only">Subject: {{ n.subject }}</span>
-              </div>
-            </td>
-            <td>{{ n.sent_at|to_date }}</td>
-            <td class="open-cell">
-              <button
-                type="button"
-                class="row-open"
-                data-open-notification
-                aria-label="Open notification {{ (n.subject or 'Notification')|e }}">
-                <span>Open</span>
-                <span aria-hidden="true">↗</span>
-              </button>
-            </td>
-          </tr>
-        {% else %}
-          <tr class="empty-row">
-            <td colspan="4">No notifications yet.</td>
-          </tr>
-        {% endfor %}
-        <tr id="notificationsEmptyRow" class="empty-row is-hidden">
-          <td colspan="4">No notifications match the filters.</td>
-        </tr>
-      </tbody>
-    </table>
+
+  <div class="hub-layout">
+    <div class="notification-list" id="notificationList" role="list">
+      {% for n in notifications %}
+        {% set row_type = (n.type or 'announcement')|lower %}
+        {% set data_payload = {
+          "id": n.id,
+          "subject": n.subject,
+          "message": n.message,
+          "type": n.type,
+          "audience": n.audience,
+          "sent_at": n.sent_at
+        } %}
+        <article class="notification-card"
+                 data-id="{{ n.id }}"
+                 data-type="{{ row_type }}"
+                 data-audience="{{ n.audience or 'ALL' }}"
+                 data-date="{{ n.sent_at or '' }}"
+                 data-search="{{ (n.subject ~ ' ' ~ (n.message or ''))|striptags|lower }}"
+                 tabindex="0"
+                 role="listitem">
+          <div class="notification-card__header">
+            <span class="type-pill">{{ n.type or 'Announcement' }}</span>
+            <time datetime="{{ n.sent_at or '' }}">{{ n.sent_at|to_date }}</time>
+          </div>
+          <h3>{{ n.subject or 'Notification' }}</h3>
+          <p class="notification-card__snippet">{{ (n.message or 'No message provided.')|striptags|truncate(160, True) }}</p>
+          <p class="notification-card__audience">
+            {{ 'All Trainers' if n.audience == 'ALL' else ('To: ' ~ n.audience) }}
+          </p>
+          <template data-notification-json>{{ data_payload|tojson }}</template>
+        </article>
+      {% endfor %}
+      <p class="empty-state{% if notifications %} is-hidden{% endif %}" id="notificationListEmpty">
+        {% if notifications %}No notifications match the filters.{% else %}No notifications yet.{% endif %}
+      </p>
+    </div>
+
+    <aside class="notification-detail" id="notificationDetail">
+      <div class="detail-empty" id="notificationDetailEmpty">
+        Select a notification to preview its full message.
+      </div>
+      <div class="detail-body" id="notificationDetailBody" hidden>
+        <p class="detail-meta" id="notificationDetailMeta"></p>
+        <h3 id="notificationDetailSubject">Notification</h3>
+        <p class="detail-audience" id="notificationDetailAudience"></p>
+        <p class="detail-date" id="notificationDetailSent"></p>
+        <div class="detail-message" id="notificationDetailMessage"></div>
+
+        <form id="notificationEditForm" class="detail-form" hidden>
+          <label>
+            <span>Type</span>
+            <select id="notificationEditType">
+              {% for value, label in type_choices %}
+                <option value="{{ value }}">{{ label }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label>
+            <span>Subject</span>
+            <input type="text" id="notificationEditSubject" required>
+          </label>
+          <label>
+            <span>Message (HTML allowed)</span>
+            <textarea id="notificationEditMessage" rows="6" required></textarea>
+          </label>
+          <div class="detail-form__actions">
+            <button type="submit" class="btn primary" id="notificationSaveBtn">💾 Save changes</button>
+          </div>
+        </form>
+
+        <p class="detail-status" id="notificationDetailStatus"></p>
+        <div class="detail-actions">
+          <button type="button" class="btn secondary" id="notificationEditBtn">Edit</button>
+          <button type="button" class="btn danger" id="notificationDeleteBtn">Delete</button>
+        </div>
+      </div>
+    </aside>
   </div>
 </section>
-
-<!-- Notification Modal -->
-<div id="notificationModal" class="modal" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="notificationModalSubject">
-  <div class="modal__overlay" data-modal-close></div>
-  <div class="modal__dialog">
-    <div class="modal__header">
-      <div>
-        <h3 id="notificationModalSubject">Notification</h3>
-        <p class="modal__meta">
-          <span class="type-pill" id="notificationModalType"></span>
-          <span id="notificationModalDate"></span>
-          <span id="notificationModalAudience"></span>
-        </p>
-      </div>
-      <button type="button" class="modal__close" data-modal-close aria-label="Close">&times;</button>
-    </div>
-    <div class="modal__body">
-      <div id="notificationModalView"></div>
-      <form id="notificationEditForm" class="modal-form" hidden>
-        <label>
-          <span>Type</span>
-          <select id="notificationEditType">
-            {% for value, label in type_choices %}
-              <option value="{{ value }}">{{ label }}</option>
-            {% endfor %}
-          </select>
-        </label>
-        <label>
-          <span>Subject</span>
-          <input type="text" id="notificationEditSubject" required>
-        </label>
-        <label>
-          <span>Message (HTML allowed)</span>
-          <textarea id="notificationEditMessage" rows="6" required></textarea>
-        </label>
-        <div class="modal-form-actions">
-          <button type="submit" class="btn primary" id="notificationSaveBtn">💾 Save changes</button>
-        </div>
-      </form>
-      <p class="modal-status" id="notificationModalStatus"></p>
-    </div>
-    <div class="modal__actions">
-      <button type="button" class="btn outline" data-modal-close>Close</button>
-      <button type="button" class="btn secondary" id="notificationEditBtn">Edit</button>
-      <button type="button" class="btn danger" id="notificationDeleteBtn">Delete</button>
-    </div>
-  </div>
-</div>
 
 <style>
 .inline-toast {
@@ -253,7 +235,6 @@
 .inline-toast.is-hidden { display: none; }
 .inline-toast.is-error { background:#fef3f2; color:#b42318; box-shadow:0 8px 20px rgba(180,35,24,0.15); }
 .is-hidden { display:none !important; }
-body.modal-open { overflow:hidden; }
 
 .card {
   background:#fff;
@@ -501,28 +482,34 @@ body.modal-open { overflow:hidden; }
   cursor:not-allowed;
 }
 
-.recent { margin-top:32px; }
-.section-header {
+.notification-hub {
+  margin-top:32px;
+  display:flex;
+  flex-direction:column;
+  gap:16px;
+}
+.hub-header {
   display:flex;
   justify-content:space-between;
-  align-items:flex-end;
+  align-items:flex-start;
+  gap:16px;
   flex-wrap:wrap;
-  gap:12px;
 }
-.section-header h2 { margin:0; }
-.section-tools {
+.hub-header h2 { margin:0; }
+.hub-header p { margin:4px 0 0; color:#475467; }
+.hub-toolbar {
   display:flex;
   gap:12px;
   flex-wrap:wrap;
 }
-.section-tools input,
-.section-tools select {
+.hub-toolbar input,
+.hub-toolbar select {
   padding:8px 12px;
   border-radius:12px;
   border:1px solid #d0d5dd;
 }
 .category-pills {
-  margin:14px 0;
+  margin:4px 0 0;
   display:flex;
   flex-wrap:wrap;
   gap:8px;
@@ -540,221 +527,162 @@ body.modal-open { overflow:hidden; }
   color:#fff;
 }
 
-.table-scroll {
-  border-radius:18px;
-  overflow-x:auto;
-  overflow-y:hidden;
-  box-shadow:0 14px 30px rgba(15,23,42,0.12);
-  -webkit-overflow-scrolling:touch;
+.hub-layout {
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:18px;
 }
-.notif-table {
-  width:100%;
-  border-collapse:collapse;
-}
-.notif-table thead {
-  background:#f8fafc;
-  text-transform:uppercase;
-  font-size:0.8em;
-  letter-spacing:0.08em;
-  color:#475467;
-}
-.notif-table th,
-.notif-table td {
-  padding:14px 16px;
-  text-align:left;
-}
-.notif-table tbody tr {
-  border-top:1px solid #e4e7ec;
-  cursor:pointer;
-}
-.notif-table tbody tr:hover,
-.notif-table tbody tr:focus {
-  background:#eef2ff;
-  outline:none;
-}
-.type-pill {
-  display:inline-block;
-  padding:4px 10px;
-  border-radius:999px;
-  background:#eef2ff;
-  font-size:0.75em;
-  font-weight:700;
-  text-transform:uppercase;
-}
-.aud-cell { display:flex; flex-direction:column; }
-.aud-label { font-weight:600; }
-.open-cell { text-align:right; }
-.row-open {
-  border:none;
-  background:transparent;
-  font-weight:600;
-  color:#1d4ed8;
-  display:inline-flex;
-  align-items:center;
-  gap:6px;
-  cursor:pointer;
-  padding:6px 10px;
-  border-radius:999px;
-  transition:background .2s ease, color .2s ease;
-}
-.row-open:hover,
-.row-open:focus-visible {
-  background:rgba(37,99,235,0.08);
-  color:#1e3a8a;
-}
-.row-open span[aria-hidden="true"] { font-size:1.1em; }
-.row-open:focus-visible {
-  outline:2px solid rgba(37,99,235,0.4);
-  outline-offset:2px;
-}
-.sr-only {
-  position:absolute;
-  width:1px;
-  height:1px;
-  padding:0;
-  margin:-1px;
-  overflow:hidden;
-  clip:rect(0,0,0,0);
-  border:0;
-}
-.empty-row td {
-  text-align:center;
-  color:#94a3b8;
-}
-
-.modal {
-  position:fixed;
-  inset:0;
-  background:rgba(15,23,42,0.55);
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  padding:20px;
-  opacity:0;
-  pointer-events:none;
-  transition:opacity .2s ease;
-  z-index:1000;
-}
-.modal.is-visible {
-  opacity:1;
-  pointer-events:auto;
-}
-.modal__overlay {
-  position:absolute;
-  inset:0;
-}
-.modal__dialog {
-  position:relative;
-  background:#fff;
-  border-radius:20px;
-  max-width:640px;
-  width:100%;
-  max-height:90vh;
-  overflow:auto;
-  padding:24px;
-  box-shadow:0 30px 60px rgba(15,23,42,0.35);
-}
-.modal__header {
-  display:flex;
-  justify-content:space-between;
-  gap:12px;
-  align-items:flex-start;
-}
-.modal__header h3 { margin:0; }
-.modal__meta {
-  margin:6px 0 0;
-  display:flex;
-  gap:8px;
-  flex-wrap:wrap;
-  font-size:0.85em;
-  color:#475467;
-}
-.modal__close {
-  border:none;
-  background:#f4f4f5;
-  width:36px;
-  height:36px;
-  border-radius:50%;
-  font-size:1.2rem;
-  cursor:pointer;
-}
-.modal__body {
-  margin-top:18px;
-  line-height:1.6;
-  color:#1d2939;
-}
-.modal__body p { margin:0 0 12px; }
-.modal__body ul { margin:0 0 12px 18px; }
-.modal__body a { color:#2563eb; font-weight:600; text-decoration:underline; }
-.modal__actions {
-  display:flex;
-  justify-content:flex-end;
-  gap:10px;
-  margin-top:18px;
-  flex-wrap:wrap;
-}
-#notificationModalView {
-  word-break:break-word;
-}
-.modal-form {
+.notification-list {
   display:flex;
   flex-direction:column;
   gap:12px;
-  margin-top:16px;
+  max-height:640px;
+  overflow:auto;
+  padding-right:4px;
 }
-.modal-form label span {
+.notification-card {
+  border:1px solid #e4e7ec;
+  border-radius:16px;
+  padding:16px;
+  background:#fff;
+  box-shadow:0 10px 20px rgba(15,23,42,0.08);
+  cursor:pointer;
+  transition:transform .15s ease, border-color .15s ease;
+}
+.notification-card.is-active {
+  border-color:#3a8dde;
+  box-shadow:0 12px 28px rgba(58,141,222,0.22);
+  transform:translateY(-2px);
+}
+.notification-card:focus-visible {
+  outline:3px solid rgba(58,141,222,0.4);
+  outline-offset:3px;
+}
+.notification-card__header {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  font-size:0.85em;
+  color:#475467;
+}
+.notification-card__header time {
+  font-variant-numeric:tabular-nums;
+}
+.notification-card h3 {
+  margin:8px 0 6px;
+  font-size:1.05rem;
+}
+.notification-card__snippet {
+  margin:0 0 8px;
+  color:#475467;
+  font-size:0.9rem;
+}
+.notification-card__audience {
+  margin:0;
+  font-size:0.85rem;
+  color:#0f172a;
+  font-weight:600;
+}
+.empty-state {
+  margin:0;
+  padding:24px;
+  border:1px dashed #d0d5dd;
+  border-radius:16px;
+  text-align:center;
+  color:#475467;
+}
+
+.notification-detail {
+  border:1px solid #e4e7ec;
+  border-radius:18px;
+  padding:20px;
+  background:#f8fafc;
+  min-height:320px;
+}
+.detail-empty {
+  margin:0;
+  color:#475467;
+  font-style:italic;
+}
+.detail-body {
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+.detail-meta {
+  margin:0;
+  text-transform:uppercase;
+  letter-spacing:0.2em;
+  font-size:0.75rem;
+  color:#64748b;
+}
+.detail-audience,
+.detail-date {
+  margin:0;
+  color:#475467;
+}
+.detail-message {
+  padding:12px 0;
+  border-top:1px solid #e2e8f0;
+  border-bottom:1px solid #e2e8f0;
+  line-height:1.6;
+  color:#1d2939;
+}
+.detail-form {
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+.detail-form label span {
   font-weight:600;
   font-size:0.9em;
   color:#475467;
   display:block;
   margin-bottom:4px;
 }
-.modal-form input,
-.modal-form select,
-.modal-form textarea {
+.detail-form input,
+.detail-form select,
+.detail-form textarea {
   width:100%;
   border-radius:12px;
   border:1px solid #d0d5dd;
   padding:10px 12px;
   font-size:0.95em;
 }
-.modal-form textarea {
+.detail-form textarea {
   min-height:140px;
   resize:vertical;
 }
-.modal-form-actions {
+.detail-form__actions {
   display:flex;
   justify-content:flex-end;
 }
-.modal-status {
-  min-height:1.25em;
+.detail-status {
+  min-height:1.2em;
+  margin:0;
   font-size:0.9em;
-  margin-top:10px;
-  color:#475467;
 }
-.modal-status.success { color:#027a48; }
-.modal-status.error { color:#b42318; }
+.detail-status.success { color:#027a48; }
+.detail-status.error { color:#b42318; }
+.detail-actions {
+  display:flex;
+  gap:12px;
+  flex-wrap:wrap;
+}
 
+@media(max-width:1024px){
+  .hub-layout { grid-template-columns:repeat(1,minmax(0,1fr)); }
+  .notification-list { max-height:none; }
+}
 @media(max-width:640px){
   .form-grid { grid-template-columns:repeat(1,minmax(0,1fr)); }
   .audience-section { padding:12px; }
-  .section-header { flex-direction:column; align-items:flex-start; }
-  .section-tools { width:100%; }
-  .section-tools input,
-  .section-tools select { flex:1; }
-  .row-open {
-    background:#eef2ff;
-    width:100%;
-    justify-content:center;
-  }
-  .open-cell { text-align:center; }
-  .modal__dialog { padding:18px; }
+  .hub-header { flex-direction:column; align-items:flex-start; }
+  .hub-toolbar { width:100%; }
+  .hub-toolbar input,
+  .hub-toolbar select { flex:1; }
 }
 </style>
-
-<script id="notificationData" type="application/json">
-  {{ notifications|tojson }}
-</script>
 
 <script>
 document.addEventListener("DOMContentLoaded", () => {
@@ -771,21 +699,20 @@ document.addEventListener("DOMContentLoaded", () => {
   const groupButtons = Array.from(document.querySelectorAll("[data-select-group]"));
   const audienceCount = document.getElementById("audienceSelectedCount");
   const manualInput = document.querySelector("input[name='audience_manual']");
-  const notificationDataScript = document.getElementById("notificationData");
 
-  const notificationTable = document.getElementById("notificationTable");
-  const tableBody = notificationTable ? notificationTable.querySelector("tbody") : null;
-  const emptyRow = document.getElementById("notificationsEmptyRow");
+  const notificationList = document.getElementById("notificationList");
   const notificationSearch = document.getElementById("notificationSearch");
   const notificationSort = document.getElementById("notificationSort");
   const categoryWrap = document.getElementById("notificationCategories");
+  const emptyMessage = document.getElementById("notificationListEmpty");
 
-  const modal = document.getElementById("notificationModal");
-  const modalSubject = document.getElementById("notificationModalSubject");
-  const modalType = document.getElementById("notificationModalType");
-  const modalAudience = document.getElementById("notificationModalAudience");
-  const modalDate = document.getElementById("notificationModalDate");
-  const modalView = document.getElementById("notificationModalView");
+  const detailEmpty = document.getElementById("notificationDetailEmpty");
+  const detailBody = document.getElementById("notificationDetailBody");
+  const detailMeta = document.getElementById("notificationDetailMeta");
+  const detailSubject = document.getElementById("notificationDetailSubject");
+  const detailAudience = document.getElementById("notificationDetailAudience");
+  const detailSent = document.getElementById("notificationDetailSent");
+  const detailMessage = document.getElementById("notificationDetailMessage");
   const editForm = document.getElementById("notificationEditForm");
   const editType = document.getElementById("notificationEditType");
   const editSubject = document.getElementById("notificationEditSubject");
@@ -793,40 +720,11 @@ document.addEventListener("DOMContentLoaded", () => {
   const editBtn = document.getElementById("notificationEditBtn");
   const deleteBtn = document.getElementById("notificationDeleteBtn");
   const saveBtn = document.getElementById("notificationSaveBtn");
-  const modalStatus = document.getElementById("notificationModalStatus");
-  const modalCloseButtons = modal ? modal.querySelectorAll("[data-modal-close]") : [];
+  const detailStatus = document.getElementById("notificationDetailStatus");
 
   const filters = { search: "", category: "all", sort: "newest" };
-  const state = { current: null, activeRow: null, editing: false };
+  const state = { currentId: null, editing: false };
   const notificationStore = new Map();
-
-  const registerNotification = (notification) => {
-    if (!notification || !notification.id) return;
-    const id = String(notification.id);
-    notificationStore.set(id, notification);
-  };
-
-  const bootstrapNotifications = () => {
-    if (!notificationDataScript) return;
-    const payload = notificationDataScript.textContent || "[]";
-    try {
-      const parsed = JSON.parse(payload);
-      if (Array.isArray(parsed)) {
-        parsed.forEach((entry) => registerNotification(entry));
-      }
-    } catch (err) {
-      console.error("Failed to parse notifications payload.", err);
-    }
-  };
-
-  const getNotificationByRow = (row) => {
-    if (!row) return null;
-    const id = row.dataset.id;
-    if (!id) return null;
-    return notificationStore.get(id) || null;
-  };
-
-  bootstrapNotifications();
 
   const setAlert = (message = "", tone = "success") => {
     if (!notifAlert) return;
@@ -841,54 +739,74 @@ document.addEventListener("DOMContentLoaded", () => {
     notifAlert.classList.toggle("is-error", tone === "error");
   };
 
-  const getNotificationRows = () => {
-    if (!tableBody) return [];
-    return Array.from(tableBody.querySelectorAll("tr[data-id]"));
+  const getNotificationCards = () => {
+    if (!notificationList) return [];
+    return Array.from(notificationList.querySelectorAll(".notification-card"));
   };
 
-  const findRowById = (id) => getNotificationRows().find((row) => row.dataset.id === id) || null;
-
-  const setModalStatus = (message = "", tone = "") => {
-    if (!modalStatus) return;
-    modalStatus.textContent = message;
-    modalStatus.classList.remove("success", "error");
-    if (tone) modalStatus.classList.add(tone);
+  const registerNotification = (notification) => {
+    if (!notification || !notification.id) return;
+    notificationStore.set(String(notification.id), notification);
   };
 
-  const toggleEditMode = (editing) => {
-    state.editing = editing;
-    if (editForm) editForm.hidden = !editing;
-    if (modalView) modalView.hidden = editing;
-    if (editBtn) editBtn.textContent = editing ? "Cancel Edit" : "Edit";
-  };
-
-  const sanitizeDatasetSearch = (notification) => {
-    const div = document.createElement("div");
-    div.innerHTML = notification.message || "";
-    const text = (div.textContent || div.innerText || "").toLowerCase();
-    return `${(notification.subject || "").toLowerCase()} ${text}`;
+  const hydrateNotificationStore = () => {
+    document.querySelectorAll("[data-notification-json]").forEach((template) => {
+      const card = template.closest(".notification-card");
+      if (!card) return;
+      try {
+        const payload = JSON.parse(template.textContent || "{}");
+        registerNotification(payload);
+      } catch (err) {
+        console.error("Failed to parse notification payload", err);
+      } finally {
+        template.remove();
+      }
+    });
   };
 
   const formatTypeLabel = (value) => {
     if (!value) return "Announcement";
-    return value
-      .toString()
-      .replace(/[_-]+/g, " ")
-      .replace(/\w/g, (char) => char.toUpperCase());
-  };
-
-  const formatMessageHtml = (body) => {
-    if (!body) return "<p>No message provided.</p>";
-    if (/<[a-z][\s\S]*>/i.test(body)) return body;
-    return body.replace(/?
-/g, "<br>");
+    return value.toString().replace(/[_-]+/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
   };
 
   const formatDate = (value) => {
     if (!value) return "Unknown date";
     const parsed = new Date(value);
-    if (Number.isNaN(parsed.getTime())) return value;
-    return parsed.toLocaleString();
+    if (!Number.isNaN(parsed.getTime())) {
+      return parsed.toLocaleString();
+    }
+    return value;
+  };
+
+  const formatMessageHtml = (body) => {
+    if (!body) return "<p>No message provided.</p>";
+    if (/<[a-z][\s\S]*>/i.test(body)) return body;
+    return body.replace(/\r?\n/g, "<br>");
+  };
+
+  const extractSnippet = (body) => {
+    if (!body) return "No message provided.";
+    const div = document.createElement("div");
+    div.innerHTML = body;
+    const text = div.textContent || div.innerText || "";
+    return text.length > 160 ? `${text.slice(0, 157).trim()}…` : text;
+  };
+
+  const setDetailStatus = (message = "", tone = "") => {
+    if (!detailStatus) return;
+    detailStatus.textContent = message;
+    detailStatus.classList.remove("success", "error");
+    if (tone) detailStatus.classList.add(tone);
+  };
+
+  const toggleEditMode = (editing) => {
+    state.editing = editing;
+    if (editForm) editForm.hidden = !editing;
+    if (detailMessage) detailMessage.hidden = editing;
+    if (editBtn) {
+      editBtn.textContent = editing ? "Cancel edit" : "Edit";
+      editBtn.setAttribute("aria-pressed", editing ? "true" : "false");
+    }
   };
 
   const setActionButtonsDisabled = (disabled) => {
@@ -897,64 +815,53 @@ document.addEventListener("DOMContentLoaded", () => {
     if (deleteBtn) deleteBtn.disabled = disabled;
   };
 
-  const populateModalView = (notification) => {
-    state.current = notification;
-    if (modalSubject) modalSubject.textContent = notification.subject || "Notification";
-    if (modalType) modalType.textContent = formatTypeLabel(notification.type);
-    if (modalAudience) {
-      modalAudience.textContent = notification.audience === "ALL"
-        ? "All Trainers"
-        : `To: ${notification.audience || "Unknown"}`;
-    }
-    if (modalDate) modalDate.textContent = formatDate(notification.sent_at);
-    if (modalView) modalView.innerHTML = formatMessageHtml(notification.message);
-    if (editType) editType.value = (notification.type || "announcement").toLowerCase();
-    if (editSubject) editSubject.value = notification.subject || "";
-    if (editMessage) editMessage.value = notification.message || "";
-    toggleEditMode(false);
-    setModalStatus("");
-  };
-
-  const updateRowDataset = (row, notification) => {
-    if (!row || !notification) return;
-    registerNotification(notification);
-    row.dataset.id = notification.id || "";
-    row.dataset.type = (notification.type || "announcement").toLowerCase();
-    row.dataset.audience = notification.audience || "ALL";
-    row.dataset.date = notification.sent_at || "";
-    row.dataset.search = sanitizeDatasetSearch(notification);
-    const pill = row.querySelector(".type-pill");
+  const updateCardDom = (card, notification) => {
+    if (!card || !notification) return;
+    card.dataset.type = (notification.type || "announcement").toLowerCase();
+    card.dataset.audience = notification.audience || "ALL";
+    card.dataset.date = notification.sent_at || "";
+    const div = document.createElement("div");
+    div.innerHTML = notification.message || "";
+    const searchText = `${(notification.subject || "").toLowerCase()} ${(div.textContent || div.innerText || "").toLowerCase()}`;
+    card.dataset.search = searchText;
+    const pill = card.querySelector(".type-pill");
     if (pill) pill.textContent = formatTypeLabel(notification.type);
-    const audienceLabel = row.querySelector(".aud-label");
-    if (audienceLabel) {
-      audienceLabel.textContent = notification.audience === "ALL"
-        ? "All Trainers"
-        : (notification.audience || "Unknown");
+    const title = card.querySelector("h3");
+    if (title) title.textContent = notification.subject || "Notification";
+    const snippet = card.querySelector(".notification-card__snippet");
+    if (snippet) snippet.textContent = extractSnippet(notification.message);
+    const audienceEl = card.querySelector(".notification-card__audience");
+    if (audienceEl) {
+      audienceEl.textContent = notification.audience === "ALL" ? "All Trainers" : `To: ${notification.audience || "Unknown"}`;
     }
-    const srOnly = row.querySelector(".sr-only");
-    if (srOnly) {
-      srOnly.textContent = `Subject: ${notification.subject || "Notification"}`;
-    }
-  };
-
-  const toggleModal = (show) => {
-    if (!modal) return;
-    modal.classList.toggle("is-visible", show);
-    modal.setAttribute("aria-hidden", String(!show));
-    document.body.classList.toggle("modal-open", show);
-    if (!show) {
-      state.activeRow = null;
-      state.current = null;
-      toggleEditMode(false);
-      if (editForm) editForm.reset();
-      setModalStatus("");
+    const time = card.querySelector("time");
+    if (time) {
+      time.textContent = formatDate(notification.sent_at);
+      time.dateTime = notification.sent_at || "";
     }
   };
 
-  const sortRows = () => {
-    if (!tableBody) return;
-    const rows = getNotificationRows();
-    rows.sort((a, b) => {
+  const updateEmptyState = () => {
+    if (!emptyMessage) return;
+    const cards = getNotificationCards();
+    const visible = cards.some((card) => !card.hidden);
+    if (!cards.length) {
+      emptyMessage.textContent = "No notifications yet.";
+      emptyMessage.classList.remove("is-hidden");
+      return;
+    }
+    if (!visible) {
+      emptyMessage.textContent = "No notifications match the filters.";
+      emptyMessage.classList.remove("is-hidden");
+    } else {
+      emptyMessage.classList.add("is-hidden");
+    }
+  };
+
+  const sortCards = () => {
+    if (!notificationList) return;
+    const cards = getNotificationCards();
+    const sorted = [...cards].sort((a, b) => {
       switch (filters.sort) {
         case "oldest":
           return Date.parse(a.dataset.date || "0") - Date.parse(b.dataset.date || "0");
@@ -967,25 +874,189 @@ document.addEventListener("DOMContentLoaded", () => {
           return Date.parse(b.dataset.date || "0") - Date.parse(a.dataset.date || "0");
       }
     });
-    rows.forEach((row) => tableBody.insertBefore(row, emptyRow || null));
+    const referenceNode = (emptyMessage && notificationList.contains(emptyMessage)) ? emptyMessage : null;
+    sorted.forEach((card) => notificationList.insertBefore(card, referenceNode));
   };
 
   const applyFilters = () => {
-    sortRows();
-    const rows = getNotificationRows();
-    let visible = 0;
-    rows.forEach((row) => {
-      const matchesCategory = filters.category === "all" || row.dataset.type === filters.category;
-      const haystack = `${row.dataset.search || ""} ${(row.dataset.audience || "").toLowerCase()}`;
+    const cards = getNotificationCards();
+    cards.forEach((card) => {
+      const matchesCategory = filters.category === "all" || card.dataset.type === filters.category;
+      const haystack = `${card.dataset.search || ""} ${(card.dataset.audience || "").toLowerCase()}`;
       const matchesSearch = !filters.search || haystack.includes(filters.search);
-      const show = matchesCategory && matchesSearch;
-      row.hidden = !show;
-      if (show) visible += 1;
+      card.hidden = !(matchesCategory && matchesSearch);
     });
-    if (emptyRow) {
-      emptyRow.classList.toggle("is-hidden", visible !== 0);
+    sortCards();
+    updateEmptyState();
+  };
+
+  const populateDetail = (notification) => {
+    if (!notification) return;
+    detailEmpty.hidden = true;
+    detailBody.hidden = false;
+    if (detailMeta) detailMeta.textContent = formatTypeLabel(notification.type);
+    if (detailSubject) detailSubject.textContent = notification.subject || "Notification";
+    if (detailAudience) {
+      detailAudience.textContent = notification.audience === "ALL" ? "All Trainers" : `To: ${notification.audience || "Unknown"}`;
+    }
+    if (detailSent) detailSent.textContent = formatDate(notification.sent_at);
+    if (detailMessage) {
+      detailMessage.innerHTML = formatMessageHtml(notification.message);
+      detailMessage.hidden = state.editing;
+    }
+    if (editType) editType.value = (notification.type || "announcement").toLowerCase();
+    if (editSubject) editSubject.value = notification.subject || "";
+    if (editMessage) editMessage.value = notification.message || "";
+    setDetailStatus("");
+  };
+
+  const activateCard = (card) => {
+    if (!card) return;
+    const id = card.dataset.id;
+    if (!id) return;
+    const notification = notificationStore.get(id);
+    if (!notification) {
+      setAlert("Unable to load notification. Please refresh.", "error");
+      return;
+    }
+    state.currentId = id;
+    getNotificationCards().forEach((item) => item.classList.toggle("is-active", item === card));
+    populateDetail(notification);
+    toggleEditMode(false);
+  };
+
+  const initSelection = () => {
+    const first = getNotificationCards().find((card) => !card.hidden);
+    if (first) {
+      activateCard(first);
+    } else {
+      state.currentId = null;
+      detailBody.hidden = true;
+      detailEmpty.hidden = false;
     }
   };
+
+  hydrateNotificationStore();
+  updateEmptyState();
+  initSelection();
+
+  if (notificationList) {
+    notificationList.addEventListener("click", (event) => {
+      const card = event.target.closest(".notification-card");
+      if (!card) return;
+      activateCard(card);
+    });
+    notificationList.addEventListener("keydown", (event) => {
+      if (!["Enter", " "].includes(event.key)) return;
+      const card = event.target.closest(".notification-card");
+      if (!card) return;
+      event.preventDefault();
+      activateCard(card);
+    });
+  }
+
+  if (notificationSearch) {
+    notificationSearch.addEventListener("input", () => {
+      filters.search = notificationSearch.value.trim().toLowerCase();
+      applyFilters();
+      initSelection();
+    });
+  }
+
+  if (notificationSort) {
+    notificationSort.addEventListener("change", () => {
+      filters.sort = notificationSort.value;
+      applyFilters();
+    });
+  }
+
+  if (categoryWrap) {
+    categoryWrap.addEventListener("click", (event) => {
+      const button = event.target.closest(".pill[data-type]");
+      if (!button) return;
+      filters.category = button.dataset.type || "all";
+      categoryWrap.querySelectorAll(".pill").forEach((pill) => pill.classList.toggle("active", pill === button));
+      applyFilters();
+      initSelection();
+    });
+  }
+
+  if (editBtn) {
+    editBtn.addEventListener("click", () => {
+      if (!state.currentId) return;
+      toggleEditMode(!state.editing);
+      if (state.editing && editSubject) editSubject.focus();
+    });
+  }
+
+  if (editForm) {
+    editForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      if (!state.currentId) return;
+      const subject = editSubject.value.trim();
+      const message = editMessage.value.trim();
+      if (!subject || !message) {
+        setDetailStatus("Subject and message are required.", "error");
+        return;
+      }
+      setDetailStatus("Saving…");
+      setActionButtonsDisabled(true);
+      try {
+        const response = await fetch(`/admin/notifications/${state.currentId}/update`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Accept: "application/json" },
+          body: JSON.stringify({ subject, message, type: editType.value })
+        });
+        const payload = await response.json();
+        if (!response.ok || !payload.success) {
+          throw new Error(payload.error || "Failed to update notification.");
+        }
+        const updated = payload.notification;
+        registerNotification(updated);
+        const card = getNotificationCards().find((item) => item.dataset.id === String(updated.id));
+        if (card) updateCardDom(card, updated);
+        populateDetail(updated);
+        setDetailStatus("Notification updated.", "success");
+        setAlert("Notification updated.", "success");
+        applyFilters();
+      } catch (err) {
+        setDetailStatus(err.message || "Failed to update notification.", "error");
+      } finally {
+        setActionButtonsDisabled(false);
+      }
+    });
+  }
+
+  if (deleteBtn) {
+    deleteBtn.addEventListener("click", async () => {
+      if (!state.currentId) return;
+      if (!confirm("Delete this notification?")) return;
+      setDetailStatus("Deleting…");
+      setActionButtonsDisabled(true);
+      try {
+        const response = await fetch(`/admin/notifications/${state.currentId}/delete`, {
+          method: "POST",
+          headers: { Accept: "application/json" }
+        });
+        const payload = await response.json();
+        if (!response.ok || !payload.success) {
+          throw new Error(payload.error || "Failed to delete notification.");
+        }
+        notificationStore.delete(state.currentId);
+        const card = getNotificationCards().find((item) => item.dataset.id === state.currentId);
+        if (card) card.remove();
+        setDetailStatus("Notification deleted.", "success");
+        setAlert("Notification deleted.", "success");
+        state.currentId = null;
+        updateEmptyState();
+        initSelection();
+      } catch (err) {
+        setDetailStatus(err.message || "Failed to delete notification.", "error");
+      } finally {
+        setActionButtonsDisabled(false);
+      }
+    });
+  }
 
   const getAudienceMode = () => {
     const checked = audienceRadios.find((radio) => radio.checked);
@@ -1084,9 +1155,7 @@ document.addEventListener("DOMContentLoaded", () => {
         insertText = `<em>${selected || "Italic text"}</em>`;
         break;
       case "ul":
-        insertText = `<ul>
-<li>${selected || "List item"}</li>
-</ul>`;
+        insertText = `<ul>\n<li>${selected || "List item"}</li>\n</ul>`;
         break;
       case "a": {
         const url = prompt("Enter URL", "https://");
@@ -1113,167 +1182,6 @@ document.addEventListener("DOMContentLoaded", () => {
       wrapSelection(btn.dataset.format);
     });
   }
-
-  if (notificationSearch) {
-    notificationSearch.addEventListener("input", () => {
-      filters.search = notificationSearch.value.trim().toLowerCase();
-      applyFilters();
-    });
-  }
-
-  if (notificationSort) {
-    notificationSort.addEventListener("change", () => {
-      filters.sort = notificationSort.value;
-      applyFilters();
-    });
-  }
-
-  if (categoryWrap) {
-    categoryWrap.addEventListener("click", (event) => {
-      const button = event.target.closest(".pill[data-type]");
-      if (!button) return;
-      filters.category = button.dataset.type || "all";
-      categoryWrap.querySelectorAll(".pill").forEach((pill) => pill.classList.toggle("active", pill === button));
-      applyFilters();
-    });
-  }
-
-  applyFilters();
-
-  const openModal = (row, payload) => {
-    state.activeRow = row;
-    populateModalView(payload);
-    toggleModal(true);
-  };
-
-  if (notificationTable) {
-    notificationTable.addEventListener("click", (event) => {
-      const row = event.target.closest("tr[data-id]");
-      if (!row) return;
-      const payload = getNotificationByRow(row);
-      if (payload) {
-        openModal(row, payload);
-      } else {
-        setAlert("Unable to load notification. Please refresh.", "error");
-      }
-    });
-    notificationTable.addEventListener("keydown", (event) => {
-      if (!["Enter", " "].includes(event.key)) return;
-      const row = event.target.closest("tr[data-id]");
-      if (!row) return;
-      event.preventDefault();
-      const payload = getNotificationByRow(row);
-      if (payload) {
-        openModal(row, payload);
-      } else {
-        setAlert("Unable to load notification. Please refresh.", "error");
-      }
-    });
-    notificationTable.querySelectorAll("[data-open-notification]").forEach((button) => {
-      button.addEventListener("click", (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        const row = button.closest("tr[data-id]");
-        if (!row) return;
-        const payload = getNotificationByRow(row);
-        if (payload) {
-          openModal(row, payload);
-        } else {
-          setAlert("Unable to load notification. Please refresh.", "error");
-        }
-      });
-    });
-  }
-
-  if (editBtn) {
-    editBtn.addEventListener("click", () => {
-      if (!state.current) return;
-      toggleEditMode(!state.editing);
-      if (state.editing && editSubject) editSubject.focus();
-    });
-  }
-
-  if (editForm) {
-    editForm.addEventListener("submit", async (event) => {
-      event.preventDefault();
-      if (!state.current) return;
-      const subject = editSubject.value.trim();
-      const message = editMessage.value.trim();
-      if (!subject || !message) {
-        setModalStatus("Subject and message are required.", "error");
-        return;
-      }
-      setModalStatus("Saving…");
-      setActionButtonsDisabled(true);
-      try {
-        const response = await fetch(`/admin/notifications/${state.current.id}/update`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Accept: "application/json" },
-          body: JSON.stringify({ subject, message, type: editType.value }),
-        });
-        const payload = await response.json();
-        if (!response.ok || !payload.success) {
-          throw new Error(payload.error || "Failed to update notification.");
-        }
-        const updated = payload.notification;
-        state.current = updated;
-        state.activeRow = state.activeRow || findRowById(updated.id);
-        if (state.activeRow) updateRowDataset(state.activeRow, updated);
-        populateModalView(updated);
-        setModalStatus("Notification updated.", "success");
-        setAlert("Notification updated.", "success");
-        applyFilters();
-      } catch (err) {
-        setModalStatus(err.message || "Failed to update notification.", "error");
-      } finally {
-        setActionButtonsDisabled(false);
-      }
-    });
-  }
-
-  if (deleteBtn) {
-    deleteBtn.addEventListener("click", async () => {
-      if (!state.current || !state.current.id) return;
-      if (!confirm("Delete this notification?")) return;
-      setModalStatus("Deleting…");
-      setActionButtonsDisabled(true);
-      try {
-        const response = await fetch(`/admin/notifications/${state.current.id}/delete`, {
-          method: "POST",
-          headers: { Accept: "application/json" },
-        });
-        const payload = await response.json();
-        if (!response.ok || !payload.success) {
-          throw new Error(payload.error || "Failed to delete notification.");
-        }
-        const row = state.activeRow || findRowById(state.current.id);
-        if (row) row.remove();
-        if (state.current && state.current.id) {
-          notificationStore.delete(String(state.current.id));
-        }
-        toggleModal(false);
-        setAlert("Notification deleted.", "success");
-        applyFilters();
-      } catch (err) {
-        setModalStatus(err.message || "Failed to delete notification.", "error");
-        setActionButtonsDisabled(false);
-      }
-    });
-  }
-
-  modalCloseButtons.forEach((btn) => btn.addEventListener("click", () => toggleModal(false)));
-  if (modal) {
-    modal.addEventListener("click", (event) => {
-      if (event.target.classList.contains("modal__overlay")) {
-        toggleModal(false);
-      }
-    });
-  }
-  document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") {
-      toggleModal(false);
-    }
-  });
 });
 </script>
 

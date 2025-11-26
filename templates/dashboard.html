@@ -114,10 +114,10 @@
       </a>
     {% endif %}
     {% if show_city_perks_app %}
-      <div class="explore-card" onclick="alert('City Perks are Under Construction')">
+      <a class="explore-card" href="{{ url_for('city_perks_page') }}">
         <img src="{{ url_for('static', filename='icons/perks-app.png') }}" alt="City Perks">
         <span>City Perks</span>
-      </div>
+      </a>
     {% endif %}
     {% if show_city_guides_app %}
       <div class="explore-card" onclick="alert('City Guides are Under Construction')">

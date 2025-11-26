@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Callable, Optional, Union
 
-from flask import Blueprint, flash, jsonify, redirect, render_template, request, url_for
+from flask import Blueprint, flash, jsonify, redirect, render_template, request, session, url_for
 
 from advent.service import (
     get_advent_state_for_user,
@@ -19,14 +19,74 @@ AdminProvider = Callable[[], Optional[dict]]
 def create_advent_blueprint(current_admin_provider: AdminProvider) -> Blueprint:
     """Factory so the main app can inject its session-based admin lookup."""
 
-    bp = Blueprint("admin_advent", __name__, url_prefix="/admin")
+    return _create_shared_advent_blueprint(
+        blueprint_name="admin_advent",
+        url_prefix="/admin",
+        template_name="advent/calendar.html",
+        current_user_provider=current_admin_provider,
+        unauthorized_message="Admin access required to test the Advent Calendar.",
+        unauthorized_redirect_endpoint="admin_login",
+        unauthorized_status_code=403,
+        store_last_page=False,
+        day_override_enabled=True,
+        missing_id_load_message="Admin user is missing an ID — cannot load Advent state.",
+        missing_id_open_message="Admin user is missing an ID — cannot open Advent day.",
+        dashboard_endpoint="admin_dashboard",
+        success_flash_template="Day {day} unlocked!",
+    )
 
-    def _require_admin() -> Union[dict, object]:
-        user = current_admin_provider()
+
+def create_player_advent_blueprint(current_trainer_provider: AdminProvider) -> Blueprint:
+    """Expose the Advent calendar to logged-in trainers."""
+
+    return _create_shared_advent_blueprint(
+        blueprint_name="player_advent",
+        url_prefix=None,
+        template_name="advent/calendar.html",
+        current_user_provider=current_trainer_provider,
+        unauthorized_message="Please log in to open your Advent Calendar.",
+        unauthorized_redirect_endpoint="login",
+        unauthorized_status_code=401,
+        store_last_page=True,
+        day_override_enabled=False,
+        missing_id_load_message="Trainer account is missing an ID — cannot load Advent state.",
+        missing_id_open_message="Trainer account is missing an ID — cannot open Advent day.",
+        dashboard_endpoint="dashboard",
+        success_flash_template=None,
+    )
+
+
+def _create_shared_advent_blueprint(
+    *,
+    blueprint_name: str,
+    url_prefix: str,
+    template_name: str,
+    current_user_provider: AdminProvider,
+    unauthorized_message: str,
+    unauthorized_redirect_endpoint: str,
+    unauthorized_status_code: int,
+    store_last_page: bool,
+    day_override_enabled: bool,
+    missing_id_load_message: str,
+    missing_id_open_message: str,
+    dashboard_endpoint: str,
+    success_flash_template: Optional[str],
+) -> Blueprint:
+    bp = Blueprint(blueprint_name, __name__, url_prefix=url_prefix)
+
+    def _require_user(json_mode: bool) -> Union[dict, object]:
+        user = current_user_provider()
         if user:
             return user
-        flash("Admin access required to test the Advent Calendar.", "error")
-        return redirect(url_for("admin_login"))
+        if json_mode:
+            return (
+                jsonify({"status": "error", "reason": unauthorized_message}),
+                unauthorized_status_code,
+            )
+        if store_last_page:
+            session["last_page"] = request.path
+        flash(unauthorized_message, "error")
+        return redirect(url_for(unauthorized_redirect_endpoint))
 
     def _resolve_day(raw_value: Optional[str]) -> tuple[int, Optional[str]]:
         if raw_value is None or raw_value == "":
@@ -53,35 +113,39 @@ def create_advent_blueprint(current_admin_provider: AdminProvider) -> Blueprint:
 
     @bp.get("/advent")
     def view_calendar():
-        admin_user = _require_admin()
-        if not isinstance(admin_user, dict):
-            return admin_user
+        user = _require_user(json_mode=False)
+        if not isinstance(user, dict):
+            return user
 
-        day_override = request.args.get("day_override")
-        today_day, day_error = _resolve_day(day_override)
+        day_override_raw = request.args.get("day_override") if day_override_enabled else None
+        today_day, day_error = (
+            _resolve_day(day_override_raw) if day_override_enabled else (_default_day(), None)
+        )
         if day_error:
             flash(day_error, "warning")
-            day_override = None
+            day_override_raw = None
 
-        user_id = _extract_user_id(admin_user)
+        user_id = _extract_user_id(user)
         if not user_id:
-            flash("Admin user is missing an ID — cannot load Advent state.", "error")
-            return redirect(url_for("admin_dashboard"))
+            flash(missing_id_load_message, "error")
+            return redirect(url_for(dashboard_endpoint))
 
         try:
             config = load_advent_config()
         except FileNotFoundError as exc:
             flash(str(exc), "error")
-            return redirect(url_for("admin_dashboard"))
+            return redirect(url_for(dashboard_endpoint))
 
         state = get_advent_state_for_user(user_id, today_day)
 
         return render_template(
-            "admin/advent_calendar.html",
+            template_name,
             config=config,
             effective_day=today_day,
-            day_override=day_override,
+            day_override=day_override_raw if day_override_enabled else None,
             state=state,
+            admin_mode=day_override_enabled,
+            open_endpoint=f"{blueprint_name}.open_day",
         )
 
     def _wants_json() -> bool:
@@ -93,24 +157,29 @@ def create_advent_blueprint(current_admin_provider: AdminProvider) -> Blueprint:
 
     @bp.post("/advent/open/<int:day>")
     def open_day(day: int):
-        admin_user = _require_admin()
-        if not isinstance(admin_user, dict):
-            return admin_user
-
         json_mode = _wants_json()
-        raw_override = request.form.get("day_override") or request.args.get("day_override")
-        today_day, day_error = _resolve_day(raw_override)
+        user = _require_user(json_mode=json_mode)
+        if not isinstance(user, dict):
+            return user
+
+        raw_override = (
+            request.form.get("day_override") or request.args.get("day_override")
+            if day_override_enabled
+            else None
+        )
+        today_day, day_error = (
+            _resolve_day(raw_override) if day_override_enabled else (_default_day(), None)
+        )
         if day_error:
             flash(day_error, "warning")
             raw_override = None
 
-        user_id = _extract_user_id(admin_user)
+        user_id = _extract_user_id(user)
         if not user_id:
-            msg = "Admin user is missing an ID — cannot open Advent day."
             if json_mode:
-                return jsonify({"status": "error", "reason": msg}), 403
-            flash(msg, "error")
-            return redirect(url_for("admin_advent.view_calendar"))
+                return jsonify({"status": "error", "reason": missing_id_open_message}), 403
+            flash(missing_id_open_message, "error")
+            return redirect(url_for(f".view_calendar"))
 
         try:
             config = load_advent_config()
@@ -122,6 +191,7 @@ def create_advent_blueprint(current_admin_provider: AdminProvider) -> Blueprint:
 
         state = get_advent_state_for_user(user_id, today_day)
         openable_day = state.get("openable_day")
+        trainer_username = user.get("trainer_username") if isinstance(user, dict) else None
 
         if openable_day != day:
             msg = "You can only open the next available Advent day."
@@ -130,7 +200,7 @@ def create_advent_blueprint(current_admin_provider: AdminProvider) -> Blueprint:
             flash(msg, "error")
             return _redirect_back(raw_override)
 
-        if open_advent_day(user_id, day):
+        if open_advent_day(user_id, day, trainer_username):
             state = get_advent_state_for_user(user_id, today_day)
             payload = {
                 "status": "ok",
@@ -141,7 +211,8 @@ def create_advent_blueprint(current_admin_provider: AdminProvider) -> Blueprint:
             }
             if json_mode:
                 return jsonify(payload)
-            flash(f"Day {day} unlocked!", "success")
+            if success_flash_template:
+                flash(success_flash_template.format(day=day), "success")
         else:
             msg = "Day was already opened or could not be saved."
             if json_mode:
@@ -151,8 +222,8 @@ def create_advent_blueprint(current_admin_provider: AdminProvider) -> Blueprint:
         return _redirect_back(raw_override)
 
     def _redirect_back(day_override: Optional[str]):
-        target = url_for("admin_advent.view_calendar")
-        if day_override:
+        target = url_for(".view_calendar")
+        if day_override and day_override_enabled:
             target = f"{target}?day_override={day_override}"
         return redirect(target)
 
