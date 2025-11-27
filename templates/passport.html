@@ -7,14 +7,24 @@
 {% block content %}
 
 <!-- Passport Container -->
-<div class="passport-container passport-theme passport-theme--{{ passport_theme }}" data-passport-theme="{{ passport_theme }}">
+<div class="passport-container passport-theme passport-theme--{{ passport_theme }}"
+     data-passport-theme="{{ passport_theme }}"
+     style="--passport-team-glow: {{ passport_theme_data.glow or 'transparent' }};">
   <div class="passport-content">
+  
+  {% if passport_theme_data.icon %}
+    <div class="passport-team-badge">
+      <span class="passport-team-badge__glow"></span>
+      <img src="{{ url_for('static', filename=passport_theme_data.icon) }}"
+           alt="{{ passport_theme_data.label }} emblem"
+           class="passport-team-badge__icon">
+    </div>
+  {% endif %}
   
   <!-- Passport Header -->
   <div class="passport-header">
     <div class="passport-header__top">
       <h2>🎟️ Passport Progress</h2>
-      <span class="passport-theme-pill">{{ passport_theme_data.label }}</span>
     </div>
     <p>Your digital passport tracks your stamps and meet-ups.</p>
   </div>
@@ -50,6 +60,15 @@
 
   <!-- History Button -->
   <a href="{{ url_for('meetup_history') }}" class="btn btn-history">📜 View Meet-up History</a>
+
+  {% if passport_theme_data.flag and passport_theme_data.summary %}
+    <div class="passport-team-highlight">
+      <img src="{{ url_for('static', filename=passport_theme_data.flag) }}"
+           alt="{{ passport_theme_data.label }} highlight"
+           class="passport-team-highlight__flag">
+      <p class="passport-team-highlight__copy">{{ passport_theme_data.summary }}</p>
+    </div>
+  {% endif %}
 
   <!-- Passport Grid -->
   {% if passports and passports|length > 0 %}
@@ -232,9 +251,6 @@
   --passport-modal-close-bg: rgba(15,23,42,0.9);
   --passport-modal-close-color: #f8fafc;
   --passport-modal-close-hover-bg: rgba(59,130,246,0.95);
-  --passport-theme-pill-bg: rgba(15,23,42,0.7);
-  --passport-theme-pill-color: #bfdbfe;
-  --passport-theme-pill-border: rgba(148,163,184,0.3);
   --passport-info-modal-backdrop: rgba(15,23,42,0.75);
   --passport-info-modal-bg: #0f172a;
   --passport-info-modal-color: #e2e8f0;
@@ -246,7 +262,6 @@
 }
 
 .passport-theme--passport_light {
-  --passport-bg-image: linear-gradient(135deg, #fff8ec, #fce7d2, #e0f2ff);
   --passport-overlay: linear-gradient(180deg, rgba(255,255,255,0.85) 0%, rgba(255,255,255,0.6) 100%);
   --passport-container-shadow: 0 24px 60px rgba(15,23,42,0.12);
   --passport-content-color: #0f172a;
@@ -292,9 +307,6 @@
   --passport-modal-close-bg: rgba(226,232,240,0.9);
   --passport-modal-close-color: #0f172a;
   --passport-modal-close-hover-bg: #2563eb;
-  --passport-theme-pill-bg: rgba(255,255,255,0.85);
-  --passport-theme-pill-color: #0f172a;
-  --passport-theme-pill-border: rgba(148,163,184,0.6);
   --passport-info-modal-backdrop: rgba(15,23,42,0.55);
   --passport-info-modal-bg: #ffffff;
   --passport-info-modal-color: #0f172a;
@@ -306,7 +318,6 @@
 }
 
 .passport-theme--team_valor {
-  --passport-bg-image: linear-gradient(130deg, #2b0505, #5b0b0b, #b91c1c);
   --passport-overlay: linear-gradient(180deg, rgba(18,3,3,0.7) 0%, rgba(18,3,3,0.85) 100%);
   --passport-container-shadow: 0 24px 60px rgba(63,8,8,0.35);
   --passport-content-color: #ffe4e6;
@@ -352,9 +363,6 @@
   --passport-modal-close-bg: rgba(63,8,8,0.9);
   --passport-modal-close-color: #ffe4e6;
   --passport-modal-close-hover-bg: #fb7185;
-  --passport-theme-pill-bg: rgba(127,29,29,0.85);
-  --passport-theme-pill-color: #ffe4e6;
-  --passport-theme-pill-border: rgba(251,113,133,0.35);
   --passport-info-modal-backdrop: rgba(36,5,5,0.8);
   --passport-info-modal-bg: #2b0505;
   --passport-info-modal-color: #ffe4e6;
@@ -366,7 +374,6 @@
 }
 
 .passport-theme--team_mystic {
-  --passport-bg-image: linear-gradient(125deg, #0b1a3c, #102a72, #2563eb, #67b3ff);
   --passport-overlay: linear-gradient(180deg, rgba(3,10,32,0.55) 0%, rgba(3,10,32,0.85) 100%);
   --passport-container-shadow: 0 24px 60px rgba(11,26,60,0.3);
   --passport-content-color: #e0f2ff;
@@ -412,9 +419,6 @@
   --passport-modal-close-bg: rgba(11,26,60,0.9);
   --passport-modal-close-color: #e0f2ff;
   --passport-modal-close-hover-bg: #3b82f6;
-  --passport-theme-pill-bg: rgba(30,64,175,0.75);
-  --passport-theme-pill-color: #dbeafe;
-  --passport-theme-pill-border: rgba(96,165,250,0.45);
   --passport-info-modal-backdrop: rgba(6,13,36,0.85);
   --passport-info-modal-bg: #0f172a;
   --passport-info-modal-color: #e0f2ff;
@@ -426,7 +430,6 @@
 }
 
 .passport-theme--team_instinct {
-  --passport-bg-image: linear-gradient(120deg, #2b1a04, #5f370e, #facc15, #fef08a);
   --passport-overlay: linear-gradient(180deg, rgba(24,14,2,0.7) 0%, rgba(24,14,2,0.85) 100%);
   --passport-container-shadow: 0 24px 60px rgba(91,54,7,0.35);
   --passport-content-color: #fff8e1;
@@ -472,9 +475,6 @@
   --passport-modal-close-bg: rgba(63,35,3,0.9);
   --passport-modal-close-color: #fff8e1;
   --passport-modal-close-hover-bg: #fbbf24;
-  --passport-theme-pill-bg: rgba(120,53,15,0.85);
-  --passport-theme-pill-color: #fde68a;
-  --passport-theme-pill-border: rgba(253,224,71,0.4);
   --passport-info-modal-backdrop: rgba(32,19,3,0.85);
   --passport-info-modal-bg: #2b1a04;
   --passport-info-modal-color: #fff8e1;
@@ -541,21 +541,61 @@
   font-size:0.95em;
   color:var(--passport-subtext-color);
 }
-.passport-theme-pill {
-  display:inline-flex;
+.passport-team-badge {
+  position:relative;
+  width:140px;
+  height:140px;
+  margin:-10px auto 4px;
+  display:flex;
   align-items:center;
-  gap:6px;
-  padding:4px 12px;
-  border-radius:999px;
-  font-size:0.75em;
-  font-weight:600;
-  letter-spacing:0.08em;
-  text-transform:uppercase;
-  background:var(--passport-theme-pill-bg);
-  color:var(--passport-theme-pill-color);
-  border:1px solid var(--passport-theme-pill-border);
+  justify-content:center;
 }
-
+.passport-team-badge__glow {
+  position:absolute;
+  inset:0;
+  border-radius:50%;
+  background:radial-gradient(circle, var(--passport-team-glow, transparent) 0%, transparent 70%);
+  filter:blur(10px);
+  animation:passportTeamGlow 4.5s ease-in-out infinite;
+  opacity:0.85;
+}
+.passport-team-badge__icon {
+  position:relative;
+  width:88px;
+  height:88px;
+  object-fit:contain;
+  z-index:1;
+  filter:drop-shadow(0 8px 18px rgba(0,0,0,0.35));
+}
+@keyframes passportTeamGlow {
+  0%, 100% { transform:scale(0.92); opacity:0.75; }
+  50% { transform:scale(1.05); opacity:1; }
+}
+.passport-team-highlight {
+  display:flex;
+  align-items:center;
+  gap:16px;
+  margin:12px auto 4px;
+  padding:14px 18px;
+  border-radius:20px;
+  background:var(--passport-panel-bg);
+  border:1px solid var(--passport-panel-border);
+  box-shadow:var(--passport-panel-shadow);
+  text-align:left;
+  max-width:720px;
+}
+.passport-team-highlight__flag {
+  width:96px;
+  height:auto;
+  border-radius:12px;
+  box-shadow:0 10px 24px rgba(0,0,0,0.25);
+}
+.passport-team-highlight__copy {
+  margin:0;
+  font-size:0.95em;
+  line-height:1.5;
+  color:var(--passport-content-color);
+}
 /* Stats Section */
 .passport-stats {
   display:grid;
@@ -806,28 +846,28 @@
   align-items:center;
   justify-content:center;
   padding:20px;
-  background:var(--passport-info-modal-backdrop);
+  background:var(--passport-info-modal-backdrop, rgba(15,23,42,0.75));
   z-index:999;
 }
 .stat-info-modal[hidden] {
   display:none;
 }
 .stat-info-modal-content {
-  background:var(--passport-info-modal-bg);
-  color:var(--passport-info-modal-color);
+  background:var(--passport-info-modal-bg, #0f172a);
+  color:var(--passport-info-modal-color, #e2e8f0);
   border-radius:18px;
   width:100%;
   max-width:360px;
   padding:20px 20px 18px;
   box-shadow:0 24px 50px rgba(0,0,0,0.35);
   text-align:left;
-  border:1px solid var(--passport-info-modal-border);
+  border:1px solid var(--passport-info-modal-border, rgba(148,163,184,0.28));
   position:relative;
 }
 .stat-info-modal-content h5 {
   margin:0 0 12px;
   font-size:1.05em;
-  color:var(--passport-info-modal-heading);
+  color:var(--passport-info-modal-heading, #bfdbfe);
 }
 .stat-info-modal-content p {
   margin:0 0 10px;
@@ -842,8 +882,8 @@
   top:10px;
   right:10px;
   border:none;
-  background:var(--passport-info-modal-close-bg);
-  color:var(--passport-info-modal-close-color);
+  background:var(--passport-info-modal-close-bg, rgba(30,41,59,0.9));
+  color:var(--passport-info-modal-close-color, #f8fafc);
   border-radius:999px;
   width:28px;
   height:28px;
@@ -855,10 +895,10 @@
 }
 .stat-info-close:hover,
 .stat-info-close:focus-visible {
-  background:var(--passport-info-modal-close-hover-bg);
+  background:var(--passport-info-modal-close-hover-bg, rgba(59,130,246,0.95));
 }
 .stat-info-close:focus-visible {
-  outline:2px solid var(--passport-outline-color);
+  outline:2px solid var(--passport-outline-color, rgba(191,219,254,0.9));
   outline-offset:3px;
 }
 body.stat-info-modal-open {
@@ -1000,7 +1040,9 @@ button.stamp-slot:focus-visible {
 .stamp-detail-modal {
   position:fixed;
   inset:0;
-  background:var(--passport-stamp-modal-backdrop);
+  background:var(--passport-stamp-modal-backdrop, rgba(4,12,24,0.82));
+  backdrop-filter:blur(6px);
+  -webkit-backdrop-filter:blur(6px);
   display:flex;
   align-items:center;
   justify-content:center;
@@ -1011,14 +1053,14 @@ button.stamp-slot:focus-visible {
   display:none;
 }
 .stamp-detail-modal__dialog {
-  background:var(--passport-modal-bg);
-  color:var(--passport-modal-text);
+  background:var(--passport-modal-bg, rgba(6,12,24,0.95));
+  color:var(--passport-modal-text, #f8fafc);
   border-radius:24px;
   width:min(420px, 100%);
   padding:30px 28px 26px;
   position:relative;
   box-shadow:0 24px 60px rgba(0,0,0,0.45);
-  border:1px solid var(--passport-modal-border);
+  border:1px solid var(--passport-modal-border, rgba(148,163,184,0.4));
   text-align:center;
 }
 .stamp-detail-modal__media {
@@ -1026,11 +1068,11 @@ button.stamp-slot:focus-visible {
   height:120px;
   border-radius:50%;
   margin:0 auto 14px;
-  border:2px solid var(--passport-modal-media-border);
+  border:2px solid var(--passport-modal-media-border, rgba(148,197,255,0.6));
   display:flex;
   align-items:center;
   justify-content:center;
-  background:var(--passport-modal-media-bg);
+  background:var(--passport-modal-media-bg, rgba(30,41,59,0.65));
 }
 .stamp-detail-modal__media img {
   width:92px;
@@ -1043,8 +1085,8 @@ button.stamp-slot:focus-visible {
   margin:0 auto 6px;
   padding:4px 12px;
   border-radius:999px;
-  background:var(--passport-modal-chip-bg);
-  color:var(--passport-modal-chip-text);
+  background:var(--passport-modal-chip-bg, rgba(59,130,246,0.15));
+  color:var(--passport-modal-chip-text, #bfdbfe);
   font-weight:600;
   font-size:0.75rem;
   text-transform:uppercase;
@@ -1053,13 +1095,13 @@ button.stamp-slot:focus-visible {
 .stamp-detail-modal__date {
   margin:0 0 10px;
   font-size:0.9rem;
-  color:var(--passport-modal-subtext);
+  color:var(--passport-modal-subtext, #cbd5f5);
 }
 .stamp-detail-modal__description {
   margin:0;
   font-size:0.95rem;
   line-height:1.5;
-  color:var(--passport-modal-text);
+  color:var(--passport-modal-text, #f8fafc);
 }
 .stamp-detail-modal__close {
   position:absolute;
@@ -1069,14 +1111,14 @@ button.stamp-slot:focus-visible {
   height:32px;
   border:none;
   border-radius:50%;
-  background:var(--passport-modal-close-bg);
-  color:var(--passport-modal-close-color);
+  background:var(--passport-modal-close-bg, rgba(15,23,42,0.9));
+  color:var(--passport-modal-close-color, #f8fafc);
   font-size:1.1rem;
   cursor:pointer;
 }
 .stamp-detail-modal__close:hover,
 .stamp-detail-modal__close:focus-visible {
-  background:var(--passport-modal-close-hover-bg);
+  background:var(--passport-modal-close-hover-bg, rgba(59,130,246,0.95));
 }
 body.stamp-modal-open {
   overflow:hidden;
