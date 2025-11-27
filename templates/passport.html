@@ -123,11 +123,22 @@
 </div>
 
 <!-- Stamp Detail Modal -->
-<div class="stamp-detail-modal" data-stamp-modal hidden>
+<div
+  class="stamp-detail-modal passport-theme passport-theme--{{ passport_theme }}"
+  data-stamp-modal
+  data-passport-theme="{{ passport_theme }}"
+  hidden
+>
   <div class="stamp-detail-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="stamp-detail-title">
     <button type="button" class="stamp-detail-modal__close" data-stamp-modal-close aria-label="Close stamp details">✕</button>
     <div class="stamp-detail-modal__media">
-      <img src="{{ url_for('static', filename='icons/tickstamp.png') }}" alt="Selected stamp" data-stamp-modal-icon loading="lazy">
+      <div class="stamp-coin" data-stamp-coin>
+        <div class="stamp-coin__glow"></div>
+        <div class="stamp-coin__rim"></div>
+        <div class="stamp-coin__face">
+          <img src="{{ url_for('static', filename='icons/tickstamp.png') }}" alt="Selected stamp" data-stamp-modal-icon loading="lazy">
+        </div>
+      </div>
     </div>
     <p class="stamp-detail-modal__chip" data-stamp-modal-reason>Passport stamp</p>
     <h3 id="stamp-detail-title" data-stamp-modal-name>Select a stamp</h3>
@@ -239,9 +250,10 @@
   --passport-chip-bg: rgba(59,130,246,0.9);
   --passport-chip-color: #fff;
   --passport-outline-color: rgba(191,219,254,0.9);
-  --passport-stamp-modal-backdrop: rgba(4, 12, 24, 0.8);
-  --passport-modal-bg: #0f172a;
-  --passport-modal-border: rgba(148, 163, 184, 0.3);
+  --passport-stamp-modal-backdrop: rgba(4, 12, 24, 0.62);
+  --passport-modal-bg: rgba(10, 18, 34, 0.82);
+  --passport-modal-border: rgba(148, 163, 184, 0.45);
+  --passport-modal-accent: rgba(59,130,246,0.28);
   --passport-modal-text: #f8fafc;
   --passport-modal-subtext: #cbd5f5;
   --passport-modal-chip-bg: rgba(59,130,246,0.15);
@@ -251,6 +263,7 @@
   --passport-modal-close-bg: rgba(15,23,42,0.9);
   --passport-modal-close-color: #f8fafc;
   --passport-modal-close-hover-bg: rgba(59,130,246,0.95);
+  --stamp-coin-rotation: 0deg;
   --passport-info-modal-backdrop: rgba(15,23,42,0.75);
   --passport-info-modal-bg: #0f172a;
   --passport-info-modal-color: #e2e8f0;
@@ -295,9 +308,10 @@
   --passport-chip-bg: #2563eb;
   --passport-chip-color: #fff;
   --passport-outline-color: rgba(37,99,235,0.35);
-  --passport-stamp-modal-backdrop: rgba(15,23,42,0.55);
-  --passport-modal-bg: #ffffff;
-  --passport-modal-border: rgba(226,232,240,0.9);
+  --passport-stamp-modal-backdrop: rgba(15,23,42,0.4);
+  --passport-modal-bg: rgba(255,255,255,0.92);
+  --passport-modal-border: rgba(148,163,184,0.35);
+  --passport-modal-accent: rgba(37,99,235,0.2);
   --passport-modal-text: #0f172a;
   --passport-modal-subtext: #475569;
   --passport-modal-chip-bg: rgba(37,99,235,0.12);
@@ -351,9 +365,10 @@
   --passport-chip-bg: #fb7185;
   --passport-chip-color: #470515;
   --passport-outline-color: rgba(254,205,211,0.9);
-  --passport-stamp-modal-backdrop: rgba(36,5,5,0.85);
-  --passport-modal-bg: #2b0505;
-  --passport-modal-border: rgba(251,113,133,0.35);
+  --passport-stamp-modal-backdrop: rgba(36,5,5,0.7);
+  --passport-modal-bg: rgba(43,5,5,0.9);
+  --passport-modal-border: rgba(251,113,133,0.5);
+  --passport-modal-accent: rgba(251,113,133,0.35);
   --passport-modal-text: #ffe4e6;
   --passport-modal-subtext: rgba(255,228,230,0.85);
   --passport-modal-chip-bg: rgba(248,113,113,0.18);
@@ -374,59 +389,60 @@
 }
 
 .passport-theme--team_mystic {
-  --passport-overlay: linear-gradient(180deg, rgba(3,10,32,0.55) 0%, rgba(3,10,32,0.85) 100%);
-  --passport-container-shadow: 0 24px 60px rgba(11,26,60,0.3);
-  --passport-content-color: #e0f2ff;
-  --passport-subtext-color: rgba(224,242,255,0.85);
-  --passport-header-bg: rgba(11,26,60,0.85);
-  --passport-header-border: rgba(191,219,254,0.25);
-  --passport-header-shadow: 0 16px 40px rgba(11,26,60,0.45);
-  --passport-header-title: #e0f2ff;
-  --passport-panel-bg: rgba(15,27,70,0.78);
-  --passport-panel-border: rgba(96,165,250,0.3);
-  --passport-panel-shadow: 0 12px 32px rgba(15,27,70,0.45);
-  --passport-stat-title: #93c5fd;
+  --passport-overlay: linear-gradient(180deg, rgba(11,32,76,0.45) 0%, rgba(11,32,76,0.78) 100%);
+  --passport-container-shadow: 0 24px 60px rgba(37,99,235,0.25);
+  --passport-content-color: #f3f8ff;
+  --passport-subtext-color: rgba(235,245,255,0.92);
+  --passport-header-bg: rgba(23,55,120,0.92);
+  --passport-header-border: rgba(147,197,253,0.45);
+  --passport-header-shadow: 0 16px 40px rgba(23,55,120,0.4);
+  --passport-header-title: #f8fbff;
+  --passport-panel-bg: rgba(23,55,120,0.82);
+  --passport-panel-border: rgba(96,165,250,0.45);
+  --passport-panel-shadow: 0 12px 32px rgba(23,55,120,0.35);
+  --passport-stat-title: #a5d8ff;
   --passport-stat-text: #f8fbff;
-  --passport-stat-subtext: rgba(224,242,255,0.85);
-  --passport-info-button-bg: rgba(30,58,138,0.85);
-  --passport-info-button-border: rgba(147,197,253,0.4);
-  --passport-info-button-color: #bfdbfe;
+  --passport-stat-subtext: rgba(226,242,255,0.9);
+  --passport-info-button-bg: rgba(37,99,235,0.85);
+  --passport-info-button-border: rgba(191,219,254,0.55);
+  --passport-info-button-color: #e0f2ff;
   --passport-info-button-hover-bg: rgba(59,130,246,0.95);
-  --passport-info-button-hover-color: #f1f5f9;
-  --passport-info-button-focus: rgba(96,165,250,0.55);
-  --passport-button-bg: #3b82f6;
-  --passport-button-color: #e0f2ff;
-  --passport-button-shadow: 0 8px 20px rgba(59,130,246,0.35);
-  --passport-card-bg: rgba(15,27,70,0.82);
-  --passport-card-border: rgba(96,165,250,0.35);
-  --passport-card-shadow: 0 18px 40px rgba(15,27,70,0.55);
-  --passport-slot-label: #e0f2ff;
-  --passport-slot-filled-border: rgba(147,197,253,0.85);
-  --passport-slot-empty-border: rgba(224,242,255,0.45);
-  --passport-slot-empty-bg: rgba(255,255,255,0.12);
-  --passport-chip-bg: #60a5fa;
-  --passport-chip-color: #06203f;
-  --passport-outline-color: rgba(147,197,253,0.85);
-  --passport-stamp-modal-backdrop: rgba(6,13,36,0.85);
-  --passport-modal-bg: #0f172a;
-  --passport-modal-border: rgba(96,165,250,0.4);
-  --passport-modal-text: #e0f2ff;
-  --passport-modal-subtext: rgba(224,242,255,0.85);
-  --passport-modal-chip-bg: rgba(59,130,246,0.2);
-  --passport-modal-chip-text: #bfdbfe;
-  --passport-modal-media-bg: rgba(30,58,138,0.65);
-  --passport-modal-media-border: rgba(147,197,253,0.75);
-  --passport-modal-close-bg: rgba(11,26,60,0.9);
-  --passport-modal-close-color: #e0f2ff;
-  --passport-modal-close-hover-bg: #3b82f6;
-  --passport-info-modal-backdrop: rgba(6,13,36,0.85);
-  --passport-info-modal-bg: #0f172a;
-  --passport-info-modal-color: #e0f2ff;
-  --passport-info-modal-border: rgba(96,165,250,0.35);
-  --passport-info-modal-heading: #bfdbfe;
-  --passport-info-modal-close-bg: rgba(11,26,60,0.95);
-  --passport-info-modal-close-color: #e0f2ff;
-  --passport-info-modal-close-hover-bg: #3b82f6;
+  --passport-info-button-hover-color: #f8fbff;
+  --passport-info-button-focus: rgba(147,197,253,0.65);
+  --passport-button-bg: #579bff;
+  --passport-button-color: #0b1f44;
+  --passport-button-shadow: 0 8px 20px rgba(87,155,255,0.35);
+  --passport-card-bg: rgba(17,45,103,0.85);
+  --passport-card-border: rgba(147,197,253,0.45);
+  --passport-card-shadow: 0 18px 40px rgba(17,45,103,0.45);
+  --passport-slot-label: #f4f8ff;
+  --passport-slot-filled-border: rgba(173,216,255,0.95);
+  --passport-slot-empty-border: rgba(226,242,255,0.65);
+  --passport-slot-empty-bg: rgba(255,255,255,0.18);
+  --passport-chip-bg: #67b3ff;
+  --passport-chip-color: #08264c;
+  --passport-outline-color: rgba(173,216,255,0.9);
+  --passport-stamp-modal-backdrop: rgba(8,20,46,0.7);
+  --passport-modal-bg: rgba(15,31,64,0.9);
+  --passport-modal-border: rgba(147,197,253,0.6);
+  --passport-modal-accent: rgba(103,179,255,0.32);
+  --passport-modal-text: #f4f8ff;
+  --passport-modal-subtext: rgba(226,242,255,0.9);
+  --passport-modal-chip-bg: rgba(103,179,255,0.25);
+  --passport-modal-chip-text: #dbeafe;
+  --passport-modal-media-bg: rgba(23,55,120,0.75);
+  --passport-modal-media-border: rgba(173,216,255,0.8);
+  --passport-modal-close-bg: rgba(17,45,103,0.9);
+  --passport-modal-close-color: #f4f8ff;
+  --passport-modal-close-hover-bg: #67b3ff;
+  --passport-info-modal-backdrop: rgba(8,20,46,0.82);
+  --passport-info-modal-bg: #0f1f40;
+  --passport-info-modal-color: #f4f8ff;
+  --passport-info-modal-border: rgba(147,197,253,0.5);
+  --passport-info-modal-heading: #dbeafe;
+  --passport-info-modal-close-bg: rgba(17,45,103,0.9);
+  --passport-info-modal-close-color: #f4f8ff;
+  --passport-info-modal-close-hover-bg: #67b3ff;
 }
 
 .passport-theme--team_instinct {
@@ -463,9 +479,10 @@
   --passport-chip-bg: #fbbf24;
   --passport-chip-color: #422006;
   --passport-outline-color: rgba(250,204,21,0.65);
-  --passport-stamp-modal-backdrop: rgba(32,19,3,0.85);
-  --passport-modal-bg: #2b1a04;
-  --passport-modal-border: rgba(253,224,71,0.35);
+  --passport-stamp-modal-backdrop: rgba(32,19,3,0.72);
+  --passport-modal-bg: rgba(43,26,4,0.9);
+  --passport-modal-border: rgba(253,224,71,0.45);
+  --passport-modal-accent: rgba(250,204,21,0.32);
   --passport-modal-text: #fff8e1;
   --passport-modal-subtext: rgba(255,248,225,0.85);
   --passport-modal-chip-bg: rgba(250,204,21,0.2);
@@ -1040,9 +1057,9 @@ button.stamp-slot:focus-visible {
 .stamp-detail-modal {
   position:fixed;
   inset:0;
-  background:var(--passport-stamp-modal-backdrop, rgba(4,12,24,0.82));
-  backdrop-filter:blur(6px);
-  -webkit-backdrop-filter:blur(6px);
+  background:var(--passport-stamp-modal-backdrop, rgba(4,12,24,0.62));
+  backdrop-filter:blur(12px) saturate(130%);
+  -webkit-backdrop-filter:blur(12px) saturate(130%);
   display:flex;
   align-items:center;
   justify-content:center;
@@ -1053,15 +1070,20 @@ button.stamp-slot:focus-visible {
   display:none;
 }
 .stamp-detail-modal__dialog {
-  background:var(--passport-modal-bg, rgba(6,12,24,0.95));
+  background:
+    linear-gradient(145deg, rgba(255,255,255,0.18), rgba(255,255,255,0.02)),
+    linear-gradient(120deg, var(--passport-modal-accent, rgba(59,130,246,0.18)), transparent),
+    var(--passport-modal-bg, rgba(6,12,24,0.9));
   color:var(--passport-modal-text, #f8fafc);
   border-radius:24px;
   width:min(420px, 100%);
   padding:30px 28px 26px;
   position:relative;
-  box-shadow:0 24px 60px rgba(0,0,0,0.45);
-  border:1px solid var(--passport-modal-border, rgba(148,163,184,0.4));
+  box-shadow:0 28px 70px rgba(3,6,23,0.55);
+  border:1px solid var(--passport-modal-border, rgba(148,163,184,0.45));
   text-align:center;
+  backdrop-filter:blur(24px) saturate(160%);
+  -webkit-backdrop-filter:blur(24px) saturate(160%);
 }
 .stamp-detail-modal__media {
   width:120px;
@@ -1073,12 +1095,74 @@ button.stamp-slot:focus-visible {
   align-items:center;
   justify-content:center;
   background:var(--passport-modal-media-bg, rgba(30,41,59,0.65));
+  box-shadow:0 12px 32px rgba(3,6,23,0.4);
+  perspective:900px;
 }
-.stamp-detail-modal__media img {
-  width:92px;
-  height:92px;
+.stamp-coin {
+  --coin-depth: 22px;
+  position:relative;
+  width:112px;
+  height:112px;
+  border-radius:50%;
+  transform-style:preserve-3d;
+  transform:rotateX(16deg) rotateY(var(--stamp-coin-rotation, 0deg));
+  transition:box-shadow 0.3s ease;
+  cursor:grab;
+  touch-action:none;
+  user-select:none;
+  will-change:transform;
+}
+.stamp-coin.is-dragging {
+  cursor:grabbing;
+}
+.stamp-coin.is-popping {
+  animation:stampCoinPop 0.85s cubic-bezier(0.26,0.8,0.32,1.2);
+}
+.stamp-coin__glow {
+  position:absolute;
+  inset:-16px;
+  border-radius:50%;
+  background:radial-gradient(circle, var(--passport-modal-accent, rgba(255,255,255,0.35)) 0%, transparent 70%);
+  filter:blur(18px);
+  opacity:0.6;
+  transform:translateZ(-10px);
+  pointer-events:none;
+}
+.stamp-coin__rim {
+  position:absolute;
+  inset:0;
+  border-radius:50%;
+  background:linear-gradient(90deg, rgba(255,255,255,0.35), rgba(0,0,0,0.35));
+  border:6px solid rgba(255,255,255,0.08);
+  box-shadow:inset 0 0 18px rgba(0,0,0,0.35);
+  transform:translateZ(calc(var(--coin-depth) * 0.2));
+}
+.stamp-coin__face {
+  position:absolute;
+  inset:6px;
+  border-radius:50%;
+  overflow:hidden;
+  background:radial-gradient(circle at 30% 30%, rgba(255,255,255,0.35), transparent 65%), rgba(6,12,24,0.85);
+  box-shadow:0 14px 24px rgba(6,12,24,0.45), inset 0 0 18px rgba(0,0,0,0.4);
+  transform:translateZ(calc(var(--coin-depth) * 0.6));
+}
+.stamp-coin__face img {
+  width:100%;
+  height:100%;
   object-fit:cover;
   border-radius:50%;
+  transform:translateZ(2px);
+  pointer-events:none;
+}
+.stamp-coin::after {
+  content:"";
+  position:absolute;
+  inset:0;
+  border-radius:50%;
+  box-shadow:0 25px 55px rgba(3,6,23,0.55);
+  transform:translateZ(calc(-1 * var(--coin-depth)));
+  opacity:0.7;
+  pointer-events:none;
 }
 .stamp-detail-modal__chip {
   display:inline-flex;
@@ -1102,6 +1186,41 @@ button.stamp-slot:focus-visible {
   font-size:0.95rem;
   line-height:1.5;
   color:var(--passport-modal-text, #f8fafc);
+}
+.stamp-coin::after,
+.stamp-detail-modal__chip,
+.stamp-detail-modal__description {
+  will-change:transform;
+}
+.stamp-coin::after {
+  transition:opacity 0.3s ease;
+}
+.stamp-coin.is-dragging::after {
+  opacity:0.4;
+}
+@keyframes stampCoinPop {
+  0% {
+    transform:rotateX(35deg) rotateY(-140deg) scale(0.6);
+    opacity:0;
+  }
+  60% {
+    transform:rotateX(18deg) rotateY(20deg) scale(1.05);
+    opacity:1;
+  }
+  100% {
+    transform:rotateX(16deg) rotateY(var(--stamp-coin-rotation, 0deg)) scale(1);
+    opacity:1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .stamp-coin.is-popping {
+    animation:none;
+  }
+  .stamp-detail-modal,
+  .stamp-detail-modal__dialog {
+    backdrop-filter:none;
+    -webkit-backdrop-filter:none;
+  }
 }
 .stamp-detail-modal__close {
   position:absolute;
@@ -1201,7 +1320,116 @@ document.addEventListener("DOMContentLoaded", function(){
     const reasonTarget = stampModal.querySelector("[data-stamp-modal-reason]");
     const dateTarget = stampModal.querySelector("[data-stamp-modal-date]");
     const descriptionTarget = stampModal.querySelector("[data-stamp-modal-description]");
+    const coin = stampModal.querySelector("[data-stamp-coin]");
+    let coinRotation = 0;
+    let spinVelocity = 0;
+    let dragActive = false;
+    let dragPointerId = null;
+    let lastX = 0;
+    let lastTime = 0;
+    let spinFrame = null;
     let lastTrigger = null;
+
+    function updateCoinRotation() {
+      if (!coin) return;
+      coin.style.setProperty("--stamp-coin-rotation", `${coinRotation}deg`);
+    }
+
+    function stopSpinAnimation(resetVelocity = true) {
+      if (spinFrame) {
+        cancelAnimationFrame(spinFrame);
+        spinFrame = null;
+      }
+      if (resetVelocity) {
+        spinVelocity = 0;
+      }
+    }
+
+    function animateCoinSpin() {
+      stopSpinAnimation(false);
+      if (Math.abs(spinVelocity) < 0.05) {
+        spinVelocity = 0;
+        return;
+      }
+      const step = () => {
+        coinRotation += spinVelocity;
+        spinVelocity *= 0.94;
+        updateCoinRotation();
+        if (Math.abs(spinVelocity) >= 0.05) {
+          spinFrame = requestAnimationFrame(step);
+        } else {
+          spinFrame = null;
+          spinVelocity = 0;
+        }
+      };
+      spinFrame = requestAnimationFrame(step);
+    }
+
+    function resetCoin() {
+      stopSpinAnimation();
+      if (!coin) return;
+      coinRotation = 0;
+      spinVelocity = 0;
+      updateCoinRotation();
+      coin.classList.remove("is-popping");
+      void coin.offsetWidth;
+      coin.classList.add("is-popping");
+    }
+
+    function handlePointerDown(event) {
+      if (!coin || dragActive) return;
+      dragActive = true;
+      dragPointerId = event.pointerId;
+      lastX = event.clientX;
+      lastTime = performance.now();
+      stopSpinAnimation();
+      coin.setPointerCapture(dragPointerId);
+      coin.classList.add("is-dragging");
+      event.preventDefault();
+    }
+
+    function handlePointerMove(event) {
+      if (!coin || !dragActive || event.pointerId !== dragPointerId) {
+        return;
+      }
+      const now = performance.now();
+      const dx = event.clientX - lastX;
+      coinRotation += dx * 0.9;
+      const deltaTime = Math.max(now - lastTime, 1);
+      spinVelocity = (dx / deltaTime) * 18;
+      lastX = event.clientX;
+      lastTime = now;
+      updateCoinRotation();
+    }
+
+    function handlePointerUp(event) {
+      if (!coin || !dragActive || event.pointerId !== dragPointerId) {
+        return;
+      }
+      dragActive = false;
+      coin.classList.remove("is-dragging");
+      if (dragPointerId !== null) {
+        try {
+          coin.releasePointerCapture(dragPointerId);
+        } catch (_err) {
+          /* no-op */
+        }
+      }
+      dragPointerId = null;
+      animateCoinSpin();
+    }
+
+    if (coin) {
+      coin.addEventListener("pointerdown", handlePointerDown);
+      coin.addEventListener("pointermove", handlePointerMove);
+      coin.addEventListener("pointerup", handlePointerUp);
+      coin.addEventListener("pointercancel", handlePointerUp);
+      coin.addEventListener("pointerleave", event => {
+        if (dragActive) {
+          handlePointerUp(event);
+        }
+      });
+    }
 
     function openStampModal(trigger) {
       lastTrigger = trigger;
@@ -1248,6 +1476,7 @@ document.addEventListener("DOMContentLoaded", function(){
       stampModal.hidden = false;
       stampModal.setAttribute("aria-hidden", "false");
       document.body.classList.add("stamp-modal-open");
+      resetCoin();
       if (closeBtn) {
         closeBtn.focus();
       }
@@ -1260,6 +1489,8 @@ document.addEventListener("DOMContentLoaded", function(){
       stampModal.hidden = true;
       stampModal.setAttribute("aria-hidden", "true");
       document.body.classList.remove("stamp-modal-open");
+      stopSpinAnimation();
+      dragActive = false;
       if (lastTrigger && typeof lastTrigger.focus === "function") {
         lastTrigger.focus();
       }

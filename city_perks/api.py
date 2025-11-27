@@ -9,6 +9,7 @@ from flask import Blueprint, jsonify, request
 from sqlalchemy import or_
 
 from models import CityPerk
+from .sync import ensure_city_perks_cache
 
 city_perks_api_blueprint = Blueprint(
     "city_perks_api",
@@ -19,6 +20,7 @@ city_perks_api_blueprint = Blueprint(
 
 @city_perks_api_blueprint.get("")
 def list_live_city_perks():
+    ensure_city_perks_cache()
     query = _live_perks_query()
 
     area = _clean_or_none(request.args.get("area"))
@@ -38,6 +40,7 @@ def list_live_city_perks():
 
 @city_perks_api_blueprint.get("/<int:perk_id>")
 def get_city_perk(perk_id: int):
+    ensure_city_perks_cache()
     perk = _live_perks_query().filter(CityPerk.id == perk_id).first()
     if not perk:
         return _json_not_found()
@@ -62,4 +65,3 @@ def _clean_or_none(value: Optional[str]) -> Optional[str]:
         return None
     cleaned = value.strip()
     return cleaned or None
-

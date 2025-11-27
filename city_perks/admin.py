@@ -18,6 +18,7 @@ from sqlalchemy import or_
 
 from extensions import db
 from models import CityPerk
+from .sync import ensure_city_perks_cache, mark_city_perks_cache_stale
 
 AdminProvider = Callable[[], Optional[dict]]
 AdminGuard = Callable[[Callable], Callable]
@@ -56,6 +57,7 @@ def create_city_perks_admin_blueprint(
     @bp.route("/", methods=["GET"])
     @admin_required
     def list_city_perks():
+        ensure_city_perks_cache()
         now = _now()
         status_filter = _normalize_status(request.args.get("status", "all"))
         area_filter = _clean_or_none(request.args.get("area"))
@@ -125,6 +127,7 @@ def create_city_perks_admin_blueprint(
                 if _commit_session("creating city perk"):
                     db.session.refresh(perk)
                     _sync_city_perk_to_supabase(perk, supabase_client)
+                    mark_city_perks_cache_stale()
                     flash("City perk created.", "success")
                     return redirect(url_for("admin_city_perks.list_city_perks"))
                 errors.append("Could not save the city perk. Please try again.")
@@ -159,6 +162,7 @@ def create_city_perks_admin_blueprint(
                 if _commit_session(f"updating city perk {perk_id}"):
                     db.session.refresh(perk)
                     _sync_city_perk_to_supabase(perk, supabase_client)
+                    mark_city_perks_cache_stale()
                     flash("City perk updated.", "success")
                     return redirect(url_for("admin_city_perks.list_city_perks"))
                 errors.append("Could not save your changes. Please try again.")

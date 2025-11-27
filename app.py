@@ -30,6 +30,7 @@ from advent.service import load_advent_config
 from city_perks import (
     city_perks_api_blueprint,
     create_city_perks_admin_blueprint,
+    ensure_city_perks_cache,
 )
 from models import CityPerk
 
@@ -194,7 +195,7 @@ PASSPORT_THEMES = [
         "icon": "passport/themes/mysticicon.png",
         "flag": "passport/themes/mflag.png",
         "summary": "Team Mystic relies on analyzing every situation. Mystic's members believe that Pokémon have immeasurable wisdom and are interested in learning more about why Pokémon experience evolution.",
-        "glow": "#60a5fa",
+        "glow": "#a5d8ff",
     },
     {
         "slug": "team_instinct",
@@ -287,13 +288,23 @@ def _normalize_supabase_sections(section_rows: list[dict]) -> list[dict]:
     normalized: list[dict] = []
     for row in sorted(section_rows, key=lambda r: r.get("section_order", 0)):
         payload = row.get("payload") or {}
-        normalized.append({
+        if not isinstance(payload, dict):
+            try:
+                payload = json.loads(payload)
+            except Exception:
+                payload = {}
+        payload_copy = copy.deepcopy(payload)
+        section = {
             "id": row.get("id"),
             "title": row.get("heading") or payload.get("title"),
             "type": row.get("section_type"),
             "section_type": row.get("section_type"),
-            "payload": payload or {},
-        })
+            "payload": payload_copy,
+        }
+        # expose payload keys (body, details, etc.) at the top level for templates
+        for key, value in payload_copy.items():
+            section.setdefault(key, value)
+        normalized.append(section)
     return normalized
 
 
@@ -626,6 +637,56 @@ def _bulletin_admin_delete_comment(comment_id: str) -> bool:
     except Exception as exc:
         print("⚠️ Supabase comment delete failed:", exc)
         return False
+
+
+def _bulletin_parse_social_handles(raw: Any) -> list[dict]:
+    if not raw:
+        return []
+    if isinstance(raw, list):
+        return raw
+    if isinstance(raw, dict):
+        return [raw]
+    social_handles: list[dict] = []
+    if isinstance(raw, str):
+        stripped = raw.strip()
+        if not stripped:
+            return []
+        try:
+            parsed = json.loads(stripped)
+            if isinstance(parsed, list):
+                return parsed
+            if isinstance(parsed, dict):
+                return [parsed]
+        except Exception:
+            for line in stripped.splitlines():
+                parts = [p.strip() for p in line.split("|")]
+                if len(parts) == 3:
+                    social_handles.append({"icon": parts[0], "label": parts[1], "url": parts[2]})
+                elif len(parts) == 2:
+                    social_handles.append({"label": parts[0], "url": parts[1]})
+    return social_handles
+
+
+def _bulletin_admin_create_author(data: dict) -> tuple[bool, dict | str]:
+    if not _bulletin_supabase_enabled():
+        return False, "Bulletin service unavailable"
+    display_name = (data.get("display_name") or "").strip()
+    if not display_name:
+        return False, "Display name is required"
+    record = {
+        "display_name": display_name,
+        "avatar_url": (data.get("avatar_url") or "").strip() or None,
+        "link_url": (data.get("link_url") or "").strip() or None,
+        "bio": data.get("bio") or None,
+        "social_handles": _bulletin_parse_social_handles(data.get("social_handles")),
+    }
+    try:
+        resp = supabase.table("bulletin_authors").insert(record).execute()
+        author = (resp.data or [{}])[0]
+        return True, author
+    except Exception as exc:
+        print("⚠️ Supabase author create failed:", exc)
+        return False, "Unable to create author"
 
 DATA_DIR = Path(app.root_path) / "data"
 DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -1674,6 +1735,32 @@ def absolute_url(path: str) -> str:
         path = '/' + path
     return f"{root}{path}"
 
+
+def _bulletin_is_absolute_media(path: Optional[str]) -> bool:
+    if not path:
+        return False
+    lowered = path.lower()
+    return lowered.startswith(("http://", "https://", "//", "data:", "blob:"))
+
+
+def _clean_static_path(path: str) -> str:
+    cleaned = path.lstrip("/")
+    if cleaned.startswith("static/"):
+        cleaned = cleaned.split("/", 1)[1]
+    return cleaned
+
+
+@app.template_filter("bulletin_media")
+def bulletin_media(value: Optional[str]) -> str:
+    """Return a usable URL for bulletin assets stored locally or on Supabase."""
+    if not value:
+        return ""
+    if _bulletin_is_absolute_media(value):
+        return value
+    if value.startswith("/"):
+        return value
+    return url_for("static", filename=_clean_static_path(value))
+
 ALLOWED_INBOX_TAGS = {"a", "br", "strong", "em", "b", "i", "u", "p", "ul", "ol", "li", "blockquote", "code"}
 ALLOWED_INBOX_ATTRS = {
     "a": ["href", "title", "target", "rel"],
@@ -2352,10 +2439,16 @@ def get_meetup_history(username: str, campfire_username: str | None = None):
                 return [], 0
 
             # Step 2: Only keep CHECKED_IN events (case-insensitive)
-            checked_in_ids = [
-                str(r.get("event_id", "")).strip().lower()
-                for r in records if str(r.get("rsvp_status", "")).upper() == "CHECKED_IN"
-            ]
+            raw_id_lookup: dict[str, Any] = {}
+            checked_in_ids: list[str] = []
+            for record in records:
+                status = str(record.get("rsvp_status", "")).upper()
+                raw_event_id = record.get("event_id")
+                normalized = str(raw_event_id or "").strip().lower()
+                if not normalized or status != "CHECKED_IN":
+                    continue
+                raw_id_lookup.setdefault(normalized, raw_event_id)
+                checked_in_ids.append(normalized)
 
             if not checked_in_ids:
                 return [], 0
@@ -2367,15 +2460,37 @@ def get_meetup_history(username: str, campfire_username: str | None = None):
 
             ev_map = {str(e.get("event_id", "")).strip().lower(): e for e in ev_rows}
 
+            # Step 3b: Fetch check-in counts for each event
+            checkins_by_event: dict[str, int] = defaultdict(int)
+            unique_ids = sorted(set(checked_in_ids))
+            chunk_size = 90
+            for i in range(0, len(unique_ids), chunk_size):
+                chunk_norm = unique_ids[i:i + chunk_size]
+                chunk_raw = [raw_id_lookup.get(nid) for nid in chunk_norm if raw_id_lookup.get(nid)]
+                if not chunk_raw:
+                    continue
+                rows = supabase.table("attendance") \
+                    .select("event_id, rsvp_status") \
+                    .in_("event_id", chunk_raw) \
+                    .execute().data or []
+                for row in rows:
+                    eid_norm = str(row.get("event_id", "")).strip().lower()
+                    if not eid_norm:
+                        continue
+                    if str(row.get("rsvp_status", "")).upper() == "CHECKED_IN":
+                        checkins_by_event[eid_norm] += 1
+
             # Step 4: Build meetups list
             meetups = []
             for eid in checked_in_ids:
                 ev = ev_map.get(eid)
                 if ev:
                     meetups.append({
+                        "event_id": ev.get("event_id") or eid,
                         "title": ev.get("name", "Unknown Event"),
                         "date": ev.get("start_time", ""),
-                        "photo": ev.get("cover_photo_url", "")
+                        "photo": ev.get("cover_photo_url", ""),
+                        "checkins": checkins_by_event.get(eid, 0),
                     })
 
             # Step 5: Sort newest first
@@ -3543,6 +3658,10 @@ app.register_blueprint(city_perks_api_blueprint)
 
 with app.app_context():
     db.create_all()
+    try:
+        ensure_city_perks_cache(force=True)
+    except Exception as exc:
+        app.logger.warning("Initial CityPerks sync skipped: %s", exc)
 
 def _tags_csv_to_array(csv: str | None):
     if not csv:
@@ -5723,6 +5842,8 @@ def city_perks_page():
         flash("Please log in to explore City Perks.", "warning")
         return redirect(url_for("home"))
 
+    ensure_city_perks_cache()
+
     def _live_query(now_utc):
         return CityPerk.query.filter(
             CityPerk.is_active.is_(True),
@@ -6336,6 +6457,52 @@ def admin_bulletin_delete_comment_route(comment_id):
         flash("Unable to remove comment right now.", "error")
     return redirect(url_for("admin_bulletin"))
 
+
+@app.route("/admin/community-bulletin/authors", methods=["POST"])
+@admin_required
+def admin_bulletin_create_author_route():
+    if not _bulletin_supabase_enabled():
+        return jsonify({"error": "Bulletin service unavailable"}), 503
+    payload = request.get_json(force=True, silent=True) or {}
+    success, result = _bulletin_admin_create_author(payload)
+    if not success:
+        return jsonify({"error": result}), 400
+    return jsonify({"author": result})
+
+
+def _bulletin_upload_folder(asset_type: str) -> str:
+    asset_type = (asset_type or "").lower()
+    mapping = {
+        "hero": "community-bulletin/heroes",
+        "header": "community-bulletin/heroes",
+        "slide": "community-bulletin/slides",
+        "album": "community-bulletin/slides",
+        "author": "community-bulletin/authors",
+        "attachment": "community-bulletin/attachments",
+    }
+    return mapping.get(asset_type, "community-bulletin/attachments")
+
+
+@app.route("/admin/community-bulletin/upload", methods=["POST"])
+@admin_required
+def admin_bulletin_upload_asset():
+    if not _bulletin_supabase_enabled():
+        return jsonify({"error": "Supabase unavailable"}), 503
+
+    upload = request.files.get("asset")
+    if not upload:
+        return jsonify({"error": "No file uploaded"}), 400
+
+    asset_type = request.args.get("type", "attachment")
+    folder = _bulletin_upload_folder(asset_type)
+
+    saved_url = _upload_to_supabase(upload, folder=folder, bucket="catalog")
+    if not saved_url:
+        error_text = getattr(g, "supabase_last_error", "Upload failed")
+        return jsonify({"error": error_text}), 500
+
+    return jsonify({"url": saved_url})
+
 # ====== Logout ======
 @app.route("/logout")
 def logout():
@@ -6624,6 +6791,7 @@ def meetup_history():
     trainer = session["trainer"]
     _, user = find_user(trainer)
     campfire_username = user.get("campfire_username", "")
+    passport_theme_slug = normalize_passport_theme(user.get("passport_theme"))
 
     sort_by = request.args.get("sort", "date_desc")
 
@@ -6641,7 +6809,9 @@ def meetup_history():
         "meetup_history.html",
         meetups=meetups,
         total_attended=total_attended,
-        sort_by=sort_by
+        sort_by=sort_by,
+        passport_theme=passport_theme_slug,
+        passport_theme_data=get_passport_theme_data(passport_theme_slug),
     )
 
 # ====== Date Filtering ======
@@ -7267,24 +7437,43 @@ def change_avatar():
         flash("User not found.", "error")
         return redirect(url_for("dashboard"))
 
+    current_avatar = user.get("avatar_icon", "avatar1.png")
+    current_background = user.get("trainer_card_background") or "default.png"
     current_passport_theme = normalize_passport_theme(user.get("passport_theme"))
     current_passport_theme_data = get_passport_theme_data(current_passport_theme)
 
+    avatars = [f"avatar{i}.png" for i in range(1, 20)]
+    backgrounds_folder = os.path.join(app.root_path, "static", "backgrounds")
+    try:
+        backgrounds = sorted([
+            name for name in os.listdir(backgrounds_folder)
+            if not name.startswith(".") and os.path.isfile(os.path.join(backgrounds_folder, name))
+        ])
+    except FileNotFoundError:
+        backgrounds = []
+
+    if current_background and current_background not in backgrounds:
+        backgrounds.append(current_background)
+
     if request.method == "POST":
-        avatar_choice = request.form.get("avatar_choice")
-        background_choice = request.form.get("background_choice")
+        avatar_choice = request.form.get("avatar_choice") or current_avatar
+        background_choice = request.form.get("background_choice") or current_background
         passport_theme_choice = request.form.get("passport_theme_choice") or current_passport_theme
 
-        valid_avatars = [f"avatar{i}.png" for i in range(1, 20)]
+        valid_avatars = set(avatars)
         if avatar_choice not in valid_avatars:
-            flash("Invalid avatar choice.", "error")
+            message = "Invalid avatar choice."
+            if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+                return jsonify({"success": False, "error": message}), 400
+            flash(message, "error")
             return redirect(url_for("change_avatar"))
 
-        # validate background from /static/backgrounds
-        backgrounds_folder = os.path.join(app.root_path, "static", "backgrounds")
-        valid_backgrounds = os.listdir(backgrounds_folder)
+        valid_backgrounds = set(backgrounds)
         if background_choice not in valid_backgrounds:
-            flash("Invalid background choice.", "error")
+            message = "Invalid background choice."
+            if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+                return jsonify({"success": False, "error": message}), 400
+            flash(message, "error")
             return redirect(url_for("change_avatar"))
 
         selected_passport_theme = normalize_passport_theme(passport_theme_choice)
@@ -7318,13 +7507,6 @@ def change_avatar():
 
         flash("✅ Appearance updated successfully!", "success")
         return redirect(url_for("dashboard"))
-
-    avatars = [f"avatar{i}.png" for i in range(1, 20)]
-    backgrounds_folder = os.path.join(app.root_path, "static", "backgrounds")
-    backgrounds = os.listdir(backgrounds_folder)
-
-    current_avatar = user.get("avatar_icon", "avatar1.png")
-    current_background = user.get("trainer_card_background") or "default.png"
 
     return render_template(
         "change_avatar.html",

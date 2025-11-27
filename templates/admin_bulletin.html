@@ -129,6 +129,43 @@
       </section>
     </div>
 
+    <section class="bulletin-card">
+      <div class="bulletin-card__head">
+        <div>
+          <h2>Author Profiles</h2>
+          <p>Set up writers once and reuse them across posts.</p>
+        </div>
+      </div>
+      <form id="authorForm" class="builder-grid">
+        <label>
+          <span>Display Name</span>
+          <input type="text" name="display_name" required>
+        </label>
+        <label>
+          <span>Avatar URL</span>
+          <div class="input-with-btn">
+            <input type="text" name="avatar_url" placeholder="https://.../authors/avatar.webp">
+            <button type="button" class="pill-btn is-secondary" data-upload-target="avatar_url" data-upload-type="author">Upload</button>
+          </div>
+        </label>
+        <label>
+          <span>Website / Link</span>
+          <input type="text" name="link_url" placeholder="https://example.com">
+        </label>
+        <label>
+          <span>Bio</span>
+          <textarea name="bio" rows="2"></textarea>
+        </label>
+        <label>
+          <span>Social Handles (JSON or each line icon|label|url)</span>
+          <textarea name="social_handles" rows="2" placeholder='[{"icon":"📸","label":"Instagram","url":"https://"}]'></textarea>
+        </label>
+        <div class="builder-actions">
+          <button type="submit" class="pill-btn is-primary">Save Author</button>
+        </div>
+      </form>
+    </section>
+
     <section class="bulletin-builder"
              data-bulletin-builder
              data-posts='{{ posts|tojson|safe }}'
@@ -175,11 +212,17 @@
           </label>
           <label>
             <span>Hero Image URL</span>
-            <input type="text" name="hero_image" placeholder="https://.../heroes/slug.webp">
+            <div class="input-with-btn">
+              <input type="text" name="hero_image" placeholder="https://.../heroes/slug.webp">
+              <button type="button" class="pill-btn is-secondary" data-upload-target="hero_image" data-upload-type="hero">Upload</button>
+            </div>
           </label>
           <label>
             <span>Header Image URL</span>
-            <input type="text" name="header_image" placeholder="https://.../slides/slug/slide-01.webp">
+            <div class="input-with-btn">
+              <input type="text" name="header_image" placeholder="https://.../slides/slug/slide-01.webp">
+              <button type="button" class="pill-btn is-secondary" data-upload-target="header_image" data-upload-type="header">Upload</button>
+            </div>
           </label>
           <label>
             <span>Tags (comma separated)</span>
@@ -372,6 +415,50 @@
   padding: 10px;
   font: inherit;
 }
+.input-with-btn {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.input-with-btn input {
+  flex: 1;
+}
+.input-with-btn button {
+  flex-shrink: 0;
+}
+.help-tip {
+  border: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: #1d4ed8;
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+  position: relative;
+}
+.help-tip::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #0f172a;
+  color: #fff;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 0.75rem;
+  line-height: 1.2;
+  width: min(240px, 60vw);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  z-index: 5;
+}
+.help-tip:focus::after,
+.help-tip:hover::after {
+  opacity: 1;
+}
 .checkbox-field {
   flex-direction: row;
   align-items: center;
@@ -397,11 +484,34 @@
   margin-bottom: 12px;
   background: #f8fafc;
 }
+.builder-section__controls {
+  align-items: center;
+}
 .builder-section__row {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: 10px;
   margin-bottom: 8px;
+}
+.section-config {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.list-block {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.list-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 8px;
+  align-items: center;
+  background: #fff;
+  border-radius: 12px;
+  padding: 10px;
+  border: 1px solid #e2e8f0;
 }
 .builder-section textarea {
   width: 100%;
@@ -429,6 +539,7 @@
 </style>
 
 {% if supabase_enabled %}
+<input type="file" id="bulletinUploadInput" accept="image/*" hidden>
 <script>
 (function () {
   var builder = document.querySelector("[data-bulletin-builder]");
@@ -439,6 +550,14 @@
   try { posts = JSON.parse(builder.dataset.posts || "[]"); } catch (err) { posts = []; }
   try { authors = JSON.parse(builder.dataset.authors || "[]"); } catch (err) { authors = []; }
 
+  var SECTION_TIPS = {
+    "rich_text": "Use this for standard paragraphs. You can paste simple HTML (bold, italics, links). Separate blocks with a blank line.",
+    "detail-grid": "Show key facts in two columns. Perfect for dates, times, ticket info, etc.",
+    "callouts": "Highlight quick-hit info with an optional emoji/icon, heading, and supporting sentence.",
+    "carousel": "Build an image gallery with captions, plus an optional album link.",
+    "link-list": "Provide external resources such as RSVP links, docs, or deep dives.",
+  };
+
   var form = document.getElementById("bulletinBuilderForm");
   var authorSelect = form.querySelector("select[name='author_id']");
   var sectionsContainer = form.querySelector("[data-builder-sections]");
@@ -447,6 +566,10 @@
   var featureButtons = document.querySelectorAll("[data-feature-post]");
   var editButtons = document.querySelectorAll("[data-edit-post]");
   var currentPostId = null;
+  var uploadInput = document.getElementById("bulletinUploadInput");
+  var pendingUploadTarget = null;
+  var pendingUploadElement = null;
+  var pendingUploadType = null;
 
   authors.forEach(function (author) {
     var opt = document.createElement("option");
@@ -469,10 +592,11 @@
   function createSectionRow(section) {
     var block = document.createElement("div");
     block.className = "builder-section";
+    var sectionType = section && (section.section_type || section.type) ? (section.section_type || section.type) : "rich_text";
     block.innerHTML = `
-      <div class="builder-section__row">
+      <div class="builder-section__row builder-section__controls">
         <label>
-          <span>Type</span>
+          <span>Section Type</span>
           <select name="section_type">
             <option value="rich_text">Rich Text</option>
             <option value="detail-grid">Detail Grid</option>
@@ -481,27 +605,22 @@
             <option value="link-list">Link List</option>
           </select>
         </label>
-        <label>
-          <span>Heading</span>
-          <input type="text" name="section_heading">
-        </label>
+        <button type="button" class="help-tip" data-tooltip="">?</button>
       </div>
       <label>
-        <span>Payload (JSON)</span>
-        <textarea name="section_payload" placeholder='{"body": ["Paragraph"]}'></textarea>
+        <span>Heading</span>
+        <input type="text" name="section_heading">
       </label>
+      <div class="section-config" data-section-config></div>
       <div class="builder-section__actions">
         <button type="button" class="pill-btn is-secondary" data-move-up>▲</button>
         <button type="button" class="pill-btn is-secondary" data-move-down>▼</button>
         <button type="button" class="pill-btn is-danger" data-remove-section>Remove</button>
       </div>
     `;
-    block.querySelector("[name='section_type']").value = section && section.section_type ? section.section_type : "rich_text";
+    block.querySelector("[name='section_type']").value = sectionType;
     block.querySelector("[name='section_heading']").value = section && section.title ? section.title : "";
-    var payloadField = block.querySelector("[name='section_payload']");
-    if (section && section.payload) {
-      payloadField.value = JSON.stringify(section.payload, null, 2);
-    }
+    renderSectionConfig(block, section);
     block.addEventListener("click", function (evt) {
       if (evt.target.matches("[data-remove-section]")) {
         block.remove();
@@ -519,6 +638,133 @@
       }
     });
     return block;
+  }
+
+  function ensureHelpTip(block, type) {
+    var tip = block.querySelector(".help-tip");
+    if (tip) {
+      tip.dataset.tooltip = SECTION_TIPS[type] || "Configure this section.";
+    }
+  }
+
+  function renderSectionConfig(block, section) {
+    var type = block.querySelector("[name='section_type']").value || "rich_text";
+    ensureHelpTip(block, type);
+    var payload = (section && section.payload) || {};
+    var config = block.querySelector("[data-section-config]");
+    config.innerHTML = "";
+
+    function setRichText(data) {
+      var text = "";
+      if (data && Array.isArray(data.body)) {
+        text = data.body.join("\n\n");
+      }
+      config.innerHTML = `
+        <label>
+          <span>Content</span>
+          <textarea rows="4" data-rich-text placeholder="Write your paragraphs. Use blank lines to separate blocks."></textarea>
+        </label>
+      `;
+      config.querySelector("[data-rich-text]").value = text;
+    }
+
+    function addDetailRow(list, data) {
+      var row = document.createElement("div");
+      row.className = "list-row";
+      row.dataset.detailRow = "true";
+      row.innerHTML = `
+        <input type="text" data-detail-label placeholder="Label" value="${data && data.label ? data.label : ""}">
+        <input type="text" data-detail-value placeholder="Value" value="${data && data.value ? data.value : ""}">
+        <input type="text" data-detail-meta placeholder="Meta (optional)" value="${data && data.meta ? data.meta : ""}">
+        <button type="button" class="pill-btn is-danger" data-remove-row>Remove</button>
+      `;
+      list.appendChild(row);
+    }
+
+    function addCalloutRow(list, data) {
+      var row = document.createElement("div");
+      row.className = "list-row";
+      row.dataset.calloutRow = "true";
+      row.innerHTML = `
+        <input type="text" data-callout-icon placeholder="Icon/Emoji" value="${data && data.icon ? data.icon : ""}">
+        <input type="text" data-callout-heading placeholder="Heading" value="${data && data.heading ? data.heading : ""}">
+        <input type="text" data-callout-body placeholder="Body" value="${data && data.body ? data.body : ""}">
+        <button type="button" class="pill-btn is-danger" data-remove-row>Remove</button>
+      `;
+      list.appendChild(row);
+    }
+
+    function addSlideRow(list, data) {
+      var row = document.createElement("div");
+      row.className = "list-row";
+      row.dataset.slideRow = "true";
+      row.innerHTML = `
+        <div class="input-with-btn">
+          <input type="text" data-slide-image placeholder="Image URL" value="${data && data.image ? data.image : ""}">
+          <button type="button" class="pill-btn is-secondary" data-upload-ref="prev" data-upload-type="slide">Upload</button>
+        </div>
+        <input type="text" data-slide-caption placeholder="Caption" value="${data && data.caption ? data.caption : ""}">
+        <button type="button" class="pill-btn is-danger" data-remove-row>Remove</button>
+      `;
+      list.appendChild(row);
+    }
+
+    function addLinkRow(list, data) {
+      var row = document.createElement("div");
+      row.className = "list-row";
+      row.dataset.linkRow = "true";
+      row.innerHTML = `
+        <input type="text" data-link-label placeholder="Label" value="${data && data.label ? data.label : ""}">
+        <input type="text" data-link-url placeholder="URL" value="${data && data.url ? data.url : ""}">
+        <input type="text" data-link-description placeholder="Description" value="${data && data.description ? data.description : ""}">
+        <button type="button" class="pill-btn is-danger" data-remove-row>Remove</button>
+      `;
+      list.appendChild(row);
+    }
+
+    if (type === "rich_text") {
+      setRichText(payload);
+    } else if (type === "detail-grid") {
+      config.innerHTML = `
+        <div class="list-block" data-detail-list></div>
+        <button type="button" class="pill-btn is-secondary" data-add-detail>+ Add Row</button>
+      `;
+      var list = config.querySelector("[data-detail-list]");
+      (payload.details || []).forEach(function (detail) { addDetailRow(list, detail); });
+      if (!list.children.length) addDetailRow(list);
+    } else if (type === "callouts") {
+      config.innerHTML = `
+        <div class="list-block" data-callout-list></div>
+        <button type="button" class="pill-btn is-secondary" data-add-callout>+ Add Callout</button>
+      `;
+      var calloutList = config.querySelector("[data-callout-list]");
+      (payload.callouts || []).forEach(function (callout) { addCalloutRow(calloutList, callout); });
+      if (!calloutList.children.length) addCalloutRow(calloutList);
+    } else if (type === "carousel") {
+      config.innerHTML = `
+        <div class="list-block" data-slide-list></div>
+        <button type="button" class="pill-btn is-secondary" data-add-slide>+ Add Slide</button>
+        <label>
+          <span>Album URL</span>
+          <input type="text" data-carousel-album placeholder="https://..." value="${payload.album_url || ""}">
+        </label>
+        <label>
+          <span>Description</span>
+          <textarea rows="3" data-carousel-description placeholder="Optional context">${payload.description || ""}</textarea>
+        </label>
+      `;
+      var slideList = config.querySelector("[data-slide-list]");
+      (payload.slides || []).forEach(function (slide) { addSlideRow(slideList, slide); });
+      if (!slideList.children.length) addSlideRow(slideList);
+    } else if (type === "link-list") {
+      config.innerHTML = `
+        <div class="list-block" data-link-list></div>
+        <button type="button" class="pill-btn is-secondary" data-add-link>+ Add Link</button>
+      `;
+      var linkList = config.querySelector("[data-link-list]");
+      (payload.links || []).forEach(function (link) { addLinkRow(linkList, link); });
+      if (!linkList.children.length) addLinkRow(linkList);
+    }
   }
 
   function clearSections() {
@@ -547,6 +793,73 @@
     btn.addEventListener("click", function () {
       resetBuilder();
     });
+  });
+
+  sectionsContainer.addEventListener("change", function (evt) {
+    if (evt.target.matches("select[name='section_type']")) {
+      var block = evt.target.closest(".builder-section");
+      renderSectionConfig(block, null);
+    }
+  });
+
+  sectionsContainer.addEventListener("click", function (evt) {
+    if (evt.target.matches("[data-add-detail]")) {
+      var list = evt.target.closest(".section-config").querySelector("[data-detail-list]");
+      var row = document.createElement("div");
+      row.className = "list-row";
+      row.dataset.detailRow = "true";
+      row.innerHTML = `
+        <input type="text" data-detail-label placeholder="Label">
+        <input type="text" data-detail-value placeholder="Value">
+        <input type="text" data-detail-meta placeholder="Meta">
+        <button type="button" class="pill-btn is-danger" data-remove-row>Remove</button>
+      `;
+      list.appendChild(row);
+    }
+    if (evt.target.matches("[data-add-callout]")) {
+      var cList = evt.target.closest(".section-config").querySelector("[data-callout-list]");
+      var row = document.createElement("div");
+      row.className = "list-row";
+      row.dataset.calloutRow = "true";
+      row.innerHTML = `
+        <input type="text" data-callout-icon placeholder="Icon/Emoji">
+        <input type="text" data-callout-heading placeholder="Heading">
+        <input type="text" data-callout-body placeholder="Body">
+        <button type="button" class="pill-btn is-danger" data-remove-row>Remove</button>
+      `;
+      cList.appendChild(row);
+    }
+    if (evt.target.matches("[data-add-slide]")) {
+      var sList = evt.target.closest(".section-config").querySelector("[data-slide-list]");
+      var row = document.createElement("div");
+      row.className = "list-row";
+      row.dataset.slideRow = "true";
+      row.innerHTML = `
+        <div class="input-with-btn">
+          <input type="text" data-slide-image placeholder="Image URL">
+          <button type="button" class="pill-btn is-secondary" data-upload-ref="prev" data-upload-type="slide">Upload</button>
+        </div>
+        <input type="text" data-slide-caption placeholder="Caption">
+        <button type="button" class="pill-btn is-danger" data-remove-row>Remove</button>
+      `;
+      sList.appendChild(row);
+    }
+    if (evt.target.matches("[data-add-link]")) {
+      var lList = evt.target.closest(".section-config").querySelector("[data-link-list]");
+      var row = document.createElement("div");
+      row.className = "list-row";
+      row.dataset.linkRow = "true";
+      row.innerHTML = `
+        <input type="text" data-link-label placeholder="Label">
+        <input type="text" data-link-url placeholder="URL">
+        <input type="text" data-link-description placeholder="Description">
+        <button type="button" class="pill-btn is-danger" data-remove-row>Remove</button>
+      `;
+      lList.appendChild(row);
+    }
+    if (evt.target.matches("[data-remove-row]")) {
+      evt.target.closest(".list-row").remove();
+    }
   });
 
   function loadPostIntoBuilder(postId) {
@@ -610,19 +923,73 @@
     });
   });
 
+  function readRichText(block) {
+    var field = block.querySelector("[data-rich-text]");
+    if (!field) return [];
+    return field.value
+      .split(/\n{2,}/)
+      .map(function (p) { return p.trim(); })
+      .filter(Boolean);
+  }
+
+  function readDetailRows(block) {
+    return Array.from(block.querySelectorAll("[data-detail-row]")).map(function (row) {
+      return {
+        label: row.querySelector("[data-detail-label]").value,
+        value: row.querySelector("[data-detail-value]").value,
+        meta: row.querySelector("[data-detail-meta]").value,
+      };
+    }).filter(function (detail) { return detail.label || detail.value; });
+  }
+
+  function readCalloutRows(block) {
+    return Array.from(block.querySelectorAll("[data-callout-row]")).map(function (row) {
+      return {
+        icon: row.querySelector("[data-callout-icon]").value,
+        heading: row.querySelector("[data-callout-heading]").value,
+        body: row.querySelector("[data-callout-body]").value,
+      };
+    }).filter(function (callout) { return callout.heading || callout.body; });
+  }
+
+  function readSlideRows(block) {
+    return Array.from(block.querySelectorAll("[data-slide-row]")).map(function (row) {
+      return {
+        image: row.querySelector("[data-slide-image]").value,
+        caption: row.querySelector("[data-slide-caption]").value,
+      };
+    }).filter(function (slide) { return slide.image; });
+  }
+
+  function readLinkRows(block) {
+    return Array.from(block.querySelectorAll("[data-link-row]")).map(function (row) {
+      return {
+        label: row.querySelector("[data-link-label]").value,
+        url: row.querySelector("[data-link-url]").value,
+        description: row.querySelector("[data-link-description]").value,
+      };
+    }).filter(function (link) { return link.label || link.url; });
+  }
+
   function collectSections() {
     return Array.from(sectionsContainer.querySelectorAll(".builder-section")).map(function (block) {
-      var raw = block.querySelector("[name='section_payload']").value || "{}";
+      var type = block.querySelector("[name='section_type']").value;
       var payload = {};
-      if (raw.trim()) {
-        try {
-          payload = JSON.parse(raw);
-        } catch (err) {
-          throw new Error("Invalid JSON in section payload. Please fix it before saving.");
-        }
+      if (type === "rich_text") {
+        payload.body = readRichText(block);
+      } else if (type === "detail-grid") {
+        payload.details = readDetailRows(block);
+      } else if (type === "callouts") {
+        payload.callouts = readCalloutRows(block);
+      } else if (type === "carousel") {
+        payload.slides = readSlideRows(block);
+        payload.album_url = block.querySelector("[data-carousel-album]").value;
+        payload.description = block.querySelector("[data-carousel-description]").value;
+      } else if (type === "link-list") {
+        payload.links = readLinkRows(block);
       }
       return {
-        section_type: block.querySelector("[name='section_type']").value,
+        section_type: type,
         heading: block.querySelector("[name='section_heading']").value,
         payload: payload,
       };
@@ -631,14 +998,7 @@
 
   form.addEventListener("submit", function (evt) {
     evt.preventDefault();
-    var sectionsData;
-    try {
-      sectionsData = collectSections();
-    } catch (err) {
-      alert(err.message || "Please fix section payload JSON.");
-      return;
-    }
-
+    var sectionsData = collectSections();
     var payload = {
       id: form.elements.id.value || null,
       title: form.elements.title.value,
@@ -673,6 +1033,100 @@
         alert(err.message || "Unable to save post.");
       });
   });
+
+  document.addEventListener("click", function (evt) {
+    var btn = evt.target.closest("[data-upload-target], [data-upload-ref]");
+    if (!btn) return;
+    evt.preventDefault();
+    pendingUploadType = btn.dataset.uploadType || "attachment";
+    if (btn.dataset.uploadRef === "prev") {
+      pendingUploadElement = btn.previousElementSibling;
+      pendingUploadTarget = null;
+    } else {
+      pendingUploadTarget = btn.dataset.uploadTarget || null;
+      pendingUploadElement = null;
+    }
+    uploadInput.value = "";
+    uploadInput.click();
+  });
+
+  function setTargetValue(targetName, value) {
+    if (!targetName) return;
+    var field = document.querySelector("[name='" + targetName + "']");
+    if (field) field.value = value;
+  }
+
+  function uploadAsset(file, type) {
+    var formData = new FormData();
+    formData.append("asset", file);
+    return fetch("/admin/community-bulletin/upload?type=" + encodeURIComponent(type), {
+      method: "POST",
+      body: formData,
+    }).then(function (resp) { return resp.json(); });
+  }
+
+  uploadInput.addEventListener("change", function () {
+    if (!uploadInput.files.length) return;
+    var file = uploadInput.files[0];
+    uploadAsset(file, pendingUploadType || "attachment")
+      .then(function (data) {
+        if (!data.url) throw new Error(data.error || "Upload failed");
+        if (pendingUploadElement) {
+          pendingUploadElement.value = data.url;
+        } else if (pendingUploadTarget) {
+          setTargetValue(pendingUploadTarget, data.url);
+        }
+      })
+      .catch(function (err) {
+        console.warn(err);
+        alert(err.message || "Upload failed");
+      })
+      .finally(function () {
+        pendingUploadTarget = null;
+        pendingUploadElement = null;
+        pendingUploadType = null;
+      });
+  });
+
+  var authorForm = document.getElementById("authorForm");
+  authorForm && authorForm.addEventListener("submit", function (evt) {
+    evt.preventDefault();
+    var payload = {
+      display_name: authorForm.elements.display_name.value,
+      avatar_url: authorForm.elements.avatar_url.value,
+      link_url: authorForm.elements.link_url.value,
+      bio: authorForm.elements.bio.value,
+      social_handles: authorForm.elements.social_handles.value,
+    };
+    fetch("/admin/community-bulletin/authors", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    })
+      .then(function (resp) { return resp.json(); })
+      .then(function (data) {
+        if (!data.author) throw new Error(data.error || "Unable to create author");
+        alert("Author saved!");
+        authorForm.reset();
+        var opt = document.createElement("option");
+        opt.value = data.author.id;
+        opt.textContent = data.author.display_name;
+        authorSelect.appendChild(opt);
+        authorSelect.value = data.author.id;
+      })
+      .catch(function (err) {
+        console.warn(err);
+        alert(err.message || "Unable to create author.");
+      });
+  });
+
+  function setInitialSections() {
+    if (!posts.length) {
+      addSection();
+    }
+  }
+
+  setInitialSections();
 })();
 </script>
 {% endif %}

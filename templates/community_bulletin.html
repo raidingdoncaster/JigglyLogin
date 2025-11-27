@@ -21,13 +21,13 @@
     {% for post in featured_posts %}
     <a class="cb-feature-card" id="feature-{{ post.slug }}"
        href="{{ url_for('community_bulletin_post', slug=post.slug) }}"
-       style="background-image: linear-gradient(180deg, rgba(6,10,40,0.25), rgba(5,7,19,0.75)), url('{{ url_for('static', filename=post.header_image) }}');">
+       style="background-image: linear-gradient(180deg, rgba(6,10,40,0.25), rgba(5,7,19,0.75)), url('{{ post.header_image|bulletin_media }}');">
       <div class="cb-feature-meta">
         <span class="cb-tag">{{ post.tag }}</span>
         <h2>{{ post.title }}</h2>
         <p>{{ post.summary }}</p>
         <div class="cb-author">
-          <img src="{{ url_for('static', filename=post.author_avatar or 'avatars/avatar1.png') }}" alt="{{ post.author or 'RDAB Staff' }} avatar">
+          <img src="{{ (post.author_avatar or 'avatars/avatar1.png')|bulletin_media }}" alt="{{ post.author or 'RDAB Staff' }} avatar">
           <div>
             <strong>{{ post.author or 'RDAB Staff' }}</strong>
             <span>{{ post.published_at|to_date }} · {{ post.read_time or '3 min read' }}</span>
@@ -63,14 +63,14 @@
   {% for post in latest_feed %}
   <a class="cb-latest-item" href="{{ url_for('community_bulletin_post', slug=post.slug) }}">
     <div class="cb-latest-thumb">
-      <img src="{{ url_for('static', filename=post.header_image) }}" alt="{{ post.title }} artwork">
+      <img src="{{ post.header_image|bulletin_media }}" alt="{{ post.title }} artwork">
     </div>
     <div class="cb-latest-body">
       <p class="cb-tag">{{ post.category or post.tag }}</p>
       <h4>{{ post.title }}</h4>
       <p class="cb-latest-summary">{{ post.summary }}</p>
       <div class="cb-latest-meta">
-        <img src="{{ url_for('static', filename=post.author_avatar or 'avatars/avatar1.png') }}" alt="{{ post.author or 'RDAB Staff' }} avatar">
+        <img src="{{ (post.author_avatar or 'avatars/avatar1.png')|bulletin_media }}" alt="{{ post.author or 'RDAB Staff' }} avatar">
         <span>{{ post.author or 'RDAB Staff' }} • {{ post.published_at|to_date }} • {{ post.read_time or '3 min read' }}</span>
       </div>
     </div>
@@ -93,7 +93,7 @@
       <div class="cb-search-results">
         {% for post in posts[:4] %}
         <a class="cb-search-card" href="{{ url_for('community_bulletin_post', slug=post.slug) }}">
-          <img src="{{ url_for('static', filename=post.header_image) }}" alt="{{ post.title }}">
+          <img src="{{ post.header_image|bulletin_media }}" alt="{{ post.title }}">
           <h5>{{ post.title }}</h5>
           <p>{{ post.tag }}</p>
         </a>
@@ -127,13 +127,13 @@
     {% set spotlight = section.posts[0] %}
     <a class="cb-spotlight-card"
        href="{{ url_for('community_bulletin_post', slug=spotlight.slug) }}"
-       style="background-image: linear-gradient(160deg, rgba(8,12,34,0.5), rgba(6,8,20,0.85)), url('{{ url_for('static', filename=spotlight.header_image) }}');">
+       style="background-image: linear-gradient(160deg, rgba(8,12,34,0.5), rgba(6,8,20,0.85)), url('{{ spotlight.header_image|bulletin_media }}');">
       <div class="cb-feature-meta">
         <span class="cb-tag">{{ spotlight.tag }}</span>
         <h3>{{ spotlight.title }}</h3>
         <p>{{ spotlight.summary }}</p>
         <div class="cb-author">
-          <img src="{{ url_for('static', filename=spotlight.author_avatar or 'avatars/avatar1.png') }}" alt="{{ spotlight.author or 'RDAB Staff' }}">
+          <img src="{{ (spotlight.author_avatar or 'avatars/avatar1.png')|bulletin_media }}" alt="{{ spotlight.author or 'RDAB Staff' }}">
           <div>
             <strong>{{ spotlight.author or 'RDAB Staff' }}</strong>
             <span>{{ spotlight.published_at|to_date }} · {{ spotlight.read_time or '3 min read' }}</span>
@@ -144,7 +144,7 @@
     <div class="cb-mini-feed">
       {% for post in section.posts[1:] %}
       <a class="cb-mini-item" href="{{ url_for('community_bulletin_post', slug=post.slug) }}">
-        <img src="{{ url_for('static', filename=post.header_image) }}" alt="{{ post.title }}">
+        <img src="{{ post.header_image|bulletin_media }}" alt="{{ post.title }}">
         <div>
           <p class="cb-tag">{{ post.tag }}</p>
           <h4>{{ post.title }}</h4>

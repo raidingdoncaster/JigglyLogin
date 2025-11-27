@@ -40,7 +40,7 @@
 <div class="bulletin-strip">
   <div class="bulletin-strip__media">
     {% if bulletin_preview.hero_image %}
-      <img src="{{ bulletin_preview.hero_image }}" alt="{{ bulletin_preview.title }}">
+      <img src="{{ bulletin_preview.hero_image|bulletin_media }}" alt="{{ bulletin_preview.title }}">
     {% else %}
       <span>📰</span>
     {% endif %}
@@ -108,9 +108,6 @@
             <div class="upcoming-card__body">
               <strong class="upcoming-card__title">{{ meet.name }}</strong>
               <span class="upcoming-card__datetime">{{ meet.date_label }} · {{ meet.time_label }} (UK)</span>
-              {% if meet.location %}
-                <span class="upcoming-card__location">{{ meet.location }}</span>
-              {% endif %}
             </div>
           </article>
         {% endfor %}
@@ -169,7 +166,6 @@
 .upcoming-card__body { display:flex; flex-direction:column; gap:3px; flex:1; }
 .upcoming-card__title { font-size:0.82em; color:#1f2937; font-weight:700; }
 .upcoming-card__datetime { font-size:0.75em; color:#2563eb; font-weight:600; }
-.upcoming-card__location { font-size:0.72em; color:#475569; }
 .btn-rsvp { background:#f97316; font-size:0.7em; padding:4px 10px; box-shadow:none; }
 .btn-disabled { background:#cbd5f5; color:#475569; font-size:0.7em; padding:4px 10px; border-radius:999px; }
 .upcoming-empty { font-size:0.85em; color:#777; margin:0 0 12px; }

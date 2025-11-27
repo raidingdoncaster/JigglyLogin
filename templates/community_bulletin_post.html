@@ -9,7 +9,7 @@
 
 <section class="bp-hero">
   <div class="bp-hero-media">
-    <img src="{{ url_for('static', filename=post.hero_image or post.header_image) }}" alt="{{ post.title }} header art">
+    <img src="{{ (post.hero_image or post.header_image)|bulletin_media }}" alt="{{ post.title }} header art">
   </div>
   <div class="bp-hero-copy">
     <span class="bp-pill">{{ post.tag }}</span>
@@ -22,7 +22,7 @@
       <div>
         <span class="bp-meta-label">Author</span>
         <div class="bp-author-inline">
-          <img src="{{ url_for('static', filename=post.author_avatar or 'avatars/avatar1.png') }}" alt="{{ post.author or 'RDAB Staff' }} avatar">
+          <img src="{{ (post.author_avatar or 'avatars/avatar1.png')|bulletin_media }}" alt="{{ post.author or 'RDAB Staff' }} avatar">
           <span>{{ post.author or 'RDAB Staff' }}</span>
         </div>
       </div>
@@ -96,7 +96,7 @@
             <div class="bp-carousel-track" data-carousel-track>
               {% for slide in section.slides %}
               <figure class="bp-carousel-slide">
-                <img src="{{ url_for('static', filename=slide.image) }}" alt="{{ slide.caption or ('Slide ' ~ loop.index) }}">
+                <img src="{{ slide.image|bulletin_media }}" alt="{{ slide.caption or ('Slide ' ~ loop.index) }}">
                 {% if slide.caption %}
                 <figcaption>{{ slide.caption }}</figcaption>
                 {% endif %}
@@ -155,7 +155,7 @@
       </div>
       {% endif %}
       <div class="bp-author-card">
-        <img src="{{ url_for('static', filename=post.author_avatar or 'avatars/avatar1.png') }}" alt="{{ post.author or 'RDAB Staff' }} avatar">
+        <img src="{{ (post.author_avatar or 'avatars/avatar1.png')|bulletin_media }}" alt="{{ post.author or 'RDAB Staff' }} avatar">
         <div>
           <strong>{{ post.author or 'RDAB Staff' }}</strong>
           {% if post.author_link %}
@@ -183,7 +183,7 @@
       <div class="bp-related-list">
         {% for related in related_posts %}
         <a class="bp-related-item" href="{{ url_for('community_bulletin_post', slug=related.slug) }}">
-          <img src="{{ url_for('static', filename=related.header_image) }}" alt="{{ related.title }}">
+          <img src="{{ related.header_image|bulletin_media }}" alt="{{ related.title }}">
           <div>
             <strong>{{ related.title }}</strong>
             <span>{{ related.author or 'RDAB Staff' }} • {{ related.published_at|to_date }}</span>

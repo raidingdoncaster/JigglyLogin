@@ -5,69 +5,294 @@
 {% endblock %}
 
 {% block content %}
-<div class="meetup-history">
+<div class="meetup-history passport-theme passport-theme--{{ passport_theme }}"
+     data-passport-theme="{{ passport_theme }}"
+     style="--passport-team-glow: {{ passport_theme_data.glow or '#3b82f6' }};">
 
-  <header class="meetup-history__header">
-    <h2>📅 Meet-up History</h2>
-    <div class="summary-box">
-      <h3>{{ total_attended }}</h3>
-      <p>Total meet-ups attended</p>
+  <div class="meetup-history__inner">
+    <header class="meetup-history__header">
+      <div>
+        <p class="meetup-history__theme-label">{{ passport_theme_data.label }}</p>
+        <h2>📅 Meet-up Timeline</h2>
+        <p class="meetup-history__subtitle">Every check-in you’ve logged while rocking the {{ passport_theme_data.label }} vibe.</p>
+      </div>
+      <div class="summary-box">
+        <h3>{{ total_attended }}</h3>
+        <p>Total meet-ups attended</p>
+      </div>
+    </header>
+
+    <form method="get" class="sort-form">
+      <label for="sort">Sort by</label>
+      <select name="sort" id="sort" onchange="this.form.submit()">
+        <option value="date_desc" {% if sort_by=='date_desc' %}selected{% endif %}>Newest first</option>
+        <option value="date_asc" {% if sort_by=='date_asc' %}selected{% endif %}>Oldest first</option>
+        <option value="title" {% if sort_by=='title' %}selected{% endif %}>Alphabetical</option>
+      </select>
+    </form>
+
+    {% if meetups %}
+      <ul class="meetup-list">
+        {% for m in meetups %}
+          <li class="meetup-card">
+            {% if m.photo %}
+              <div class="meetup-card__photo" style="background-image:url('{{ m.photo }}');"></div>
+            {% else %}
+              <div class="meetup-card__photo meetup-card__photo--placeholder"></div>
+            {% endif %}
+            <div class="meetup-card__body">
+              <strong>{{ m.title }}</strong>
+              <div class="meetup-card__meta">
+                <span class="meetup-card__date">{{ m.date|to_date }}</span>
+                <span class="meetup-card__pill">
+                  {{ (m.checkins or 0)|int }} checked in
+                </span>
+              </div>
+            </div>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="empty-state">No meet-ups found yet.</p>
+    {% endif %}
+
+    <div class="actions-row">
+      <a href="{{ url_for('passport') }}" class="btn">⬅ Back to Passport</a>
     </div>
-  </header>
-
-  <form method="get" class="sort-form">
-    <label for="sort">Sort by</label>
-    <select name="sort" id="sort" onchange="this.form.submit()">
-      <option value="date_desc" {% if sort_by=='date_desc' %}selected{% endif %}>Newest first</option>
-      <option value="date_asc" {% if sort_by=='date_asc' %}selected{% endif %}>Oldest first</option>
-      <option value="title" {% if sort_by=='title' %}selected{% endif %}>Alphabetical</option>
-    </select>
-  </form>
-
-  {% if meetups %}
-    <ul class="meetup-list">
-      {% for m in meetups %}
-        <li class="meetup-card">
-          {% if m.photo %}
-            <img src="{{ m.photo }}" alt="{{ m.title }}" class="meetup-card__photo">
-          {% else %}
-            <div class="meetup-card__photo meetup-card__photo--placeholder"></div>
-          {% endif %}
-          <div class="meetup-card__body">
-            <strong>{{ m.title }}</strong>
-            <span class="meetup-card__date">{{ m.date|to_date }}</span>
-          </div>
-        </li>
-      {% endfor %}
-    </ul>
-  {% else %}
-    <p class="empty-state">No meet-ups found yet.</p>
-  {% endif %}
-
-  <div class="actions-row">
-    <a href="{{ url_for('passport') }}" class="btn">⬅ Back to Passport</a>
   </div>
 </div>
 
 <style>
-.meetup-history{display:flex;flex-direction:column;gap:20px;}
-.meetup-history__header{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:16px;}
-.meetup-history__header h2{margin:0;}
-.summary-box{background:#fff;padding:16px 24px;border-radius:16px;box-shadow:0 10px 24px rgba(15,23,42,0.12);text-align:center;min-width:200px;}
-.summary-box h3{margin:0;color:#1d4ed8;font-size:1.8rem;}
-.summary-box p{margin:6px 0 0;color:#64748b;font-weight:600;font-size:0.9rem;}
-.sort-form{display:flex;align-items:center;gap:12px;align-self:flex-end;}
-.sort-form label{font-weight:600;color:#475569;}
-.sort-form select{padding:8px 12px;border-radius:12px;border:1px solid #d7dbe6;font-size:0.9rem;}
-.meetup-list{list-style:none;padding:0;margin:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;}
-.meetup-card{display:flex;gap:14px;align-items:center;background:#fff;border-radius:16px;padding:16px;box-shadow:0 12px 28px rgba(15,23,42,0.12);}
-.meetup-card__photo{width:60px;height:60px;border-radius:12px;object-fit:cover;box-shadow:0 6px 16px rgba(15,23,42,0.12);}
-.meetup-card__photo--placeholder{background:linear-gradient(135deg,#e2e8f0,#cbd5f5);}
-.meetup-card__body{display:flex;flex-direction:column;gap:4px;text-align:left;}
-.meetup-card__body strong{font-size:1rem;color:#1f2937;}
-.meetup-card__date{font-size:0.85rem;color:#64748b;font-weight:600;}
-.actions-row{text-align:center;}
-.btn{display:inline-flex;align-items:center;gap:6px;padding:10px 18px;background:#3a8dde;color:#fff;border-radius:999px;text-decoration:none;font-weight:600;box-shadow:0 8px 20px rgba(58,141,222,0.25);}
-.empty-state{text-align:center;color:#64748b;font-weight:600;}
+.passport-theme {
+  --meetup-bg: linear-gradient(135deg,#0f172a,#111c3a);
+  --meetup-surface: rgba(15,23,42,0.85);
+  --meetup-border: rgba(148,163,184,0.3);
+  --meetup-shadow: 0 24px 50px rgba(15,23,42,0.25);
+  --meetup-text: #e2e8f0;
+  --meetup-subtext: rgba(226,232,240,0.8);
+  --meetup-card-bg: rgba(15,23,42,0.9);
+  --meetup-card-border: rgba(148,163,184,0.4);
+  --meetup-pill-bg: rgba(59,130,246,0.15);
+  --meetup-pill-text: #bfdbfe;
+  --meetup-summary-bg: rgba(15,23,42,0.9);
+  --meetup-summary-shadow: 0 20px 50px rgba(9,11,20,0.35);
+}
+.passport-theme--passport_light {
+  --meetup-bg: linear-gradient(135deg,#fef3c7,#e0f2ff);
+  --meetup-surface: rgba(255,255,255,0.85);
+  --meetup-border: rgba(148,163,184,0.35);
+  --meetup-text: #0f172a;
+  --meetup-subtext: #475569;
+  --meetup-card-bg: #ffffff;
+  --meetup-card-border: rgba(148,163,184,0.25);
+  --meetup-pill-bg: rgba(37,99,235,0.1);
+  --meetup-pill-text: #1e3a8a;
+  --meetup-summary-bg: #ffffff;
+  --meetup-summary-shadow: 0 16px 40px rgba(15,23,42,0.15);
+}
+.passport-theme--team_valor {
+  --meetup-bg: linear-gradient(140deg,#2b0505,#8a1111,#b91c1c);
+  --meetup-card-bg: rgba(63,8,8,0.88);
+  --meetup-card-border: rgba(248,113,113,0.35);
+  --meetup-pill-bg: rgba(248,113,113,0.2);
+  --meetup-pill-text: #ffe4e6;
+  --meetup-text: #ffe4e6;
+  --meetup-subtext: rgba(255,228,230,0.9);
+  --meetup-summary-bg: rgba(63,8,8,0.85);
+}
+.passport-theme--team_mystic {
+  --meetup-bg: linear-gradient(140deg,#0b1f44,#153b82,#2f7ae8);
+  --meetup-card-bg: rgba(17,45,103,0.9);
+  --meetup-card-border: rgba(147,197,253,0.4);
+  --meetup-pill-bg: rgba(103,179,255,0.25);
+  --meetup-pill-text: #dbeafe;
+  --meetup-text: #f4f8ff;
+  --meetup-subtext: rgba(226,242,255,0.9);
+  --meetup-summary-bg: rgba(23,55,120,0.9);
+}
+.passport-theme--team_instinct {
+  --meetup-bg: linear-gradient(140deg,#2b1a04,#5f370e,#facc15);
+  --meetup-card-bg: rgba(63,35,3,0.92);
+  --meetup-card-border: rgba(253,224,71,0.4);
+  --meetup-pill-bg: rgba(250,204,21,0.2);
+  --meetup-pill-text: #fdf6b2;
+  --meetup-text: #fff8e1;
+  --meetup-subtext: rgba(255,248,225,0.85);
+  --meetup-summary-bg: rgba(63,35,3,0.9);
+}
+
+.meetup-history {
+  border-radius:32px;
+  padding:2px;
+  background:var(--meetup-bg);
+  box-shadow:var(--meetup-shadow);
+}
+.meetup-history__inner {
+  background:var(--meetup-surface);
+  border-radius:30px;
+  padding:28px;
+  border:1px solid var(--meetup-border);
+  color:var(--meetup-text);
+  display:flex;
+  flex-direction:column;
+  gap:20px;
+}
+.meetup-history__header {
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:space-between;
+  gap:18px;
+}
+.meetup-history__header h2 {
+  margin:0;
+  font-size:1.8rem;
+}
+.meetup-history__theme-label {
+  margin:0 0 4px;
+  font-size:0.85rem;
+  letter-spacing:0.15em;
+  text-transform:uppercase;
+  color:var(--meetup-subtext);
+}
+.meetup-history__subtitle {
+  margin:6px 0 0;
+  color:var(--meetup-subtext);
+  max-width:460px;
+}
+.summary-box {
+  background:var(--meetup-summary-bg);
+  border-radius:18px;
+  padding:18px 26px;
+  box-shadow:var(--meetup-summary-shadow);
+  text-align:center;
+  min-width:220px;
+}
+.summary-box h3 {
+  margin:0;
+  font-size:2rem;
+  color:var(--meetup-text);
+}
+.summary-box p {
+  margin:8px 0 0;
+  color:var(--meetup-subtext);
+  font-weight:600;
+}
+.sort-form {
+  display:flex;
+  align-items:center;
+  gap:12px;
+  align-self:flex-end;
+  color:var(--meetup-text);
+}
+.sort-form select {
+  padding:8px 12px;
+  border-radius:12px;
+  border:1px solid var(--meetup-border);
+  background:rgba(255,255,255,0.12);
+  color:var(--meetup-text);
+}
+.sort-form option {
+  color:#0f172a;
+}
+.meetup-list {
+  list-style:none;
+  padding:0;
+  margin:0;
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+  gap:16px;
+}
+.meetup-card {
+  display:flex;
+  gap:14px;
+  background:var(--meetup-card-bg);
+  border-radius:18px;
+  padding:16px;
+  border:1px solid var(--meetup-card-border);
+  box-shadow:0 18px 40px rgba(0,0,0,0.18);
+}
+.meetup-card__photo {
+  width:70px;
+  height:70px;
+  border-radius:14px;
+  background-size:cover;
+  background-position:center;
+  flex-shrink:0;
+  box-shadow:0 10px 24px rgba(0,0,0,0.25);
+}
+.meetup-card__photo--placeholder {
+  background:linear-gradient(135deg,#94a3b8,#cbd5f5);
+}
+.meetup-card__body {
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+.meetup-card__body strong {
+  font-size:1rem;
+  color:var(--meetup-text);
+}
+.meetup-card__meta {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:8px;
+  flex-wrap:wrap;
+}
+.meetup-card__date {
+  font-size:0.85rem;
+  font-weight:600;
+  color:var(--meetup-subtext);
+}
+.meetup-card__pill {
+  padding:4px 10px;
+  border-radius:999px;
+  font-size:0.8rem;
+  font-weight:600;
+  background:var(--meetup-pill-bg);
+  color:var(--meetup-pill-text);
+}
+.actions-row {
+  text-align:center;
+}
+.btn {
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:10px 18px;
+  background:#3a8dde;
+  color:#fff;
+  border-radius:999px;
+  text-decoration:none;
+  font-weight:600;
+  box-shadow:0 8px 20px rgba(58,141,222,0.25);
+}
+.empty-state {
+  text-align:center;
+  color:var(--meetup-subtext);
+  font-weight:600;
+}
+@media (max-width: 640px) {
+  .meetup-history__inner {
+    padding:20px;
+  }
+  .summary-box {
+    width:100%;
+  }
+  .meetup-card {
+    flex-direction:column;
+    align-items:flex-start;
+  }
+  .meetup-card__photo {
+    width:100%;
+    height:140px;
+    border-radius:16px;
+  }
+  .meetup-card__meta {
+    flex-direction:column;
+    align-items:flex-start;
+  }
+}
 </style>
 {% endblock %}
