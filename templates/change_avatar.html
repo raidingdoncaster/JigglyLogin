@@ -16,8 +16,11 @@
          style="width:80px; height:80px; border-radius:50%; border:3px solid #3a8dde;">
     <p style="margin:0.5em 0 0; font-size:0.9em; color:#555;">Current Avatar</p>
     {% if current_background %}
-      <p style="font-size:0.85em; color:#777;">Background: {{ current_background }}</p>
+      <p style="font-size:0.85em; color:#777;" data-current-background>Background: {{ current_background }}</p>
     {% endif %}
+    <p style="font-size:0.85em; color:#777;" data-current-passport-theme>
+      Passport Theme: {{ current_passport_theme_data.label }}
+    </p>
   </div>
 </div>
 
@@ -25,6 +28,7 @@
 <div class="tab-buttons">
   <button type="button" class="tab-btn active" data-tab="avatars">Avatars</button>
   <button type="button" class="tab-btn" data-tab="backgrounds">Backgrounds</button>
+  <button type="button" class="tab-btn" data-tab="passport-themes">Passport Themes</button>
 </div>
 
 <form id="appearance-form" action="{{ url_for('change_avatar') }}" method="post">
@@ -50,6 +54,33 @@
                {% if bg == current_background %}checked{% endif %}>
         <img src="{{ url_for('static', filename='backgrounds/' + bg) }}" alt="Background"
              style="border-radius:8px; width:100px; height:60px; object-fit:cover;">
+      </label>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Passport Themes -->
+  <div class="tab-content" id="passport-themes">
+    <div class="theme-grid">
+      {% for theme in passport_themes %}
+      {% set colors = theme.preview_colors or [] %}
+      {% if colors|length == 0 %}
+        {% set gradient = '#94a3b8' %}
+      {% elif colors|length == 1 %}
+        {% set gradient = colors[0] %}
+      {% else %}
+        {% set gradient = 'linear-gradient(135deg, ' ~ colors[0] ~ ', ' ~ colors[1] ~ ')' %}
+      {% endif %}
+      <label class="theme-option">
+        <input type="radio"
+               name="passport_theme_choice"
+               value="{{ theme.slug }}"
+               {% if theme.slug == current_passport_theme %}checked{% endif %}>
+        <span class="theme-preview" style="background: {{ gradient }};"></span>
+        <div class="theme-copy">
+          <strong>{{ theme.label }}</strong>
+          <p>{{ theme.description }}</p>
+        </div>
       </label>
       {% endfor %}
     </div>
@@ -102,21 +133,97 @@
   box-shadow:0 6px 16px rgba(58,141,222,0.25);
   transform:scale(1.05);
 }
+.theme-grid {
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+.theme-option {
+  display:flex;
+  align-items:center;
+  gap:14px;
+  border:1px solid #d4d8e0;
+  border-radius:14px;
+  padding:12px 14px;
+  cursor:pointer;
+  transition:border 0.2s, box-shadow 0.2s, transform 0.2s;
+}
+.theme-option input[type="radio"] {
+  display:none;
+}
+.theme-option strong {
+  display:block;
+  font-size:1rem;
+  color:#1e293b;
+}
+.theme-option p {
+  margin:2px 0 0;
+  font-size:0.85rem;
+  color:#475569;
+}
+.theme-preview {
+  width:56px;
+  height:56px;
+  border-radius:12px;
+  box-shadow:0 8px 18px rgba(0,0,0,0.12);
+  border:2px solid rgba(255,255,255,0.35);
+}
+.theme-option.selected {
+  border-color:#3a8dde;
+  box-shadow:0 10px 18px rgba(58,141,222,0.2);
+  transform:translateY(-1px);
+}
+.theme-option.selected .theme-preview {
+  border-color:#3a8dde;
+  box-shadow:0 12px 24px rgba(58,141,222,0.25);
+}
+.theme-option.selected strong {
+  color:#0f4597;
+}
+.theme-copy {
+  flex:1;
+}
 </style>
 
 <script>
+const tabButtons = document.querySelectorAll(".tab-btn");
+const tabPanels = document.querySelectorAll(".tab-content");
+const appearanceForm = document.getElementById("appearance-form");
+const selectedAvatar = document.getElementById("selected-avatar");
+const currentBackgroundLabel = document.querySelector("[data-current-background]");
+const currentThemeLabel = document.querySelector("[data-current-passport-theme]");
+const themeRadios = document.querySelectorAll("input[name='passport_theme_choice']");
+
 // Tabs
-document.querySelectorAll(".tab-btn").forEach(btn => {
+tabButtons.forEach(btn => {
   btn.addEventListener("click", () => {
-    document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
-    document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
+    tabButtons.forEach(b => b.classList.remove("active"));
+    tabPanels.forEach(panel => panel.classList.remove("active"));
     btn.classList.add("active");
-    document.getElementById(btn.dataset.tab).classList.add("active");
+    const target = document.getElementById(btn.dataset.tab);
+    if (target) {
+      target.classList.add("active");
+    }
   });
 });
 
+// Theme card highlight
+function syncThemeCards() {
+  document.querySelectorAll(".theme-option").forEach(option => option.classList.remove("selected"));
+  themeRadios.forEach(radio => {
+    if (radio.checked) {
+      const option = radio.closest(".theme-option");
+      if (option) {
+        option.classList.add("selected");
+      }
+    }
+  });
+}
+themeRadios.forEach(radio => radio.addEventListener("change", syncThemeCards));
+syncThemeCards();
+
 // AJAX submit
-document.getElementById("appearance-form").addEventListener("submit", function(e) {
+appearanceForm.addEventListener("submit", function(e) {
   e.preventDefault();
   const formData = new FormData(this);
 
@@ -125,12 +232,24 @@ document.getElementById("appearance-form").addEventListener("submit", function(e
     body: formData,
     headers: { "X-Requested-With": "XMLHttpRequest" }
   })
-  .then(r => r.json())
+  .then(response => response.json())
   .then(data => {
-    if (data.success) {
-      document.getElementById("selected-avatar").src = "/static/avatars/" + data.avatar;
-      alert("✅ Appearance updated!");
+    if (!data.success) {
+      throw new Error("Unable to update appearance right now.");
     }
+    if (selectedAvatar) {
+      selectedAvatar.src = "/static/avatars/" + data.avatar;
+    }
+    if (currentBackgroundLabel) {
+      currentBackgroundLabel.textContent = "Background: " + data.background;
+    }
+    if (currentThemeLabel && data.passport_theme_label) {
+      currentThemeLabel.textContent = "Passport Theme: " + data.passport_theme_label;
+    }
+    alert("✅ Appearance updated!");
+  })
+  .catch(() => {
+    alert("⚠️ Something went wrong while saving. Please try again.");
   });
 });
 </script>

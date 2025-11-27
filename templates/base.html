@@ -154,9 +154,24 @@
       width:40px; height:40px; object-fit:cover;
     }
     .avatar-dropdown{
-      position:absolute; right:0; top:50px; display:none;
+      position:absolute; right:0; top:50px;
       background:#fff; color:#333; border-radius:10px;
       box-shadow:0 8px 20px rgba(0,0,0,.2); min-width:190px; overflow:hidden; z-index:2100;
+      opacity:0; transform:translateY(8px); pointer-events:none; visibility:hidden;
+      transition:opacity .2s ease, transform .2s ease;
+    }
+    .avatar-dropdown.is-open{
+      opacity:1;
+      transform:translateY(0);
+      pointer-events:auto;
+      visibility:visible;
+    }
+    .avatar-dropdown__username{
+      padding:12px 14px;
+      font-weight:700;
+      font-size:.95em;
+      color:#1f2937;
+      background:#f8fafc;
     }
     .avatar-dropdown a, .avatar-dropdown button{
       display:block; width:100%; text-align:left;
@@ -359,21 +374,33 @@
       // Avatar dropdown
       const ab=document.getElementById("avatarToggle");
       const ad=document.getElementById("avatarDropdown");
+      const closeAvatarDropdown=()=>{
+        if(!ad) return;
+        ad.classList.remove("is-open");
+        ad.setAttribute("aria-hidden","true");
+      };
+      const openAvatarDropdown=()=>{
+        if(!ad) return;
+        ad.classList.add("is-open");
+        ad.setAttribute("aria-hidden","false");
+      };
       if(ab && ad){
         ab.addEventListener("click",(e)=>{
           e.stopPropagation();
-          ad.style.display = ad.style.display==="block" ? "none" : "block";
+          if(ad.classList.contains("is-open")) closeAvatarDropdown();
+          else openAvatarDropdown();
         });
         document.addEventListener("click",(e)=>{
-          if(!ad.contains(e.target)) ad.style.display="none";
+          if(!ad.contains(e.target) && !ab.contains(e.target)) closeAvatarDropdown();
         });
+        ad.addEventListener("click",(e)=>e.stopPropagation());
       }
 
       // Manage Account modal open/close
       const mm = document.getElementById('manageAccountModal');
       const openBtns = document.querySelectorAll('[data-open-account-modal]');
       openBtns.forEach(b=>b.addEventListener('click',()=>{
-        document.getElementById("avatarDropdown")?.style && (document.getElementById("avatarDropdown").style.display="none");
+        closeAvatarDropdown();
         mm.style.display='flex';
         document.body.style.overflow='hidden';
       }));
@@ -386,6 +413,19 @@
         document.body.style.overflow='';
       }
       window._closeAccountModal = closeAccountModal; // expose if needed
+
+      const logoutLink=document.querySelector('[data-confirm-logout]');
+      if(logoutLink){
+        logoutLink.addEventListener('click',(e)=>{
+          const confirmLogout=window.confirm('Log out and end your session?');
+          if(!confirmLogout){
+            e.preventDefault();
+            closeAvatarDropdown();
+            return;
+          }
+          closeAvatarDropdown();
+        });
+      }
     });
 
     function togglePin(id,btn){
@@ -455,17 +495,21 @@
         </div>
 
         <!-- Avatar (profile hub) -->
+        {% set nav_trainer = session.get('trainer') or {} %}
+        {% set nav_username = nav_trainer.get('username') %}
         {% set nav_avatar = (current_avatar if current_avatar is defined else (avatar if avatar is defined else 'avatar1.png')) %}
         <div class="avatar-wrapper">
           <button type="button" class="nav-item" id="avatarToggle" title="Account">
             <img src="{{ url_for('static', filename='avatars/' ~ nav_avatar) }}"
                  alt="Avatar" class="nav-icon avatar-icon">
           </button>
-          <div id="avatarDropdown" class="avatar-dropdown">
-            <a href="{{ url_for('change_avatar') }}">👤 Edit Avatar</a>
+          <div id="avatarDropdown" class="avatar-dropdown" aria-hidden="true">
+            <div class="avatar-dropdown__username">{{ nav_username or 'Trainer' }}</div>
+            <div class="sep"></div>
+            <a href="{{ url_for('change_avatar') }}">👤 Customise</a>
             <button type="button" data-open-account-modal>⚙️ Manage Account</button>
             <div class="sep"></div>
-            <a href="{{ url_for('logout') }}">🚪 Log Out</a>
+            <a href="{{ url_for('logout') }}" data-confirm-logout>🚪 Log Out</a>
           </div>
         </div>
       {% endif %}

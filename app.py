@@ -148,6 +148,77 @@ app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 ALLOWED_CLASSIC_IMAGE_EXTENSIONS = {"jpg", "jpeg", "png", "webp", "gif", "heic", "heif"}
 CLASSIC_SUBMISSION_STATUSES = {"PENDING", "AWARDED", "REJECTED"}
 
+# ====== Passport theme settings ======
+def _slugify_theme_value(raw: str) -> str:
+    if not raw:
+        return ""
+    return re.sub(r"[^a-z0-9]+", "_", raw.strip().lower()).strip("_")
+
+
+PASSPORT_THEMES = [
+    {
+        "slug": "passport_light",
+        "label": "Passport Light",
+        "description": "Bright parchment gradients with indigo accents.",
+        "preview_colors": ["#fef3c7", "#2563eb"],
+    },
+    {
+        "slug": "passport_dark",
+        "label": "Passport Dark",
+        "description": "Midnight blues that match the current passport UI.",
+        "preview_colors": ["#0f172a", "#3b82f6"],
+    },
+    {
+        "slug": "team_valor",
+        "label": "Team Valor",
+        "description": "Fiery reds inspired by Moltres loyalists.",
+        "preview_colors": ["#7f1d1d", "#f87171"],
+    },
+    {
+        "slug": "team_mystic",
+        "label": "Team Mystic",
+        "description": "Frosted blues for Articuno's squad.",
+        "preview_colors": ["#0f172a", "#60a5fa"],
+    },
+    {
+        "slug": "team_instinct",
+        "label": "Team Instinct",
+        "description": "Electric yellows with warm neutrals for Zapdos fans.",
+        "preview_colors": ["#78350f", "#facc15"],
+    },
+]
+
+PASSPORT_THEME_BY_SLUG = {theme["slug"]: theme for theme in PASSPORT_THEMES}
+DEFAULT_PASSPORT_THEME = PASSPORT_THEMES[0]["slug"]
+
+
+def normalize_passport_theme(raw_value: Optional[str]) -> str:
+    """Return a valid passport theme slug that matches available themes."""
+
+    if not raw_value:
+        return DEFAULT_PASSPORT_THEME
+
+    normalized = _slugify_theme_value(raw_value)
+    if not normalized:
+        return DEFAULT_PASSPORT_THEME
+
+    for theme in PASSPORT_THEMES:
+        theme_keys = {
+            _slugify_theme_value(theme["slug"]),
+            _slugify_theme_value(theme["label"]),
+        }
+        if normalized in theme_keys:
+            return theme["slug"]
+
+    return DEFAULT_PASSPORT_THEME
+
+
+def get_passport_theme_data(slug: Optional[str] = None) -> dict:
+    """Return the structured metadata for a passport theme slug."""
+
+    normalized = normalize_passport_theme(slug)
+    return PASSPORT_THEME_BY_SLUG.get(normalized, PASSPORT_THEME_BY_SLUG[DEFAULT_PASSPORT_THEME])
+
 DATA_DIR = Path(app.root_path) / "data"
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 CUSTOM_EVENTS_PATH = DATA_DIR / "custom_events.json"
@@ -1558,6 +1629,18 @@ def _advent_stamp_icon(day: int) -> Optional[str]:
     return url_for("static", filename=f"advent/{stamp_png}")
 
 
+def _advent_stamp_message(day: int) -> Optional[str]:
+    try:
+        config = load_advent_config()
+    except FileNotFoundError:
+        return None
+    entry = config.get(day) if isinstance(config, dict) else None
+    if not entry:
+        return None
+    text = (entry.get("message") or "").strip()
+    return text or None
+
+
 def _passport_advent_icon(reason: str) -> Optional[str]:
     day = _advent_day_from_reason(reason or "")
     if day is None:
@@ -1571,38 +1654,62 @@ def _describe_passport_reason(reason: str, event_name: str | None = None) -> tup
     event_title = (event_name or "").strip()
     rl = stamp_name.lower()
 
+    advent_day = _advent_day_from_reason(stamp_name)
+    if advent_day:
+        quote = _advent_stamp_message(advent_day) or "Advent Calendar stamp unlocked during the 2025 quest."
+        return f"Advent Day {advent_day}", quote
+
     if event_title and event_title.lower() == rl:
         return "Meetup check-in", f"You checked in at {event_title} to receive this stamp."
 
     reason_map = [
-        ("win", "Win", "Winning a competition in the community."),
+        ("win", "Win", "This stamp is for winning a competition in the community. Well Done!"),
         ("cdl", "CDL", "Stamps for your participation and leaderboard scoring in the CDL."),
-        ("classic", "Classic", "Classic passport stamps converted to digital."),
+        ("classic", "Classic", "Classic passport stamps converted to digital stamps."),
         ("owed", "Owed", "Owed stamps added by the admin team."),
         ("normal", "Normal", "A strange stamp unlocked by strange means. Congrats!"),
+        ("test", "Test", "This stamp was a test! Bzzzzt!"),
+        ("beta", "Beta", "This stamp was awarded as a thanks for you helping us BETA test the RDAB App, we appreicate you!"),
+        ("lccgowa", "lccgowa", "You unlocked this stamp for attending the GO Wild Area 2025: Community Celebration live event in the City of Doncaster alongside thousands of other trainers. Thanks for helping us get our city and community on the map!"),
+        ("signup", "Signup", "This stamp was awarded to you for signing up to the RDAB app. Welcome!"),
     ]
 
     for needle, label, description in reason_map:
         if needle in rl:
             return label, description
 
-    return stamp_name, "Passport stamp unlocked during the RDAB community events."
+    return stamp_name, "Passport stamp unlocked for checking in at a RDAB community meetup."
 
 
-def _format_passport_awarded_at(raw_ts: str | None) -> tuple[str, str]:
-    """Return ISO + human-readable date strings for stamp timestamps."""
+def _format_passport_awarded_at(raw_ts: str | None) -> tuple[str, str, str]:
+    """Return ISO + readable date & time strings for stamp timestamps."""
     if not raw_ts:
-        return "", ""
+        return "", "", ""
     try:
         dt = parser.isoparse(raw_ts)
         if dt.tzinfo is None:
             dt = dt.replace(tzinfo=timezone.utc)
         local_dt = dt.astimezone(LONDON_TZ)
         iso_value = local_dt.isoformat()
-        display_value = local_dt.strftime("%d %b %Y")
-        return iso_value, display_value
+        display_date = local_dt.strftime("%d %b %Y")
+        display_time = local_dt.strftime("%H:%M")
+        return iso_value, display_date, display_time
     except Exception:
-        return raw_ts, raw_ts
+        return raw_ts or "", raw_ts or "", ""
+
+
+def _passport_record_sort_key(record: dict[str, Any]) -> datetime:
+    """Best-effort parse of the Supabase timestamp for ordering."""
+    raw_ts = record.get("timestamp") or record.get("created_at")
+    if not raw_ts:
+        return datetime.min.replace(tzinfo=timezone.utc)
+    try:
+        dt = parser.isoparse(raw_ts)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt
+    except Exception:
+        return datetime.min.replace(tzinfo=timezone.utc)
 
 
 def get_passport_stamps(username: str, campfire_username: str | None = None):
@@ -1618,6 +1725,7 @@ def get_passport_stamps(username: str, campfire_username: str | None = None):
                 .execute()
 
         records = resp.data or []
+        records.sort(key=_passport_record_sort_key, reverse=True)
 
         # Fetch event cover photos
         ev_rows = supabase.table("events").select("event_id, cover_photo_url").execute().data or []
@@ -1660,6 +1768,10 @@ def get_passport_stamps(username: str, campfire_username: str | None = None):
                 icon = url_for("static", filename="icons/owed.png")
             elif "classic" in rl:
                 icon = url_for("static", filename="icons/classic.png")
+            elif "lccgowa" in rl:
+                icon = url_for("static", filename="icons/gowa.png")
+            elif "beta" in rl:
+                icon = url_for("static", filename="icons/beta.png")
             
             elif event_id and event_id in event_map and event_map[event_id]:
                 icon = event_map[event_id]
@@ -1667,7 +1779,8 @@ def get_passport_stamps(username: str, campfire_username: str | None = None):
                 icon = url_for("static", filename="icons/tickstamp.png")
 
             reason_label, reason_description = _describe_passport_reason(reason, event_name)
-            awarded_iso, awarded_display = _format_passport_awarded_at(r.get("created_at"))
+            timestamp_value = r.get("timestamp") or r.get("created_at")
+            awarded_iso, awarded_display, awarded_time = _format_passport_awarded_at(timestamp_value)
             stamp_name = reason or event_name or "Passport stamp"
             stamps.append(
                 {
@@ -1678,6 +1791,7 @@ def get_passport_stamps(username: str, campfire_username: str | None = None):
                     "reason_description": reason_description,
                     "awarded_at_iso": awarded_iso,
                     "awarded_at": awarded_display,
+                    "awarded_at_time": awarded_time,
                 }
             )
 
@@ -5226,7 +5340,6 @@ def city_perks_page():
         )
 
     perks = query.order_by(
-        CityPerk.is_featured.desc(),
         CityPerk.start_date.asc(),
         CityPerk.name.asc(),
     ).all()
@@ -5714,6 +5827,7 @@ def passport():
         return redirect(url_for("home"))
 
     campfire_username = user.get("campfire_username", "")
+    passport_theme_slug = normalize_passport_theme(user.get("passport_theme"))
 
     # === Passport Stamps ===
     total_awarded, stamps, most_recent_stamp = get_passport_stamps(username, campfire_username)
@@ -5778,6 +5892,8 @@ def passport():
         most_recent_stamp=most_recent_stamp,
         lugia_summary=lugia_summary,
         classic_submissions=classic_submissions,
+        passport_theme=passport_theme_slug,
+        passport_theme_data=get_passport_theme_data(passport_theme_slug),
         show_back=False,
     )
 
@@ -6498,9 +6614,13 @@ def change_avatar():
         flash("User not found.", "error")
         return redirect(url_for("dashboard"))
 
+    current_passport_theme = normalize_passport_theme(user.get("passport_theme"))
+    current_passport_theme_data = get_passport_theme_data(current_passport_theme)
+
     if request.method == "POST":
         avatar_choice = request.form.get("avatar_choice")
         background_choice = request.form.get("background_choice")
+        passport_theme_choice = request.form.get("passport_theme_choice") or current_passport_theme
 
         valid_avatars = [f"avatar{i}.png" for i in range(1, 20)]
         if avatar_choice not in valid_avatars:
@@ -6514,6 +6634,8 @@ def change_avatar():
             flash("Invalid background choice.", "error")
             return redirect(url_for("change_avatar"))
 
+        selected_passport_theme = normalize_passport_theme(passport_theme_choice)
+
         if not supabase:
             flash("Supabase is unavailable. Please try again later.", "error")
             return redirect(url_for("change_avatar"))
@@ -6522,7 +6644,8 @@ def change_avatar():
             supabase.table("sheet1") \
                 .update({
                     "avatar_icon": avatar_choice,
-                    "trainer_card_background": background_choice
+                    "trainer_card_background": background_choice,
+                    "passport_theme": selected_passport_theme,
                 }) \
                 .eq("trainer_username", session["trainer"]) \
                 .execute()
@@ -6532,7 +6655,13 @@ def change_avatar():
             return redirect(url_for("change_avatar"))
 
         if request.headers.get("X-Requested-With") == "XMLHttpRequest":
-            return jsonify({"success": True, "avatar": avatar_choice, "background": background_choice})
+            return jsonify({
+                "success": True,
+                "avatar": avatar_choice,
+                "background": background_choice,
+                "passport_theme": selected_passport_theme,
+                "passport_theme_label": get_passport_theme_data(selected_passport_theme)["label"],
+            })
 
         flash("✅ Appearance updated successfully!", "success")
         return redirect(url_for("dashboard"))
@@ -6550,6 +6679,9 @@ def change_avatar():
         backgrounds=backgrounds,
         current_avatar=current_avatar,
         current_background=current_background,
+        passport_themes=PASSPORT_THEMES,
+        current_passport_theme=current_passport_theme,
+        current_passport_theme_data=current_passport_theme_data,
     )
 
 @app.context_processor
