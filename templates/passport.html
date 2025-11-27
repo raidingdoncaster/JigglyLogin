@@ -138,18 +138,23 @@
       <div class="stamp-coin" data-stamp-coin>
         <div class="stamp-coin__glow"></div>
         <div class="stamp-coin__rim"></div>
+        <div class="stamp-coin__edge" aria-hidden="true"></div>
         <div class="stamp-coin__face stamp-coin__face--front">
           <img src="{{ url_for('static', filename='icons/tickstamp.png') }}" alt="Selected stamp" data-stamp-modal-icon loading="lazy">
         </div>
         <div class="stamp-coin__face stamp-coin__face--back" aria-hidden="true">
           <svg class="stamp-engraving" viewBox="0 0 200 200" role="presentation" aria-hidden="true">
             <defs>
-              <path id="stamp-engrave-top-path" d="M30,82 A70,70 0 0 1 170,82"></path>
-              <path id="stamp-engrave-bottom-path" d="M170,118 A70,70 0 0 1 30,118"></path>
+              <path id="stamp-engrave-bottom-path" d="M30,118 A70,70 0 0 0 170,118"></path>
             </defs>
-            <text class="stamp-engraving__top">
-              <textPath href="#stamp-engrave-top-path" startOffset="50%" text-anchor="middle" data-stamp-engraving-top>RDAB PASSPORT</textPath>
-            </text>
+            <text class="stamp-engraving__top-text"
+                  x="100"
+                  y="72"
+                  text-anchor="middle"
+                  alignment-baseline="middle"
+                  textLength="130"
+                  lengthAdjust="spacingAndGlyphs"
+                  data-stamp-engraving-top>RDAB PASSPORT</text>
             <text class="stamp-engraving__bottom">
               <textPath href="#stamp-engrave-bottom-path" startOffset="50%" text-anchor="middle">IN RAIDING WE TRUST</textPath>
             </text>
@@ -1146,6 +1151,7 @@ button.stamp-slot:focus-visible {
   background:var(--passport-modal-media-bg, rgba(30,41,59,0.65));
   box-shadow:0 12px 32px rgba(3,6,23,0.4);
   perspective:900px;
+  transition:width 0.35s ease, height 0.35s ease;
 }
 .stamp-coin {
   --coin-depth: 22px;
@@ -1178,6 +1184,7 @@ button.stamp-slot:focus-visible {
   opacity:0.6;
   transform:translateZ(-10px);
   pointer-events:none;
+  z-index:0;
 }
 .stamp-coin__rim {
   position:absolute;
@@ -1187,6 +1194,43 @@ button.stamp-slot:focus-visible {
   border:6px solid rgba(255,255,255,0.08);
   box-shadow:inset 0 0 18px rgba(0,0,0,0.35);
   transform:translateZ(calc(var(--coin-depth) * 0.2));
+  z-index:1;
+}
+.stamp-coin__edge {
+  position:absolute;
+  inset:4px;
+  border-radius:50%;
+  pointer-events:none;
+  transform-style:preserve-3d;
+  filter:drop-shadow(0 1px 2px rgba(0,0,0,0.45));
+  z-index:2;
+}
+.stamp-coin__edge::before,
+.stamp-coin__edge::after {
+  content:"";
+  position:absolute;
+  inset:0;
+  border-radius:50%;
+  background:
+    conic-gradient(from 90deg,
+      rgba(255,255,255,0.82) 0deg,
+      rgba(148,197,255,0.35) 60deg,
+      rgba(25,39,72,0.75) 160deg,
+      rgba(255,255,255,0.55) 250deg,
+      rgba(59,130,246,0.35) 320deg,
+      rgba(255,255,255,0.82) 360deg);
+  mask:radial-gradient(circle, transparent calc(100% - 10px), #000 calc(100% - 7px));
+  -webkit-mask:radial-gradient(circle, transparent calc(100% - 10px), #000 calc(100% - 7px));
+  box-shadow:inset 0 0 8px rgba(0,0,0,0.35);
+}
+.stamp-coin__edge::before {
+  transform:translateZ(calc(var(--coin-depth) * 0.45));
+  opacity:0.92;
+}
+.stamp-coin__edge::after {
+  transform:translateZ(calc(-1 * var(--coin-depth) * 0.45));
+  opacity:0.65;
+  filter:blur(0.6px);
 }
 .stamp-coin__face {
   position:absolute;
@@ -1195,10 +1239,12 @@ button.stamp-slot:focus-visible {
   overflow:hidden;
   transform:translateZ(calc(var(--coin-depth) * 0.6));
   backface-visibility:hidden;
+  z-index:4;
 }
 .stamp-coin__face--front {
   background:radial-gradient(circle at 30% 30%, rgba(255,255,255,0.35), transparent 65%), rgba(6,12,24,0.85);
   box-shadow:0 14px 24px rgba(6,12,24,0.45), inset 0 0 18px rgba(0,0,0,0.4);
+  position:relative;
 }
 .stamp-coin__face--front img {
   width:100%;
@@ -1207,6 +1253,8 @@ button.stamp-slot:focus-visible {
   border-radius:50%;
   transform:translateZ(2px);
   pointer-events:none;
+  position:relative;
+  z-index:6;
 }
 .stamp-coin__face--back {
   background:radial-gradient(circle, rgba(9,12,22,0.85), rgba(4,6,14,0.95));
@@ -1222,7 +1270,8 @@ button.stamp-slot:focus-visible {
   opacity:0.85;
   pointer-events:none;
 }
-.stamp-engraving text {
+.stamp-engraving text,
+.stamp-engraving textPath {
   font-size:10px;
   letter-spacing:0.35em;
   text-transform:uppercase;
@@ -1232,9 +1281,13 @@ button.stamp-slot:focus-visible {
   paint-order:stroke fill;
   font-weight:600;
 }
+.stamp-engraving__top-text {
+  font-size:10px;
+  letter-spacing:0.32em;
+}
 .stamp-engraving__bottom textPath {
   font-size:9px;
-  letter-spacing:0.4em;
+  letter-spacing:0.45em;
 }
 .stamp-coin::after {
   content:"";
@@ -1260,6 +1313,7 @@ button.stamp-slot:focus-visible {
   opacity:0.55;
   filter:blur(0.2px);
   transition:background 0.25s ease, opacity 0.4s ease;
+  z-index:7;
 }
 .stamp-coin__sparkles {
   position:absolute;
@@ -1273,13 +1327,18 @@ button.stamp-slot:focus-visible {
     radial-gradient(circle at 55% 75%, rgba(255,255,255,0.9) 0%, transparent 40%);
   opacity:0;
   mix-blend-mode:screen;
+  z-index:8;
 }
 .stamp-coin.is-popping .stamp-coin__sparkles {
   animation:sparkleBurst 0.95s ease-out forwards;
 }
 .stamp-detail-modal.is-immersive .stamp-coin {
-  --stamp-coin-scale: 1.25;
+  --stamp-coin-scale: 1.65;
   box-shadow:0 32px 90px rgba(3,6,23,0.65);
+}
+.stamp-detail-modal.is-immersive .stamp-detail-modal__media {
+  width:190px;
+  height:190px;
 }
 .stamp-detail-modal.is-immersive .stamp-detail-modal__dialog {
   box-shadow:0 45px 120px rgba(2,8,23,0.55);
@@ -1302,6 +1361,10 @@ button.stamp-slot:focus-visible {
     radial-gradient(circle at 30% 20%, rgba(255,255,255,0.35), transparent 55%);
   box-shadow:inset 0 0 30px rgba(255,255,255,0.25), inset 0 0 8px rgba(15,23,42,0.2);
   opacity:0.9;
+  mix-blend-mode:screen;
+  mask:radial-gradient(circle, transparent 50%, rgba(0,0,0,0.95) 75%);
+  -webkit-mask:radial-gradient(circle, transparent 50%, rgba(0,0,0,0.95) 75%);
+  z-index:9;
 }
 .stamp-coin__glass::before,
 .stamp-coin__glass::after {
@@ -1569,12 +1632,34 @@ document.addEventListener("DOMContentLoaded", function(){
     let pointerStartY = 0;
     let pointerMoved = false;
     let lastShineTime = 0;
+    let lockedScrollY = null;
 
     function updateCoinRotation() {
       if (!coin) return;
       const normalizedRotation = ((coinRotation % 360) + 360) % 360;
       coin.style.setProperty("--stamp-coin-rotation", `${coinRotation}deg`);
       coin.style.setProperty("--stamp-coin-highlight", `${normalizedRotation}deg`);
+    }
+
+    function lockScroll() {
+      if (lockedScrollY !== null) return;
+      lockedScrollY = window.scrollY || window.pageYOffset || document.documentElement.scrollTop || 0;
+      document.body.style.position = "fixed";
+      document.body.style.top = `-${lockedScrollY}px`;
+      document.body.style.width = "100%";
+      document.body.classList.add("stamp-modal-open");
+      document.documentElement.classList.add("stamp-modal-open");
+    }
+
+    function unlockScroll() {
+      if (lockedScrollY === null) return;
+      document.body.classList.remove("stamp-modal-open");
+      document.documentElement.classList.remove("stamp-modal-open");
+      document.body.style.position = "";
+      document.body.style.top = "";
+      document.body.style.width = "";
+      window.scrollTo(0, lockedScrollY);
+      lockedScrollY = null;
     }
 
     function setImmersiveMode(enabled) {
@@ -1783,8 +1868,7 @@ document.addEventListener("DOMContentLoaded", function(){
 
       stampModal.hidden = false;
       stampModal.setAttribute("aria-hidden", "false");
-      document.body.classList.add("stamp-modal-open");
-      document.documentElement.classList.add("stamp-modal-open");
+      lockScroll();
       setImmersiveMode(false);
       resetCoin();
       if (closeBtn) {
@@ -1798,8 +1882,7 @@ document.addEventListener("DOMContentLoaded", function(){
       }
       stampModal.hidden = true;
       stampModal.setAttribute("aria-hidden", "true");
-      document.body.classList.remove("stamp-modal-open");
-      document.documentElement.classList.remove("stamp-modal-open");
+      unlockScroll();
       stopSpinAnimation();
       dragActive = false;
       setImmersiveMode(false);

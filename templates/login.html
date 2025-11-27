@@ -6,7 +6,6 @@
 
 {% block content %}
 <div class="auth-shell auth-shell--snowfall">
-  <div class="snowfall" aria-hidden="true"></div>
   <section class="auth-hero auth-hero--login">
     <div class="hero-media">
       <img src="{{ url_for('static', filename='banner.jpg') }}" alt="Raiding Doncaster and Beyond" class="hero-banner">
@@ -21,25 +20,17 @@
   <style>
   .auth-shell--snowfall{
     position:relative;
-    isolation:isolate;
   }
-  .auth-shell--snowfall > :not(.snowfall){
-    position:relative;
-    z-index:1;
-  }
-  .auth-shell--snowfall .snowfall{
-    position:absolute;
-    top:-50px;
-    left:0;
-    right:0;
-    bottom:-60px;
+  .snowfall-layer{
+    position:fixed;
+    inset:0;
     pointer-events:none;
-    z-index:0;
+    z-index:1000;
     overflow:hidden;
-    opacity:0.85;
     mix-blend-mode:screen;
+    opacity:0.92;
   }
-  .auth-shell--snowfall .snowflake{
+  .snowflake{
     position:absolute;
     top:-10%;
     width:var(--size,8px);
@@ -56,7 +47,7 @@
     100%{transform:translate3d(var(--drift, 20px),110vh,0) scale(var(--scale,1));}
   }
   @media (prefers-reduced-motion: reduce){
-    .auth-shell--snowfall .snowfall{display:none;}
+    .snowfall-layer{display:none !important;}
   }
   .auth-hero--login{
     padding:26px 26px 28px;
@@ -181,52 +172,69 @@
 </div>
 
 <script>
-  const snowLayer = document.querySelector('.auth-shell--snowfall .snowfall');
-  const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+  document.addEventListener('DOMContentLoaded', () => {
+    const loginShell = document.querySelector('.auth-shell--snowfall');
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 
-  if (snowLayer && !prefersReducedMotion.matches) {
-    const flakeTarget = window.matchMedia('(max-width: 640px)').matches ? 26 : 48;
+    if (loginShell && !prefersReducedMotion.matches) {
+      const layerId = 'login-snowfall-layer';
+      let snowLayer = document.getElementById(layerId);
 
-    for (let i = 0; i < flakeTarget; i++) {
-      const flake = document.createElement('span');
-      flake.className = 'snowflake';
-      flake.style.left = `${Math.random() * 100}%`;
-      flake.style.animationDelay = `${Math.random() * 10}s`;
-      flake.style.setProperty('--size', `${4 + Math.random() * 10}px`);
-      flake.style.setProperty('--duration', `${8 + Math.random() * 8}s`);
-      flake.style.setProperty('--opacity', (0.35 + Math.random() * 0.4).toFixed(2));
-      flake.style.setProperty('--scale', (0.5 + Math.random() * 0.9).toFixed(2));
-      flake.style.setProperty('--drift', `${(Math.random() - 0.5) * 140}px`);
-      snowLayer.appendChild(flake);
+      if (!snowLayer) {
+        snowLayer = document.createElement('div');
+        snowLayer.id = layerId;
+        snowLayer.className = 'snowfall-layer';
+        snowLayer.setAttribute('aria-hidden', 'true');
+        document.body.appendChild(snowLayer);
+      } else {
+        snowLayer.innerHTML = '';
+      }
+
+      const flakeTarget = window.matchMedia('(max-width: 640px)').matches ? 28 : 60;
+
+      for (let i = 0; i < flakeTarget; i++) {
+        const flake = document.createElement('span');
+        flake.className = 'snowflake';
+        flake.style.left = `${Math.random() * 100}%`;
+        flake.style.animationDelay = `${Math.random() * 12}s`;
+        flake.style.setProperty('--size', `${4 + Math.random() * 12}px`);
+        flake.style.setProperty('--duration', `${10 + Math.random() * 10}s`);
+        flake.style.setProperty('--opacity', (0.25 + Math.random() * 0.55).toFixed(2));
+        flake.style.setProperty('--scale', (0.55 + Math.random() * 1).toFixed(2));
+        flake.style.setProperty('--drift', `${(Math.random() - 0.5) * 180}px`);
+        snowLayer.appendChild(flake);
+      }
     }
-  }
 
-  let reminders = [
-    "📱 Add the Raiding Doncaster and Beyond app to your homescreen! Just press the share button, then add to home!",
-    "🎉 Every check-in brings you closer to rewards – don’t miss out!",
-    "🔄 Forgot your PIN? Use the recovery option with your memorable password.",
-    "✍️ Write down your memorable password somewhere safe so you don’t lose access.",
-    "🎮 Remember: signing in here helps track your Passport stamps, check-ins, and prizes!"
-  ];
+    let reminders = [
+      "📱 Add the Raiding Doncaster and Beyond app to your homescreen! Just press the share button, then add to home!",
+      "🎉 Every check-in brings you closer to rewards – don’t miss out!",
+      "🔄 Forgot your PIN? Use the recovery option with your memorable password.",
+      "✍️ Write down your memorable password somewhere safe so you don’t lose access.",
+      "🎮 Remember: signing in here helps track your Passport stamps, check-ins, and prizes!"
+    ];
 
-  reminders = reminders
-    .map(value => ({ value, sort: Math.random() }))
-    .sort((a, b) => a.sort - b.sort)
-    .map(({ value }) => value);
+    reminders = reminders
+      .map(value => ({ value, sort: Math.random() }))
+      .sort((a, b) => a.sort - b.sort)
+      .map(({ value }) => value);
 
-  let currentIndex = 0;
-  const reminderElement = document.getElementById("reminder-text");
-  const pokeball = document.getElementById("pokeball-loader");
+    let currentIndex = 0;
+    const reminderElement = document.getElementById("reminder-text");
+    const pokeball = document.getElementById("pokeball-loader");
 
-  setInterval(() => {
-    reminderElement.style.opacity = 0;
-    setTimeout(() => {
-      currentIndex = (currentIndex + 1) % reminders.length;
-      reminderElement.textContent = reminders[currentIndex];
-      reminderElement.style.opacity = 1;
-      pokeball.classList.add("pop");
-      setTimeout(() => pokeball.classList.remove("pop"), 300);
-    }, 1000);
-  }, 7000);
+    if (reminderElement && pokeball) {
+      setInterval(() => {
+        reminderElement.style.opacity = 0;
+        setTimeout(() => {
+          currentIndex = (currentIndex + 1) % reminders.length;
+          reminderElement.textContent = reminders[currentIndex];
+          reminderElement.style.opacity = 1;
+          pokeball.classList.add("pop");
+          setTimeout(() => pokeball.classList.remove("pop"), 300);
+        }, 1000);
+      }, 7000);
+    }
+  });
 </script>
 {% endblock %}

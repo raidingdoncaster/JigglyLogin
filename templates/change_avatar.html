@@ -102,11 +102,12 @@
         <div class="carousel" data-carousel="avatars">
           <div class="carousel-track">
             {% for page in avatar_pages %}
+              {% set page_index = loop.index0 %}
               <div class="carousel-page">
                 <div class="option-grid option-grid--avatars">
                   {% for icon in page %}
                     {% if icon %}
-                      {% set avatar_id = 'avatar-' ~ loop.parentloop.index0 ~ '-' ~ loop.index0 %}
+                      {% set avatar_id = 'avatar-' ~ page_index ~ '-' ~ loop.index0 %}
                       <label class="option-card"
                              for="{{ avatar_id }}">
                         <input type="radio"
@@ -149,11 +150,12 @@
         <div class="carousel" data-carousel="backgrounds">
           <div class="carousel-track">
             {% for page in background_pages %}
+              {% set page_index = loop.index0 %}
               <div class="carousel-page">
                 <div class="option-grid option-grid--backgrounds">
                   {% for bg in page %}
                     {% if bg %}
-                      {% set bg_id = 'bg-' ~ loop.parentloop.index0 ~ '-' ~ loop.index0 %}
+                      {% set bg_id = 'bg-' ~ page_index ~ '-' ~ loop.index0 %}
                       <label class="option-card option-card--background"
                              for="{{ bg_id }}">
                         <input type="radio"
