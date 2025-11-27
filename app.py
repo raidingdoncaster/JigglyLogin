@@ -239,6 +239,702 @@ def get_passport_theme_data(slug: Optional[str] = None) -> dict:
     normalized = normalize_passport_theme(slug)
     return PASSPORT_THEME_BY_SLUG.get(normalized, PASSPORT_THEME_BY_SLUG[DEFAULT_PASSPORT_THEME])
 
+# ====== RDAB Community Bulletin ======
+
+COMMUNITY_BULLETIN_POSTS = [
+    {
+        "slug": "go-tour-kalos-2026-global",
+        "title": "Pokémon GO Tour: Kalos 2026 – Global",
+        "summary": "Ticket info, shiny debuts, and RDAB travel recs for the worldwide event weekend.",
+        "published_at": datetime(2024, 12, 5, 9, 0, tzinfo=timezone.utc).isoformat(),
+        "header_image": "community-bulletin/kalos-tour-hero.svg",
+        "hero_image": "community-bulletin/kalos-tour-hero.svg",
+        "tag": "Events",
+        "category": "Events",
+        "read_time": "7 min read",
+        "author": "KittyPokemonsAlot",
+        "author_avatar": "avatars/avatar5.png",
+        "author_link": "https://www.kittyramblesalot.com/",
+        "author_bio": "Pokémon GO Hub Editor in Chief. AR photographer, raid leader, and eternal Turtwig enthusiast.",
+        "tags": ["global kalos tour", "go tour 2026", "mega diancie", "events"],
+        "social_handles": [
+            {"label": "Instagram", "icon": "📸", "url": "https://instagram.com/kittypokemonsalot"},
+            {"label": "Threads", "icon": "🧵", "url": "https://www.threads.net/@kittypokemonsalot"},
+            {"label": "TikTok", "icon": "🎵", "url": "https://www.tiktok.com/@kittypokemonsalot"},
+        ],
+        "is_featured": True,
+        "like_count": 428,
+        "comment_threads": [
+            {
+                "id": "c-kitty-1",
+                "author": "Zeroghan",
+                "avatar": "avatars/avatar2.png",
+                "timestamp": "2024-12-05T10:40:00+00:00",
+                "body": "Love the thorough prep! Any ETA on when the Doncaster meetup packs will be ready for pickup?",
+                "replies": [
+                    {
+                        "id": "c-kitty-1-r1",
+                        "author": "KittyPokemonsAlot",
+                        "avatar": "avatars/avatar5.png",
+                        "timestamp": "2024-12-05T11:05:00+00:00",
+                        "body": "We expect the packs to land the week commencing 12 Feb. I’ll post an update once courier tracking hits.",
+                    }
+                ],
+            },
+            {
+                "id": "c-kitty-2",
+                "author": "RouteCaptainMia",
+                "avatar": "avatars/avatar11.png",
+                "timestamp": "2024-12-05T12:10:00+00:00",
+                "body": "Thanks for highlighting the mobility-friendly loops. We mapped extra benches on the Lakeside path if anyone needs breaks.",
+                "replies": [],
+            },
+        ],
+        "content_sections": [
+            {
+                "id": "schedule",
+                "title": "Schedule",
+                "type": "detail-grid",
+                "details": [
+                    {"label": "Starts", "value": "Saturday, February 28, 2026", "meta": "10:00 AM local time"},
+                    {"label": "Ends", "value": "Sunday, March 1, 2026", "meta": "6:00 PM local time"},
+                    {"label": "Ticket Price", "value": "$9.99", "meta": "Includes Masterwork Research"},
+                    {"label": "RDAB meetup hubs", "value": "Doncaster Mansion House • Sheffield Peace Gardens"},
+                ],
+            },
+            {
+                "id": "overview",
+                "title": "What to expect",
+                "type": "rich_text",
+                "body": [
+                    "GO Tour 2026: Global runs for two days with rotating biomes and <strong>exclusive research branching</strong> between Xerneas and Yveltal perks.",
+                    "Shiny Diancie headlines the Masterwork while <strong>Shiny Klefki, Hawlucha, and Honedge</strong> join the pool for the first time.",
+                    "Los Angeles, USA and Tainan, Taiwan host in-person leadups. We will mirror their habitat rotations through the RDAB Discord audio rooms.",
+                ],
+            },
+            {
+                "id": "bonuses",
+                "title": "Bonuses & highlights",
+                "type": "callouts",
+                "callouts": [
+                    {"icon": "✨", "heading": "Shiny chase", "body": "Global pool boosted for starters + Vivillon postcards all weekend."},
+                    {"icon": "🎁", "heading": "Special Research", "body": "Masterwork steps now stack with Daily Adventure Incense progress."},
+                    {"icon": "🗺️", "heading": "Community map", "body": "RDAB Route captains will pin safe walking loops every 4 hours."},
+                ],
+            },
+            {
+                "id": "album",
+                "title": "Route snapshot album",
+                "type": "carousel",
+                "description": "Swipe through early planning captures. Tap the button to open the full shared album.",
+                "album_url": "https://photos.app.goo.gl/rdab-go-tour",
+                "slides": [
+                    {"image": "community-bulletin/kalos-slide-1.svg", "caption": "Lakeside habitat dry run with Team Mystic leads."},
+                    {"image": "community-bulletin/kalos-slide-2.svg", "caption": "Doncaster Civic hub mock layout for trading tables."},
+                    {"image": "community-bulletin/kalos-slide-3.svg", "caption": "Route captains mapping incense-safe loops for Saturday."},
+                    {"image": "community-bulletin/kalos-slide-4.svg", "caption": "Merch + hydration test booth featuring Psyduck cameo."},
+                ],
+            },
+            {
+                "id": "faq",
+                "title": "Ticket FAQ",
+                "type": "rich_text",
+                "body": [
+                    "Your in-app ticket automatically unlocks Masterwork Research. No extra code redeem needed this year.",
+                    "Trainers under Level 31 can still join remote raids during the event window if invited by a Level 40+ host.",
+                    "Link your <strong>Niantic ID</strong> to Discord before February 20 so we can verify for exclusive lobby access.",
+                ],
+            },
+            {
+                "id": "resources",
+                "title": "Useful links",
+                "type": "link-list",
+                "links": [
+                    {"label": "Purchase tickets", "url": "https://store.pokemongolive.com/events", "description": "Official event page"},
+                    {"label": "RDAB travel sheet", "url": "https://docs.google.com/spreadsheets/d/rdab-travel", "description": "Ride-shares + lodging"},
+                    {"label": "Volunteer signup", "url": "https://forms.gle/rdab-volunteer", "description": "Route captains & AR photo crew"},
+                ],
+            },
+        ],
+    },
+    {
+        "slug": "december-roadmap-2024",
+        "title": "December Roadmap + Holiday Prep",
+        "summary": "Fresh research tasks, a festive XP sprint, and new Winter Warm-Up meetups go live all month long.",
+        "published_at": datetime(2024, 12, 2, 9, 0, tzinfo=timezone.utc).isoformat(),
+        "header_image": "community-bulletin/aurora-lights.svg",
+        "hero_image": "community-bulletin/aurora-lights.svg",
+        "tag": "Roadmap",
+        "category": "Events",
+        "read_time": "5 min read",
+        "author": "Professor Cedar",
+        "author_avatar": "avatars/avatar7.png",
+        "author_bio": "RDAB logistics lead, usually found juggling spreadsheets and lure modules.",
+        "tags": ["roadmap", "winter warm-up", "xp sprint"],
+        "is_featured": True,
+        "like_count": 312,
+        "comment_threads": [
+            {
+                "id": "c-december-1",
+                "author": "SnowPeony",
+                "avatar": "avatars/avatar8.png",
+                "timestamp": "2024-12-02T13:00:00+00:00",
+                "body": "Can we host one lure party in Doncaster south? Lots of new trainers down here.",
+                "replies": [],
+            }
+        ],
+        "content_sections": [
+            {
+                "id": "beats",
+                "title": "Key beats",
+                "type": "callouts",
+                "callouts": [
+                    {"icon": "🔥", "heading": "Winter Warm-Up", "body": "Timed Research unlocking scarfed Glaceon encounters."},
+                    {"icon": "📊", "heading": "XP Sprint Week", "body": "Double XP stacking with Lucky Eggs from 16–22 Dec."},
+                    {"icon": "🎄", "heading": "Holiday meetups", "body": "Thursday lure parties rotate between Doncaster, Leeds, and Sheffield."},
+                ],
+            },
+            {
+                "id": "action-items",
+                "title": "Action items",
+                "type": "rich_text",
+                "body": [
+                    "Claim the limited-time Field Research from your Passport inbox before 9 Dec.",
+                    "Watch <strong>#rdab-events</strong> on Discord for ticket drops and volunteer sign ups.",
+                    "Charge your power banks – the Solstice Adventure requires AR scans in three parks.",
+                ],
+            },
+        ],
+    },
+    {
+        "slug": "shadow-lugia-raid-protocol",
+        "title": "Shadow Lugia Mega Raid Protocol",
+        "summary": "Counters, recommended squads, and weather boosts to help you crack the upcoming Apex Raid rotation.",
+        "published_at": datetime(2024, 11, 26, 15, 0, tzinfo=timezone.utc).isoformat(),
+        "header_image": "community-bulletin/raid-lugia.svg",
+        "hero_image": "community-bulletin/raid-lugia.svg",
+        "tag": "Raid Guide",
+        "category": "Raid Guides",
+        "read_time": "6 min read",
+        "author": "Theo Vodkat",
+        "author_avatar": "avatars/avatar12.png",
+        "tags": ["shadow lugia", "raid guide", "electric counters"],
+        "is_featured": True,
+        "like_count": 501,
+        "comment_threads": [
+            {
+                "id": "c-lugia-1",
+                "author": "BoltWizard",
+                "avatar": "avatars/avatar10.png",
+                "timestamp": "2024-11-26T16:15:00+00:00",
+                "body": "Shadow Electivire with Wild Charge + Ice Punch also did great under snow. Worth adding?",
+                "replies": [
+                    {
+                        "id": "c-lugia-1-r1",
+                        "author": "Theo Vodkat",
+                        "avatar": "avatars/avatar12.png",
+                        "timestamp": "2024-11-26T16:40:00+00:00",
+                        "body": "Absolutely! I’ll slot it into the counter table when we publish the downloadable PDF.",
+                    }
+                ],
+            }
+        ],
+        "content_sections": [
+            {
+                "id": "counters",
+                "title": "Top counters",
+                "type": "rich_text",
+                "body": [
+                    "Shadow Raikou with <strong>Wild Charge</strong> remains gold standard under cloudy skies.",
+                    "Mega Manectric buffs Electric friends; bring Electivire, Zekrom, and Xurkitree to round out the lobby.",
+                    "Galarian Darmanitan covers Ice weakness when winds kick in, especially for smaller squads.",
+                ],
+            },
+            {
+                "id": "album-lugia",
+                "title": "Practice lobby album",
+                "type": "carousel",
+                "slides": [
+                    {"image": "community-bulletin/lugia-slide-1.svg", "caption": "Testing shadow lobby pacing with six trainers."},
+                    {"image": "community-bulletin/lugia-slide-2.svg", "caption": "Mega Manectric buff coverage chart."},
+                ],
+                "album_url": "https://photos.app.goo.gl/rdab-shadow-lugia",
+                "description": "Swipe through prep shots from last weekend's dry run.",
+            },
+        ],
+    },
+    {
+        "slug": "winter-route-report",
+        "title": "Field Report: Winter Route Bingo",
+        "summary": "Route leads charted 12km of icy pavements to keep your exploration streak alive.",
+        "published_at": datetime(2024, 11, 20, 11, 45, tzinfo=timezone.utc).isoformat(),
+        "header_image": "community-bulletin/winter-route.svg",
+        "hero_image": "community-bulletin/winter-route.svg",
+        "tag": "Field Notes",
+        "category": "Field Reports",
+        "read_time": "4 min read",
+        "author": "Lychee",
+        "author_avatar": "avatars/avatar4.png",
+        "tags": ["routes", "field report", "winter"],
+        "is_featured": False,
+        "like_count": 189,
+        "comment_threads": [],
+        "content_sections": [
+            {
+                "id": "conditions",
+                "title": "Weather watch",
+                "type": "rich_text",
+                "body": [
+                    "Black ice near Lakeside loop – route captains flagged three detours.",
+                    "Fog rolled in after 7pm; take reflective clothing for night attempts.",
+                ],
+            },
+            {
+                "id": "rewards",
+                "title": "Rewards",
+                "type": "callouts",
+                "callouts": [
+                    {"icon": "🍬", "heading": "Rare Candy XL", "body": "15 pieces distributed to the first bingo completions."},
+                    {"icon": "🦋", "heading": "Vivillon Alerts", "body": "Four Meadow Scatterbug clusters spotted across the loop."},
+                ],
+            },
+        ],
+    },
+    {
+        "slug": "autumn-meetup-recap",
+        "title": "Autumn Meetup Recap + Trainer Spotlights",
+        "summary": "Hundreds of trainers trekked across South Yorkshire for a leaf-crunching XP grind.",
+        "published_at": datetime(2024, 10, 18, 17, 30, tzinfo=timezone.utc).isoformat(),
+        "header_image": "community-bulletin/city-rally.svg",
+        "hero_image": "community-bulletin/city-rally.svg",
+        "tag": "Recap",
+        "category": "Community",
+        "read_time": "4 min read",
+        "author": "Atlas",
+        "author_avatar": "avatars/avatar9.png",
+        "tags": ["meetup", "community", "spotlights"],
+        "is_featured": False,
+        "like_count": 265,
+        "comment_threads": [
+            {
+                "id": "c-autumn-1",
+                "author": "AshenFox",
+                "avatar": "avatars/avatar13.png",
+                "timestamp": "2024-10-18T20:00:00+00:00",
+                "body": "Appreciate the shout-out! Shadow Zapdos was a team effort ❤️",
+                "replies": [],
+            }
+        ],
+        "content_sections": [
+            {
+                "id": "highlights",
+                "title": "Highlights",
+                "type": "rich_text",
+                "body": [
+                    "Four new Platinum level trainers emerged after the raid marathon.",
+                    "Team Instinct set a new Route-completion record along the Waterfront Trail.",
+                    "Our accessibility crew tested a tactile map prototype for visually impaired trainers.",
+                ],
+            },
+            {
+                "id": "shoutouts",
+                "title": "Trainer shout-outs",
+                "type": "callouts",
+                "callouts": [
+                    {"icon": "🔥", "heading": "AshenFox", "body": "Organised the surprise Shadow Zapdos pop-up."},
+                    {"icon": "❄️", "heading": "SnowPeony", "body": "Documented every PokéStop art installation for the archive."},
+                    {"icon": "⚡", "heading": "BoltWizard", "body": "Kept the mobile charging bank alive when the rain kicked in."},
+                ],
+            },
+        ],
+    },
+]
+COMMUNITY_BULLETIN_POSTS = []
+
+
+def get_community_bulletin_posts() -> list[dict]:
+    """Return newest-first RDAB Community Bulletin entries."""
+
+    posts = fetch_bulletin_posts_from_supabase(include_sections=False)
+    if not posts:
+        posts = copy.deepcopy(COMMUNITY_BULLETIN_POSTS)
+    posts.sort(key=lambda post: parse_dt_safe(post.get("published_at")), reverse=True)
+    return posts
+
+
+def get_community_bulletin_post(slug: str) -> Optional[dict]:
+    """Return a single bulletin post by slug, if present."""
+
+    supa_post = fetch_bulletin_post_from_supabase(slug, include_sections=True)
+    if supa_post:
+        return supa_post
+    for post in get_community_bulletin_posts():
+        if (post.get("slug") or "").lower() == slug.lower():
+            return post
+    return None
+
+
+def _bulletin_supabase_enabled() -> bool:
+    return bool(USE_SUPABASE and supabase)
+
+
+def _bulletin_author_from_row(row: dict) -> tuple[str, dict]:
+    author = row.get("author") or {}
+    display_name = author.get("display_name") or row.get("author_name") or "RDAB Staff"
+    mapped = {
+        "author": display_name,
+        "author_avatar": author.get("avatar_url") or row.get("author_avatar"),
+        "author_bio": author.get("bio") or row.get("author_bio"),
+        "author_link": author.get("link_url") or row.get("author_link"),
+        "social_handles": author.get("social_handles") or row.get("social_handles") or [],
+    }
+    return display_name, mapped
+
+
+def _normalize_supabase_sections(section_rows: list[dict]) -> list[dict]:
+    normalized: list[dict] = []
+    for row in sorted(section_rows, key=lambda r: r.get("section_order", 0)):
+        payload = row.get("payload") or {}
+        normalized.append({
+            "id": row.get("id"),
+            "title": row.get("heading") or payload.get("title"),
+            "type": row.get("section_type"),
+            "section_type": row.get("section_type"),
+            "payload": payload or {},
+        })
+    return normalized
+
+
+def _normalize_supabase_post(row: dict, include_sections: bool = False) -> dict:
+    post = {
+        "id": row.get("id"),
+        "slug": row.get("slug"),
+        "title": row.get("title"),
+        "summary": row.get("summary"),
+        "hero_image": row.get("hero_image"),
+        "header_image": row.get("header_image"),
+        "category": row.get("category"),
+        "tag": row.get("tag"),
+        "read_time": row.get("read_time"),
+        "is_featured": row.get("is_featured"),
+        "published_at": row.get("published_at"),
+        "like_count": row.get("like_count") or 0,
+        "status": row.get("status"),
+        "author_id": row.get("author_id"),
+        "scheduled_publish_at": row.get("scheduled_publish_at"),
+    }
+    _, author_meta = _bulletin_author_from_row(row)
+    post.update(author_meta)
+    tags = row.get("tags") or []
+    if tags and isinstance(tags[0], dict):
+        post["tags"] = [t.get("tag") for t in tags if t.get("tag")]
+    else:
+        post["tags"] = tags
+    if include_sections:
+        post["content_sections"] = _normalize_supabase_sections(row.get("sections") or [])
+    else:
+        post["content_sections"] = []
+    return post
+
+
+def fetch_bulletin_posts_from_supabase(include_sections: bool = False, status: Optional[str] = "published") -> list[dict]:
+    if not _bulletin_supabase_enabled():
+        return []
+    select_cols = [
+        "*",
+        "author:bulletin_authors(*)",
+        "tags:bulletin_post_tags(tag)",
+    ]
+    if include_sections:
+        select_cols.append("sections:bulletin_post_sections(*)")
+    query = supabase.table("bulletin_posts").select(",".join(select_cols)).order("published_at", desc=True, nulls_last=True)
+    if status:
+        query = query.eq("status", status)
+    try:
+        data = query.execute().data or []
+    except Exception as exc:
+        print("⚠️ Supabase bulletin posts fetch failed:", exc)
+        return []
+    return [_normalize_supabase_post(row, include_sections=include_sections) for row in data]
+
+
+def fetch_bulletin_post_from_supabase(slug: str, include_sections: bool = True) -> Optional[dict]:
+    if not _bulletin_supabase_enabled():
+        return None
+    select_cols = [
+        "*",
+        "author:bulletin_authors(*)",
+        "tags:bulletin_post_tags(tag)",
+    ]
+    if include_sections:
+        select_cols.append("sections:bulletin_post_sections(*)")
+    try:
+        resp = (supabase.table("bulletin_posts")
+                .select(",".join(select_cols))
+                .eq("slug", slug)
+                .limit(1)
+                .execute())
+        rows = resp.data or []
+    except Exception as exc:
+        print("⚠️ Supabase bulletin post fetch failed:", exc)
+        return None
+    if not rows:
+        return None
+    return _normalize_supabase_post(rows[0], include_sections=include_sections)
+
+
+def _trainer_avatar_fallback(trainer: str) -> str:
+    avatars = [
+        "avatars/avatar1.png",
+        "avatars/avatar2.png",
+        "avatars/avatar3.png",
+        "avatars/avatar4.png",
+        "avatars/avatar5.png",
+        "avatars/avatar6.png",
+        "avatars/avatar7.png",
+        "avatars/avatar8.png",
+        "avatars/avatar9.png",
+        "avatars/avatar10.png",
+    ]
+    if not trainer:
+        return avatars[0]
+    return avatars[hash(trainer) % len(avatars)]
+
+
+def fetch_bulletin_comments_from_supabase(post_id: str) -> list[dict]:
+    if not _bulletin_supabase_enabled():
+        return []
+    try:
+        rows = (supabase.table("bulletin_post_comments")
+                .select("*")
+                .eq("post_id", post_id)
+                .order("created_at", desc=False)
+                .execute().data or [])
+    except Exception as exc:
+        print("⚠️ Supabase bulletin comments fetch failed:", exc)
+        return []
+    by_id: dict[str, dict] = {}
+    roots: list[dict] = []
+    for row in rows:
+        cid = row.get("id")
+        comment = {
+            "id": cid,
+            "author": row.get("trainer_username") or "Trainer",
+            "avatar": _trainer_avatar_fallback(row.get("trainer_username")),
+            "timestamp": row.get("created_at"),
+            "body": row.get("body"),
+            "replies": [],
+        }
+        by_id[cid] = comment
+        parent_id = row.get("parent_comment_id")
+        if parent_id and parent_id in by_id:
+            by_id[parent_id]["replies"].append(comment)
+        else:
+            roots.append(comment)
+    return roots
+
+
+def _hydrate_comment_media_urls(comments: list[dict]) -> None:
+    for comment in comments or []:
+        avatar = comment.get("avatar") or "avatars/avatar1.png"
+        if avatar.startswith(("http://", "https://", "/")):
+            comment["avatar"] = avatar
+        else:
+            comment["avatar"] = url_for("static", filename=avatar)
+        if comment.get("replies"):
+            _hydrate_comment_media_urls(comment["replies"])
+
+
+def _bulletin_widget_preview() -> Optional[dict]:
+    posts = get_community_bulletin_posts()
+    if not posts:
+        return None
+    candidate = next((p for p in posts if p.get("is_featured")), posts[0])
+    hero_image = candidate.get("hero_image") or candidate.get("header_image")
+    return {
+        "title": candidate.get("title"),
+        "summary": candidate.get("summary"),
+        "tag": candidate.get("tag"),
+        "published_at": candidate.get("published_at"),
+        "hero_image": hero_image,
+        "slug": candidate.get("slug"),
+    }
+
+
+def _bulletin_admin_fetch_authors() -> list[dict]:
+    if not _bulletin_supabase_enabled():
+        return []
+    try:
+        resp = (supabase.table("bulletin_authors")
+                .select("*")
+                .order("display_name", desc=False)
+                .execute())
+        return resp.data or []
+    except Exception as exc:
+        print("⚠️ Supabase bulletin authors fetch failed:", exc)
+        return []
+
+
+def _bulletin_admin_fetch_comments(limit: int = 10) -> list[dict]:
+    if not _bulletin_supabase_enabled():
+        return []
+    try:
+        resp = (supabase.table("bulletin_post_comments")
+                .select("*, post:bulletin_posts(slug,title)")
+                .order("created_at", desc=True)
+                .limit(limit)
+                .execute())
+        comments = resp.data or []
+        for comment in comments:
+            avatar = comment.get("trainer_avatar") or _trainer_avatar_fallback(comment.get("trainer_username"))
+            if avatar.startswith(("http://", "https://", "/")):
+                comment["avatar"] = avatar
+            else:
+                comment["avatar"] = url_for("static", filename=avatar)
+            post_ref = comment.get("post") or {}
+            comment["post_title"] = post_ref.get("title")
+            comment["post_slug"] = post_ref.get("slug")
+        return comments
+    except Exception as exc:
+        print("⚠️ Supabase bulletin admin comments fetch failed:", exc)
+        return []
+
+
+def _bulletin_admin_comment_total() -> int:
+    if not _bulletin_supabase_enabled():
+        return 0
+    try:
+        resp = supabase.table("bulletin_post_comments").select("id", count="exact").execute()
+        return getattr(resp, "count", None) or len(resp.data or [])
+    except Exception as exc:
+        print("⚠️ Supabase bulletin comment count failed:", exc)
+        return 0
+
+
+def _bulletin_admin_stats(posts: list[dict]) -> dict:
+    total_posts = len(posts)
+    published_posts = len([p for p in posts if (p.get("status") or "").lower() == "published"])
+    featured_posts = len([p for p in posts if p.get("is_featured")])
+    total_likes = sum(p.get("like_count") or 0 for p in posts)
+    total_comments = _bulletin_admin_comment_total()
+    return {
+        "total_posts": total_posts,
+        "published_posts": published_posts,
+        "featured_posts": featured_posts,
+        "total_likes": total_likes,
+        "total_comments": total_comments,
+    }
+
+
+def _parse_datetime_local(value: Optional[str]) -> Optional[str]:
+    if not value:
+        return None
+    try:
+        dt = datetime.fromisoformat(value)
+    except ValueError:
+        try:
+            dt = parser.isoparse(value)
+        except Exception:
+            return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    else:
+        dt = dt.astimezone(timezone.utc)
+    return dt.isoformat()
+
+
+def _bulletin_admin_upsert_post(data: dict) -> tuple[bool, dict | str]:
+    if not _bulletin_supabase_enabled():
+        return False, "Bulletin service unavailable"
+    post_id = data.get("id") or None
+    now_iso = datetime.utcnow().replace(tzinfo=timezone.utc).isoformat()
+    status = (data.get("status") or "draft").lower()
+    published_at = _parse_datetime_local(data.get("published_at"))
+    if status == "published" and not published_at:
+        published_at = now_iso
+    post_record = {
+        "title": data.get("title"),
+        "slug": data.get("slug"),
+        "summary": data.get("summary"),
+        "author_id": data.get("author_id"),
+        "category": data.get("category"),
+        "tag": data.get("tag"),
+        "read_time": data.get("read_time"),
+        "hero_image": data.get("hero_image"),
+        "header_image": data.get("header_image"),
+        "status": status,
+        "is_featured": str(data.get("is_featured")).lower() not in {"0", "false", "none", "null"},
+        "published_at": published_at,
+        "scheduled_publish_at": _parse_datetime_local(data.get("scheduled_publish_at")),
+        "updated_at": now_iso,
+    }
+    post_record = {k: v for k, v in post_record.items() if v is not None}
+    try:
+        if post_id:
+            supabase.table("bulletin_posts").update(post_record).eq("id", post_id).execute()
+        else:
+            post_record["created_at"] = now_iso
+            resp = supabase.table("bulletin_posts").insert(post_record).execute()
+            post_id = (resp.data or [{}])[0].get("id")
+        if not post_id:
+            return False, "Unable to determine post ID"
+
+        sections = data.get("sections") or []
+        supabase.table("bulletin_post_sections").delete().eq("post_id", post_id).execute()
+        section_rows = []
+        for order_idx, section in enumerate(sections, start=1):
+            payload = section.get("payload")
+            if isinstance(payload, str):
+                try:
+                    payload = json.loads(payload)
+                except Exception:
+                    payload = {}
+            section_rows.append({
+                "post_id": post_id,
+                "section_order": order_idx,
+                "section_type": section.get("section_type"),
+                "heading": section.get("heading"),
+                "payload": payload or {},
+            })
+        if section_rows:
+            supabase.table("bulletin_post_sections").insert(section_rows).execute()
+
+        tags = data.get("tags") or []
+        if isinstance(tags, str):
+            tags = [tag.strip() for tag in tags.split(",")]
+        supabase.table("bulletin_post_tags").delete().eq("post_id", post_id).execute()
+        tag_rows = [{"post_id": post_id, "tag": tag.strip()} for tag in tags if tag.strip()]
+        if tag_rows:
+            supabase.table("bulletin_post_tags").insert(tag_rows).execute()
+
+        updated_post = fetch_bulletin_post_from_supabase(data.get("slug"), include_sections=True)
+        return True, updated_post or {"id": post_id}
+    except Exception as exc:
+        print("⚠️ Supabase bulletin post save failed:", exc)
+        return False, "Unable to save post"
+
+
+def _bulletin_admin_toggle_feature(post_id: str, value: bool) -> bool:
+    if not _bulletin_supabase_enabled():
+        return False
+    try:
+        supabase.table("bulletin_posts").update({"is_featured": value}).eq("id", post_id).execute()
+        return True
+    except Exception as exc:
+        print("⚠️ Supabase toggle feature failed:", exc)
+        return False
+
+
+def _bulletin_admin_delete_comment(comment_id: str) -> bool:
+    if not _bulletin_supabase_enabled():
+        return False
+    try:
+        supabase.table("bulletin_post_comments").delete().eq("id", comment_id).execute()
+        return True
+    except Exception as exc:
+        print("⚠️ Supabase comment delete failed:", exc)
+        return False
+
 DATA_DIR = Path(app.root_path) / "data"
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 CUSTOM_EVENTS_PATH = DATA_DIR / "custom_events.json"
@@ -5285,6 +5981,8 @@ def dashboard():
             "cover_photo": ev["cover_photo_url"],
         })
 
+    bulletin_preview = _bulletin_widget_preview()
+
     return render_template(
         "dashboard.html",
         trainer=trainer,
@@ -5303,6 +6001,7 @@ def dashboard():
         show_city_perks_app=SHOW_CITY_PERKS_APP,
         show_city_guides_app=SHOW_CITY_GUIDES_APP,
         show_leagues_app=SHOW_LEAGUES_APP,
+        bulletin_preview=bulletin_preview,
     )
 
 @app.route("/calendar")
@@ -5639,13 +6338,17 @@ def inbox():
             "read_by": []
         }]
 
+    bulletin_posts = get_community_bulletin_posts()
+    latest_bulletin_post = bulletin_posts[0] if bulletin_posts else None
+
     return render_template(
         "inbox.html",
         trainer=trainer,
         inbox=messages,
         sort_by=sort_by,
         tab=tab,
-        show_back=False
+        show_back=False,
+        latest_bulletin_post=latest_bulletin_post
     )
 
 @app.route("/inbox/message/<message_id>")
@@ -5702,6 +6405,244 @@ def inbox_message(message_id):
         abort(500)
 
     return render_template("inbox_message.html", msg=msg, show_back=False)
+
+
+@app.route("/community-bulletin")
+def community_bulletin():
+    session["last_page"] = request.path
+
+    posts = get_community_bulletin_posts()
+    latest_post = posts[0] if posts else None
+    featured_posts = [p for p in posts if p.get("is_featured")] or posts[:2]
+    featured_posts = featured_posts[:3]
+    latest_feed = posts[:6]
+
+    category_sections = []
+    category_map: dict[str, list[dict]] = {}
+    for post in posts:
+        cat = (post.get("category") or "Updates").title()
+        if cat not in category_map:
+            category_map[cat] = []
+            category_sections.append({
+                "name": cat,
+                "posts": category_map[cat],
+            })
+        category_map[cat].append(post)
+
+    tag_filters = sorted({(p.get("tag") or "Update") for p in posts})
+
+    return render_template(
+        "community_bulletin.html",
+        posts=posts,
+        latest_post=latest_post,
+        latest_feed=latest_feed,
+        featured_posts=featured_posts,
+        category_sections=category_sections,
+        tag_filters=tag_filters,
+        trainer=session.get("trainer"),
+    )
+
+
+@app.route("/community-bulletin/<slug>")
+def community_bulletin_post(slug):
+    session["last_page"] = request.path
+
+    posts = get_community_bulletin_posts()
+    post = get_community_bulletin_post(slug)
+    if not post:
+        # fallback to list search in case slug exists only in cached list
+        post = next((p for p in posts if (p.get("slug") or "").lower() == slug.lower()), None)
+    if not post:
+        abort(404)
+
+    formatted_sections = []
+    for idx, section in enumerate(post.get("content_sections") or []):
+        copied = copy.deepcopy(section)
+        copied.setdefault("id", section.get("id") or f"section-{idx + 1}")
+        formatted_sections.append(copied)
+
+    if post.get("id") and _bulletin_supabase_enabled():
+        comment_threads = fetch_bulletin_comments_from_supabase(post["id"])
+    else:
+        comment_threads = post.get("comment_threads") or []
+    _hydrate_comment_media_urls(comment_threads)
+    post["comment_threads"] = comment_threads
+
+    liked_by_me = False
+    if session.get("trainer") and post.get("id") and _bulletin_supabase_enabled():
+        try:
+            liked_existing = (supabase.table("bulletin_post_likes")
+                              .select("trainer_username")
+                              .eq("post_id", post["id"])
+                              .eq("trainer_username", session["trainer"])
+                              .limit(1)
+                              .execute().data or [])
+            liked_by_me = bool(liked_existing)
+        except Exception as exc:
+            print("⚠️ Supabase like lookup failed:", exc)
+    post["liked_by_me"] = liked_by_me
+
+    toc_sections = [sec for sec in formatted_sections if sec.get("title")]
+    related_posts = [p for p in posts if p.get("slug") != post.get("slug")][:3]
+
+    return render_template(
+        "community_bulletin_post.html",
+        post=post,
+        sections=formatted_sections,
+        toc_sections=toc_sections,
+        related_posts=related_posts,
+        trainer=session.get("trainer"),
+    )
+
+
+def _bulletin_post_for_api(slug: str) -> tuple[Optional[dict], Optional[str]]:
+    post = fetch_bulletin_post_from_supabase(slug, include_sections=False)
+    if not post:
+        return None, None
+    return post, post.get("id")
+
+
+@app.route("/api/bulletin/<slug>/like", methods=["POST"])
+def api_bulletin_like(slug):
+    if "trainer" not in session:
+        return jsonify({"error": "Login required"}), 401
+    if not _bulletin_supabase_enabled():
+        return jsonify({"error": "Bulletin service unavailable"}), 503
+    post, post_id = _bulletin_post_for_api(slug)
+    if not post_id:
+        return jsonify({"error": "Post not found"}), 404
+    trainer = session["trainer"]
+    liked = False
+    like_count = post.get("like_count") or 0
+    try:
+        existing = (supabase.table("bulletin_post_likes")
+                    .select("trainer_username")
+                    .eq("post_id", post_id)
+                    .eq("trainer_username", trainer)
+                    .limit(1)
+                    .execute().data or [])
+        if existing:
+            supabase.table("bulletin_post_likes").delete().eq("post_id", post_id).eq("trainer_username", trainer).execute()
+            liked = False
+        else:
+            supabase.table("bulletin_post_likes").insert({
+                "post_id": post_id,
+                "trainer_username": trainer,
+            }).execute()
+            liked = True
+        like_rows = (supabase.table("bulletin_post_likes")
+                     .select("post_id")
+                     .eq("post_id", post_id)
+                     .execute().data or [])
+        like_count = len(like_rows)
+        supabase.table("bulletin_posts").update({"like_count": like_count}).eq("id", post_id).execute()
+    except Exception as exc:
+        print("⚠️ Supabase like toggle failed:", exc)
+        return jsonify({"error": "Unable to toggle like"}), 500
+    return jsonify({"liked": liked, "like_count": like_count})
+
+
+@app.route("/api/bulletin/<slug>/comments", methods=["GET", "POST"])
+def api_bulletin_comments(slug):
+    if not _bulletin_supabase_enabled():
+        return jsonify({"error": "Bulletin service unavailable"}), 503
+    post, post_id = _bulletin_post_for_api(slug)
+    if not post_id:
+        return jsonify({"error": "Post not found"}), 404
+
+    if request.method == "GET":
+        comments = fetch_bulletin_comments_from_supabase(post_id)
+        _hydrate_comment_media_urls(comments)
+        return jsonify({"comments": comments, "count": len(comments)})
+
+    if "trainer" not in session:
+        return jsonify({"error": "Login required"}), 401
+    payload = request.get_json(force=True, silent=True) or {}
+    body = (payload.get("body") or "").strip()
+    parent_id = payload.get("parent_id")
+    if not body:
+        return jsonify({"error": "Comment cannot be empty"}), 400
+    insert_payload = {
+        "post_id": post_id,
+        "trainer_username": session["trainer"],
+        "body": body,
+    }
+    if parent_id:
+        insert_payload["parent_comment_id"] = parent_id
+
+    try:
+        supabase.table("bulletin_post_comments").insert(insert_payload).execute()
+    except Exception as exc:
+        print("⚠️ Supabase comment insert failed:", exc)
+        return jsonify({"error": "Unable to post comment"}), 500
+
+    comments = fetch_bulletin_comments_from_supabase(post_id)
+    _hydrate_comment_media_urls(comments)
+    return jsonify({"comments": comments, "count": len(comments)})
+
+
+@app.route("/admin/community-bulletin", methods=["GET"])
+@admin_required
+def admin_bulletin():
+    session["last_page"] = request.path
+    if not _bulletin_supabase_enabled():
+        flash("Community Bulletin data source unavailable. Check Supabase credentials.", "error")
+        return render_template(
+            "admin_bulletin.html",
+            supabase_enabled=False,
+        )
+
+    posts = fetch_bulletin_posts_from_supabase(include_sections=True, status=None)
+    authors = _bulletin_admin_fetch_authors()
+    comments = _bulletin_admin_fetch_comments()
+    stats = _bulletin_admin_stats(posts)
+
+    return render_template(
+        "admin_bulletin.html",
+        supabase_enabled=True,
+        posts=posts,
+        authors=authors,
+        latest_comments=comments,
+        stats=stats,
+    )
+
+
+@app.route("/admin/community-bulletin/save", methods=["POST"])
+@admin_required
+def admin_bulletin_save():
+    if not _bulletin_supabase_enabled():
+        return jsonify({"error": "Bulletin service unavailable"}), 503
+    payload = request.get_json(force=True, silent=True) or {}
+    success, result = _bulletin_admin_upsert_post(payload)
+    if not success:
+        return jsonify({"error": result}), 400
+    return jsonify({"post": result})
+
+
+@app.route("/admin/community-bulletin/post/<post_id>/feature", methods=["POST"])
+@admin_required
+def admin_bulletin_toggle_feature_route(post_id):
+    if not _bulletin_supabase_enabled():
+        return jsonify({"error": "Bulletin service unavailable"}), 503
+    payload = request.get_json(force=True, silent=True) or {}
+    desired = payload.get("is_featured")
+    value = bool(desired) and str(desired).lower() not in {"0", "false", "no"}
+    if not _bulletin_admin_toggle_feature(post_id, value):
+        return jsonify({"error": "Unable to update feature toggle"}), 400
+    return jsonify({"is_featured": value})
+
+
+@app.route("/admin/community-bulletin/comment/<comment_id>/delete", methods=["POST"])
+@admin_required
+def admin_bulletin_delete_comment_route(comment_id):
+    if not _bulletin_supabase_enabled():
+        flash("Bulletin service unavailable.", "error")
+        return redirect(url_for("admin_bulletin"))
+    if _bulletin_admin_delete_comment(comment_id):
+        flash("Comment removed.", "success")
+    else:
+        flash("Unable to remove comment right now.", "error")
+    return redirect(url_for("admin_bulletin"))
 
 # ====== Logout ======
 @app.route("/logout")

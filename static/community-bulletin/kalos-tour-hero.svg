@@ -1,0 +1,41 @@
+<svg width="640" height="360" viewBox="0 0 640 360" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#9fe0ff"/>
+      <stop offset="1" stop-color="#2b5fa7"/>
+    </linearGradient>
+    <linearGradient id="field" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#7ecf45"/>
+      <stop offset="1" stop-color="#4aa86d"/>
+    </linearGradient>
+  </defs>
+  <rect width="640" height="360" rx="42" fill="url(#sky)"/>
+  <path d="M0 230C80 190 150 210 220 240C320 280 420 250 640 200V360H0V230Z" fill="url(#field)"/>
+  <circle cx="520" cy="80" r="40" fill="#ffe16b" opacity="0.8"/>
+  <g fill="#fefefe" opacity="0.6">
+    <path d="M90 70c30-24 62-26 94 0-10 6-24 10-47 8-14 17-32 20-47 12z"/>
+    <path d="M370 60c26-20 52-20 80 2-18 10-38 12-60 6-8 8-18 12-20 12z"/>
+  </g>
+  <g fill="#fff">
+    <circle cx="140" cy="220" r="28"/>
+    <circle cx="220" cy="240" r="32"/>
+    <circle cx="280" cy="230" r="24"/>
+  </g>
+  <g stroke="#0f2542" stroke-width="8" stroke-linecap="round">
+    <path d="M140 220c32-80 140-120 200-40" fill="none"/>
+    <path d="M220 240c50-50 120-20 140 10" fill="none"/>
+  </g>
+  <rect x="190" y="105" width="260" height="80" rx="18" fill="#0f2542" opacity="0.85"/>
+  <text x="320" y="140" text-anchor="middle" fill="#fffef2" font-size="32" font-family="Arial" font-weight="700">GO TOUR · KALOS 2026</text>
+  <text x="320" y="170" text-anchor="middle" fill="#9fe0ff" font-size="18" font-family="Arial" font-weight="600">Global weekend · February 28–March 1</text>
+  <g>
+    <circle cx="100" cy="240" r="35" fill="#ffe3d2"/>
+    <path d="M90 240c14-18 24-18 34 0" stroke="#f06339" stroke-width="8" fill="none"/>
+    <circle cx="110" cy="228" r="6" fill="#0f2542"/>
+  </g>
+  <g>
+    <rect x="470" y="210" width="120" height="80" rx="18" fill="#fff" opacity="0.2"/>
+    <rect x="490" y="220" width="80" height="60" rx="12" fill="#1b3f75"/>
+    <circle cx="530" cy="250" r="18" fill="#f8d04f"/>
+  </g>
+</svg>

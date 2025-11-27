@@ -1,0 +1,679 @@
+{% extends "base.html" %}
+
+{% block page_settings %}
+  {% set container_class = 'is-wide' %}
+{% endblock %}
+
+{% block content %}
+<section class="bulletin-admin">
+  <div class="bulletin-admin__header">
+    <div>
+      <p class="bulletin-admin__eyebrow">Community Ops</p>
+      <h1>📰 Community Bulletin</h1>
+      <p>Monitor analytics, moderate comments, and compose new posts with the responsive builder.</p>
+    </div>
+  </div>
+
+  {% if not supabase_enabled %}
+    <div class="bulletin-admin__alert">
+      <strong>Supabase is disabled.</strong>
+      <p>Enable Supabase credentials to manage the Community Bulletin.</p>
+    </div>
+  {% else %}
+    <div class="bulletin-admin__stats">
+      <div class="stat-card">
+        <p>Total Posts</p>
+        <strong>{{ stats.total_posts }}</strong>
+      </div>
+      <div class="stat-card">
+        <p>Published</p>
+        <strong>{{ stats.published_posts }}</strong>
+      </div>
+      <div class="stat-card">
+        <p>Featured</p>
+        <strong>{{ stats.featured_posts }}</strong>
+      </div>
+      <div class="stat-card">
+        <p>Likes Logged</p>
+        <strong>{{ stats.total_likes }}</strong>
+      </div>
+      <div class="stat-card">
+        <p>Total Comments</p>
+        <strong>{{ stats.total_comments }}</strong>
+      </div>
+    </div>
+
+    <div class="bulletin-admin__grid">
+      <section class="bulletin-card">
+        <div class="bulletin-card__head">
+          <div>
+            <h2>Posts</h2>
+            <p>Tap a row to edit in the builder.</p>
+          </div>
+          <button type="button" class="pill-btn" data-new-post>➕ New Post</button>
+        </div>
+        <div class="bulletin-table__wrap">
+          <table class="bulletin-table">
+            <thead>
+              <tr>
+                <th>Title</th>
+                <th>Status</th>
+                <th>Published</th>
+                <th>Feature</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for post in posts %}
+              <tr>
+                <td>
+                  <strong>{{ post.title }}</strong>
+                  <small>{{ post.slug }}</small>
+                </td>
+                <td>
+                  <span class="status-pill status-{{ (post.status or 'draft')|lower }}">{{ post.status or 'draft' }}</span>
+                </td>
+                <td>{{ post.published_at|to_date if post.published_at else '—' }}</td>
+                <td>
+                  <button type="button"
+                          class="pill-btn {{ 'is-active' if post.is_featured else '' }}"
+                          data-feature-post
+                          data-post-id="{{ post.id }}"
+                          data-featured="{{ 'true' if post.is_featured else 'false' }}">
+                    {{ '★ Featured' if post.is_featured else '☆ Feature' }}
+                  </button>
+                </td>
+                <td>
+                  <div class="table-actions">
+                    <button type="button"
+                            class="pill-btn"
+                            data-edit-post
+                            data-post-id="{{ post.id }}">Edit</button>
+                    {% if post.slug %}
+                      <a class="pill-btn is-link" href="{{ url_for('community_bulletin_post', slug=post.slug) }}" target="_blank" rel="noopener">View</a>
+                    {% endif %}
+                  </div>
+                </td>
+              </tr>
+              {% else %}
+              <tr>
+                <td colspan="5">No posts yet. Create one using the builder below.</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="bulletin-card">
+        <h2>Latest Comments</h2>
+        <ul class="bulletin-comments">
+          {% for comment in latest_comments %}
+          <li>
+            <div class="comment-meta">
+              <img src="{{ comment.avatar }}" alt="{{ comment.trainer_username }}" />
+              <div>
+                <strong>{{ comment.trainer_username }}</strong>
+                <small>{{ comment.created_at|to_date }} · {{ comment.post_title or 'Unknown post' }}</small>
+              </div>
+            </div>
+            <p>{{ comment.body }}</p>
+            <form method="post" action="{{ url_for('admin_bulletin_delete_comment_route', comment_id=comment.id) }}">
+              <button type="submit" class="pill-btn is-danger">Delete</button>
+            </form>
+          </li>
+          {% else %}
+          <li>No comments yet.</li>
+          {% endfor %}
+        </ul>
+      </section>
+    </div>
+
+    <section class="bulletin-builder"
+             data-bulletin-builder
+             data-posts='{{ posts|tojson|safe }}'
+             data-authors='{{ authors|tojson|safe }}'>
+      <div class="bulletin-card__head">
+        <div>
+          <h2>Post Builder</h2>
+          <p>Craft responsive stories with reusable section blocks.</p>
+        </div>
+        <button type="button" class="pill-btn is-secondary" data-reset-builder>Reset</button>
+      </div>
+      <form id="bulletinBuilderForm">
+        <input type="hidden" name="id">
+        <div class="builder-grid">
+          <label>
+            <span>Title</span>
+            <input type="text" name="title" required>
+          </label>
+          <label>
+            <span>Slug</span>
+            <input type="text" name="slug" required>
+          </label>
+          <label>
+            <span>Summary</span>
+            <textarea name="summary" rows="2"></textarea>
+          </label>
+          <label>
+            <span>Author</span>
+            <select name="author_id">
+              <option value="">— Select author —</option>
+            </select>
+          </label>
+          <label>
+            <span>Primary Tag</span>
+            <input type="text" name="tag" placeholder="Events">
+          </label>
+          <label>
+            <span>Category</span>
+            <input type="text" name="category" placeholder="Events">
+          </label>
+          <label>
+            <span>Read Time</span>
+            <input type="text" name="read_time" placeholder="5 min read">
+          </label>
+          <label>
+            <span>Hero Image URL</span>
+            <input type="text" name="hero_image" placeholder="https://.../heroes/slug.webp">
+          </label>
+          <label>
+            <span>Header Image URL</span>
+            <input type="text" name="header_image" placeholder="https://.../slides/slug/slide-01.webp">
+          </label>
+          <label>
+            <span>Tags (comma separated)</span>
+            <input type="text" name="tags" placeholder="events, go tour, tips">
+          </label>
+          <label>
+            <span>Status</span>
+            <select name="status">
+              <option value="draft">Draft</option>
+              <option value="scheduled">Scheduled</option>
+              <option value="published">Published</option>
+            </select>
+          </label>
+          <label>
+            <span>Published At</span>
+            <input type="datetime-local" name="published_at">
+          </label>
+          <label>
+            <span>Scheduled Publish</span>
+            <input type="datetime-local" name="scheduled_publish_at">
+          </label>
+          <label class="checkbox-field">
+            <input type="checkbox" name="is_featured">
+            <span>Feature on bulletin landing</span>
+          </label>
+        </div>
+
+        <div class="builder-sections__head">
+          <h3>Sections</h3>
+          <button type="button" class="pill-btn" data-add-section>+ Add Section</button>
+        </div>
+        <div class="builder-sections" data-builder-sections>
+          <p class="builder-sections__empty">No sections yet. Add a block to begin.</p>
+        </div>
+
+        <div class="builder-actions">
+          <button type="submit" class="pill-btn is-primary">Save Post</button>
+        </div>
+      </form>
+    </section>
+  {% endif %}
+</section>
+
+<style>
+.bulletin-admin__header { margin-bottom: 18px; }
+.bulletin-admin__eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.3em;
+  font-size: 0.7rem;
+  color: #94a3b8;
+  margin-bottom: 6px;
+}
+.bulletin-admin__alert {
+  padding: 18px;
+  border-radius: 16px;
+  background: #fef2f2;
+  color: #b91c1c;
+}
+.bulletin-admin__stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.stat-card {
+  padding: 16px;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.1);
+}
+.stat-card p { margin: 0; font-size: 0.85rem; color: #64748b; }
+.stat-card strong { font-size: 1.6rem; }
+
+.bulletin-admin__grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 18px;
+  margin-bottom: 24px;
+}
+.bulletin-card {
+  padding: 18px;
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.1);
+}
+.bulletin-card__head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.bulletin-table__wrap {
+  overflow-x: auto;
+}
+.bulletin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+.bulletin-table th,
+.bulletin-table td {
+  padding: 10px;
+  border-bottom: 1px solid #e2e8f0;
+  text-align: left;
+  vertical-align: top;
+}
+.bulletin-table strong { display: block; }
+.bulletin-table small { color: #64748b; }
+.status-pill {
+  display: inline-flex;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  text-transform: capitalize;
+}
+.status-published { background: #ecfdf5; color: #047857; }
+.status-draft { background: #f1f5f9; color: #0f172a; }
+.status-scheduled { background: #fff7ed; color: #b45309; }
+.table-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.pill-btn {
+  border: none;
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-weight: 600;
+  cursor: pointer;
+  background: #eef2ff;
+  color: #0f172a;
+}
+.pill-btn.is-link { background: #dbeafe; color: #1d4ed8; text-decoration: none; display: inline-flex; align-items: center; }
+.pill-btn.is-active { background: #fde68a; color: #92400e; }
+.pill-btn.is-secondary { background: #f8fafc; }
+.pill-btn.is-danger { background: #fee2e2; color: #b91c1c; }
+.pill-btn.is-primary { background: #0f172a; color: #fff; }
+
+.bulletin-comments {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.bulletin-comments li {
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 12px;
+}
+.comment-meta {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.comment-meta img {
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  object-fit: cover;
+}
+.bulletin-comments p { margin: 6px 0; }
+
+.bulletin-builder {
+  padding: 18px;
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.1);
+}
+.builder-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+  margin-bottom: 16px;
+}
+.builder-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: #475569;
+}
+.builder-grid input,
+.builder-grid select,
+.builder-grid textarea {
+  border-radius: 12px;
+  border: 1px solid #cbd5f5;
+  padding: 10px;
+  font: inherit;
+}
+.checkbox-field {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+.builder-sections__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.builder-sections__empty {
+  text-align: center;
+  color: #94a3b8;
+  background: #f8fafc;
+  border-radius: 16px;
+  padding: 14px;
+}
+.builder-section {
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 14px;
+  margin-bottom: 12px;
+  background: #f8fafc;
+}
+.builder-section__row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.builder-section textarea {
+  width: 100%;
+  min-height: 90px;
+  border-radius: 12px;
+  border: 1px solid #cbd5f5;
+  padding: 10px;
+  font-family: var(--font-mono, monospace);
+}
+.builder-section__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.builder-actions {
+  text-align: right;
+  margin-top: 10px;
+}
+
+@media (max-width: 1024px) {
+  .bulletin-admin__grid {
+    grid-template-columns: 1fr;
+  }
+}
+</style>
+
+{% if supabase_enabled %}
+<script>
+(function () {
+  var builder = document.querySelector("[data-bulletin-builder]");
+  if (!builder) return;
+
+  var posts = [];
+  var authors = [];
+  try { posts = JSON.parse(builder.dataset.posts || "[]"); } catch (err) { posts = []; }
+  try { authors = JSON.parse(builder.dataset.authors || "[]"); } catch (err) { authors = []; }
+
+  var form = document.getElementById("bulletinBuilderForm");
+  var authorSelect = form.querySelector("select[name='author_id']");
+  var sectionsContainer = form.querySelector("[data-builder-sections]");
+  var addSectionBtn = form.querySelector("[data-add-section]");
+  var resetBtns = document.querySelectorAll("[data-reset-builder], [data-new-post]");
+  var featureButtons = document.querySelectorAll("[data-feature-post]");
+  var editButtons = document.querySelectorAll("[data-edit-post]");
+  var currentPostId = null;
+
+  authors.forEach(function (author) {
+    var opt = document.createElement("option");
+    opt.value = author.id;
+    opt.textContent = author.display_name;
+    authorSelect.appendChild(opt);
+  });
+
+  function localDateValue(isoString) {
+    if (!isoString) return "";
+    try {
+      var dt = new Date(isoString);
+      var iso = dt.toISOString();
+      return iso.substring(0, 16);
+    } catch (err) {
+      return "";
+    }
+  }
+
+  function createSectionRow(section) {
+    var block = document.createElement("div");
+    block.className = "builder-section";
+    block.innerHTML = `
+      <div class="builder-section__row">
+        <label>
+          <span>Type</span>
+          <select name="section_type">
+            <option value="rich_text">Rich Text</option>
+            <option value="detail-grid">Detail Grid</option>
+            <option value="callouts">Callouts</option>
+            <option value="carousel">Carousel</option>
+            <option value="link-list">Link List</option>
+          </select>
+        </label>
+        <label>
+          <span>Heading</span>
+          <input type="text" name="section_heading">
+        </label>
+      </div>
+      <label>
+        <span>Payload (JSON)</span>
+        <textarea name="section_payload" placeholder='{"body": ["Paragraph"]}'></textarea>
+      </label>
+      <div class="builder-section__actions">
+        <button type="button" class="pill-btn is-secondary" data-move-up>▲</button>
+        <button type="button" class="pill-btn is-secondary" data-move-down>▼</button>
+        <button type="button" class="pill-btn is-danger" data-remove-section>Remove</button>
+      </div>
+    `;
+    block.querySelector("[name='section_type']").value = section && section.section_type ? section.section_type : "rich_text";
+    block.querySelector("[name='section_heading']").value = section && section.title ? section.title : "";
+    var payloadField = block.querySelector("[name='section_payload']");
+    if (section && section.payload) {
+      payloadField.value = JSON.stringify(section.payload, null, 2);
+    }
+    block.addEventListener("click", function (evt) {
+      if (evt.target.matches("[data-remove-section]")) {
+        block.remove();
+        if (!sectionsContainer.children.length) {
+          sectionsContainer.innerHTML = '<p class="builder-sections__empty">No sections yet. Add a block to begin.</p>';
+        }
+      }
+      if (evt.target.matches("[data-move-up]")) {
+        var prev = block.previousElementSibling;
+        if (prev) sectionsContainer.insertBefore(block, prev);
+      }
+      if (evt.target.matches("[data-move-down]")) {
+        var next = block.nextElementSibling;
+        if (next) sectionsContainer.insertBefore(next, block);
+      }
+    });
+    return block;
+  }
+
+  function clearSections() {
+    sectionsContainer.innerHTML = '<p class="builder-sections__empty">No sections yet. Add a block to begin.</p>';
+  }
+
+  function addSection(section) {
+    if (sectionsContainer.querySelector(".builder-sections__empty")) {
+      sectionsContainer.innerHTML = "";
+    }
+    sectionsContainer.appendChild(createSectionRow(section));
+  }
+
+  addSectionBtn.addEventListener("click", function () {
+    addSection();
+  });
+
+  function resetBuilder() {
+    currentPostId = null;
+    form.reset();
+    form.elements.id.value = "";
+    clearSections();
+  }
+
+  resetBtns.forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      resetBuilder();
+    });
+  });
+
+  function loadPostIntoBuilder(postId) {
+    var post = posts.find(function (p) { return p.id === postId; });
+    if (!post) return;
+    currentPostId = post.id;
+    form.elements.id.value = post.id || "";
+    form.elements.title.value = post.title || "";
+    form.elements.slug.value = post.slug || "";
+    form.elements.summary.value = post.summary || "";
+    form.elements.author_id.value = post.author_id || "";
+    form.elements.category.value = post.category || "";
+    form.elements.tag.value = post.tag || "";
+    form.elements.tags.value = (post.tags || []).join(", ");
+    form.elements.read_time.value = post.read_time || "";
+    form.elements.hero_image.value = post.hero_image || "";
+    form.elements.header_image.value = post.header_image || "";
+    form.elements.status.value = (post.status || "draft").toLowerCase();
+    form.elements.published_at.value = localDateValue(post.published_at);
+    form.elements.scheduled_publish_at.value = localDateValue(post.scheduled_publish_at);
+    form.elements.is_featured.checked = !!post.is_featured;
+
+    clearSections();
+    (post.content_sections || []).forEach(function (section) {
+      addSection(section);
+    });
+    if (!sectionsContainer.children.length) {
+      clearSections();
+    }
+  }
+
+  editButtons.forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      loadPostIntoBuilder(btn.dataset.postId);
+      window.scrollTo({ top: document.querySelector(".bulletin-builder").offsetTop - 20, behavior: "smooth" });
+    });
+  });
+
+  featureButtons.forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var postId = btn.dataset.postId;
+      var featured = btn.dataset.featured === "true";
+      fetch("/admin/community-bulletin/post/" + postId + "/feature", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ is_featured: !featured }),
+      })
+      .then(function (resp) { return resp.json(); })
+      .then(function (data) {
+        if (typeof data.is_featured === "undefined") throw new Error(data.error || "Unable to update feature");
+        btn.dataset.featured = data.is_featured ? "true" : "false";
+        btn.classList.toggle("is-active", data.is_featured);
+        btn.textContent = data.is_featured ? "★ Featured" : "☆ Feature";
+        alert("Feature flag updated.");
+        window.location.reload();
+      })
+      .catch(function (err) {
+        console.warn(err);
+        alert("Unable to update feature flag.");
+      });
+    });
+  });
+
+  function collectSections() {
+    return Array.from(sectionsContainer.querySelectorAll(".builder-section")).map(function (block) {
+      var raw = block.querySelector("[name='section_payload']").value || "{}";
+      var payload = {};
+      if (raw.trim()) {
+        try {
+          payload = JSON.parse(raw);
+        } catch (err) {
+          throw new Error("Invalid JSON in section payload. Please fix it before saving.");
+        }
+      }
+      return {
+        section_type: block.querySelector("[name='section_type']").value,
+        heading: block.querySelector("[name='section_heading']").value,
+        payload: payload,
+      };
+    });
+  }
+
+  form.addEventListener("submit", function (evt) {
+    evt.preventDefault();
+    var sectionsData;
+    try {
+      sectionsData = collectSections();
+    } catch (err) {
+      alert(err.message || "Please fix section payload JSON.");
+      return;
+    }
+
+    var payload = {
+      id: form.elements.id.value || null,
+      title: form.elements.title.value,
+      slug: form.elements.slug.value,
+      summary: form.elements.summary.value,
+      author_id: form.elements.author_id.value || null,
+      category: form.elements.category.value,
+      tag: form.elements.tag.value,
+      read_time: form.elements.read_time.value,
+      hero_image: form.elements.hero_image.value,
+      header_image: form.elements.header_image.value,
+      tags: (form.elements.tags.value || "").split(",").map(function (tag) { return tag.trim(); }).filter(Boolean),
+      status: form.elements.status.value,
+      published_at: form.elements.published_at.value,
+      scheduled_publish_at: form.elements.scheduled_publish_at.value,
+      is_featured: form.elements.is_featured.checked,
+      sections: sectionsData,
+    };
+    fetch("/admin/community-bulletin/save", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    })
+      .then(function (resp) { return resp.json(); })
+      .then(function (data) {
+        if (!data.post) throw new Error(data.error || "Unable to save post");
+        alert("Post saved! Refreshing data.");
+        window.location.reload();
+      })
+      .catch(function (err) {
+        console.warn(err);
+        alert(err.message || "Unable to save post.");
+      });
+  });
+})();
+</script>
+{% endif %}
+{% endblock %}

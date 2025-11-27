@@ -1,0 +1,12 @@
+<svg width="160" height="160" viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="160" height="160" rx="28" fill="#0F172A"/>
+  <rect x="24" y="32" width="112" height="96" rx="18" fill="white"/>
+  <rect x="34" y="46" width="50" height="10" rx="5" fill="#3B82F6" opacity="0.8"/>
+  <rect x="34" y="66" width="92" height="8" rx="4" fill="#CBD5F5"/>
+  <rect x="34" y="82" width="92" height="8" rx="4" fill="#CBD5F5"/>
+  <rect x="34" y="98" width="60" height="8" rx="4" fill="#CBD5F5"/>
+  <circle cx="116" cy="46" r="14" fill="#34D399"/>
+  <path d="M110 46l6 6 10-12" stroke="white" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="40" y="112" width="80" height="12" rx="6" fill="#FDE68A"/>
+  <text x="80" y="146" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="700" font-size="18" fill="#F8FAFC">RDAB</text>
+</svg>

@@ -36,6 +36,24 @@
   </div>
 </div>
 
+{% if bulletin_preview %}
+<div class="bulletin-strip">
+  <div class="bulletin-strip__media">
+    {% if bulletin_preview.hero_image %}
+      <img src="{{ bulletin_preview.hero_image }}" alt="{{ bulletin_preview.title }}">
+    {% else %}
+      <span>📰</span>
+    {% endif %}
+  </div>
+  <div class="bulletin-strip__body">
+    <p class="bulletin-strip__tag">{{ bulletin_preview.tag or 'Community' }}</p>
+    <h4>{{ bulletin_preview.title }}</h4>
+    <p>{{ bulletin_preview.summary }}</p>
+  </div>
+  <a class="bulletin-strip__cta" href="{{ url_for('community_bulletin_post', slug=bulletin_preview.slug) }}">Read</a>
+</div>
+{% endif %}
+
 <style>
 .trainer-card { position: relative; background-size: cover; background-position: center;
   border-radius: 16px; overflow: hidden; margin-bottom: 12px; box-shadow: 0 8px 24px rgba(15,23,42,0.22); color: white; }
@@ -163,6 +181,14 @@
 .explore-card:hover { transform:translateY(-2px); }
 .explore-card img { width:clamp(48px,14vw,80px); height:clamp(48px,14vw,80px); filter:drop-shadow(0 10px 18px rgba(15,23,42,0.18)); }
 .explore-card span { margin-top:8px; font-size:0.9em; font-weight:600; color:#333; text-shadow:0 6px 12px rgba(15,23,42,0.12); }
+.bulletin-strip { margin-top:10px; display:flex; align-items:center; gap:12px; padding:10px 14px; border-radius:18px; background:linear-gradient(120deg,#0f172a,#1e3a8a); color:#f8fafc; box-shadow:0 12px 24px rgba(15,23,42,0.2); }
+.bulletin-strip__media { width:56px; height:56px; border-radius:14px; overflow:hidden; background:rgba(255,255,255,0.2); display:flex; align-items:center; justify-content:center; font-size:1.5rem; }
+.bulletin-strip__media img { width:100%; height:100%; object-fit:cover; }
+.bulletin-strip__body { flex:1; min-width:0; }
+.bulletin-strip__tag { margin:0; font-size:0.65rem; letter-spacing:0.18em; text-transform:uppercase; color:#cbd5f5; }
+.bulletin-strip__body h4 { margin:2px 0 4px 0; font-size:1rem; }
+.bulletin-strip__body p { margin:0; font-size:0.85rem; color:#e2e8f0; }
+.bulletin-strip__cta { text-decoration:none; padding:8px 14px; border-radius:999px; background:#f8fafc; color:#0f172a; font-weight:600; }
 
 @media(max-width:520px){
   .trainer-card-content{padding:18px;}
@@ -170,6 +196,8 @@
   .widget { padding:10px; }
   .btn { padding:7px 12px; font-size:0.85em; }
   .explore-grid { grid-template-columns:repeat(4,minmax(60px,1fr)); gap:10px; }
+  .bulletin-strip { flex-direction:column; align-items:flex-start; }
+  .bulletin-strip__cta { align-self:flex-end; }
 }
 </style>
 

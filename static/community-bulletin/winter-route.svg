@@ -1,0 +1,32 @@
+<svg width="320" height="220" viewBox="0 0 320 220" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="220">
+      <stop offset="0" stop-color="#8dd0ff"/>
+      <stop offset="1" stop-color="#1b3f75"/>
+    </linearGradient>
+    <linearGradient id="path" x1="70" y1="140" x2="250" y2="220">
+      <stop offset="0" stop-color="#fdfdfd"/>
+      <stop offset="1" stop-color="#9cc4ff"/>
+    </linearGradient>
+  </defs>
+  <rect width="320" height="220" rx="28" fill="url(#sky)"/>
+  <path d="M0 150C45 130 95 120 140 140C190 160 230 150 320 110V220H0V150Z" fill="#e8f3ff"/>
+  <path d="M70 220C100 180 150 160 200 170C240 178 270 200 290 220H70Z" fill="url(#path)" opacity="0.9"/>
+  <circle cx="250" cy="50" r="26" fill="#fff4c4"/>
+  <g stroke="#f0fbff" stroke-width="3" stroke-linecap="round">
+    <line x1="35" y1="36" x2="35" y2="52"/>
+    <line x1="45" y1="42" x2="25" y2="42"/>
+    <line x1="280" y1="30" x2="280" y2="48"/>
+    <line x1="290" y1="38" x2="270" y2="38"/>
+  </g>
+  <g fill="#274d8a">
+    <rect x="30" y="80" width="12" height="40" rx="4"/>
+    <rect x="52" y="70" width="14" height="50" rx="4"/>
+    <rect x="80" y="90" width="12" height="30" rx="4"/>
+    <rect x="240" y="90" width="12" height="30" rx="4"/>
+    <rect x="260" y="72" width="14" height="48" rx="4"/>
+  </g>
+  <path d="M40 165C80 150 160 150 220 188" stroke="#5c93ff" stroke-width="6" stroke-linecap="round" stroke-dasharray="8 10"/>
+  <text x="32" y="116" fill="#11356e" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="700">Winter Route Bingo</text>
+  <text x="32" y="140" fill="#11356e" font-family="Arial, Helvetica, sans-serif" font-size="13">Stay visible · Bring cocoa · Tag us on #rdab-routes</text>
+</svg>

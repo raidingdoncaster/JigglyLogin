@@ -1,0 +1,15 @@
+<svg width="320" height="220" viewBox="0 0 320 220" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="kalos3" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1f3c85"/>
+      <stop offset="1" stop-color="#4ad7f7"/>
+    </linearGradient>
+  </defs>
+  <rect width="320" height="220" rx="26" fill="url(#kalos3)"/>
+  <path d="M30 170C90 130 140 140 200 150C250 158 290 150 310 130" stroke="#fff" stroke-width="8" stroke-linecap="round" stroke-dasharray="12 18"/>
+  <circle cx="70" cy="168" r="10" fill="#1f3c85" stroke="#fff" stroke-width="4"/>
+  <circle cx="150" cy="150" r="10" fill="#1f3c85" stroke="#fff" stroke-width="4"/>
+  <circle cx="230" cy="155" r="10" fill="#1f3c85" stroke="#fff" stroke-width="4"/>
+  <text x="32" y="60" fill="#e6f7ff" font-family="Arial" font-weight="700" font-size="20">Route planning</text>
+  <text x="32" y="90" fill="#c7ecff" font-family="Arial" font-size="13">Safe loops for incense squads</text>
+</svg>

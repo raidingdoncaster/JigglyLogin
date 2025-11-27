@@ -1,0 +1,1287 @@
+{% extends "base.html" %}
+
+{% block page_settings %}
+  {% set container_class = 'is-cozy' %}
+{% endblock %}
+
+{% block content %}
+<a class="bp-back" href="{{ url_for('community_bulletin') }}">⬅ Back to RDAB Community Bulletin</a>
+
+<section class="bp-hero">
+  <div class="bp-hero-media">
+    <img src="{{ url_for('static', filename=post.hero_image or post.header_image) }}" alt="{{ post.title }} header art">
+  </div>
+  <div class="bp-hero-copy">
+    <span class="bp-pill">{{ post.tag }}</span>
+    <h1>{{ post.title }}</h1>
+    <div class="bp-hero-meta">
+      <div>
+        <span class="bp-meta-label">Published</span>
+        <p>{{ post.published_at|to_date }}</p>
+      </div>
+      <div>
+        <span class="bp-meta-label">Author</span>
+        <div class="bp-author-inline">
+          <img src="{{ url_for('static', filename=post.author_avatar or 'avatars/avatar1.png') }}" alt="{{ post.author or 'RDAB Staff' }} avatar">
+          <span>{{ post.author or 'RDAB Staff' }}</span>
+        </div>
+      </div>
+      <div>
+        <span class="bp-meta-label">Read time</span>
+        <p>{{ post.read_time or '3 min read' }}</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="bp-layout">
+  <article class="bp-article"
+           data-bulletin-slug="{{ post.slug }}"
+           data-initial-comments='{{ (post.comment_threads or [])|tojson|safe }}'
+           data-can-comment="{{ 'true' if trainer else 'false' }}"
+           data-liked="{{ 'true' if post.get('liked_by_me') else 'false' }}">
+    {% if toc_sections %}
+    <div class="bp-card bp-toc-card">
+      <div class="bp-card-title">
+        <span>📑 Page Contents</span>
+      </div>
+      <ol>
+        {% for section in toc_sections %}
+        <li><a href="#{{ section.id }}">{{ section.title }}</a></li>
+        {% endfor %}
+      </ol>
+    </div>
+    {% endif %}
+
+    {% for section in sections %}
+      <section class="bp-section" id="{{ section.id }}">
+        {% if section.title %}
+        <div class="bp-section-heading">
+          <h2>{{ section.title }}</h2>
+        </div>
+        {% endif %}
+
+        {% if section.type == "rich_text" %}
+          {% for paragraph in section.body or [] %}
+          <p class="bp-body-paragraph">{{ paragraph|safe }}</p>
+          {% endfor %}
+        {% elif section.type == "detail-grid" %}
+          <dl class="bp-detail-grid">
+            {% for detail in section.details or [] %}
+            <div class="bp-detail-row">
+              <dt>{{ detail.label }}</dt>
+              <dd>
+                <strong>{{ detail.value }}</strong>
+                {% if detail.meta %}
+                <span>{{ detail.meta }}</span>
+                {% endif %}
+              </dd>
+            </div>
+            {% endfor %}
+          </dl>
+        {% elif section.type == "callouts" %}
+          <div class="bp-callouts">
+            {% for callout in section.callouts or [] %}
+            <article class="bp-callout-card">
+              {% if callout.icon %}
+              <span class="bp-callout-icon">{{ callout.icon }}</span>
+              {% endif %}
+              <h3>{{ callout.heading }}</h3>
+              <p>{{ callout.body }}</p>
+            </article>
+            {% endfor %}
+          </div>
+        {% elif section.type == "carousel" and section.slides %}
+          <div class="bp-carousel" data-carousel>
+            <div class="bp-carousel-track" data-carousel-track>
+              {% for slide in section.slides %}
+              <figure class="bp-carousel-slide">
+                <img src="{{ url_for('static', filename=slide.image) }}" alt="{{ slide.caption or ('Slide ' ~ loop.index) }}">
+                {% if slide.caption %}
+                <figcaption>{{ slide.caption }}</figcaption>
+                {% endif %}
+              </figure>
+              {% endfor %}
+            </div>
+            <div class="bp-carousel-controls">
+              <button type="button" class="bp-carousel-nav" data-carousel-prev aria-label="Previous slide">‹</button>
+              <span class="bp-carousel-indicator" data-carousel-indicator>01/{{ '%02d' % (section.slides|length) }}</span>
+              <button type="button" class="bp-carousel-nav" data-carousel-next aria-label="Next slide">›</button>
+              {% if section.album_url %}
+              <a class="bp-carousel-album" href="{{ section.album_url }}" target="_blank" rel="noopener">Open album ↗</a>
+              {% endif %}
+            </div>
+            {% if section.description %}
+            <p class="bp-carousel-description">{{ section.description }}</p>
+            {% endif %}
+          </div>
+        {% elif section.type == "link-list" %}
+          <div class="bp-link-list">
+            {% for link in section.links or [] %}
+            <a class="bp-link-card" href="{{ link.url }}" target="_blank" rel="noopener">
+              <div>
+                <strong>{{ link.label }}</strong>
+                {% if link.description %}
+                <p>{{ link.description }}</p>
+                {% endif %}
+              </div>
+              <span>↗</span>
+            </a>
+            {% endfor %}
+          </div>
+        {% endif %}
+      </section>
+    {% endfor %}
+  </article>
+
+  <aside class="bp-sidebar">
+    <div class="bp-card">
+      <div class="bp-card-title">
+        <span>Author & Tags</span>
+      </div>
+      <div class="bp-share-row">
+        <button type="button" class="bp-copy-link" data-copy-link data-url="{{ request.url }}">Copy link</button>
+        <div class="bp-share-icons">
+          {% for handle in post.social_handles or [] %}
+          <a href="{{ handle.url }}" target="_blank" rel="noopener" title="{{ handle.label }}">{{ handle.icon }}</a>
+          {% endfor %}
+        </div>
+      </div>
+      {% if post.tags %}
+      <div class="bp-tag-list">
+        {% for tag in post.tags %}
+        <span class="bp-chip">{{ tag }}</span>
+        {% endfor %}
+      </div>
+      {% endif %}
+      <div class="bp-author-card">
+        <img src="{{ url_for('static', filename=post.author_avatar or 'avatars/avatar1.png') }}" alt="{{ post.author or 'RDAB Staff' }} avatar">
+        <div>
+          <strong>{{ post.author or 'RDAB Staff' }}</strong>
+          {% if post.author_link %}
+          <a href="{{ post.author_link }}" target="_blank" rel="noopener">{{ post.author_link }}</a>
+          {% endif %}
+          {% if post.author_bio %}
+          <p>{{ post.author_bio }}</p>
+          {% endif %}
+          {% if post.social_handles %}
+          <div class="bp-author-socials">
+            {% for handle in post.social_handles %}
+            <a href="{{ handle.url }}" target="_blank" rel="noopener">{{ handle.label }}</a>
+            {% endfor %}
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    {% if related_posts %}
+    <div class="bp-card">
+      <div class="bp-card-title">
+        <span>Trending 🔥</span>
+      </div>
+      <div class="bp-related-list">
+        {% for related in related_posts %}
+        <a class="bp-related-item" href="{{ url_for('community_bulletin_post', slug=related.slug) }}">
+          <img src="{{ url_for('static', filename=related.header_image) }}" alt="{{ related.title }}">
+          <div>
+            <strong>{{ related.title }}</strong>
+            <span>{{ related.author or 'RDAB Staff' }} • {{ related.published_at|to_date }}</span>
+          </div>
+        </a>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+  </aside>
+</div>
+
+<div class="bp-back-bottom">
+  <a class="bp-btn-outline" href="{{ url_for('community_bulletin') }}">← View all bulletin posts</a>
+</div>
+
+<div class="bp-comments-panel" data-comments-panel>
+  <div class="bp-comments-backdrop" data-comments-close></div>
+  <div class="bp-comments-sheet">
+    <header class="bp-comments-header">
+      <div>
+        <h3>Comments</h3>
+        <p data-comments-count>{{ (post.comment_threads or [])|length }} community replies</p>
+      </div>
+      <button type="button" class="bp-comments-close" data-comments-close aria-label="Close comments">✕</button>
+    </header>
+    <div class="bp-comments-content" data-comments-container>
+      <p class="bp-comment-empty">Loading comments…</p>
+    </div>
+    {% set can_comment = trainer is not none %}
+    <form class="bp-comment-form" aria-label="Leave a comment" data-comment-form>
+      <label for="commentInput">
+        {% if can_comment %}
+          Add a comment
+        {% else %}
+          Log in to comment
+        {% endif %}
+      </label>
+      <div class="bp-reply-banner is-hidden" data-reply-banner>
+        Replying to <strong data-reply-target-label></strong>
+        <button type="button" data-reply-cancel>Cancel</button>
+      </div>
+      <textarea id="commentInput"
+                name="comment"
+                rows="3"
+                placeholder="{% if can_comment %}Share tips, shout-outs, or feedback…{% else %}Log in to join the conversation{% endif %}"
+                {% if not can_comment %}disabled{% endif %}
+                data-comment-input></textarea>
+      <input type="hidden" name="parent_id" data-comment-parent>
+      <button type="submit" {% if not can_comment %}disabled{% endif %}>Post Comment</button>
+      {% if not can_comment %}
+        <small class="bp-comment-hint">You need to be logged in as a trainer to add comments.</small>
+      {% endif %}
+    </form>
+  </div>
+</div>
+
+<div class="bp-engagement-bar" data-engagement-bar>
+  <button class="bp-engage-btn {{ 'is-liked' if post.get('liked_by_me') else '' }}"
+          data-like-button
+          data-base-like="{{ post.like_count or 0 }}"
+          data-liked="{{ 'true' if post.get('liked_by_me') else 'false' }}">
+    <span>❤️ Like</span>
+    <span class="bp-like-count" data-like-count>{{ post.like_count or 0 }}</span>
+  </button>
+  <button class="bp-engage-btn" data-comments-toggle>
+    💬 Comments
+  </button>
+  <button class="bp-engage-btn" data-back-top>
+    ⬆ Back to top
+  </button>
+</div>
+
+<style>
+.bp-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  text-decoration: none;
+  color: #1d4ed8;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+.bp-hero {
+  display: grid;
+  grid-template-columns: minmax(280px, 1fr) minmax(260px, 360px);
+  gap: 24px;
+  padding: 24px;
+  border-radius: 32px;
+  background: #fff;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.1);
+  margin-bottom: 32px;
+}
+
+.bp-hero-media img {
+  width: 100%;
+  border-radius: 24px;
+  object-fit: cover;
+  max-height: 360px;
+}
+
+.bp-pill {
+  display: inline-flex;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: #d1fae5;
+  color: #047857;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-size: 0.75rem;
+}
+
+.bp-hero-copy h1 {
+  margin: 12px 0;
+  font-size: 2.4rem;
+  color: #0f172a;
+}
+
+.bp-hero-meta {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+}
+
+.bp-meta-label {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #94a3b8;
+}
+
+.bp-author-inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.bp-author-inline img {
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  object-fit: cover;
+}
+
+.bp-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 24px;
+}
+
+.bp-article {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.bp-card {
+  background: #fff;
+  border-radius: 24px;
+  padding: 18px;
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.08);
+}
+
+.bp-card-title {
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.bp-toc-card ol {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.bp-toc-card a {
+  text-decoration: none;
+  color: #0f172a;
+  font-weight: 600;
+}
+
+.bp-section {
+  background: #fff;
+  border-radius: 24px;
+  padding: 24px;
+  box-shadow: 0 18px 36px rgba(15, 23, 42, 0.08);
+}
+
+.bp-section-heading h2 {
+  margin: 0 0 14px 0;
+  font-size: 1.6rem;
+}
+
+.bp-body-paragraph {
+  font-size: 1rem;
+  line-height: 1.7;
+  color: #0f172a;
+  margin-bottom: 14px;
+}
+
+.bp-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.bp-detail-row {
+  background: #f8fafc;
+  border-radius: 16px;
+  padding: 14px;
+}
+
+.bp-detail-row dt {
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
+  color: #64748b;
+  margin-bottom: 6px;
+}
+
+.bp-detail-row strong {
+  font-size: 1rem;
+  color: #0f172a;
+}
+
+.bp-detail-row span {
+  display: block;
+  font-size: 0.85rem;
+  color: #475569;
+}
+
+.bp-callouts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px;
+}
+
+.bp-callout-card {
+  border-radius: 18px;
+  padding: 16px;
+  background: #eef2ff;
+}
+
+.bp-callout-icon {
+  font-size: 1.5rem;
+}
+
+.bp-callout-card h3 {
+  margin: 8px 0;
+}
+
+.bp-carousel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.bp-carousel-track {
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  gap: 16px;
+  border-radius: 22px;
+}
+
+.bp-carousel-track::-webkit-scrollbar {
+  display: none;
+}
+
+.bp-carousel-slide {
+  min-width: 100%;
+  border-radius: 22px;
+  overflow: hidden;
+  position: relative;
+  scroll-snap-align: center;
+  background: #0f172a;
+  color: #fff;
+}
+
+.bp-carousel-slide img {
+  width: 100%;
+  height: 320px;
+  object-fit: cover;
+  display: block;
+}
+
+.bp-carousel-slide figcaption {
+  padding: 12px 16px;
+  font-size: 0.95rem;
+}
+
+.bp-carousel-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.bp-carousel-nav {
+  border: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  background: #0f172a;
+  color: #fff;
+  font-size: 1.3rem;
+  cursor: pointer;
+}
+
+.bp-carousel-indicator {
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.bp-carousel-album {
+  margin-left: auto;
+  text-decoration: none;
+  font-weight: 600;
+  color: #0f172a;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: #d1fae5;
+}
+
+.bp-carousel-description {
+  margin: 0;
+  color: #475569;
+}
+
+.bp-link-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.bp-link-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  text-decoration: none;
+  padding: 14px;
+  border-radius: 16px;
+  background: #f8fafc;
+  color: #0f172a;
+  font-weight: 600;
+}
+
+.bp-link-card p {
+  margin: 4px 0 0 0;
+  font-size: 0.9rem;
+  font-weight: normal;
+  color: #475569;
+}
+
+.bp-share-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.bp-copy-link {
+  border: none;
+  background: #0f172a;
+  color: #fff;
+  border-radius: 999px;
+  padding: 8px 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.bp-share-icons a {
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  background: #e2e8f0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
+.bp-tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.bp-chip {
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.bp-author-card {
+  display: flex;
+  gap: 12px;
+}
+
+.bp-author-card img {
+  width: 72px;
+  height: 72px;
+  border-radius: 16px;
+  object-fit: cover;
+}
+
+.bp-author-card a {
+  font-size: 0.9rem;
+  color: #2563eb;
+  text-decoration: none;
+}
+
+.bp-author-card p {
+  margin: 6px 0;
+  color: #475569;
+}
+
+.bp-author-socials {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.bp-author-socials a {
+  color: #0f172a;
+  font-weight: 600;
+}
+
+.bp-related-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.bp-related-item {
+  display: flex;
+  gap: 12px;
+  text-decoration: none;
+  color: #0f172a;
+  align-items: center;
+}
+
+.bp-related-item img {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  object-fit: cover;
+}
+
+.bp-related-item span {
+  font-size: 0.85rem;
+  color: #475569;
+}
+
+.bp-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.bp-back-bottom {
+  margin-top: 32px;
+  text-align: center;
+}
+
+.bp-btn-outline {
+  display: inline-flex;
+  padding: 10px 20px;
+  border-radius: 999px;
+  border: 2px solid #0f172a;
+  text-decoration: none;
+  color: #0f172a;
+  font-weight: 600;
+}
+
+.bp-comments-panel {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1000;
+}
+
+.bp-comments-panel.is-open {
+  pointer-events: auto;
+}
+
+.bp-comments-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(2, 6, 23, 0.5);
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+.bp-comments-panel.is-open .bp-comments-backdrop {
+  opacity: 1;
+}
+
+.bp-comments-sheet {
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: min(420px, 100%);
+  height: 100%;
+  background: #fff;
+  border-top-left-radius: 24px;
+  border-bottom-left-radius: 24px;
+  box-shadow: -8px 0 30px rgba(15, 23, 42, 0.2);
+  transform: translateX(100%);
+  transition: transform 0.3s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+.bp-comments-panel.is-open .bp-comments-sheet {
+  transform: translateX(0);
+}
+
+.bp-comments-header {
+  padding: 20px;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.bp-comments-header h3 {
+  margin: 0;
+}
+
+.bp-comments-header p {
+  margin: 4px 0 0 0;
+  color: #475569;
+  font-size: 0.9rem;
+}
+
+.bp-comments-close {
+  border: none;
+  background: #f1f5f9;
+  border-radius: 999px;
+  width: 36px;
+  height: 36px;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.bp-comments-content {
+  padding: 16px 20px;
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.bp-comment {
+  display: flex;
+  gap: 12px;
+}
+
+.bp-comment-avatar img {
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  object-fit: cover;
+}
+
+.bp-comment-body {
+  background: #f8fafc;
+  border-radius: 16px;
+  padding: 12px 14px;
+  flex: 1;
+}
+
+.bp-comment-empty {
+  text-align: center;
+  color: #475569;
+}
+
+.bp-comment-meta {
+  display: flex;
+  gap: 8px;
+  font-size: 0.85rem;
+  color: #475569;
+}
+
+.bp-comment-meta strong {
+  color: #0f172a;
+}
+
+.bp-comment-replies {
+  margin-top: 10px;
+  padding-left: 34px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.bp-comment--reply .bp-comment-body {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+}
+
+.bp-comment .bp-reply-btn {
+  border: none;
+  background: transparent;
+  color: #2563eb;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  margin-top: 6px;
+}
+
+.bp-reply-banner {
+  background: #ecfdf5;
+  border-radius: 12px;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.85rem;
+}
+
+.bp-reply-banner.is-hidden {
+  display: none;
+}
+
+.bp-reply-banner button {
+  border: none;
+  background: transparent;
+  color: #047857;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.bp-comment-form {
+  padding: 16px 20px 20px 20px;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.bp-comment-form textarea {
+  border-radius: 12px;
+  border: 1px solid #cbd5f5;
+  padding: 10px;
+  resize: none;
+  font-family: inherit;
+}
+
+.bp-comment-form button {
+  border: none;
+  border-radius: 999px;
+  padding: 10px 16px;
+  background: #0f172a;
+  color: #fff;
+  font-weight: 600;
+}
+
+.bp-comment-form button[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.bp-comment-hint {
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+.bp-engagement-bar {
+  position: fixed;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%) translateY(120%);
+  background: #0f172a;
+  color: #fff;
+  border-radius: 999px;
+  padding: 10px;
+  display: flex;
+  gap: 8px;
+  box-shadow: 0 16px 30px rgba(2, 6, 23, 0.35);
+  z-index: 900;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+  opacity: 0;
+}
+
+.bp-engagement-bar.is-visible {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+}
+
+.bp-engage-btn {
+  border: none;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  padding: 10px 16px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.bp-engage-btn .bp-like-count {
+  background: #fff;
+  color: #0f172a;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+}
+
+.bp-engage-btn.is-liked {
+  background: #f97316;
+}
+
+@media (max-width: 640px) {
+  .bp-comments-sheet {
+    width: 100%;
+    border-radius: 0;
+  }
+
+  .bp-engagement-bar {
+    width: calc(100% - 24px);
+    flex-wrap: wrap;
+    justify-content: center;
+    padding: 10px 12px;
+  }
+}
+@media (max-width: 1024px) {
+  .bp-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .bp-sidebar {
+    order: -1;
+  }
+}
+
+@media (max-width: 768px) {
+  .bp-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .bp-hero-copy h1 {
+    font-size: 2rem;
+  }
+}
+</style>
+
+<script>
+(function () {
+  document.querySelectorAll("[data-carousel]").forEach(function (carousel) {
+    var track = carousel.querySelector("[data-carousel-track]");
+    var slides = carousel.querySelectorAll(".bp-carousel-slide");
+    if (!track || slides.length === 0) return;
+    var prev = carousel.querySelector("[data-carousel-prev]");
+    var next = carousel.querySelector("[data-carousel-next]");
+    var indicator = carousel.querySelector("[data-carousel-indicator]");
+    var active = 0;
+
+    function updateIndicator() {
+      if (indicator) {
+        var total = slides.length;
+        indicator.textContent = String(active + 1).padStart(2, "0") + "/" + String(total).padStart(2, "0");
+      }
+    }
+
+    function goTo(index) {
+      active = (index + slides.length) % slides.length;
+      var target = slides[active];
+      track.scrollTo({
+        left: target.offsetLeft - track.offsetLeft,
+        behavior: "smooth",
+      });
+      updateIndicator();
+    }
+
+    prev && prev.addEventListener("click", function () { goTo(active - 1); });
+    next && next.addEventListener("click", function () { goTo(active + 1); });
+
+    var scrollTimeout;
+    track.addEventListener("scroll", function () {
+      clearTimeout(scrollTimeout);
+      scrollTimeout = setTimeout(function () {
+        var scrollLeft = track.scrollLeft;
+        var closest = 0;
+        var minDiff = Infinity;
+        slides.forEach(function (slide, idx) {
+          var diff = Math.abs(slide.offsetLeft - scrollLeft);
+          if (diff < minDiff) {
+            minDiff = diff;
+            closest = idx;
+          }
+        });
+        active = closest;
+        updateIndicator();
+      }, 80);
+    });
+
+    updateIndicator();
+  });
+
+  document.querySelectorAll("[data-copy-link]").forEach(function (btn) {
+    btn.addEventListener("click", async function () {
+      var url = btn.dataset.url;
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(url);
+        } else {
+          var input = document.createElement("input");
+          input.value = url;
+          document.body.appendChild(input);
+          input.select();
+          document.execCommand("copy");
+          document.body.removeChild(input);
+        }
+        var original = btn.textContent;
+        btn.textContent = "Link copied!";
+        setTimeout(function () { btn.textContent = original; }, 1500);
+      } catch (err) {
+        console.warn("Copy failed", err);
+        alert("Copy this link instead:\\n" + url);
+      }
+    });
+  });
+})();
+
+(function () {
+  var article = document.querySelector("[data-bulletin-slug]");
+  var slug = article ? article.dataset.bulletinSlug : null;
+  var canComment = article ? article.dataset.canComment === "true" : false;
+  var commentsData = [];
+  if (article && article.dataset.initialComments) {
+    try {
+      commentsData = JSON.parse(article.dataset.initialComments);
+    } catch (err) {
+      commentsData = [];
+    }
+  }
+
+  var bar = document.querySelector("[data-engagement-bar]");
+  if (bar) {
+    var showThreshold = 260;
+    var handleScroll = function () {
+      if (window.scrollY > showThreshold) {
+        bar.classList.add("is-visible");
+      } else {
+        bar.classList.remove("is-visible");
+      }
+    };
+    window.addEventListener("scroll", handleScroll);
+    handleScroll();
+  }
+
+  var backTop = document.querySelector("[data-back-top]");
+  if (backTop) {
+    backTop.addEventListener("click", function () {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+  }
+
+  function escapeHtml(value) {
+    return (value || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
+  function resolveAvatar(path) {
+    if (!path) return "/static/avatars/avatar1.png";
+    if (path.startsWith("http") || path.startsWith("/")) return path;
+    return "/static/" + path;
+  }
+
+  function formatDate(value) {
+    if (!value) return "";
+    try {
+      var date = new Date(value);
+      return date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+    } catch (err) {
+      return value;
+    }
+  }
+
+  var commentsContainer = document.querySelector("[data-comments-container]");
+  var commentsCountLabel = document.querySelector("[data-comments-count]");
+
+  function commentTemplate(comment, isReply) {
+    if (!comment) return "";
+    var replies = Array.isArray(comment.replies) ? comment.replies.map(function (reply) {
+      return commentTemplate(reply, true);
+    }).join("") : "";
+    var replyBtn = canComment
+      ? '<button type="button" class="bp-reply-btn" data-reply-target="' + escapeHtml(comment.id || "") + '" data-reply-author="' + escapeHtml(comment.author || "Trainer") + '">Reply</button>'
+      : "";
+    var classes = "bp-comment" + (isReply ? " bp-comment--reply" : "");
+    return (
+      '<article class="' + classes + '">' +
+        '<div class="bp-comment-avatar">' +
+          '<img src="' + escapeHtml(resolveAvatar(comment.avatar)) + '" alt="' + escapeHtml(comment.author || "Trainer") + '">' +
+        "</div>" +
+        '<div class="bp-comment-body">' +
+          '<div class="bp-comment-meta">' +
+            "<strong>" + escapeHtml(comment.author || "Trainer") + "</strong>" +
+            "<span>" + escapeHtml(formatDate(comment.timestamp)) + "</span>" +
+          "</div>" +
+          "<p>" + escapeHtml(comment.body || "") + "</p>" +
+          replyBtn +
+          (replies ? '<div class="bp-comment-replies">' + replies + "</div>" : "") +
+        "</div>" +
+      "</article>"
+    );
+  }
+
+  function updateCommentsUI(list) {
+    commentsData = Array.isArray(list) ? list : [];
+    if (commentsContainer) {
+      if (!commentsData.length) {
+        commentsContainer.innerHTML = '<p class="bp-comment-empty">Be the first to leave a comment.</p>';
+      } else {
+        commentsContainer.innerHTML = commentsData.map(function (comment) {
+          return commentTemplate(comment, false);
+        }).join("");
+      }
+    }
+    if (commentsCountLabel) {
+      commentsCountLabel.textContent = commentsData.length + (commentsData.length === 1 ? " community reply" : " community replies");
+    }
+  }
+
+  updateCommentsUI(commentsData);
+
+  var likeButton = document.querySelector("[data-like-button]");
+  if (likeButton && slug) {
+    var countEl = likeButton.querySelector("[data-like-count]");
+    var baseLikes = parseInt(likeButton.dataset.baseLike || "0", 10);
+    var liked = likeButton.dataset.liked === "true";
+    if (liked) {
+      likeButton.classList.add("is-liked");
+    }
+    likeButton.addEventListener("click", function () {
+      if (!canComment) {
+        alert("Log in to like this post.");
+        return;
+      }
+      fetch("/api/bulletin/" + slug + "/like", { method: "POST" })
+        .then(function (resp) { return resp.json(); })
+        .then(function (data) {
+          if (data && typeof data.like_count !== "undefined") {
+            liked = !!data.liked;
+            likeButton.classList.toggle("is-liked", liked);
+            if (countEl) {
+              countEl.textContent = data.like_count;
+            }
+          } else {
+            throw new Error(data && data.error ? data.error : "Unable to like this post");
+          }
+        })
+        .catch(function (err) {
+          console.warn(err);
+          alert("Unable to update like right now. Please try again later.");
+        });
+    });
+  }
+
+  var commentsPanel = document.querySelector("[data-comments-panel]");
+  var commentsToggles = document.querySelectorAll("[data-comments-toggle]");
+  var commentsCloseEls = document.querySelectorAll("[data-comments-close]");
+  var commentsLoadedOnce = false;
+
+  function refreshComments() {
+    if (!slug) return;
+    if (commentsContainer) {
+      commentsContainer.innerHTML = '<p class="bp-comment-empty">Loading comments…</p>';
+    }
+    return fetch("/api/bulletin/" + slug + "/comments")
+      .then(function (resp) { return resp.json(); })
+      .then(function (data) {
+        if (data && Array.isArray(data.comments)) {
+          updateCommentsUI(data.comments);
+        }
+      })
+      .catch(function () {
+        if (commentsContainer) {
+          commentsContainer.innerHTML = '<p class="bp-comment-empty">Unable to load comments right now.</p>';
+        }
+      });
+  }
+
+  function openComments() {
+    if (!commentsPanel) return;
+    commentsPanel.classList.add("is-open");
+    document.body.style.overflow = "hidden";
+    if (!commentsLoadedOnce) {
+      commentsLoadedOnce = true;
+      refreshComments();
+    }
+  }
+
+  function closeComments() {
+    if (!commentsPanel) return;
+    commentsPanel.classList.remove("is-open");
+    document.body.style.overflow = "";
+  }
+
+  commentsToggles.forEach(function (btn) {
+    btn.addEventListener("click", openComments);
+  });
+  commentsCloseEls.forEach(function (btn) {
+    btn.addEventListener("click", closeComments);
+  });
+
+  document.addEventListener("keydown", function (evt) {
+    if (evt.key === "Escape") {
+      closeComments();
+    }
+  });
+
+  var form = document.querySelector("[data-comment-form]");
+  var textarea = form ? form.querySelector("[data-comment-input]") : null;
+  var parentInput = form ? form.querySelector("[data-comment-parent]") : null;
+  var replyBanner = form ? form.querySelector("[data-reply-banner]") : null;
+  var replyLabel = form ? form.querySelector("[data-reply-target-label]") : null;
+  var replyCancel = form ? form.querySelector("[data-reply-cancel]") : null;
+
+  function clearReplyTarget() {
+    if (parentInput) parentInput.value = "";
+    if (replyBanner) replyBanner.classList.add("is-hidden");
+    if (replyLabel) replyLabel.textContent = "";
+  }
+
+  replyCancel && replyCancel.addEventListener("click", function () {
+    clearReplyTarget();
+  });
+
+  commentsContainer && commentsContainer.addEventListener("click", function (evt) {
+    var btn = evt.target.closest("[data-reply-target]");
+    if (!btn || !canComment) return;
+    var targetId = btn.getAttribute("data-reply-target");
+    var targetAuthor = btn.getAttribute("data-reply-author") || "Trainer";
+    if (parentInput) parentInput.value = targetId || "";
+    if (replyLabel) replyLabel.textContent = targetAuthor;
+    if (replyBanner) replyBanner.classList.remove("is-hidden");
+    textarea && textarea.focus();
+  });
+
+  form && form.addEventListener("submit", function (evt) {
+    evt.preventDefault();
+    if (!canComment || !slug) {
+      alert("Log in to comment.");
+      return;
+    }
+    if (!textarea) return;
+    var body = textarea.value.trim();
+    if (!body) {
+      alert("Please enter a comment.");
+      return;
+    }
+    var payload = {
+      body: body,
+      parent_id: parentInput && parentInput.value ? parentInput.value : null,
+    };
+    fetch("/api/bulletin/" + slug + "/comments", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    })
+      .then(function (resp) { return resp.json(); })
+      .then(function (data) {
+        if (data && Array.isArray(data.comments)) {
+          updateCommentsUI(data.comments);
+          textarea.value = "";
+          clearReplyTarget();
+        } else {
+          throw new Error(data && data.error ? data.error : "Unable to post comment");
+        }
+      })
+      .catch(function (err) {
+        console.warn(err);
+        alert("Unable to post comment right now. Please try again soon.");
+      });
+  });
+})();
+</script>
+{% endblock %}

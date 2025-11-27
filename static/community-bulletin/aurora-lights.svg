@@ -1,0 +1,31 @@
+<svg width="320" height="220" viewBox="0 0 320 220" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="auroraGradient" x1="0" y1="0" x2="320" y2="220" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1a2a6c"/>
+      <stop offset="0.5" stop-color="#2f6ee6"/>
+      <stop offset="1" stop-color="#55ffd2"/>
+    </linearGradient>
+    <linearGradient id="beamGradient" x1="50" y1="30" x2="270" y2="190" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#b5f3ff" stop-opacity="0.9"/>
+      <stop offset="1" stop-color="#71c5ff" stop-opacity="0.1"/>
+    </linearGradient>
+    <linearGradient id="hillGradient" x1="0" y1="160" x2="320" y2="220" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0a1a3c"/>
+      <stop offset="1" stop-color="#13386d"/>
+    </linearGradient>
+  </defs>
+  <rect width="320" height="220" rx="28" fill="url(#auroraGradient)"/>
+  <path d="M0 170Q50 140 90 150T150 150T230 190T320 170V220H0Z" fill="url(#hillGradient)"/>
+  <g opacity="0.7">
+    <circle cx="50" cy="50" r="6" fill="#f4fafe"/>
+    <circle cx="120" cy="30" r="4" fill="#f4fafe"/>
+    <circle cx="230" cy="40" r="5" fill="#f4fafe"/>
+    <circle cx="280" cy="70" r="3" fill="#f4fafe"/>
+    <circle cx="180" cy="80" r="4" fill="#f4fafe"/>
+  </g>
+  <path d="M30 40L290 190" stroke="url(#beamGradient)" stroke-width="26" stroke-linecap="round" stroke-opacity="0.9"/>
+  <path d="M50 70L240 200" stroke="url(#beamGradient)" stroke-width="18" stroke-linecap="round" stroke-opacity="0.8"/>
+  <text x="32" y="112" fill="#e0f7ff" font-family="Arial, Helvetica, sans-serif" font-weight="700" font-size="32">RDAB</text>
+  <text x="32" y="143" fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-size="18">Winter Warm-Up</text>
+  <text x="32" y="168" fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-size="13" opacity="0.8">Routes • Meetups • Research</text>
+</svg>

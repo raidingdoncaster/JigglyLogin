@@ -1,0 +1,18 @@
+<svg width="320" height="220" viewBox="0 0 320 220" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="kalos1" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#62b8ff"/>
+      <stop offset="1" stop-color="#1f3c85"/>
+    </linearGradient>
+  </defs>
+  <rect width="320" height="220" rx="26" fill="url(#kalos1)"/>
+  <path d="M0 150C60 120 120 140 180 160C230 176 300 170 320 150V220H0Z" fill="#0f1c3d" opacity="0.4"/>
+  <circle cx="250" cy="70" r="35" fill="#f6dd7b"/>
+  <g fill="#dff6ff">
+    <circle cx="90" cy="160" r="28"/>
+    <circle cx="150" cy="140" r="32"/>
+    <circle cx="210" cy="150" r="22"/>
+  </g>
+  <text x="32" y="60" fill="#ffffff" font-family="Arial" font-weight="700" font-size="20">Mystic dry run</text>
+  <text x="32" y="88" fill="#dff6ff" font-family="Arial" font-size="13">Lakeside incense test with route captains.</text>
+</svg>
