@@ -339,7 +339,7 @@ def fetch_bulletin_posts_from_supabase(include_sections: bool = False, status: O
     ]
     if include_sections:
         select_cols.append("sections:bulletin_post_sections(*)")
-    query = supabase.table("bulletin_posts").select(",".join(select_cols)).order("published_at", desc=True, nulls_last=True)
+    query = supabase.table("bulletin_posts").select(",".join(select_cols)).order("published_at", desc=True)
     if status:
         query = query.eq("status", status)
     try:
