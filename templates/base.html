@@ -495,8 +495,12 @@
         </div>
 
         <!-- Avatar (profile hub) -->
-        {% set nav_trainer = session.get('trainer') or {} %}
-        {% set nav_username = nav_trainer.get('username') %}
+        {% set nav_trainer_raw = session.get('trainer') %}
+        {% if nav_trainer_raw is mapping %}
+          {% set nav_username = nav_trainer_raw.get('username') or nav_trainer_raw.get('trainer_username') %}
+        {% else %}
+          {% set nav_username = nav_trainer_raw %}
+        {% endif %}
         {% set nav_avatar = (current_avatar if current_avatar is defined else (avatar if avatar is defined else 'avatar1.png')) %}
         <div class="avatar-wrapper">
           <button type="button" class="nav-item" id="avatarToggle" title="Account">
