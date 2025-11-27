@@ -6478,6 +6478,7 @@ def _bulletin_upload_folder(asset_type: str) -> str:
         "slide": "community-bulletin/slides",
         "album": "community-bulletin/slides",
         "author": "community-bulletin/authors",
+        "media": "community-bulletin/attachments",
         "attachment": "community-bulletin/attachments",
     }
     return mapping.get(asset_type, "community-bulletin/attachments")

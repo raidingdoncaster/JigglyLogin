@@ -106,7 +106,7 @@
                 <div class="option-grid option-grid--avatars">
                   {% for icon in page %}
                     {% if icon %}
-                      {% set avatar_id = 'avatar-' ~ loop.parent.index0 ~ '-' ~ loop.index0 %}
+                      {% set avatar_id = 'avatar-' ~ loop.parentloop.index0 ~ '-' ~ loop.index0 %}
                       <label class="option-card"
                              for="{{ avatar_id }}">
                         <input type="radio"
@@ -153,7 +153,7 @@
                 <div class="option-grid option-grid--backgrounds">
                   {% for bg in page %}
                     {% if bg %}
-                      {% set bg_id = 'bg-' ~ loop.parent.index0 ~ '-' ~ loop.index0 %}
+                      {% set bg_id = 'bg-' ~ loop.parentloop.index0 ~ '-' ~ loop.index0 %}
                       <label class="option-card option-card--background"
                              for="{{ bg_id }}">
                         <input type="radio"

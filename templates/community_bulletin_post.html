@@ -115,6 +115,20 @@
             <p class="bp-carousel-description">{{ section.description }}</p>
             {% endif %}
           </div>
+        {% elif section.type == "media-block" and section.image %}
+          <figure class="bp-media-block {{ 'is-full' if section.fullbleed else '' }}">
+            <img src="{{ section.image|bulletin_media }}" alt="{{ section.alt or section.caption or section.title or post.title }}">
+            {% if section.caption or section.credit %}
+            <figcaption>
+              {% if section.caption %}
+              <span>{{ section.caption }}</span>
+              {% endif %}
+              {% if section.credit %}
+              <span class="bp-media-credit">{{ section.credit }}</span>
+              {% endif %}
+            </figcaption>
+            {% endif %}
+          </figure>
         {% elif section.type == "link-list" %}
           <div class="bp-link-list">
             {% for link in section.links or [] %}
@@ -396,6 +410,41 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 12px;
+}
+
+.bp-media-block {
+  margin: 0;
+  border-radius: 22px;
+  overflow: hidden;
+  background: #020617;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.bp-media-block.is-full {
+  margin-left: -24px;
+  margin-right: -24px;
+  width: calc(100% + 48px);
+  border-radius: 0;
+}
+.bp-media-block img {
+  width: 100%;
+  display: block;
+  max-height: 520px;
+  object-fit: cover;
+}
+.bp-media-block figcaption {
+  padding: 12px 18px;
+  background: #020617;
+  color: #e2e8f0;
+  font-size: 0.85rem;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.bp-media-credit {
+  opacity: 0.7;
 }
 
 .bp-detail-row {
@@ -924,6 +973,12 @@
     flex-wrap: wrap;
     justify-content: center;
     padding: 10px 12px;
+  }
+
+  .bp-media-block.is-full {
+    margin-left: -16px;
+    margin-right: -16px;
+    width: calc(100% + 32px);
   }
 }
 @media (max-width: 1024px) {

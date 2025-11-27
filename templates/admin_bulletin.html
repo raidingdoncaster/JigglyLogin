@@ -50,7 +50,7 @@
             <h2>Posts</h2>
             <p>Tap a row to edit in the builder.</p>
           </div>
-          <button type="button" class="pill-btn" data-new-post>➕ New Post</button>
+          <button type="button" class="pill-btn" data-new-post data-open-modal="builder">➕ New Post</button>
         </div>
         <div class="bulletin-table__wrap">
           <table class="bulletin-table">
@@ -129,140 +129,217 @@
       </section>
     </div>
 
-    <section class="bulletin-card">
+    <section class="bulletin-card bulletin-actions">
       <div class="bulletin-card__head">
         <div>
-          <h2>Author Profiles</h2>
-          <p>Set up writers once and reuse them across posts.</p>
+          <h2>Community Bulletin Actions</h2>
+          <p>Launch focused workflows without crowding the dashboard.</p>
         </div>
       </div>
-      <form id="authorForm" class="builder-grid">
-        <label>
-          <span>Display Name</span>
-          <input type="text" name="display_name" required>
-        </label>
-        <label>
-          <span>Avatar URL</span>
-          <div class="input-with-btn">
-            <input type="text" name="avatar_url" placeholder="https://.../authors/avatar.webp">
-            <button type="button" class="pill-btn is-secondary" data-upload-target="avatar_url" data-upload-type="author">Upload</button>
+      <div class="bulletin-actions__buttons">
+        <button type="button" class="pill-btn is-primary" data-open-modal="builder" data-new-post>✏️ Compose Post</button>
+        <button type="button" class="pill-btn" data-open-modal="author">➕ Add Author</button>
+        <button type="button" class="pill-btn" data-open-modal="author-list">👥 View Authors</button>
+      </div>
+    </section>
+
+    <div class="bulletin-modal" data-modal="builder">
+      <div class="bulletin-modal__backdrop" data-modal-close></div>
+      <div class="bulletin-modal__dialog is-wide">
+        <header class="bulletin-modal__header">
+          <div>
+            <h3>Post Builder</h3>
+            <p>Craft responsive stories with reusable section blocks.</p>
           </div>
-        </label>
-        <label>
-          <span>Website / Link</span>
-          <input type="text" name="link_url" placeholder="https://example.com">
-        </label>
-        <label>
-          <span>Bio</span>
-          <textarea name="bio" rows="2"></textarea>
-        </label>
-        <label>
-          <span>Social Handles (JSON or each line icon|label|url)</span>
-          <textarea name="social_handles" rows="2" placeholder='[{"icon":"📸","label":"Instagram","url":"https://"}]'></textarea>
-        </label>
-        <div class="builder-actions">
-          <button type="submit" class="pill-btn is-primary">Save Author</button>
-        </div>
-      </form>
-    </section>
+          <button type="button" class="pill-btn is-secondary" data-modal-close aria-label="Close builder">✕</button>
+        </header>
+        <div class="bulletin-modal__body">
+          <section class="bulletin-builder"
+                   data-bulletin-builder
+                   data-posts='{{ posts|tojson|safe }}'
+                   data-authors='{{ authors|tojson|safe }}'>
+            <div class="bulletin-card__head">
+              <div>
+                <h2>Post Details</h2>
+                <p>Set the essentials before adding section blocks.</p>
+              </div>
+              <button type="button" class="pill-btn is-secondary" data-reset-builder>Reset</button>
+            </div>
+            <form id="bulletinBuilderForm">
+              <input type="hidden" name="id">
+              <div class="builder-grid">
+                <label>
+                  <span>Title</span>
+                  <input type="text" name="title" required>
+                </label>
+                <label>
+                  <span>Slug</span>
+                  <input type="text" name="slug" required>
+                </label>
+                <label>
+                  <span>Summary</span>
+                  <textarea name="summary" rows="2"></textarea>
+                </label>
+                <label>
+                  <span>Author</span>
+                  <select name="author_id">
+                    <option value="">— Select author —</option>
+                  </select>
+                </label>
+                <label>
+                  <span>Primary Tag</span>
+                  <input type="text" name="tag" placeholder="Events">
+                </label>
+                <label>
+                  <span>Category</span>
+                  <input type="text" name="category" placeholder="Events">
+                </label>
+                <label>
+                  <span>Read Time</span>
+                  <input type="text" name="read_time" placeholder="5 min read">
+                </label>
+                <label>
+                  <span>Hero Image URL</span>
+                  <div class="input-with-btn">
+                    <input type="text" name="hero_image" placeholder="https://.../heroes/slug.webp">
+                    <button type="button" class="pill-btn is-secondary" data-upload-target="hero_image" data-upload-type="hero">Upload</button>
+                  </div>
+                </label>
+                <label>
+                  <span>Header Image URL</span>
+                  <div class="input-with-btn">
+                    <input type="text" name="header_image" placeholder="https://.../slides/slug/slide-01.webp">
+                    <button type="button" class="pill-btn is-secondary" data-upload-target="header_image" data-upload-type="header">Upload</button>
+                  </div>
+                </label>
+                <label>
+                  <span>Tags (comma separated)</span>
+                  <input type="text" name="tags" placeholder="events, go tour, tips">
+                </label>
+                <label>
+                  <span>Status</span>
+                  <select name="status">
+                    <option value="draft">Draft</option>
+                    <option value="scheduled">Scheduled</option>
+                    <option value="published">Published</option>
+                  </select>
+                </label>
+                <label>
+                  <span>Published At</span>
+                  <input type="datetime-local" name="published_at">
+                </label>
+                <label>
+                  <span>Scheduled Publish</span>
+                  <input type="datetime-local" name="scheduled_publish_at">
+                </label>
+                <label class="checkbox-field">
+                  <input type="checkbox" name="is_featured">
+                  <span>Feature on bulletin landing</span>
+                </label>
+              </div>
 
-    <section class="bulletin-builder"
-             data-bulletin-builder
-             data-posts='{{ posts|tojson|safe }}'
-             data-authors='{{ authors|tojson|safe }}'>
-      <div class="bulletin-card__head">
-        <div>
-          <h2>Post Builder</h2>
-          <p>Craft responsive stories with reusable section blocks.</p>
+              <div class="builder-sections__head">
+                <h3>Sections</h3>
+                <button type="button" class="pill-btn" data-add-section>+ Add Section</button>
+              </div>
+              <div class="builder-sections" data-builder-sections>
+                <p class="builder-sections__empty">No sections yet. Add a block to begin.</p>
+              </div>
+
+              <div class="builder-actions">
+                <button type="submit" class="pill-btn is-primary">Save Post</button>
+              </div>
+            </form>
+          </section>
         </div>
-        <button type="button" class="pill-btn is-secondary" data-reset-builder>Reset</button>
       </div>
-      <form id="bulletinBuilderForm">
-        <input type="hidden" name="id">
-        <div class="builder-grid">
-          <label>
-            <span>Title</span>
-            <input type="text" name="title" required>
-          </label>
-          <label>
-            <span>Slug</span>
-            <input type="text" name="slug" required>
-          </label>
-          <label>
-            <span>Summary</span>
-            <textarea name="summary" rows="2"></textarea>
-          </label>
-          <label>
-            <span>Author</span>
-            <select name="author_id">
-              <option value="">— Select author —</option>
-            </select>
-          </label>
-          <label>
-            <span>Primary Tag</span>
-            <input type="text" name="tag" placeholder="Events">
-          </label>
-          <label>
-            <span>Category</span>
-            <input type="text" name="category" placeholder="Events">
-          </label>
-          <label>
-            <span>Read Time</span>
-            <input type="text" name="read_time" placeholder="5 min read">
-          </label>
-          <label>
-            <span>Hero Image URL</span>
-            <div class="input-with-btn">
-              <input type="text" name="hero_image" placeholder="https://.../heroes/slug.webp">
-              <button type="button" class="pill-btn is-secondary" data-upload-target="hero_image" data-upload-type="hero">Upload</button>
-            </div>
-          </label>
-          <label>
-            <span>Header Image URL</span>
-            <div class="input-with-btn">
-              <input type="text" name="header_image" placeholder="https://.../slides/slug/slide-01.webp">
-              <button type="button" class="pill-btn is-secondary" data-upload-target="header_image" data-upload-type="header">Upload</button>
-            </div>
-          </label>
-          <label>
-            <span>Tags (comma separated)</span>
-            <input type="text" name="tags" placeholder="events, go tour, tips">
-          </label>
-          <label>
-            <span>Status</span>
-            <select name="status">
-              <option value="draft">Draft</option>
-              <option value="scheduled">Scheduled</option>
-              <option value="published">Published</option>
-            </select>
-          </label>
-          <label>
-            <span>Published At</span>
-            <input type="datetime-local" name="published_at">
-          </label>
-          <label>
-            <span>Scheduled Publish</span>
-            <input type="datetime-local" name="scheduled_publish_at">
-          </label>
-          <label class="checkbox-field">
-            <input type="checkbox" name="is_featured">
-            <span>Feature on bulletin landing</span>
-          </label>
-        </div>
+    </div>
 
-        <div class="builder-sections__head">
-          <h3>Sections</h3>
-          <button type="button" class="pill-btn" data-add-section>+ Add Section</button>
+    <div class="bulletin-modal" data-modal="author">
+      <div class="bulletin-modal__backdrop" data-modal-close></div>
+      <div class="bulletin-modal__dialog">
+        <header class="bulletin-modal__header">
+          <div>
+            <h3>New Author Profile</h3>
+            <p>Set up writers once and reuse them across posts.</p>
+          </div>
+          <button type="button" class="pill-btn is-secondary" data-modal-close aria-label="Close author modal">✕</button>
+        </header>
+        <div class="bulletin-modal__body">
+          <form id="authorForm" class="builder-grid">
+            <label>
+              <span>Display Name</span>
+              <input type="text" name="display_name" required>
+            </label>
+            <label>
+              <span>Avatar URL</span>
+              <div class="input-with-btn">
+                <input type="text" name="avatar_url" placeholder="https://.../authors/avatar.webp">
+                <button type="button" class="pill-btn is-secondary" data-upload-target="avatar_url" data-upload-type="author">Upload</button>
+              </div>
+            </label>
+            <label>
+              <span>Website / Link</span>
+              <input type="text" name="link_url" placeholder="https://example.com">
+            </label>
+            <label>
+              <span>Bio</span>
+              <textarea name="bio" rows="2"></textarea>
+            </label>
+            <label>
+              <span>Social Handles (JSON or icon|label|url per line)</span>
+              <textarea name="social_handles" rows="2" placeholder='[{"icon":"📸","label":"Instagram","url":"https://"}]'></textarea>
+            </label>
+            <div class="builder-actions">
+              <button type="submit" class="pill-btn is-primary">Save Author</button>
+            </div>
+          </form>
         </div>
-        <div class="builder-sections" data-builder-sections>
-          <p class="builder-sections__empty">No sections yet. Add a block to begin.</p>
-        </div>
+      </div>
+    </div>
 
-        <div class="builder-actions">
-          <button type="submit" class="pill-btn is-primary">Save Post</button>
+    <div class="bulletin-modal" data-modal="author-list">
+      <div class="bulletin-modal__backdrop" data-modal-close></div>
+      <div class="bulletin-modal__dialog">
+        <header class="bulletin-modal__header">
+          <div>
+            <h3>Author Profiles</h3>
+            <p>Review existing writers and their bios.</p>
+          </div>
+          <button type="button" class="pill-btn is-secondary" data-modal-close aria-label="Close author list">✕</button>
+        </header>
+        <div class="bulletin-modal__body">
+          <div class="author-list">
+            {% for author in authors %}
+            <article class="author-card">
+              <div class="author-card__head">
+                <img src="{{ (author.avatar_url or 'avatars/avatar1.png')|bulletin_media }}" alt="{{ author.display_name }}">
+                <div>
+                  <strong>{{ author.display_name }}</strong>
+                  {% if author.link_url %}
+                  <a href="{{ author.link_url }}" target="_blank" rel="noopener">{{ author.link_url }}</a>
+                  {% endif %}
+                </div>
+              </div>
+              {% if author.bio %}
+              <p>{{ author.bio }}</p>
+              {% endif %}
+              {% set socials = author.social_handles or [] %}
+              {% if socials %}
+              <div class="author-card__socials">
+                {% for handle in socials %}
+                <span>{{ handle.icon or '🔗' }} {{ handle.label }}</span>
+                {% endfor %}
+              </div>
+              {% endif %}
+            </article>
+            {% else %}
+            <p class="author-list__empty">No authors yet. Add your first profile from the actions panel.</p>
+            {% endfor %}
+          </div>
         </div>
-      </form>
-    </section>
+      </div>
+    </div>
   {% endif %}
 </section>
 
@@ -393,6 +470,90 @@
   border-radius: 20px;
   background: #fff;
   box-shadow: 0 12px 28px rgba(15, 23, 42, 0.1);
+}
+.bulletin-actions__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.bulletin-modal {
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 1100;
+}
+.bulletin-modal.is-open {
+  display: flex;
+}
+.bulletin-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(2, 6, 23, 0.75);
+}
+.bulletin-modal__dialog {
+  position: relative;
+  background: #f8fafc;
+  border-radius: 24px;
+  width: min(640px, 95vw);
+  max-height: 92vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 30px 80px rgba(2, 6, 23, 0.35);
+}
+.bulletin-modal__dialog.is-wide {
+  width: min(1200px, 96vw);
+}
+.bulletin-modal__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 18px 24px;
+  border-bottom: 1px solid #e2e8f0;
+}
+.bulletin-modal__body {
+  padding: 24px;
+  overflow-y: auto;
+}
+body.modal-open {
+  overflow: hidden;
+}
+.author-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.author-card {
+  background: #fff;
+  border-radius: 18px;
+  padding: 14px;
+  border: 1px solid #e2e8f0;
+}
+.author-card__head {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 6px;
+}
+.author-card__head img {
+  width: 48px;
+  height: 48px;
+  border-radius: 999px;
+  object-fit: cover;
+}
+.author-card__socials {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 0.8rem;
+  color: #475569;
+}
+.author-list__empty {
+  text-align: center;
+  color: #94a3b8;
 }
 .builder-grid {
   display: grid;
@@ -550,19 +711,48 @@
   try { posts = JSON.parse(builder.dataset.posts || "[]"); } catch (err) { posts = []; }
   try { authors = JSON.parse(builder.dataset.authors || "[]"); } catch (err) { authors = []; }
 
+  var modalRegistry = {};
+  document.querySelectorAll("[data-modal]").forEach(function (modal) {
+    var key = modal.dataset.modal;
+    if (key) {
+      modalRegistry[key] = modal;
+    }
+    modal.addEventListener("click", function (evt) {
+      if (evt.target.classList.contains("bulletin-modal__backdrop") || evt.target.closest("[data-modal-close]")) {
+        closeModal(modal);
+      }
+    });
+  });
+
+  function openModal(name) {
+    var modal = modalRegistry[name];
+    if (!modal) return;
+    modal.classList.add("is-open");
+    document.body.classList.add("modal-open");
+  }
+
+  function closeModal(modal) {
+    if (!modal) return;
+    modal.classList.remove("is-open");
+    if (!document.querySelector(".bulletin-modal.is-open")) {
+      document.body.classList.remove("modal-open");
+    }
+  }
+
   var SECTION_TIPS = {
-    "rich_text": "Use this for standard paragraphs. You can paste simple HTML (bold, italics, links). Separate blocks with a blank line.",
-    "detail-grid": "Show key facts in two columns. Perfect for dates, times, ticket info, etc.",
-    "callouts": "Highlight quick-hit info with an optional emoji/icon, heading, and supporting sentence.",
-    "carousel": "Build an image gallery with captions, plus an optional album link.",
-    "link-list": "Provide external resources such as RSVP links, docs, or deep dives.",
+    "rich_text": "Stack multi-paragraph stories. Blank lines create new paragraphs and you can drop in simple HTML (bold, italics, anchors).",
+    "detail-grid": "Great for schedules or quick stats. Add as many label/value pairs as you need.",
+    "callouts": "Use short highlight cards with an optional emoji, heading, and supporting copy.",
+    "carousel": "Upload a swipeable gallery. Each slide takes a Supabase image plus caption, and you can link out to a full album.",
+    "media-block": "Insert a standalone photo with caption/credit. Ideal for inline photography between text sections.",
+    "link-list": "Group external resources such as RSVP links, documents, or how-to guides.",
   };
 
   var form = document.getElementById("bulletinBuilderForm");
   var authorSelect = form.querySelector("select[name='author_id']");
   var sectionsContainer = form.querySelector("[data-builder-sections]");
   var addSectionBtn = form.querySelector("[data-add-section]");
-  var resetBtns = document.querySelectorAll("[data-reset-builder], [data-new-post]");
+  var resetBtns = document.querySelectorAll("[data-reset-builder]");
   var featureButtons = document.querySelectorAll("[data-feature-post]");
   var editButtons = document.querySelectorAll("[data-edit-post]");
   var currentPostId = null;
@@ -602,10 +792,11 @@
             <option value="detail-grid">Detail Grid</option>
             <option value="callouts">Callouts</option>
             <option value="carousel">Carousel</option>
+            <option value="media-block">Photo Block</option>
             <option value="link-list">Link List</option>
           </select>
         </label>
-        <button type="button" class="help-tip" data-tooltip="">?</button>
+        <button type="button" class="help-tip" data-tooltip="" aria-label="Section help tooltip">?</button>
       </div>
       <label>
         <span>Heading</span>
@@ -756,6 +947,38 @@
       var slideList = config.querySelector("[data-slide-list]");
       (payload.slides || []).forEach(function (slide) { addSlideRow(slideList, slide); });
       if (!slideList.children.length) addSlideRow(slideList);
+    } else if (type === "media-block") {
+      var fullbleed = payload.fullbleed;
+      if (typeof fullbleed === "string") {
+        fullbleed = fullbleed.toLowerCase() === "true";
+      } else {
+        fullbleed = !!fullbleed;
+      }
+      config.innerHTML = `
+        <label>
+          <span>Image</span>
+          <div class="input-with-btn">
+            <input type="text" data-media-image placeholder="https://.../attachments/photo.webp" value="${payload.image || ""}">
+            <button type="button" class="pill-btn is-secondary" data-upload-ref="prev" data-upload-type="media">Upload</button>
+          </div>
+        </label>
+        <label>
+          <span>Alt text</span>
+          <input type="text" data-media-alt placeholder="Describe the image" value="${payload.alt || ""}">
+        </label>
+        <label>
+          <span>Caption</span>
+          <textarea rows="2" data-media-caption placeholder="Shown beneath the image">${payload.caption || ""}</textarea>
+        </label>
+        <label>
+          <span>Photo credit</span>
+          <input type="text" data-media-credit placeholder="Photo by…" value="${payload.credit || ""}">
+        </label>
+        <label class="checkbox-field">
+          <input type="checkbox" data-media-fullbleed ${fullbleed ? "checked" : ""}>
+          <span>Make this image full-width</span>
+        </label>
+      `;
     } else if (type === "link-list") {
       config.innerHTML = `
         <div class="list-block" data-link-list></div>
@@ -793,6 +1016,26 @@
     btn.addEventListener("click", function () {
       resetBuilder();
     });
+  });
+
+  document.addEventListener("click", function (evt) {
+    var trigger = evt.target.closest("[data-open-modal]");
+    if (trigger) {
+      evt.preventDefault();
+      if (trigger.hasAttribute("data-new-post")) {
+        resetBuilder();
+      }
+      openModal(trigger.dataset.openModal);
+    }
+  });
+
+  document.addEventListener("keydown", function (evt) {
+    if (evt.key === "Escape") {
+      var open = document.querySelector(".bulletin-modal.is-open");
+      if (open) {
+        closeModal(open);
+      }
+    }
   });
 
   sectionsContainer.addEventListener("change", function (evt) {
@@ -894,7 +1137,7 @@
   editButtons.forEach(function (btn) {
     btn.addEventListener("click", function () {
       loadPostIntoBuilder(btn.dataset.postId);
-      window.scrollTo({ top: document.querySelector(".bulletin-builder").offsetTop - 20, behavior: "smooth" });
+      openModal("builder");
     });
   });
 
@@ -983,17 +1226,32 @@
         payload.callouts = readCalloutRows(block);
       } else if (type === "carousel") {
         payload.slides = readSlideRows(block);
-        payload.album_url = block.querySelector("[data-carousel-album]").value;
-        payload.description = block.querySelector("[data-carousel-description]").value;
+        payload.album_url = (block.querySelector("[data-carousel-album]") || {}).value || "";
+        payload.description = (block.querySelector("[data-carousel-description]") || {}).value || "";
+      } else if (type === "media-block") {
+        var imageInput = block.querySelector("[data-media-image]");
+        var altInput = block.querySelector("[data-media-alt]");
+        var captionInput = block.querySelector("[data-media-caption]");
+        var creditInput = block.querySelector("[data-media-credit]");
+        var fullbleedToggle = block.querySelector("[data-media-fullbleed]");
+        payload.image = imageInput ? imageInput.value : "";
+        payload.alt = altInput ? altInput.value : "";
+        payload.caption = captionInput ? captionInput.value : "";
+        payload.credit = creditInput ? creditInput.value : "";
+        payload.fullbleed = fullbleedToggle ? fullbleedToggle.checked : false;
       } else if (type === "link-list") {
         payload.links = readLinkRows(block);
       }
-      return {
+      var sectionData = {
         section_type: type,
         heading: block.querySelector("[name='section_heading']").value,
         payload: payload,
       };
-    });
+      if (type === "media-block" && !payload.image) {
+        return null;
+      }
+      return sectionData;
+    }).filter(Boolean);
   }
 
   form.addEventListener("submit", function (evt) {

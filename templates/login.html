@@ -5,7 +5,8 @@
 {% endblock %}
 
 {% block content %}
-<div class="auth-shell">
+<div class="auth-shell auth-shell--snowfall">
+  <div class="snowfall" aria-hidden="true"></div>
   <section class="auth-hero auth-hero--login">
     <div class="hero-media">
       <img src="{{ url_for('static', filename='banner.jpg') }}" alt="Raiding Doncaster and Beyond" class="hero-banner">
@@ -18,6 +19,45 @@
   </section>
 
   <style>
+  .auth-shell--snowfall{
+    position:relative;
+    isolation:isolate;
+  }
+  .auth-shell--snowfall > :not(.snowfall){
+    position:relative;
+    z-index:1;
+  }
+  .auth-shell--snowfall .snowfall{
+    position:absolute;
+    top:-50px;
+    left:0;
+    right:0;
+    bottom:-60px;
+    pointer-events:none;
+    z-index:0;
+    overflow:hidden;
+    opacity:0.85;
+    mix-blend-mode:screen;
+  }
+  .auth-shell--snowfall .snowflake{
+    position:absolute;
+    top:-10%;
+    width:var(--size,8px);
+    height:var(--size,8px);
+    border-radius:50%;
+    background:radial-gradient(circle,rgba(255,255,255,0.95) 0%,rgba(255,255,255,0.55) 60%,rgba(255,255,255,0) 100%);
+    box-shadow:0 0 8px rgba(148,197,255,0.55);
+    opacity:var(--opacity,0.65);
+    animation:snowDrift var(--duration,12s) linear infinite;
+    transform:translate3d(0,-10%,0) scale(var(--scale,1));
+  }
+  @keyframes snowDrift{
+    0%{transform:translate3d(0,-10%,0) scale(var(--scale,1));}
+    100%{transform:translate3d(var(--drift, 20px),110vh,0) scale(var(--scale,1));}
+  }
+  @media (prefers-reduced-motion: reduce){
+    .auth-shell--snowfall .snowfall{display:none;}
+  }
   .auth-hero--login{
     padding:26px 26px 28px;
     flex-direction:row;
@@ -141,6 +181,26 @@
 </div>
 
 <script>
+  const snowLayer = document.querySelector('.auth-shell--snowfall .snowfall');
+  const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+  if (snowLayer && !prefersReducedMotion.matches) {
+    const flakeTarget = window.matchMedia('(max-width: 640px)').matches ? 26 : 48;
+
+    for (let i = 0; i < flakeTarget; i++) {
+      const flake = document.createElement('span');
+      flake.className = 'snowflake';
+      flake.style.left = `${Math.random() * 100}%`;
+      flake.style.animationDelay = `${Math.random() * 10}s`;
+      flake.style.setProperty('--size', `${4 + Math.random() * 10}px`);
+      flake.style.setProperty('--duration', `${8 + Math.random() * 8}s`);
+      flake.style.setProperty('--opacity', (0.35 + Math.random() * 0.4).toFixed(2));
+      flake.style.setProperty('--scale', (0.5 + Math.random() * 0.9).toFixed(2));
+      flake.style.setProperty('--drift', `${(Math.random() - 0.5) * 140}px`);
+      snowLayer.appendChild(flake);
+    }
+  }
+
   let reminders = [
     "📱 Add the Raiding Doncaster and Beyond app to your homescreen! Just press the share button, then add to home!",
     "🎉 Every check-in brings you closer to rewards – don’t miss out!",

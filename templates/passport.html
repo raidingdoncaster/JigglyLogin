@@ -129,15 +129,35 @@
   data-passport-theme="{{ passport_theme }}"
   hidden
 >
+  <div class="stamp-modal-overlay" aria-hidden="true"></div>
+  <div class="stamp-modal-bokeh" aria-hidden="true"></div>
+  <div class="stamp-modal-effects" data-stamp-effects aria-hidden="true"></div>
   <div class="stamp-detail-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="stamp-detail-title">
     <button type="button" class="stamp-detail-modal__close" data-stamp-modal-close aria-label="Close stamp details">✕</button>
     <div class="stamp-detail-modal__media">
       <div class="stamp-coin" data-stamp-coin>
         <div class="stamp-coin__glow"></div>
         <div class="stamp-coin__rim"></div>
-        <div class="stamp-coin__face">
+        <div class="stamp-coin__face stamp-coin__face--front">
           <img src="{{ url_for('static', filename='icons/tickstamp.png') }}" alt="Selected stamp" data-stamp-modal-icon loading="lazy">
         </div>
+        <div class="stamp-coin__face stamp-coin__face--back" aria-hidden="true">
+          <svg class="stamp-engraving" viewBox="0 0 200 200" role="presentation" aria-hidden="true">
+            <defs>
+              <path id="stamp-engrave-top-path" d="M30,82 A70,70 0 0 1 170,82"></path>
+              <path id="stamp-engrave-bottom-path" d="M170,118 A70,70 0 0 1 30,118"></path>
+            </defs>
+            <text class="stamp-engraving__top">
+              <textPath href="#stamp-engrave-top-path" startOffset="50%" text-anchor="middle" data-stamp-engraving-top>RDAB PASSPORT</textPath>
+            </text>
+            <text class="stamp-engraving__bottom">
+              <textPath href="#stamp-engrave-bottom-path" startOffset="50%" text-anchor="middle">IN RAIDING WE TRUST</textPath>
+            </text>
+          </svg>
+        </div>
+        <div class="stamp-coin__sheen" aria-hidden="true"></div>
+        <div class="stamp-coin__sparkles" aria-hidden="true"></div>
+        <div class="stamp-coin__glass" aria-hidden="true"></div>
       </div>
     </div>
     <p class="stamp-detail-modal__chip" data-stamp-modal-reason>Passport stamp</p>
@@ -1065,9 +1085,37 @@ button.stamp-slot:focus-visible {
   justify-content:center;
   padding:20px;
   z-index:1000;
+  overflow:hidden;
 }
 .stamp-detail-modal[hidden] {
   display:none;
+}
+.stamp-modal-overlay,
+.stamp-modal-bokeh,
+.stamp-modal-effects {
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+}
+.stamp-modal-overlay {
+  background:radial-gradient(circle at 50% 20%, rgba(255,255,255,0.35), rgba(4,12,24,0.75));
+  opacity:0;
+  transition:opacity 0.35s ease;
+  z-index:0;
+}
+.stamp-modal-bokeh {
+  z-index:1;
+  opacity:0;
+  background:
+    radial-gradient(circle at 20% 30%, rgba(255,255,255,0.15), transparent 60%),
+    radial-gradient(circle at 80% 20%, rgba(59,130,246,0.2), transparent 55%),
+    radial-gradient(circle at 60% 80%, rgba(236,72,153,0.25), transparent 65%);
+  mix-blend-mode:screen;
+  animation:stampBokehDrift 18s linear infinite;
+  transition:opacity 0.45s ease;
+}
+.stamp-modal-effects {
+  z-index:2;
 }
 .stamp-detail-modal__dialog {
   background:
@@ -1079,6 +1127,7 @@ button.stamp-slot:focus-visible {
   width:min(420px, 100%);
   padding:30px 28px 26px;
   position:relative;
+  z-index:3;
   box-shadow:0 28px 70px rgba(3,6,23,0.55);
   border:1px solid var(--passport-modal-border, rgba(148,163,184,0.45));
   text-align:center;
@@ -1100,12 +1149,14 @@ button.stamp-slot:focus-visible {
 }
 .stamp-coin {
   --coin-depth: 22px;
+  --stamp-coin-highlight: 0deg;
+  --stamp-coin-scale: 1;
   position:relative;
   width:112px;
   height:112px;
   border-radius:50%;
   transform-style:preserve-3d;
-  transform:rotateX(16deg) rotateY(var(--stamp-coin-rotation, 0deg));
+  transform:rotateX(16deg) rotateY(var(--stamp-coin-rotation, 0deg)) scale(var(--stamp-coin-scale, 1));
   transition:box-shadow 0.3s ease;
   cursor:grab;
   touch-action:none;
@@ -1142,17 +1193,48 @@ button.stamp-slot:focus-visible {
   inset:6px;
   border-radius:50%;
   overflow:hidden;
+  transform:translateZ(calc(var(--coin-depth) * 0.6));
+  backface-visibility:hidden;
+}
+.stamp-coin__face--front {
   background:radial-gradient(circle at 30% 30%, rgba(255,255,255,0.35), transparent 65%), rgba(6,12,24,0.85);
   box-shadow:0 14px 24px rgba(6,12,24,0.45), inset 0 0 18px rgba(0,0,0,0.4);
-  transform:translateZ(calc(var(--coin-depth) * 0.6));
 }
-.stamp-coin__face img {
+.stamp-coin__face--front img {
   width:100%;
   height:100%;
   object-fit:cover;
   border-radius:50%;
   transform:translateZ(2px);
   pointer-events:none;
+}
+.stamp-coin__face--back {
+  background:radial-gradient(circle, rgba(9,12,22,0.85), rgba(4,6,14,0.95));
+  box-shadow:inset 0 0 22px rgba(0,0,0,0.6);
+  transform:rotateY(180deg) translateZ(calc(var(--coin-depth) * 0.6));
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.stamp-engraving {
+  width:88%;
+  height:88%;
+  opacity:0.85;
+  pointer-events:none;
+}
+.stamp-engraving text {
+  font-size:10px;
+  letter-spacing:0.35em;
+  text-transform:uppercase;
+  fill:rgba(240,245,255,0.45);
+  stroke:rgba(0,0,0,0.55);
+  stroke-width:0.5px;
+  paint-order:stroke fill;
+  font-weight:600;
+}
+.stamp-engraving__bottom textPath {
+  font-size:9px;
+  letter-spacing:0.4em;
 }
 .stamp-coin::after {
   content:"";
@@ -1163,6 +1245,87 @@ button.stamp-slot:focus-visible {
   transform:translateZ(calc(-1 * var(--coin-depth)));
   opacity:0.7;
   pointer-events:none;
+}
+.stamp-coin__sheen {
+  position:absolute;
+  inset:9px;
+  border-radius:50%;
+  pointer-events:none;
+  transform:translateZ(calc(var(--coin-depth) * 0.95));
+  background:
+    radial-gradient(circle at 25% 18%, rgba(255,255,255,0.5), transparent 55%),
+    radial-gradient(circle at 70% 80%, rgba(59,130,246,0.25), transparent 60%),
+    linear-gradient(calc(var(--stamp-coin-highlight, 0deg) + 90deg), rgba(255,255,255,0.75), rgba(255,255,255,0.05));
+  mix-blend-mode:screen;
+  opacity:0.55;
+  filter:blur(0.2px);
+  transition:background 0.25s ease, opacity 0.4s ease;
+}
+.stamp-coin__sparkles {
+  position:absolute;
+  inset:0;
+  border-radius:50%;
+  pointer-events:none;
+  transform:translateZ(calc(var(--coin-depth) * 1.1));
+  background:
+    radial-gradient(circle at 30% 40%, rgba(255,255,255,0.9) 0%, transparent 45%),
+    radial-gradient(circle at 70% 20%, rgba(230,248,255,0.6) 0%, transparent 35%),
+    radial-gradient(circle at 55% 75%, rgba(255,255,255,0.9) 0%, transparent 40%);
+  opacity:0;
+  mix-blend-mode:screen;
+}
+.stamp-coin.is-popping .stamp-coin__sparkles {
+  animation:sparkleBurst 0.95s ease-out forwards;
+}
+.stamp-detail-modal.is-immersive .stamp-coin {
+  --stamp-coin-scale: 1.25;
+  box-shadow:0 32px 90px rgba(3,6,23,0.65);
+}
+.stamp-detail-modal.is-immersive .stamp-detail-modal__dialog {
+  box-shadow:0 45px 120px rgba(2,8,23,0.55);
+}
+.stamp-detail-modal.is-immersive .stamp-modal-overlay {
+  opacity:0.85;
+}
+.stamp-detail-modal.is-immersive .stamp-modal-bokeh {
+  opacity:1;
+}
+.stamp-coin__glass {
+  position:absolute;
+  inset:-4px;
+  border-radius:50%;
+  pointer-events:none;
+  transform:translateZ(calc(var(--coin-depth) * 1.25));
+  border:1px solid rgba(255,255,255,0.35);
+  background:
+    linear-gradient(140deg, rgba(255,255,255,0.45), rgba(255,255,255,0.08)),
+    radial-gradient(circle at 30% 20%, rgba(255,255,255,0.35), transparent 55%);
+  box-shadow:inset 0 0 30px rgba(255,255,255,0.25), inset 0 0 8px rgba(15,23,42,0.2);
+  opacity:0.9;
+}
+.stamp-coin__glass::before,
+.stamp-coin__glass::after {
+  content:"";
+  position:absolute;
+  inset:4px;
+  border-radius:50%;
+  border:1px solid rgba(255,255,255,0.15);
+  opacity:0.85;
+}
+.stamp-coin__glass::before {
+  background:radial-gradient(circle at 60% 30%, rgba(255,255,255,0.6), transparent 60%);
+  mix-blend-mode:screen;
+}
+.stamp-coin__glass::after {
+  background:
+    repeating-linear-gradient(135deg, rgba(255,255,255,0.08) 0, rgba(255,255,255,0.08) 2px, rgba(255,255,255,0.02) 2px, rgba(255,255,255,0.02) 6px);
+  filter:blur(0.5px);
+}
+@supports (backdrop-filter: blur(8px)) or (-webkit-backdrop-filter: blur(8px)) {
+  .stamp-coin__glass {
+    backdrop-filter:blur(6px) saturate(140%);
+    -webkit-backdrop-filter:blur(6px) saturate(140%);
+  }
 }
 .stamp-detail-modal__chip {
   display:inline-flex;
@@ -1212,6 +1375,65 @@ button.stamp-slot:focus-visible {
     opacity:1;
   }
 }
+@keyframes sparkleBurst {
+  0% {
+    opacity:0;
+    transform:translateZ(calc(var(--coin-depth) * 1.1)) scale(0.4);
+    filter:blur(4px);
+  }
+  40% {
+    opacity:0.9;
+    transform:translateZ(calc(var(--coin-depth) * 1.1)) scale(1.05);
+    filter:blur(1.5px);
+  }
+  100% {
+    opacity:0;
+    transform:translateZ(calc(var(--coin-depth) * 1.1)) scale(1.4);
+    filter:blur(6px);
+  }
+}
+@keyframes stampBokehDrift {
+  0% {
+    transform:translate(-5%, -5%) scale(1);
+  }
+  50% {
+    transform:translate(5%, 4%) scale(1.1);
+  }
+  100% {
+    transform:translate(-5%, -5%) scale(1);
+  }
+}
+.stamp-shine-particle {
+  position:absolute;
+  width:18px;
+  height:18px;
+  border-radius:50%;
+  pointer-events:none;
+  background:radial-gradient(circle, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.2) 60%, transparent 100%);
+  box-shadow:0 0 12px rgba(255,255,255,0.6);
+  opacity:0;
+  animation:shineDrift 0.6s ease-out forwards;
+  left:var(--particle-x, 50%);
+  top:var(--particle-y, 50%);
+  filter:drop-shadow(0 0 6px hsla(var(--particle-hue, 210), 90%, 80%, 0.6));
+  --particle-scale-start: 0.6;
+  --particle-scale-mid: 0.95;
+  --particle-scale-end: 1.35;
+}
+@keyframes shineDrift {
+  0% {
+    opacity:0.9;
+    transform:translate(-50%, -50%) scale(var(--particle-scale-start, 0.6));
+  }
+  70% {
+    opacity:0.6;
+    transform:translate(-50%, -50%) scale(var(--particle-scale-mid, 0.95));
+  }
+  100% {
+    opacity:0;
+    transform:translate(-50%, -50%) scale(var(--particle-scale-end, 1.35));
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   .stamp-coin.is-popping {
     animation:none;
@@ -1239,8 +1461,12 @@ button.stamp-slot:focus-visible {
 .stamp-detail-modal__close:focus-visible {
   background:var(--passport-modal-close-hover-bg, rgba(59,130,246,0.95));
 }
-body.stamp-modal-open {
+body.stamp-modal-open,
+html.stamp-modal-open {
   overflow:hidden;
+  height:100%;
+  touch-action:none;
+  overscroll-behavior:contain;
 }
 </style>
 
@@ -1321,6 +1547,15 @@ document.addEventListener("DOMContentLoaded", function(){
     const dateTarget = stampModal.querySelector("[data-stamp-modal-date]");
     const descriptionTarget = stampModal.querySelector("[data-stamp-modal-description]");
     const coin = stampModal.querySelector("[data-stamp-coin]");
+    const engravingTopTarget = stampModal.querySelector("[data-stamp-engraving-top]");
+    const effectsLayer = stampModal.querySelector("[data-stamp-effects]");
+    const preventScroll = event => {
+      if (!stampModal.hidden) {
+        event.preventDefault();
+      }
+    };
+    stampModal.addEventListener("touchmove", preventScroll, { passive: false });
+    stampModal.addEventListener("wheel", preventScroll, { passive: false });
     let coinRotation = 0;
     let spinVelocity = 0;
     let dragActive = false;
@@ -1329,10 +1564,56 @@ document.addEventListener("DOMContentLoaded", function(){
     let lastTime = 0;
     let spinFrame = null;
     let lastTrigger = null;
+    let immersiveMode = false;
+    let pointerStartX = 0;
+    let pointerStartY = 0;
+    let pointerMoved = false;
+    let lastShineTime = 0;
 
     function updateCoinRotation() {
       if (!coin) return;
+      const normalizedRotation = ((coinRotation % 360) + 360) % 360;
       coin.style.setProperty("--stamp-coin-rotation", `${coinRotation}deg`);
+      coin.style.setProperty("--stamp-coin-highlight", `${normalizedRotation}deg`);
+    }
+
+    function setImmersiveMode(enabled) {
+      immersiveMode = Boolean(enabled);
+      stampModal.classList.toggle("is-immersive", immersiveMode);
+      if (!immersiveMode && effectsLayer) {
+        effectsLayer.innerHTML = "";
+      }
+    }
+
+    function emitShineParticle(event) {
+      if (!effectsLayer || !event) {
+        return;
+      }
+      if (typeof event.clientX !== "number" || typeof event.clientY !== "number") {
+        return;
+      }
+      const now = performance.now();
+      if (event.type === "pointermove" && now - lastShineTime < 45) {
+        return;
+      }
+      lastShineTime = now;
+      const particle = document.createElement("span");
+      particle.className = "stamp-shine-particle";
+      const rect = stampModal.getBoundingClientRect();
+      const x = event.clientX - rect.left;
+      const y = event.clientY - rect.top;
+      particle.style.setProperty("--particle-x", `${x}px`);
+      particle.style.setProperty("--particle-y", `${y}px`);
+      const scaleSeed = 0.7 + Math.random() * 0.6;
+      particle.style.setProperty("--particle-scale-start", (scaleSeed * 0.6).toFixed(2));
+      particle.style.setProperty("--particle-scale-mid", (scaleSeed * 1.0).toFixed(2));
+      particle.style.setProperty("--particle-scale-end", (scaleSeed * 1.4).toFixed(2));
+      const hue = 170 + Math.floor(Math.random() * 140);
+      particle.style.setProperty("--particle-hue", `${hue}`);
+      effectsLayer.appendChild(particle);
+      setTimeout(() => {
+        particle.remove();
+      }, 650);
     }
 
     function stopSpinAnimation(resetVelocity = true) {
@@ -1382,10 +1663,14 @@ document.addEventListener("DOMContentLoaded", function(){
       dragPointerId = event.pointerId;
       lastX = event.clientX;
       lastTime = performance.now();
+      pointerStartX = event.clientX;
+      pointerStartY = event.clientY;
+      pointerMoved = false;
       stopSpinAnimation();
       coin.setPointerCapture(dragPointerId);
       coin.classList.add("is-dragging");
       event.preventDefault();
+      emitShineParticle(event);
     }
 
     function handlePointerMove(event) {
@@ -1399,7 +1684,12 @@ document.addEventListener("DOMContentLoaded", function(){
       spinVelocity = (dx / deltaTime) * 18;
       lastX = event.clientX;
       lastTime = now;
+      const travel = Math.hypot(event.clientX - pointerStartX, event.clientY - pointerStartY);
+      if (travel > 6) {
+        pointerMoved = true;
+      }
       updateCoinRotation();
+      emitShineParticle(event);
     }
 
     function handlePointerUp(event) {
@@ -1417,6 +1707,13 @@ document.addEventListener("DOMContentLoaded", function(){
       }
       dragPointerId = null;
       animateCoinSpin();
+      emitShineParticle(event);
+      const travel = Math.hypot(event.clientX - pointerStartX, event.clientY - pointerStartY);
+      const isTap = !pointerMoved && travel < 6;
+      if (isTap) {
+        setImmersiveMode(!immersiveMode);
+      }
+      pointerMoved = false;
     }
 
     if (coin) {
@@ -1454,6 +1751,17 @@ document.addEventListener("DOMContentLoaded", function(){
         iconTarget.src = stampIcon;
         iconTarget.alt = `${stampName} stamp art`;
       }
+      if (engravingTopTarget) {
+        const engravingParts = [];
+        if (stampName) {
+          engravingParts.push(stampName);
+        }
+        if (stampDate) {
+          engravingParts.push(stampDate);
+        }
+        const engravingText = engravingParts.join(" • ") || "RDAB PASSPORT";
+        engravingTopTarget.textContent = engravingText.toUpperCase();
+      }
 
       if (dateTarget) {
         let dateLine = "";
@@ -1476,6 +1784,8 @@ document.addEventListener("DOMContentLoaded", function(){
       stampModal.hidden = false;
       stampModal.setAttribute("aria-hidden", "false");
       document.body.classList.add("stamp-modal-open");
+      document.documentElement.classList.add("stamp-modal-open");
+      setImmersiveMode(false);
       resetCoin();
       if (closeBtn) {
         closeBtn.focus();
@@ -1489,8 +1799,10 @@ document.addEventListener("DOMContentLoaded", function(){
       stampModal.hidden = true;
       stampModal.setAttribute("aria-hidden", "true");
       document.body.classList.remove("stamp-modal-open");
+      document.documentElement.classList.remove("stamp-modal-open");
       stopSpinAnimation();
       dragActive = false;
+      setImmersiveMode(false);
       if (lastTrigger && typeof lastTrigger.focus === "function") {
         lastTrigger.focus();
       }
