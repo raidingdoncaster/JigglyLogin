@@ -218,6 +218,7 @@
   <div class="bp-comments-backdrop" data-comments-close></div>
   <div class="bp-comments-sheet">
     <header class="bp-comments-header">
+      <button type="button" class="bp-comments-back" data-comments-close aria-label="Close comments">← Back</button>
       <div>
         <h3>Comments</h3>
         <p data-comments-count>{{ (post.comment_threads or [])|length }} community replies</p>
@@ -746,9 +747,9 @@
 .bp-comments-sheet {
   position: absolute;
   right: 0;
-  top: 0;
+  top: 72px;
   width: min(420px, 100%);
-  height: 100%;
+  height: calc(100% - 72px);
   background: #fff;
   border-top-left-radius: 24px;
   border-bottom-left-radius: 24px;
@@ -769,6 +770,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 12px;
 }
 
 .bp-comments-header h3 {
@@ -788,6 +790,18 @@
   width: 36px;
   height: 36px;
   font-size: 1rem;
+  cursor: pointer;
+}
+
+.bp-comments-back {
+  border: none;
+  background: transparent;
+  color: #0f172a;
+  font-weight: 600;
+  font-size: 0.9rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   cursor: pointer;
 }
 
@@ -833,6 +847,40 @@
 
 .bp-comment-meta strong {
   color: #0f172a;
+}
+
+.bp-comment-trainer {
+  border: none;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  font-weight: 700;
+  color: #0f172a;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.bp-comment-trainer::after {
+  content: "↗";
+  font-size: 0.75em;
+  color: #64748b;
+  opacity: 0;
+  transform: translateY(-2px);
+  transition: opacity 0.15s ease;
+}
+
+.bp-comment-trainer:hover::after,
+.bp-comment-trainer:focus-visible::after {
+  opacity: 1;
+}
+
+.bp-comment-trainer:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+  border-radius: 6px;
 }
 
 .bp-comment-replies {
@@ -948,6 +996,8 @@
   gap: 6px;
   font-weight: 600;
   cursor: pointer;
+  position: relative;
+  overflow: visible;
 }
 
 .bp-engage-btn .bp-like-count {
@@ -962,10 +1012,33 @@
   background: #f97316;
 }
 
+.bp-like-particle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  font-size: 1.2rem;
+  animation: bp-like-burst 800ms ease-out forwards;
+}
+
+@keyframes bp-like-burst {
+  0% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(calc(-50% + var(--dx, 0px)), calc(-50% + var(--dy, -40px))) scale(0.4);
+    opacity: 0;
+  }
+}
+
 @media (max-width: 640px) {
   .bp-comments-sheet {
     width: 100%;
     border-radius: 0;
+    top: 56px;
+    height: calc(100% - 56px);
   }
 
   .bp-engagement-bar {
@@ -1093,6 +1166,11 @@
     }
   }
 
+  var scrollLock = window.__overlayLock || {
+    lock: function () { document.body.style.overflow = "hidden"; },
+    unlock: function () { document.body.style.overflow = ""; },
+  };
+
   var bar = document.querySelector("[data-engagement-bar]");
   if (bar) {
     var showThreshold = 260;
@@ -1139,6 +1217,143 @@
     }
   }
 
+  var trainerProfileOverlay = document.querySelector("[data-trainer-profile]");
+  var trainerProfileLoading = trainerProfileOverlay ? trainerProfileOverlay.querySelector("[data-trainer-profile-loading]") : null;
+  var trainerProfileCard = trainerProfileOverlay ? trainerProfileOverlay.querySelector("[data-trainer-profile-card]") : null;
+  var trainerProfileError = trainerProfileOverlay ? trainerProfileOverlay.querySelector("[data-trainer-profile-error]") : null;
+  var trainerProfileHero = trainerProfileOverlay ? trainerProfileOverlay.querySelector("[data-trainer-profile-hero]") : null;
+  var trainerProfileAvatar = trainerProfileOverlay ? trainerProfileOverlay.querySelector("[data-trainer-profile-avatar]") : null;
+  var trainerProfileName = trainerProfileOverlay ? trainerProfileOverlay.querySelector("[data-trainer-profile-name]") : null;
+  var trainerProfileAccount = trainerProfileOverlay ? trainerProfileOverlay.querySelector("[data-trainer-profile-account]") : null;
+  var trainerProfileCampfire = trainerProfileOverlay ? trainerProfileOverlay.querySelector("[data-trainer-profile-campfire]") : null;
+  var trainerProfileStamps = trainerProfileOverlay ? trainerProfileOverlay.querySelector("[data-trainer-profile-stamps]") : null;
+  var trainerProfileTeam = trainerProfileOverlay ? trainerProfileOverlay.querySelector("[data-trainer-profile-team]") : null;
+  var trainerProfileJoined = trainerProfileOverlay ? trainerProfileOverlay.querySelector("[data-trainer-profile-joined]") : null;
+  var trainerProfileCloseEls = trainerProfileOverlay ? trainerProfileOverlay.querySelectorAll("[data-trainer-profile-close]") : [];
+  var trainerProfileCache = {};
+  var trainerProfileCloseTimer = null;
+
+  function setTrainerProfileView(mode) {
+    if (trainerProfileLoading) trainerProfileLoading.hidden = mode !== "loading";
+    if (trainerProfileCard) trainerProfileCard.hidden = mode !== "ready";
+    if (trainerProfileError) {
+      trainerProfileError.hidden = mode !== "error";
+      if (mode !== "error") {
+        trainerProfileError.textContent = "";
+      }
+    }
+  }
+
+  function hydrateTrainerProfile(data, fallbackName) {
+    var displayName = data && data.username ? data.username : (fallbackName || "Trainer");
+    if (trainerProfileName) {
+      trainerProfileName.textContent = displayName;
+    }
+    if (trainerProfileAccount) {
+      var headline = data && data.trainer_title ? data.trainer_title : null;
+      var accountLabel = headline || (data && data.account_type ? data.account_type + " Account" : "Trainer Account");
+      trainerProfileAccount.textContent = accountLabel;
+    }
+    if (trainerProfileAvatar) {
+      trainerProfileAvatar.src = data && data.avatar_url ? data.avatar_url : DEFAULT_TRAINER_AVATAR;
+      trainerProfileAvatar.alt = displayName + " avatar";
+    }
+    if (trainerProfileHero) {
+      var heroBg = data && data.background_url ? "url('" + data.background_url + "')" : "url('" + DEFAULT_TRAINER_BACKGROUND + "')";
+      trainerProfileHero.style.backgroundImage = heroBg;
+    }
+    if (trainerProfileCampfire) {
+      trainerProfileCampfire.textContent = data && data.campfire_username ? "@" + data.campfire_username : "—";
+    }
+    if (trainerProfileStamps) {
+      var stampsValue = data && typeof data.stamps !== "undefined" ? data.stamps : "—";
+      if (typeof stampsValue === "number") {
+        trainerProfileStamps.textContent = stampsValue.toLocaleString();
+      } else {
+        trainerProfileStamps.textContent = stampsValue || "—";
+      }
+    }
+    if (trainerProfileTeam) {
+      trainerProfileTeam.textContent = data && data.trainer_team ? data.trainer_team : "—";
+    }
+    if (trainerProfileJoined) {
+      trainerProfileJoined.textContent = data && data.joined_at ? formatDate(data.joined_at) : "—";
+    }
+  }
+
+  function openTrainerProfile(username, profileUrl, fallbackName) {
+    if (!trainerProfileOverlay || !profileUrl) return;
+    clearTimeout(trainerProfileCloseTimer);
+    var wasHidden = trainerProfileOverlay.hidden;
+    trainerProfileOverlay.hidden = false;
+    requestAnimationFrame(function () {
+      trainerProfileOverlay.classList.add("is-visible");
+    });
+    if (wasHidden) {
+      lockBodyScroll();
+    }
+    setTrainerProfileView("loading");
+    hydrateTrainerProfile(null, fallbackName || username);
+    var cacheKey = (username || fallbackName || "").trim().toLowerCase();
+    if (cacheKey && trainerProfileCache[cacheKey]) {
+      hydrateTrainerProfile(trainerProfileCache[cacheKey], fallbackName || username);
+      setTrainerProfileView("ready");
+      return;
+    }
+    fetch(profileUrl)
+      .then(function (resp) {
+        return resp.json().then(function (body) {
+          return { ok: resp.ok, body: body };
+        });
+      })
+      .then(function (payload) {
+        if (!payload.ok) {
+          throw new Error(payload.body && payload.body.error ? payload.body.error : "Unable to load trainer profile.");
+        }
+        var trainer = payload.body && payload.body.trainer;
+        if (!trainer) {
+          throw new Error("Trainer profile missing.");
+        }
+        if (cacheKey) {
+          trainerProfileCache[cacheKey] = trainer;
+        }
+        hydrateTrainerProfile(trainer, fallbackName || username);
+        setTrainerProfileView("ready");
+      })
+      .catch(function (err) {
+        console.warn(err);
+        if (trainerProfileError) {
+          trainerProfileError.textContent = err && err.message ? err.message : "Unable to load trainer profile. Please try again.";
+        }
+        setTrainerProfileView("error");
+      });
+  }
+
+  function closeTrainerProfile() {
+    if (!trainerProfileOverlay || trainerProfileOverlay.hidden) return;
+    trainerProfileOverlay.classList.remove("is-visible");
+    trainerProfileCloseTimer = setTimeout(function () {
+      trainerProfileOverlay.hidden = true;
+      setTrainerProfileView("loading");
+      unlockBodyScroll();
+    }, 220);
+  }
+
+  trainerProfileCloseEls.forEach(function (btn) {
+    btn.addEventListener("click", closeTrainerProfile);
+  });
+
+  document.addEventListener("click", function (evt) {
+    var trigger = evt.target.closest("[data-trainer-profile-trigger]");
+    if (!trigger) return;
+    var profileUrl = trigger.getAttribute("data-trainer-profile-url");
+    if (!profileUrl) return;
+    evt.preventDefault();
+    var username = trigger.getAttribute("data-trainer-username") || "";
+    var fallbackName = trigger.getAttribute("data-trainer-display") || trigger.textContent || username;
+    openTrainerProfile(username, profileUrl, fallbackName);
+  });
+
   var commentsContainer = document.querySelector("[data-comments-container]");
   var commentsCountLabel = document.querySelector("[data-comments-count]");
 
@@ -1150,6 +1365,10 @@
     var replyBtn = canComment
       ? '<button type="button" class="bp-reply-btn" data-reply-target="' + escapeHtml(comment.id || "") + '" data-reply-author="' + escapeHtml(comment.author || "Trainer") + '">Reply</button>'
       : "";
+    var authorLabel = escapeHtml(comment.author || "Trainer");
+    var trainerButton = (comment.trainer_profile_url
+      ? '<button type="button" class="bp-comment-trainer" data-trainer-profile-trigger data-trainer-username="' + escapeHtml(comment.trainer_username || "") + '" data-trainer-profile-url="' + escapeHtml(comment.trainer_profile_url) + '" data-trainer-display="' + authorLabel + '">' + authorLabel + "</button>"
+      : "<strong>" + authorLabel + "</strong>");
     var classes = "bp-comment" + (isReply ? " bp-comment--reply" : "");
     return (
       '<article class="' + classes + '">' +
@@ -1158,7 +1377,7 @@
         "</div>" +
         '<div class="bp-comment-body">' +
           '<div class="bp-comment-meta">' +
-            "<strong>" + escapeHtml(comment.author || "Trainer") + "</strong>" +
+            trainerButton +
             "<span>" + escapeHtml(formatDate(comment.timestamp)) + "</span>" +
           "</div>" +
           "<p>" + escapeHtml(comment.body || "") + "</p>" +
@@ -1186,6 +1405,28 @@
   }
 
   updateCommentsUI(commentsData);
+  var LIKE_EMOJIS = ["✨", "💫", "🌟", "🎉", "💥", "🔥", "❤️"];
+
+  function burstLikeParticles(button) {
+    if (!button) return;
+    var total = 10;
+    for (var i = 0; i < total; i++) {
+      var particle = document.createElement("span");
+      particle.className = "bp-like-particle";
+      particle.textContent = LIKE_EMOJIS[Math.floor(Math.random() * LIKE_EMOJIS.length)];
+      var dx = (Math.random() * 80 - 40) + "px";
+      var dy = (-40 - Math.random() * 60) + "px";
+      particle.style.setProperty("--dx", dx);
+      particle.style.setProperty("--dy", dy);
+      particle.style.left = (40 + Math.random() * 20) + "%";
+      button.appendChild(particle);
+      particle.addEventListener("animationend", function () {
+        if (this && this.parentNode) {
+          this.parentNode.removeChild(this);
+        }
+      });
+    }
+  }
 
   var likeButton = document.querySelector("[data-like-button]");
   if (likeButton && slug) {
@@ -1200,14 +1441,20 @@
         alert("Log in to like this post.");
         return;
       }
+      var wasLiked = liked;
       fetch("/api/bulletin/" + slug + "/like", { method: "POST" })
         .then(function (resp) { return resp.json(); })
         .then(function (data) {
           if (data && typeof data.like_count !== "undefined") {
-            liked = !!data.liked;
+            var newLiked = !!data.liked;
+            var justLiked = newLiked && !wasLiked;
+            liked = newLiked;
             likeButton.classList.toggle("is-liked", liked);
             if (countEl) {
               countEl.textContent = data.like_count;
+            }
+            if (justLiked) {
+              burstLikeParticles(likeButton);
             }
           } else {
             throw new Error(data && data.error ? data.error : "Unable to like this post");
@@ -1245,9 +1492,9 @@
   }
 
   function openComments() {
-    if (!commentsPanel) return;
+    if (!commentsPanel || commentsPanel.classList.contains("is-open")) return;
     commentsPanel.classList.add("is-open");
-    document.body.style.overflow = "hidden";
+    lockBodyScroll();
     if (!commentsLoadedOnce) {
       commentsLoadedOnce = true;
       refreshComments();
@@ -1255,9 +1502,9 @@
   }
 
   function closeComments() {
-    if (!commentsPanel) return;
+    if (!commentsPanel || !commentsPanel.classList.contains("is-open")) return;
     commentsPanel.classList.remove("is-open");
-    document.body.style.overflow = "";
+    unlockBodyScroll();
   }
 
   commentsToggles.forEach(function (btn) {
@@ -1270,6 +1517,7 @@
   document.addEventListener("keydown", function (evt) {
     if (evt.key === "Escape") {
       closeComments();
+      closeTrainerProfile();
     }
   });
 
@@ -1292,7 +1540,8 @@
 
   commentsContainer && commentsContainer.addEventListener("click", function (evt) {
     var btn = evt.target.closest("[data-reply-target]");
-    if (!btn || !canComment) return;
+    if (!btn) return;
+    if (!canComment) return;
     var targetId = btn.getAttribute("data-reply-target");
     var targetAuthor = btn.getAttribute("data-reply-author") || "Trainer";
     if (parentInput) parentInput.value = targetId || "";

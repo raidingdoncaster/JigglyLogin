@@ -322,6 +322,255 @@
       box-shadow:0 8px 20px rgba(58,141,222,0.25);
     }
 
+    .trainer-profile-popover {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      z-index: 1200;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.25s ease;
+    }
+    .trainer-profile-popover.is-visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .trainer-profile-popover__backdrop {
+      position: absolute;
+      inset: 0;
+      background: rgba(8, 15, 37, 0.75);
+    }
+    .trainer-profile-popover__modal {
+      position: relative;
+      width: min(440px, 100%);
+      max-height: min(600px, 90vh);
+      overflow-y: auto;
+      background: transparent;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .trainer-profile-popover__close {
+      align-self: flex-end;
+      border: none;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: rgba(15,23,42,0.75);
+      color: #fff;
+      font-size: 1.1rem;
+      cursor: pointer;
+    }
+    .trainer-profile-popover__loading,
+    .trainer-profile-popover__error {
+      background: #fff;
+      border-radius: 16px;
+      padding: 18px;
+      text-align: center;
+      font-weight: 600;
+      color: #0f172a;
+      box-shadow: 0 18px 50px rgba(15, 23, 42, 0.25);
+    }
+    .trainer-profile-popover__error {
+      color: #991b1b;
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+    }
+    .trainer-profile-card {
+      background: #fff;
+      border-radius: 24px;
+      box-shadow: 0 25px 70px rgba(15, 23, 42, 0.25);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+    .trainer-profile-card__hero {
+      position: relative;
+      padding: 24px;
+      background-size: cover;
+      background-position: center;
+      min-height: 220px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .trainer-profile-card__overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(180deg, rgba(9, 14, 35, 0.15), rgba(9, 14, 35, 0.8));
+    }
+    .trainer-profile-card__head,
+    .trainer-profile-card__stats {
+      position: relative;
+      z-index: 1;
+    }
+    .trainer-profile-card__head {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+    }
+    .trainer-profile-card__head img {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      border: 3px solid rgba(255, 255, 255, 0.9);
+      box-shadow: 0 12px 24px rgba(15, 23, 42, 0.55);
+    }
+    .trainer-profile-card__eyebrow {
+      margin: 0;
+      font-size: 0.75rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.8);
+    }
+    .trainer-profile-card__head h3 {
+      margin: 2px 0;
+      color: #fff;
+      font-size: 1.6rem;
+    }
+    .trainer-profile-card__account {
+      margin: 0;
+      color: rgba(255, 255, 255, 0.8);
+      font-weight: 600;
+    }
+    .trainer-profile-card__stats {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .trainer-profile-card__stats dt {
+      margin: 0;
+      font-size: 0.75rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.75);
+    }
+    .trainer-profile-card__stats dd {
+      margin: 4px 0 0 0;
+      color: #fff;
+      font-size: 1.2rem;
+      font-weight: 700;
+    }
+    .trainer-profile-card__details {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+      padding: 0 24px 12px 24px;
+    }
+    .trainer-profile-card__details span {
+      display: block;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      color: #94a3b8;
+    }
+    .trainer-profile-card__details strong {
+      display: block;
+      font-size: 1.1rem;
+      color: #0f172a;
+      margin-top: 4px;
+    }
+    .trainer-profile-card__future {
+      padding: 0 24px 24px 24px;
+      border-top: 1px solid #e2e8f0;
+    }
+    .trainer-profile-card__future h4 {
+      margin: 0 0 6px 0;
+      font-size: 1rem;
+    }
+    .trainer-profile-card__future p {
+      margin: 0;
+      color: #475569;
+      font-size: 0.9rem;
+    }
+    .trainer-profile-popover__actions {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      background: #fff;
+      border-radius: 18px;
+      padding: 18px;
+      box-shadow: 0 18px 50px rgba(15,23,42,0.18);
+    }
+    .trainer-profile-popover__action-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 16px;
+      border-radius: 12px;
+      background: #0f172a;
+      color: #fff;
+      font-weight: 600;
+      text-decoration: none;
+      text-align: center;
+    }
+    .trainer-profile-bio {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .trainer-profile-bio label {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #0f172a;
+    }
+    .trainer-profile-bio textarea {
+      border-radius: 12px;
+      border: 1px solid #cbd5f5;
+      padding: 10px;
+      resize: none;
+      font-family: inherit;
+      min-height: 90px;
+    }
+    .trainer-profile-bio__meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.85rem;
+      color: #475569;
+      gap: 8px;
+    }
+    .trainer-profile-bio__meta button {
+      border: none;
+      border-radius: 999px;
+      padding: 8px 16px;
+      background: var(--brand);
+      color: #fff;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .trainer-profile-bio__hint {
+      margin: 0;
+      font-size: 0.75rem;
+      color: #94a3b8;
+    }
+    .trainer-profile-bio__status {
+      font-size: 0.85rem;
+      font-weight: 600;
+      padding: 8px 12px;
+      border-radius: 10px;
+    }
+    .trainer-profile-bio__status.is-error {
+      background: #fef2f2;
+      color: #b91c1c;
+      border: 1px solid #fecaca;
+    }
+    .trainer-profile-bio__status.is-success {
+      background: #ecfdf5;
+      color: #065f46;
+      border: 1px solid #a7f3d0;
+    }
+    .trainer-profile-bio__status.is-info {
+      background: #eff6ff;
+      color: #1d4ed8;
+      border: 1px solid #bfdbfe;
+    }
+
     /* Mobile */
     @media(max-width:480px){
       :root{ --header-height:64px; }
@@ -336,6 +585,27 @@
 
   <script>
     window.addEventListener("DOMContentLoaded",()=>{
+      const bodyScrollLock=(()=>{
+        let locks=0;
+        return{
+          lock(){
+            locks+=1;
+            if(locks===1){
+              document.body.dataset.scrollLocked="true";
+              document.body.style.overflow="hidden";
+            }
+          },
+          unlock(){
+            locks=Math.max(locks-1,0);
+            if(locks===0){
+              delete document.body.dataset.scrollLocked;
+              document.body.style.overflow="";
+            }
+          }
+        };
+      })();
+      window.__overlayLock=bodyScrollLock;
+
       const headerEl=document.querySelector(".site-header");
       const setHeaderOffset=()=>{
         if(!headerEl) return;
@@ -395,22 +665,26 @@
         });
         ad.addEventListener("click",(e)=>e.stopPropagation());
       }
+      window.closeAvatarDropdown=closeAvatarDropdown;
+      window.openAvatarDropdown=openAvatarDropdown;
 
       // Manage Account modal open/close
       const mm = document.getElementById('manageAccountModal');
       const openBtns = document.querySelectorAll('[data-open-account-modal]');
       openBtns.forEach(b=>b.addEventListener('click',()=>{
         closeAvatarDropdown();
+        if(!mm) return;
         mm.style.display='flex';
-        document.body.style.overflow='hidden';
+        bodyScrollLock.lock();
       }));
       document.getElementById('closeAccountModal')?.addEventListener('click', closeAccountModal);
       mm?.addEventListener('click', (e)=>{ if(e.target === mm) closeAccountModal(); });
-      document.addEventListener('keydown', (e)=>{ if(e.key==='Escape' && mm.style.display==='flex') closeAccountModal(); });
+      document.addEventListener('keydown', (e)=>{ if(e.key==='Escape' && mm && mm.style.display==='flex') closeAccountModal(); });
 
       function closeAccountModal(){
+        if(!mm) return;
         mm.style.display='none';
-        document.body.style.overflow='';
+        bodyScrollLock.unlock();
       }
       window._closeAccountModal = closeAccountModal; // expose if needed
 
@@ -426,6 +700,259 @@
           closeAvatarDropdown();
         });
       }
+
+      const DEFAULT_TRAINER_AVATAR = "{{ url_for('static', filename='avatars/avatar1.png') }}";
+      const DEFAULT_TRAINER_BACKGROUND = "{{ url_for('static', filename='backgrounds/standard.png') }}";
+
+      const trainerProfileModule = (()=>{
+        const overlay=document.querySelector("[data-trainer-profile]");
+        if(!overlay) return null;
+        const loadingEl=overlay.querySelector("[data-trainer-profile-loading]");
+        const errorEl=overlay.querySelector("[data-trainer-profile-error]");
+        const cardEl=overlay.querySelector("[data-trainer-profile-card]");
+        const heroEl=overlay.querySelector("[data-trainer-profile-hero]");
+        const avatarEl=overlay.querySelector("[data-trainer-profile-avatar]");
+        const nameEl=overlay.querySelector("[data-trainer-profile-name]");
+        const accountEl=overlay.querySelector("[data-trainer-profile-account]");
+        const campfireEl=overlay.querySelector("[data-trainer-profile-campfire]");
+        const stampsEl=overlay.querySelector("[data-trainer-profile-stamps]");
+        const teamEl=overlay.querySelector("[data-trainer-profile-team]");
+        const joinedEl=overlay.querySelector("[data-trainer-profile-joined]");
+        const actionsEl=overlay.querySelector("[data-trainer-profile-actions]");
+        const customizeLink=overlay.querySelector("[data-trainer-profile-customize]");
+        const bioForm=overlay.querySelector("[data-trainer-profile-bio-form]");
+        const bioInput=overlay.querySelector("[data-trainer-profile-bio-input]");
+        const bioCount=overlay.querySelector("[data-trainer-profile-bio-count]");
+        const bioStatus=overlay.querySelector("[data-trainer-profile-bio-status]");
+        const bodyLock=window.__overlayLock || {lock(){},unlock(){}};
+        const cache={};
+        const state={ username:"", profileUrl:null, editable:false, displayName:"Trainer" };
+        let closeTimer=null;
+
+        const formatDate=(value)=>{
+          if(!value) return "—";
+          try{
+            const date=new Date(value);
+            return date.toLocaleDateString(undefined,{ month:"short", day:"numeric", year:"numeric" });
+          }catch(err){
+            return value;
+          }
+        };
+
+        const setView=(mode,message)=>{
+          if(loadingEl) loadingEl.hidden = mode!=="loading";
+          if(cardEl) cardEl.hidden = mode!=="ready";
+          if(errorEl){
+            errorEl.hidden = mode!=="error";
+            if(mode==="error"){
+              errorEl.textContent = message || "Unable to load trainer profile right now.";
+            }
+          }
+        };
+
+        const resetStatus=()=>{
+          if(!bioStatus) return;
+          bioStatus.hidden=true;
+          bioStatus.textContent="";
+          bioStatus.classList.remove("is-error","is-success","is-info");
+        };
+
+        const setBioStatus=(message,tone)=>{
+          if(!bioStatus) return;
+          bioStatus.hidden=false;
+          bioStatus.textContent=message;
+          bioStatus.classList.remove("is-error","is-success","is-info");
+          if(tone==="error") bioStatus.classList.add("is-error");
+          else if(tone==="success") bioStatus.classList.add("is-success");
+          else bioStatus.classList.add("is-info");
+        };
+
+        const updateBioCount=()=>{
+          if(!bioInput || !bioCount) return;
+          const len=bioInput.value.length;
+          bioCount.textContent=`${len}/200`;
+        };
+
+        const populateBio=(data)=>{
+          if(!bioInput) return;
+          const value = data && typeof data.bio === "string" ? data.bio : "";
+          bioInput.value=value;
+          updateBioCount();
+        };
+
+        const setActionsVisible=(show)=>{
+          if(actionsEl) actionsEl.hidden = !show;
+          if(customizeLink) customizeLink.hidden = !show;
+          if(bioForm) bioForm.hidden = !show;
+          if(!show && bioInput){
+            bioInput.value="";
+            updateBioCount();
+          }
+          resetStatus();
+        };
+
+        const hydrateProfile=(data,fallbackName)=>{
+          const displayName = data && data.username ? data.username : (fallbackName || "Trainer");
+          if(nameEl) nameEl.textContent = displayName;
+          if(accountEl){
+            const title = data && data.trainer_title;
+            const accountLabel = title || (data && data.account_type ? `${data.account_type} Account` : "Trainer Account");
+            accountEl.textContent = accountLabel;
+          }
+          if(avatarEl){
+            avatarEl.src = data && data.avatar_url ? data.avatar_url : DEFAULT_TRAINER_AVATAR;
+            avatarEl.alt = `${displayName} avatar`;
+          }
+          if(heroEl){
+            const heroBg = data && data.background_url ? `url('${data.background_url}')` : `url('${DEFAULT_TRAINER_BACKGROUND}')`;
+            heroEl.style.backgroundImage = heroBg;
+          }
+          if(campfireEl){
+            campfireEl.textContent = data && data.campfire_username ? `@${data.campfire_username}` : "—";
+          }
+          if(stampsEl){
+            const stampValue = data && typeof data.stamps !== "undefined" ? data.stamps : "—";
+            stampsEl.textContent = typeof stampValue === "number" ? stampValue.toLocaleString() : (stampValue || "—");
+          }
+          if(teamEl) teamEl.textContent = data && data.trainer_team ? data.trainer_team : "—";
+          if(joinedEl) joinedEl.textContent = data && data.joined_at ? formatDate(data.joined_at) : "—";
+          if(state.editable){
+            populateBio(data);
+          }
+        };
+
+        const open=(options)=>{
+          if(!overlay) return;
+          const username=(options.username || "").trim();
+          state.username=username;
+          state.profileUrl=options.url || (username ? `/api/trainers/${encodeURIComponent(username)}/profile` : null);
+          state.editable=!!options.editable;
+          state.displayName=options.displayName || username || "Trainer";
+          setActionsVisible(state.editable);
+          if(!state.editable && bioInput){
+            bioInput.value="";
+            updateBioCount();
+          }
+          overlay.hidden=false;
+          requestAnimationFrame(()=>overlay.classList.add("is-visible"));
+          bodyLock.lock();
+          setView("loading");
+          const cacheKey=username.toLowerCase();
+          if(cacheKey && cache[cacheKey]){
+            hydrateProfile(cache[cacheKey], state.displayName);
+            setView("ready");
+            return;
+          }
+          if(!state.profileUrl){
+            setView("error","Trainer profile unavailable.");
+            return;
+          }
+          fetch(state.profileUrl)
+            .then(resp=>resp.json().then(body=>({ ok:resp.ok, body })))
+            .then(({ok,body})=>{
+              if(!ok) throw new Error(body && body.error ? body.error : "Unable to load trainer profile.");
+              const trainer=body && body.trainer;
+              if(!trainer) throw new Error("Trainer profile missing.");
+              if(cacheKey) cache[cacheKey]=trainer;
+              hydrateProfile(trainer, state.displayName);
+              setView("ready");
+            })
+            .catch(err=>{
+              console.warn(err);
+              setView("error", err && err.message ? err.message : "Unable to load trainer profile right now.");
+            });
+        };
+
+        const close=()=>{
+          if(!overlay || overlay.hidden) return;
+          overlay.classList.remove("is-visible");
+          if(closeTimer) clearTimeout(closeTimer);
+          closeTimer=setTimeout(()=>{
+            overlay.hidden=true;
+            setView("loading");
+            bodyLock.unlock();
+          },220);
+        };
+
+        const submitBio=(evt)=>{
+          evt.preventDefault();
+          if(!state.editable || !bioForm || !bioInput) return;
+          let bioValue=(bioInput.value || "").trim();
+          if(bioValue.length>200){
+            bioValue=bioValue.slice(0,200);
+            bioInput.value=bioValue;
+          }
+          updateBioCount();
+          setBioStatus("Saving bio…","info");
+          const submitBtn=bioForm.querySelector("button[type='submit']");
+          if(submitBtn) submitBtn.disabled=true;
+          fetch("/api/profile/bio",{
+            method:"POST",
+            headers:{ "Content-Type":"application/json" },
+            body:JSON.stringify({ bio: bioValue })
+          })
+            .then(resp=>resp.json().then(body=>({ ok:resp.ok, body })))
+            .then(({ok,body})=>{
+              if(!ok) throw new Error(body && body.error ? body.error : "Unable to update bio.");
+              setBioStatus("Bio updated!","success");
+              const trainer=body && body.trainer;
+              if(trainer && state.username){
+                cache[state.username.toLowerCase()]=trainer;
+                hydrateProfile(trainer, state.displayName);
+              }
+            })
+            .catch(err=>{
+              console.warn(err);
+              setBioStatus(err && err.message ? err.message : "Unable to update bio.","error");
+            })
+            .finally(()=>{
+              if(submitBtn) submitBtn.disabled=false;
+            });
+        };
+
+        overlay.querySelectorAll("[data-trainer-profile-close]").forEach(btn=>{
+          btn.addEventListener("click",(evt)=>{
+            evt.preventDefault();
+            close();
+          });
+        });
+        if(bioForm){
+          bioForm.addEventListener("submit", submitBio);
+        }
+        if(bioInput){
+          bioInput.addEventListener("input", updateBioCount);
+        }
+        document.addEventListener("keydown",(evt)=>{
+          if(evt.key==="Escape" && !overlay.hidden){
+            close();
+          }
+        });
+
+        return { open, close };
+      })();
+      window.TrainerProfilePopover=trainerProfileModule;
+
+      document.addEventListener("click",(event)=>{
+        const trigger=event.target.closest("[data-trainer-profile-trigger]");
+        if(!trigger || !window.TrainerProfilePopover || typeof window.TrainerProfilePopover.open!=="function"){
+          return;
+        }
+        event.preventDefault();
+        const username=(trigger.getAttribute("data-trainer-profile-username") || "").trim();
+        const providedUrl=trigger.getAttribute("data-trainer-profile-url");
+        const displayName=trigger.getAttribute("data-trainer-display") || trigger.textContent || username || "Trainer";
+        const profileUrl=providedUrl || (username ? `/api/trainers/${encodeURIComponent(username)}/profile` : null);
+        const editable=trigger.hasAttribute("data-trainer-profile-own");
+        if(trigger.hasAttribute("data-close-avatar") && typeof window.closeAvatarDropdown==="function"){
+          window.closeAvatarDropdown();
+        }
+        window.TrainerProfilePopover.open({
+          username,
+          url: profileUrl,
+          displayName,
+          editable,
+        });
+      });
     });
 
     function togglePin(id,btn){
@@ -509,6 +1036,16 @@
           </button>
           <div id="avatarDropdown" class="avatar-dropdown" aria-hidden="true">
             <div class="avatar-dropdown__username">{{ nav_username or 'Trainer' }}</div>
+            {% if nav_username %}
+            <button type="button"
+                    data-trainer-profile-trigger
+                    data-trainer-profile-own
+                    data-trainer-profile-username="{{ nav_username }}"
+                    data-trainer-profile-url="{{ url_for('api_public_trainer_profile', username=nav_username) }}"
+                    data-close-avatar>
+              👀 View Profile
+            </button>
+            {% endif %}
             <div class="sep"></div>
             <a href="{{ url_for('change_avatar') }}">👤 Customise</a>
             <button type="button" data-open-account-modal>⚙️ Manage Account</button>
@@ -627,6 +1164,8 @@
     </div>
   </div>
   {% endif %}
+
+  {% include "partials/trainer_profile_popover.html" %}
 
   <!-- Register Service Worker (single canonical URL) -->
   <script>

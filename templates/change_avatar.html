@@ -89,9 +89,9 @@
       <span class="customizer-tabs__glider" aria-hidden="true"></span>
     </div>
 
-    {% set avatar_pages = avatars|batch(8, None) %}
-    {% set background_pages = backgrounds|batch(6, None) %}
-    {% set theme_pages = passport_themes|batch(3, None) %}
+    {% set avatar_pages = avatars|batch(8, None)|list %}
+    {% set background_pages = backgrounds|batch(6, None)|list %}
+    {% set theme_pages = passport_themes|batch(3, None)|list %}
 
     <div class="customizer-panels">
       <section class="customizer-panel is-active"

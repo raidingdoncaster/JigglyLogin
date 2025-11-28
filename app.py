@@ -420,13 +420,22 @@ def fetch_bulletin_comments_from_supabase(post_id: str) -> list[dict]:
     roots: list[dict] = []
     for row in rows:
         cid = row.get("id")
+        trainer_username = row.get("trainer_username")
+        profile_url = None
+        if trainer_username:
+            try:
+                profile_url = url_for("api_public_trainer_profile", username=trainer_username)
+            except RuntimeError:
+                profile_url = f"/api/trainers/{quote_plus(trainer_username)}/profile"
         comment = {
             "id": cid,
-            "author": row.get("trainer_username") or "Trainer",
+            "author": trainer_username or "Trainer",
             "avatar": _trainer_avatar_fallback(row.get("trainer_username")),
             "timestamp": row.get("created_at"),
             "body": row.get("body"),
             "replies": [],
+            "trainer_username": trainer_username,
+            "trainer_profile_url": profile_url,
         }
         by_id[cid] = comment
         parent_id = row.get("parent_comment_id")
@@ -448,8 +457,8 @@ def _hydrate_comment_media_urls(comments: list[dict]) -> None:
             _hydrate_comment_media_urls(comment["replies"])
 
 
-def _bulletin_widget_preview() -> Optional[dict]:
-    posts = get_community_bulletin_posts()
+def _bulletin_widget_preview(posts: Optional[list[dict]] = None) -> Optional[dict]:
+    posts = posts or get_community_bulletin_posts()
     if not posts:
         return None
     candidate = next((p for p in posts if p.get("is_featured")), posts[0])
@@ -667,12 +676,28 @@ def _bulletin_parse_social_handles(raw: Any) -> list[dict]:
     return social_handles
 
 
-def _bulletin_admin_create_author(data: dict) -> tuple[bool, dict | str]:
+def _bulletin_admin_delete_post(post_id: str) -> bool:
+    if not _bulletin_supabase_enabled():
+        return False
+    try:
+        supabase.table("bulletin_post_sections").delete().eq("post_id", post_id).execute()
+        supabase.table("bulletin_post_tags").delete().eq("post_id", post_id).execute()
+        supabase.table("bulletin_post_comments").delete().eq("post_id", post_id).execute()
+        supabase.table("bulletin_post_likes").delete().eq("post_id", post_id).execute()
+        supabase.table("bulletin_posts").delete().eq("id", post_id).execute()
+        return True
+    except Exception as exc:
+        print("⚠️ Supabase bulletin post delete failed:", exc)
+        return False
+
+
+def _bulletin_admin_upsert_author(data: dict) -> tuple[bool, dict | str]:
     if not _bulletin_supabase_enabled():
         return False, "Bulletin service unavailable"
     display_name = (data.get("display_name") or "").strip()
     if not display_name:
         return False, "Display name is required"
+    author_id = data.get("id") or data.get("author_id")
     record = {
         "display_name": display_name,
         "avatar_url": (data.get("avatar_url") or "").strip() or None,
@@ -681,12 +706,32 @@ def _bulletin_admin_create_author(data: dict) -> tuple[bool, dict | str]:
         "social_handles": _bulletin_parse_social_handles(data.get("social_handles")),
     }
     try:
-        resp = supabase.table("bulletin_authors").insert(record).execute()
-        author = (resp.data or [{}])[0]
+        if author_id:
+            supabase.table("bulletin_authors").update(record).eq("id", author_id).execute()
+            resp = (supabase.table("bulletin_authors")
+                    .select("*")
+                    .eq("id", author_id)
+                    .limit(1)
+                    .execute())
+            author = (resp.data or [{}])[0]
+        else:
+            resp = supabase.table("bulletin_authors").insert(record).execute()
+            author = (resp.data or [{}])[0]
         return True, author
     except Exception as exc:
         print("⚠️ Supabase author create failed:", exc)
         return False, "Unable to create author"
+
+
+def _bulletin_admin_delete_author(author_id: str) -> bool:
+    if not _bulletin_supabase_enabled():
+        return False
+    try:
+        supabase.table("bulletin_authors").delete().eq("id", author_id).execute()
+        return True
+    except Exception as exc:
+        print("⚠️ Supabase author delete failed:", exc)
+        return False
 
 DATA_DIR = Path(app.root_path) / "data"
 DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -1884,11 +1929,48 @@ def find_user(username):
         record = records[0]
         record.setdefault("avatar_icon", "avatar1.png")
         record.setdefault("trainer_card_background", "standard.png")
+        record.setdefault("trainerbio", "")
         record["account_type"] = normalize_account_type(record.get("account_type"))
         return None, record
     except Exception as e:
         print("⚠️ Supabase find_user failed:", e)
         return None, None
+
+
+def get_public_trainer_profile(username: str) -> Optional[dict]:
+    """
+    Fetch a sanitized profile payload that can be shared publicly.
+    Returns basic trainer card fields only (avatar, background, stamps, etc.).
+    """
+    if not username:
+        return None
+    _, record = find_user(username)
+    if not record:
+        return None
+    avatar_file = record.get("avatar_icon") or "avatar1.png"
+    background_file = record.get("trainer_card_background") or "standard.png"
+    bio = (record.get("trainerbio") or "").strip()
+    if len(bio) > 200:
+        bio = bio[:200]
+    try:
+        avatar_url = url_for("static", filename=f"avatars/{avatar_file}")
+        background_url = url_for("static", filename=f"backgrounds/{background_file}")
+    except RuntimeError:
+        avatar_url = f"/static/avatars/{avatar_file}"
+        background_url = f"/static/backgrounds/{background_file}"
+
+    return {
+        "username": record.get("trainer_username") or username,
+        "account_type": record.get("account_type") or "Trainer",
+        "campfire_username": record.get("campfire_username"),
+        "stamps": record.get("stamps") or 0,
+        "avatar_url": avatar_url,
+        "background_url": background_url,
+        "joined_at": record.get("created_at"),
+        "trainer_title": record.get("trainer_title"),
+        "trainer_team": record.get("trainer_team"),
+        "bio": bio,
+    }
 
 
 def search_trainers(query, limit=10):
@@ -5792,7 +5874,9 @@ def dashboard():
             "cover_photo": ev["cover_photo_url"],
         })
 
-    bulletin_preview = _bulletin_widget_preview()
+    bulletin_posts = get_community_bulletin_posts()
+    bulletin_preview = _bulletin_widget_preview(bulletin_posts)
+    bulletin_latest_posts = bulletin_posts[:2]
 
     return render_template(
         "dashboard.html",
@@ -5813,6 +5897,7 @@ def dashboard():
         show_city_guides_app=SHOW_CITY_GUIDES_APP,
         show_leagues_app=SHOW_LEAGUES_APP,
         bulletin_preview=bulletin_preview,
+        bulletin_latest_posts=bulletin_latest_posts,
     )
 
 @app.route("/calendar")
@@ -6394,6 +6479,38 @@ def api_bulletin_comments(slug):
     return jsonify({"comments": comments, "count": len(comments)})
 
 
+@app.route("/api/trainers/<username>/profile", methods=["GET"])
+def api_public_trainer_profile(username):
+    username = (username or "").strip()
+    if not username:
+        return jsonify({"error": "Trainer username is required"}), 400
+    profile = get_public_trainer_profile(username)
+    if not profile:
+        return jsonify({"error": "Trainer not found"}), 404
+    return jsonify({"trainer": profile})
+
+
+@app.route("/api/profile/bio", methods=["POST"])
+def api_update_trainer_bio():
+    if "trainer" not in session:
+        return jsonify({"error": "Login required"}), 401
+    if not supabase:
+        return jsonify({"error": "Profile service unavailable"}), 503
+    payload = request.get_json(force=True, silent=True) or {}
+    bio = (payload.get("bio") or "").strip()
+    if len(bio) > 200:
+        bio = bio[:200]
+    bio = bleach.clean(bio, tags=[], attributes={}, strip=True)
+    username = session["trainer"]
+    try:
+        supabase.table("sheet1").update({"trainerbio": bio}).eq("trainer_username", username).execute()
+    except Exception as exc:
+        print("⚠️ Supabase trainer bio update failed:", exc)
+        return jsonify({"error": "Unable to update trainer bio"}), 500
+    profile = get_public_trainer_profile(username) or {"username": username, "bio": bio}
+    return jsonify({"bio": bio, "trainer": profile})
+
+
 @app.route("/admin/community-bulletin", methods=["GET"])
 @admin_required
 def admin_bulletin():
@@ -6445,6 +6562,16 @@ def admin_bulletin_toggle_feature_route(post_id):
     return jsonify({"is_featured": value})
 
 
+@app.route("/admin/community-bulletin/post/<post_id>/delete", methods=["POST"])
+@admin_required
+def admin_bulletin_delete_post_route(post_id):
+    if not _bulletin_supabase_enabled():
+        return jsonify({"error": "Bulletin service unavailable"}), 503
+    if not _bulletin_admin_delete_post(post_id):
+        return jsonify({"error": "Unable to delete post"}), 400
+    return jsonify({"deleted": True})
+
+
 @app.route("/admin/community-bulletin/comment/<comment_id>/delete", methods=["POST"])
 @admin_required
 def admin_bulletin_delete_comment_route(comment_id):
@@ -6460,14 +6587,24 @@ def admin_bulletin_delete_comment_route(comment_id):
 
 @app.route("/admin/community-bulletin/authors", methods=["POST"])
 @admin_required
-def admin_bulletin_create_author_route():
+def admin_bulletin_save_author_route():
     if not _bulletin_supabase_enabled():
         return jsonify({"error": "Bulletin service unavailable"}), 503
     payload = request.get_json(force=True, silent=True) or {}
-    success, result = _bulletin_admin_create_author(payload)
+    success, result = _bulletin_admin_upsert_author(payload)
     if not success:
         return jsonify({"error": result}), 400
     return jsonify({"author": result})
+
+
+@app.route("/admin/community-bulletin/author/<author_id>/delete", methods=["POST"])
+@admin_required
+def admin_bulletin_delete_author_route(author_id):
+    if not _bulletin_supabase_enabled():
+        return jsonify({"error": "Bulletin service unavailable"}), 503
+    if not _bulletin_admin_delete_author(author_id):
+        return jsonify({"error": "Unable to delete author"}), 400
+    return jsonify({"deleted": True})
 
 
 def _bulletin_upload_folder(asset_type: str) -> str:

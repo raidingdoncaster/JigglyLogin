@@ -135,30 +135,42 @@
   <div class="stamp-detail-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="stamp-detail-title">
     <button type="button" class="stamp-detail-modal__close" data-stamp-modal-close aria-label="Close stamp details">✕</button>
     <div class="stamp-detail-modal__media">
+      {% set coin_edge_segments = 36 %}
       <div class="stamp-coin" data-stamp-coin>
         <div class="stamp-coin__glow"></div>
-        <div class="stamp-coin__rim"></div>
-        <div class="stamp-coin__edge" aria-hidden="true"></div>
-        <div class="stamp-coin__face stamp-coin__face--front">
-          <img src="{{ url_for('static', filename='icons/tickstamp.png') }}" alt="Selected stamp" data-stamp-modal-icon loading="lazy">
-        </div>
-        <div class="stamp-coin__face stamp-coin__face--back" aria-hidden="true">
-          <svg class="stamp-engraving" viewBox="0 0 200 200" role="presentation" aria-hidden="true">
-            <defs>
-              <path id="stamp-engrave-bottom-path" d="M30,118 A70,70 0 0 0 170,118"></path>
-            </defs>
-            <text class="stamp-engraving__top-text"
-                  x="100"
-                  y="72"
-                  text-anchor="middle"
-                  alignment-baseline="middle"
-                  textLength="130"
-                  lengthAdjust="spacingAndGlyphs"
-                  data-stamp-engraving-top>RDAB PASSPORT</text>
-            <text class="stamp-engraving__bottom">
-              <textPath href="#stamp-engrave-bottom-path" startOffset="50%" text-anchor="middle">IN RAIDING WE TRUST</textPath>
-            </text>
-          </svg>
+        <div class="stamp-coin__core">
+          <div class="stamp-coin__sidewall" aria-hidden="true" style="--segment-count: {{ coin_edge_segments }}">
+            {% for segment in range(coin_edge_segments) %}
+              {% set rotation = (segment * (360 / coin_edge_segments)) %}
+              <span class="stamp-coin__side"
+                    aria-hidden="true"
+                    style="--segment-rotation: {{ '%.4fdeg' | format(rotation) }};
+                           --segment-shade: {{ '%.2f' | format(0.35 + (segment % 6) * 0.03) }};"></span>
+            {% endfor %}
+          </div>
+          <div class="stamp-coin__rim" aria-hidden="true"></div>
+          <div class="stamp-coin__face stamp-coin__face--front">
+            <img src="{{ url_for('static', filename='icons/tickstamp.png') }}" alt="Selected stamp" data-stamp-modal-icon loading="lazy">
+          </div>
+          <div class="stamp-coin__face stamp-coin__face--back" aria-hidden="true">
+            <svg class="stamp-engraving" viewBox="0 0 200 200" role="presentation" aria-hidden="true">
+              <defs>
+                <path id="stamp-engrave-bottom-path" d="M30,118 A70,70 0 0 0 170,118"></path>
+              </defs>
+              <text class="stamp-engraving__top-text"
+                    x="100"
+                    y="72"
+                    text-anchor="middle"
+                    alignment-baseline="middle"
+                    dominant-baseline="middle"
+                    textLength="130"
+                    lengthAdjust="spacingAndGlyphs"
+                    data-stamp-engraving-top>RDAB PASSPORT</text>
+              <text class="stamp-engraving__bottom">
+                <textPath href="#stamp-engrave-bottom-path" startOffset="50%" text-anchor="middle">IN RAIDING WE TRUST</textPath>
+              </text>
+            </svg>
+          </div>
         </div>
         <div class="stamp-coin__sheen" aria-hidden="true"></div>
         <div class="stamp-coin__sparkles" aria-hidden="true"></div>
@@ -1154,12 +1166,14 @@ button.stamp-slot:focus-visible {
   transition:width 0.35s ease, height 0.35s ease;
 }
 .stamp-coin {
-  --coin-depth: 22px;
+  --coin-size: 112px;
+  --coin-radius: calc(var(--coin-size) / 2);
+  --coin-depth: 20px;
   --stamp-coin-highlight: 0deg;
   --stamp-coin-scale: 1;
   position:relative;
-  width:112px;
-  height:112px;
+  width:var(--coin-size);
+  height:var(--coin-size);
   border-radius:50%;
   transform-style:preserve-3d;
   transform:rotateX(16deg) rotateY(var(--stamp-coin-rotation, 0deg)) scale(var(--stamp-coin-scale, 1));
@@ -1186,6 +1200,37 @@ button.stamp-slot:focus-visible {
   pointer-events:none;
   z-index:0;
 }
+.stamp-coin__core {
+  position:absolute;
+  inset:0;
+  border-radius:50%;
+  transform-style:preserve-3d;
+  background:radial-gradient(circle at 30% 30%, rgba(255,255,255,0.12), rgba(6,14,32,0.95));
+  box-shadow:inset 0 0 28px rgba(0,0,0,0.45);
+  overflow:hidden;
+  z-index:1;
+}
+.stamp-coin__sidewall {
+  position:absolute;
+  inset:0;
+  transform-style:preserve-3d;
+}
+.stamp-coin__side {
+  position:absolute;
+  width:calc(3.14159 * var(--coin-size) / var(--segment-count, 36));
+  height:var(--coin-depth);
+  top:calc(50% - (var(--coin-depth) / 2));
+  left:calc(50% - (3.14159 * var(--coin-size) / var(--segment-count, 36)) / 2);
+  background:linear-gradient(180deg,
+    rgba(255,255,255,0.65),
+    rgba(109,146,196, var(--segment-shade, 0.45)),
+    rgba(24,34,56,0.82));
+  border-radius:8px;
+  transform-origin:center;
+  transform:rotateY(var(--segment-rotation, 0deg)) translateZ(var(--coin-radius));
+  filter:brightness(1.05);
+  opacity:0.96;
+}
 .stamp-coin__rim {
   position:absolute;
   inset:0;
@@ -1195,42 +1240,6 @@ button.stamp-slot:focus-visible {
   box-shadow:inset 0 0 18px rgba(0,0,0,0.35);
   transform:translateZ(calc(var(--coin-depth) * 0.2));
   z-index:1;
-}
-.stamp-coin__edge {
-  position:absolute;
-  inset:4px;
-  border-radius:50%;
-  pointer-events:none;
-  transform-style:preserve-3d;
-  filter:drop-shadow(0 1px 2px rgba(0,0,0,0.45));
-  z-index:2;
-}
-.stamp-coin__edge::before,
-.stamp-coin__edge::after {
-  content:"";
-  position:absolute;
-  inset:0;
-  border-radius:50%;
-  background:
-    conic-gradient(from 90deg,
-      rgba(255,255,255,0.82) 0deg,
-      rgba(148,197,255,0.35) 60deg,
-      rgba(25,39,72,0.75) 160deg,
-      rgba(255,255,255,0.55) 250deg,
-      rgba(59,130,246,0.35) 320deg,
-      rgba(255,255,255,0.82) 360deg);
-  mask:radial-gradient(circle, transparent calc(100% - 10px), #000 calc(100% - 7px));
-  -webkit-mask:radial-gradient(circle, transparent calc(100% - 10px), #000 calc(100% - 7px));
-  box-shadow:inset 0 0 8px rgba(0,0,0,0.35);
-}
-.stamp-coin__edge::before {
-  transform:translateZ(calc(var(--coin-depth) * 0.45));
-  opacity:0.92;
-}
-.stamp-coin__edge::after {
-  transform:translateZ(calc(-1 * var(--coin-depth) * 0.45));
-  opacity:0.65;
-  filter:blur(0.6px);
 }
 .stamp-coin__face {
   position:absolute;

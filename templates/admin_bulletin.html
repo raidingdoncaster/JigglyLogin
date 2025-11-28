@@ -50,7 +50,6 @@
             <h2>Posts</h2>
             <p>Tap a row to edit in the builder.</p>
           </div>
-          <button type="button" class="pill-btn" data-new-post data-open-modal="builder">➕ New Post</button>
         </div>
         <div class="bulletin-table__wrap">
           <table class="bulletin-table">
@@ -89,6 +88,10 @@
                             class="pill-btn"
                             data-edit-post
                             data-post-id="{{ post.id }}">Edit</button>
+                    <button type="button"
+                            class="pill-btn is-danger"
+                            data-delete-post
+                            data-post-id="{{ post.id }}">Delete</button>
                     {% if post.slug %}
                       <a class="pill-btn is-link" href="{{ url_for('community_bulletin_post', slug=post.slug) }}" target="_blank" rel="noopener">View</a>
                     {% endif %}
@@ -267,6 +270,7 @@
         </header>
         <div class="bulletin-modal__body">
           <form id="authorForm" class="builder-grid">
+            <input type="hidden" name="id">
             <label>
               <span>Display Name</span>
               <input type="text" name="display_name" required>
@@ -332,6 +336,16 @@
                 {% endfor %}
               </div>
               {% endif %}
+              <div class="author-card__actions">
+                <button type="button"
+                        class="pill-btn is-secondary"
+                        data-edit-author
+                        data-author-id="{{ author.id }}">Edit</button>
+                <button type="button"
+                        class="pill-btn is-danger"
+                        data-delete-author
+                        data-author-id="{{ author.id }}">Delete</button>
+              </div>
             </article>
             {% else %}
             <p class="author-list__empty">No authors yet. Add your first profile from the actions panel.</p>
@@ -394,7 +408,8 @@
   margin-bottom: 12px;
 }
 .bulletin-table__wrap {
-  overflow-x: auto;
+  overflow: auto;
+  max-height: 460px;
 }
 .bulletin-table {
   width: 100%;
@@ -447,6 +462,9 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
+  max-height: 460px;
+  overflow-y: auto;
+  padding-right: 6px;
 }
 .bulletin-comments li {
   border-bottom: 1px solid #e2e8f0;
@@ -550,6 +568,12 @@ body.modal-open {
   gap: 8px;
   font-size: 0.8rem;
   color: #475569;
+}
+.author-card__actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  flex-wrap: wrap;
 }
 .author-list__empty {
   text-align: center;
@@ -710,6 +734,7 @@ body.modal-open {
   var authors = [];
   try { posts = JSON.parse(builder.dataset.posts || "[]"); } catch (err) { posts = []; }
   try { authors = JSON.parse(builder.dataset.authors || "[]"); } catch (err) { authors = []; }
+  var authorMap = {};
 
   var modalRegistry = {};
   document.querySelectorAll("[data-modal]").forEach(function (modal) {
@@ -755,13 +780,19 @@ body.modal-open {
   var resetBtns = document.querySelectorAll("[data-reset-builder]");
   var featureButtons = document.querySelectorAll("[data-feature-post]");
   var editButtons = document.querySelectorAll("[data-edit-post]");
+  var deletePostButtons = document.querySelectorAll("[data-delete-post]");
   var currentPostId = null;
   var uploadInput = document.getElementById("bulletinUploadInput");
   var pendingUploadTarget = null;
   var pendingUploadElement = null;
   var pendingUploadType = null;
+  var authorForm = document.getElementById("authorForm");
+  var authorIdInput = authorForm ? authorForm.querySelector("[name='id']") : null;
 
   authors.forEach(function (author) {
+    if (author && author.id) {
+      authorMap[author.id] = author;
+    }
     var opt = document.createElement("option");
     opt.value = author.id;
     opt.textContent = author.display_name;
@@ -1018,6 +1049,34 @@ body.modal-open {
     });
   });
 
+  function resetAuthorForm() {
+    if (!authorForm) return;
+    authorForm.reset();
+    if (authorIdInput) {
+      authorIdInput.value = "";
+    }
+  }
+
+  function populateAuthorForm(author) {
+    if (!authorForm || !author) return;
+    resetAuthorForm();
+    if (authorIdInput) {
+      authorIdInput.value = author.id || "";
+    }
+    authorForm.elements.display_name.value = author.display_name || "";
+    authorForm.elements.avatar_url.value = author.avatar_url || "";
+    authorForm.elements.link_url.value = author.link_url || "";
+    authorForm.elements.bio.value = author.bio || "";
+    var handles = author.social_handles;
+    if (!handles) {
+      authorForm.elements.social_handles.value = "";
+    } else if (typeof handles === "string") {
+      authorForm.elements.social_handles.value = handles;
+    } else {
+      authorForm.elements.social_handles.value = JSON.stringify(handles, null, 2);
+    }
+  }
+
   document.addEventListener("click", function (evt) {
     var trigger = evt.target.closest("[data-open-modal]");
     if (trigger) {
@@ -1025,7 +1084,39 @@ body.modal-open {
       if (trigger.hasAttribute("data-new-post")) {
         resetBuilder();
       }
+      if ((trigger.dataset.openModal || "") === "author" && !trigger.dataset.authorId) {
+        resetAuthorForm();
+      }
       openModal(trigger.dataset.openModal);
+    }
+
+    var editAuthorBtn = evt.target.closest("[data-edit-author]");
+    if (editAuthorBtn) {
+      var author = authorMap[editAuthorBtn.dataset.authorId];
+      if (author) {
+        populateAuthorForm(author);
+        openModal("author");
+      }
+    }
+
+    var deleteAuthorBtn = evt.target.closest("[data-delete-author]");
+    if (deleteAuthorBtn) {
+      var authorId = deleteAuthorBtn.dataset.authorId;
+      if (authorId && confirm("Delete this author profile?")) {
+        fetch("/admin/community-bulletin/author/" + authorId + "/delete", {
+          method: "POST",
+        })
+          .then(function (resp) { return resp.json(); })
+          .then(function (data) {
+            if (!data.deleted) throw new Error(data.error || "Unable to delete author");
+            alert("Author deleted.");
+            window.location.reload();
+          })
+          .catch(function (err) {
+            console.warn(err);
+            alert(err.message || "Unable to delete author.");
+          });
+      }
     }
   });
 
@@ -1163,6 +1254,29 @@ body.modal-open {
         console.warn(err);
         alert("Unable to update feature flag.");
       });
+    });
+  });
+
+  deletePostButtons.forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var postId = btn.dataset.postId;
+      if (!postId) return;
+      if (!confirm("Delete this post? This cannot be undone.")) {
+        return;
+      }
+      fetch("/admin/community-bulletin/post/" + postId + "/delete", {
+        method: "POST",
+      })
+        .then(function (resp) { return resp.json(); })
+        .then(function (data) {
+          if (!data.deleted) throw new Error(data.error || "Unable to delete post");
+          alert("Post deleted.");
+          window.location.reload();
+        })
+        .catch(function (err) {
+          console.warn(err);
+          alert(err.message || "Unable to delete post.");
+        });
     });
   });
 
@@ -1346,10 +1460,10 @@ body.modal-open {
       });
   });
 
-  var authorForm = document.getElementById("authorForm");
   authorForm && authorForm.addEventListener("submit", function (evt) {
     evt.preventDefault();
     var payload = {
+      id: authorIdInput && authorIdInput.value ? authorIdInput.value : null,
       display_name: authorForm.elements.display_name.value,
       avatar_url: authorForm.elements.avatar_url.value,
       link_url: authorForm.elements.link_url.value,
@@ -1363,18 +1477,13 @@ body.modal-open {
     })
       .then(function (resp) { return resp.json(); })
       .then(function (data) {
-        if (!data.author) throw new Error(data.error || "Unable to create author");
+        if (!data.author) throw new Error(data.error || "Unable to save author");
         alert("Author saved!");
-        authorForm.reset();
-        var opt = document.createElement("option");
-        opt.value = data.author.id;
-        opt.textContent = data.author.display_name;
-        authorSelect.appendChild(opt);
-        authorSelect.value = data.author.id;
+        window.location.reload();
       })
       .catch(function (err) {
         console.warn(err);
-        alert(err.message || "Unable to create author.");
+        alert(err.message || "Unable to save author.");
       });
   });
 
