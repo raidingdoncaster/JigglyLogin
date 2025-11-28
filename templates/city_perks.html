@@ -88,15 +88,15 @@
           {% else %}
             <div class="perk-cover--fallback">{{ perk.perk_mode_icon }}</div>
           {% endif %}
-        </div>
-        <div class="perk-summary">
-          <div class="perk-logo">
+          <div class="perk-cover__logo">
             {% if perk.logo_url %}
               <img src="{{ perk.logo_url }}" alt="{{ perk.partner_name }} logo">
             {% else %}
-              <span class="perk-placeholder">{{ perk.partner_name[:1] }}</span>
+              <span class="perk-cover__logo--fallback">{{ perk.partner_name[:1] }}</span>
             {% endif %}
           </div>
+        </div>
+        <div class="perk-summary">
           <div class="perk-copy">
             <p class="perk-partner">{{ perk.partner_name }}</p>
             <h2>{{ perk.name }}</h2>
@@ -116,13 +116,12 @@
               </div>
             {% endif %}
           </div>
+        </div>
+        <div class="perk-card__actions">
+          <span class="perk-mode-chip">{{ perk.perk_mode_label }}</span>
           <button class="perk-expand" type="button" aria-label="View details">
             →
           </button>
-        </div>
-        <div class="perk-card__footer">
-          <span>{{ perk.perk_mode_label }}</span>
-          <span>{{ perk.category or "All categories" }}</span>
         </div>
       </article>
     {% endfor %}
@@ -149,6 +148,9 @@
       <p class="modal-offer" data-field="modal-offer"></p>
       <ul class="modal-details" data-field="modal-details"></ul>
       <div class="modal-links" data-field="modal-links"></div>
+    </div>
+    <div class="perk-modal__footer">
+      <button type="button" class="perk-modal__dismiss" data-action="close-modal">Close</button>
     </div>
   </div>
 </div>
@@ -393,6 +395,32 @@
   height:100%;
   font-size:2rem;
 }
+.perk-cover__logo {
+  position:absolute;
+  bottom:-32px;
+  left:50%;
+  transform:translateX(-50%);
+  width:72px;
+  height:72px;
+  border-radius:50%;
+  border:4px solid #fff;
+  background:#fff;
+  box-shadow:0 12px 28px rgba(15,23,42,0.25);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+}
+.perk-cover__logo img {
+  width:100%;
+  height:100%;
+  object-fit:cover;
+}
+.perk-cover__logo--fallback {
+  font-size:1.5rem;
+  font-weight:700;
+  color:#0f172a;
+}
 .perk-chip {
   position:absolute;
   top:12px;
@@ -406,28 +434,11 @@
 }
 .perk-summary {
   display:flex;
-  align-items:center;
-  gap:12px;
-  padding:18px;
-}
-.perk-logo {
-  width:56px;
-  height:56px;
-  border-radius:16px;
-  background:#f1f5f9;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  overflow:hidden;
-}
-.perk-logo img {
-  width:100%;
-  height:100%;
-  object-fit:cover;
-}
-.perk-placeholder {
-  font-size:1.5rem;
-  font-weight:700;
+  flex-direction:column;
+  align-items:flex-start;
+  gap:10px;
+  padding:52px 20px 18px;
+  text-align:left;
 }
 .perk-partner {
   margin:0;
@@ -462,13 +473,33 @@
   padding:4px 10px;
   color:#1d4ed8;
 }
+.perk-card__actions {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:14px 20px 18px;
+  border-top:1px dashed rgba(15,23,42,0.1);
+  font-size:0.85rem;
+  color:#475467;
+  font-weight:600;
+}
+.perk-mode-chip {
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:6px 12px;
+  border-radius:999px;
+  background:#eef2ff;
+  color:#1d4ed8;
+  font-size:0.8rem;
+  font-weight:600;
+}
 .perk-expand {
-  margin-left:auto;
   border:none;
   background:#111827;
   color:#fff;
-  width:36px;
-  height:36px;
+  width:44px;
+  height:44px;
   border-radius:50%;
   font-size:1.2rem;
   cursor:pointer;
@@ -478,17 +509,8 @@
   transition:background .2s ease, transform .2s ease;
 }
 .perk-expand:hover {
-  background:#0f1628;
-  transform:translateX(2px);
-}
-.perk-card__footer {
-  display:flex;
-  justify-content:space-between;
-  padding:14px 20px 18px;
-  border-top:1px dashed rgba(15,23,42,0.1);
-  font-size:0.85rem;
-  color:#475467;
-  font-weight:600;
+  background:#0b1024;
+  transform:translateY(-2px);
 }
 .perks-empty {
   padding:40px;
@@ -633,10 +655,11 @@
   left:0;
   right:0;
   display:none;
-  align-items:center;
+  align-items:flex-start;
   justify-content:center;
-  padding:20px;
+  padding:20px 20px 32px;
   z-index:4000;
+  overflow-y:auto;
 }
 .perk-modal.is-open {
   display:flex;
@@ -651,8 +674,9 @@
   background:#fff;
   border-radius:24px;
   max-width:540px;
-  width:100%;
-  overflow:hidden;
+  width:min(540px, calc(100% - 32px));
+  max-height:calc(100vh - var(--header-height) - 60px);
+  overflow:auto;
   box-shadow:0 24px 64px rgba(15,23,42,0.35);
   z-index:1;
 }
@@ -699,6 +723,24 @@
   display:flex;
   flex-direction:column;
   gap:10px;
+}
+.perk-modal__footer {
+  padding:0 24px 28px;
+  border-top:1px solid #e2e8f0;
+  display:flex;
+  justify-content:flex-end;
+  background:#fff;
+  position:sticky;
+  bottom:0;
+}
+.perk-modal__dismiss {
+  border:none;
+  border-radius:999px;
+  padding:10px 18px;
+  font-weight:600;
+  background:#0f172a;
+  color:#fff;
+  cursor:pointer;
 }
 .modal-partner {
   margin:0;

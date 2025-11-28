@@ -120,16 +120,58 @@
       all:unset; display:flex; align-items:center; justify-content:center;
       width:44px; height:44px; cursor:pointer;
     }
-    .inbox-dropdown{
-      position:absolute; right:0; top:50px; display:none; width:240px; background:#fff; color:#333;
-      border-radius:8px; box-shadow:0 8px 20px rgba(0,0,0,.2); padding:8px; z-index:2000;
+    .inbox-panel-overlay{
+      position:fixed;
+      inset:0;
+      background:rgba(15,23,42,0.65);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:20px;
+      z-index:6500;
+      opacity:0;
+      pointer-events:none;
+      transition:opacity .25s ease;
     }
-    .inbox-dropdown ul{ list-style:none; margin:0; padding:0; }
-    .inbox-dropdown li{ font-size:.9em; padding:6px 2px; border-bottom:1px solid #eee; }
-    .inbox-dropdown li:last-child{ border-bottom:none; }
-    .inbox-dropdown .view-all{
-      display:block; margin-top:8px; text-align:center; text-decoration:none;
-      background:var(--brand); color:#fff; padding:6px 8px; border-radius:6px; font-weight:600;
+    .inbox-panel-overlay.is-visible{
+      opacity:1;
+      pointer-events:auto;
+    }
+    .inbox-panel-dialog{
+      width:min(100%,580px);
+      max-height:90vh;
+      background:#f8fafc;
+      border-radius:18px;
+      box-shadow:0 24px 60px rgba(15,23,42,0.35);
+      overflow:hidden;
+      display:flex;
+      flex-direction:column;
+    }
+    .inbox-panel-dialog__body{
+      padding:20px clamp(18px,4vw,28px);
+      overflow-y:auto;
+      max-height:inherit;
+    }
+    .inbox-panel__loading,
+    .inbox-panel__error{
+      text-align:center;
+      font-weight:600;
+      padding:30px 10px;
+      color:#0f172a;
+    }
+    .inbox-panel__error{ color:#b91c1c; }
+    body.has-inbox-panel{
+      overflow:hidden;
+    }
+    @media(max-width:640px){
+      .inbox-panel-dialog{
+        width:100%;
+        max-height:100vh;
+        border-radius:0;
+      }
+      .inbox-panel-dialog__body{
+        padding:20px clamp(14px,4vw,24px);
+      }
     }
 
     /* Inbox badge */
@@ -1081,16 +1123,118 @@
         });
       },4000);
 
-      // Inbox dropdown
-      const btn=document.getElementById("inboxToggle");
-      const dd=document.getElementById("inboxDropdown");
-      if(btn && dd){
-        btn.addEventListener("click",(e)=>{
-          e.stopPropagation();
-          dd.style.display = dd.style.display==="block" ? "none" : "block";
+      // Inbox modal panel
+      const inboxBtn = document.getElementById("inboxToggle");
+      const inboxOverlay = document.getElementById("inboxPanelOverlay");
+      const inboxContent = document.getElementById("inboxPanelContent");
+      let inboxLastUrl = "/inbox?panel=1";
+
+      const setInboxButtonState = (isOpen) => {
+        if (!inboxBtn) return;
+        inboxBtn.setAttribute("aria-expanded", isOpen ? "true" : "false");
+      };
+
+      const focusInboxPanel = () => {
+        if (!inboxContent) return;
+        requestAnimationFrame(() => {
+          inboxContent.focus({ preventScroll: true });
         });
-        document.addEventListener("click",(e)=>{
-          if(!dd.contains(e.target)) dd.style.display="none";
+      };
+
+      const ensurePanelParam = (url) => {
+        const parsed = new URL(url, window.location.origin);
+        if (!parsed.searchParams.get("panel")) {
+          parsed.searchParams.set("panel", "1");
+        }
+        return parsed.pathname + "?" + parsed.searchParams.toString();
+      };
+
+      const loadInboxPanel = async (url) => {
+        if (!inboxContent) return;
+        inboxLastUrl = url ? ensurePanelParam(url) : inboxLastUrl || "/inbox?panel=1";
+        inboxContent.innerHTML = "<div class='inbox-panel__loading'>Loading inbox…</div>";
+        try {
+          const resp = await fetch(inboxLastUrl, {
+            headers: { "X-Requested-With": "fetch" }
+          });
+          if (resp.redirected) {
+            window.location.href = resp.url;
+            return;
+          }
+          if (!resp.ok) throw new Error("Inbox load failed");
+          const html = await resp.text();
+          inboxContent.innerHTML = html;
+          focusInboxPanel();
+        } catch (err) {
+          inboxContent.innerHTML = "<div class='inbox-panel__error'>Could not load your inbox. Please try again.</div>";
+        }
+      };
+
+      const openInboxPanel = (url) => {
+        if (!inboxOverlay || !inboxContent) return;
+        if (url) inboxLastUrl = url;
+        inboxOverlay.classList.add("is-visible");
+        inboxOverlay.setAttribute("aria-hidden", "false");
+        document.body.classList.add("has-inbox-panel");
+        setInboxButtonState(true);
+        loadInboxPanel(inboxLastUrl);
+      };
+
+      const closeInboxPanel = () => {
+        if (!inboxOverlay) return;
+        inboxOverlay.classList.remove("is-visible");
+        inboxOverlay.setAttribute("aria-hidden", "true");
+        document.body.classList.remove("has-inbox-panel");
+        setInboxButtonState(false);
+        if (inboxBtn) {
+          inboxBtn.focus({ preventScroll: true });
+        }
+      };
+
+      if (inboxBtn && inboxOverlay && inboxContent) {
+        inboxBtn.addEventListener("click", (event) => {
+          event.preventDefault();
+          openInboxPanel("/inbox?panel=1");
+        });
+
+        inboxOverlay.addEventListener("click", (event) => {
+          if (event.target === inboxOverlay) {
+            closeInboxPanel();
+            return;
+          }
+          const closeTrigger = event.target.closest("[data-inbox-panel-close]");
+          if (closeTrigger) {
+            event.preventDefault();
+            closeInboxPanel();
+            return;
+          }
+          const link = event.target.closest("[data-inbox-panel-link]");
+          if (link) {
+            event.preventDefault();
+            loadInboxPanel(link.getAttribute("href"));
+          }
+        });
+
+        inboxOverlay.addEventListener("submit", (event) => {
+          const form = event.target.closest("[data-inbox-panel-form]");
+          if (!form) return;
+          event.preventDefault();
+          const formData = new FormData(form);
+          const url = new URL(form.getAttribute("action") || "/inbox", window.location.origin);
+          formData.forEach((value, key) => {
+            url.searchParams.set(key, value);
+          });
+          if (!url.searchParams.get("panel")) {
+            url.searchParams.set("panel", "1");
+          }
+          loadInboxPanel(url.pathname + "?" + url.searchParams.toString());
+        });
+
+        document.addEventListener("keydown", (event) => {
+          if (event.key === "Escape" && inboxOverlay.classList.contains("is-visible")) {
+            event.preventDefault();
+            closeInboxPanel();
+          }
         });
       }
 
@@ -1915,7 +2059,10 @@
           return;
         }
         event.preventDefault();
-        const username=(trigger.getAttribute("data-trainer-profile-username") || "").trim();
+        let username=(trigger.getAttribute("data-trainer-profile-username") || "").trim();
+        if(!username){
+          username=(trigger.getAttribute("data-trainer-username") || "").trim();
+        }
         const providedUrl=trigger.getAttribute("data-trainer-profile-url");
         const displayName=trigger.getAttribute("data-trainer-display") || trigger.textContent || username || "Trainer";
         const profileUrl=providedUrl || (username ? `/api/trainers/${encodeURIComponent(username)}/profile` : null);
@@ -1970,32 +2117,12 @@
 
         <!-- Inbox -->
         <div class="inbox-wrapper" style="position:relative;">
-          <button type="button" class="nav-item" id="inboxToggle" title="Inbox">
+          <button type="button" class="nav-item" id="inboxToggle" title="Inbox" aria-haspopup="dialog" aria-expanded="false">
             <img src="{{ url_for('static', filename='nav/mail-icon.png') }}" alt="Inbox" class="nav-icon">
           </button>
           {% if inbox_unread and inbox_unread > 0 %}
             <span class="inbox-badge">{{ inbox_unread }}</span>
           {% endif %}
-          <div id="inboxDropdown" class="inbox-dropdown">
-            {% if inbox_preview and inbox_preview|length > 0 %}
-            <ul>
-              {% for msg in inbox_preview %}
-              <li>
-                <strong>{{ msg.subject }}</strong><br>
-                <span style="font-size:0.8em; color:#555;">
-                  {{ msg.message[:40] }}{% if msg.message|length > 40 %}…{% endif %}
-                </span><br>
-                <span style="font-size:0.7em; color:#888;">
-                  {{ msg.sent_at|to_date }}
-                </span>
-              </li>
-              {% endfor %}
-            </ul>
-            {% else %}
-            <p style="margin:6px 0;">No messages</p>
-            {% endif %}
-            <a href="{{ url_for('inbox') }}" class="view-all">📨 View Inbox</a>
-          </div>
         </div>
 
         <!-- Avatar (profile hub) -->
@@ -2711,6 +2838,14 @@
       if (closeBtn) closeBtn.addEventListener("click", closeSheet);
     })();
   </script>
+
+  <div id="inboxPanelOverlay" class="inbox-panel-overlay" aria-hidden="true">
+    <div class="inbox-panel-dialog" role="dialog" aria-modal="true" aria-label="Trainer inbox panel">
+      <div id="inboxPanelContent" class="inbox-panel-dialog__body" tabindex="-1">
+        <div class="inbox-panel__loading">Loading inbox…</div>
+      </div>
+    </div>
+  </div>
 
   <!-- === RDAB Session Memory === -->
 <script>

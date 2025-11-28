@@ -1174,30 +1174,6 @@ button.stamp-slot:focus-visible {
   opacity:0;
   pointer-events:none;
 }
-.stamp-coin__glass::before,
-.stamp-coin__glass::after {
-  content:"";
-  position:absolute;
-  inset:4px;
-  border-radius:50%;
-  border:1px solid rgba(255,255,255,0.15);
-  opacity:0.85;
-}
-.stamp-coin__glass::before {
-  background:radial-gradient(circle at 60% 30%, rgba(255,255,255,0.6), transparent 60%);
-  mix-blend-mode:screen;
-}
-.stamp-coin__glass::after {
-  background:
-    repeating-linear-gradient(135deg, rgba(255,255,255,0.08) 0, rgba(255,255,255,0.08) 2px, rgba(255,255,255,0.02) 2px, rgba(255,255,255,0.02) 6px);
-  filter:blur(0.5px);
-}
-@supports (backdrop-filter: blur(8px)) or (-webkit-backdrop-filter: blur(8px)) {
-  .stamp-coin__glass {
-    backdrop-filter:blur(6px) saturate(140%);
-    -webkit-backdrop-filter:blur(6px) saturate(140%);
-  }
-}
 .stamp-detail-modal__chip {
   display:inline-flex;
   margin:0 auto 6px;
@@ -1221,47 +1197,9 @@ button.stamp-slot:focus-visible {
   line-height:1.5;
   color:var(--passport-modal-text, #f8fafc);
 }
-.stamp-coin::after,
 .stamp-detail-modal__chip,
 .stamp-detail-modal__description {
   will-change:transform;
-}
-.stamp-coin::after {
-  transition:opacity 0.3s ease;
-}
-.stamp-coin.is-dragging::after {
-  opacity:0.4;
-}
-@keyframes stampCoinPop {
-  0% {
-    transform:rotateX(35deg) rotateY(-140deg) scale(0.6);
-    opacity:0;
-  }
-  60% {
-    transform:rotateX(18deg) rotateY(20deg) scale(1.05);
-    opacity:1;
-  }
-  100% {
-    transform:rotateX(16deg) rotateY(var(--stamp-coin-rotation, 0deg)) scale(1);
-    opacity:1;
-  }
-}
-@keyframes sparkleBurst {
-  0% {
-    opacity:0;
-    transform:translateZ(calc(var(--coin-depth) * 1.1)) scale(0.4);
-    filter:blur(4px);
-  }
-  40% {
-    opacity:0.9;
-    transform:translateZ(calc(var(--coin-depth) * 1.1)) scale(1.05);
-    filter:blur(1.5px);
-  }
-  100% {
-    opacity:0;
-    transform:translateZ(calc(var(--coin-depth) * 1.1)) scale(1.4);
-    filter:blur(6px);
-  }
 }
 @keyframes stampBokehDrift {
   0% {
@@ -1408,56 +1346,122 @@ document.addEventListener("DOMContentLoaded", function(){
     });
   }
 
-  const THREE_CDN_URL = "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js";
-  let threePromise = null;
-
-  function loadThree() {
-    if (window.THREE) {
-      return Promise.resolve(window.THREE);
-    }
-    if (threePromise) {
-      return threePromise;
-    }
-    threePromise = new Promise((resolve, reject) => {
-      const script = document.createElement("script");
-      script.src = THREE_CDN_URL;
-      script.async = true;
-      script.onload = () => resolve(window.THREE);
-      script.onerror = () => reject(new Error("Unable to load 3D renderer"));
-      document.head.appendChild(script);
-    });
-    return threePromise;
-  }
-
-  class PassportCoin3D {
+  class PassportCoinRenderer {
     constructor(container, options = {}) {
-      this.container = container;
-      this.canvas = container.querySelector("[data-stamp-coin-canvas]");
-      this.fallback = container.querySelector("[data-stamp-coin-fallback]");
+      this.container = container || null;
+      this.canvas = container?.querySelector("[data-stamp-coin-canvas]") || null;
+      this.fallback = container?.querySelector("[data-stamp-coin-fallback]") || null;
       this.onTap = options.onTap;
       this.onSpark = options.onSpark;
-      this.rotation = 0;
+      this.gl = null;
+      this.program = null;
+      this.buffers = null;
+      this.uniforms = {};
+      this.attributes = {};
+      this.textures = {
+        front: null,
+        back: null
+      };
+      this.backCanvas = document.createElement("canvas");
+      this.backCanvas.width = 1024;
+      this.backCanvas.height = 1024;
+      this.rotationY = 0;
       this.spinVelocity = 0;
-      this.pointer = { active: false, id: null, moved: false, startX: 0, startY: 0, lastX: 0, lastTime: 0 };
-      this.resizeObserver = null;
-      this.ready = false;
-      this.initPromise = null;
-      this.THREE = null;
-      this.scene = null;
-      this.camera = null;
-      this.renderer = null;
-      this.coin = null;
-      this.sideMaterial = null;
-      this.frontMaterial = null;
-      this.backMaterial = null;
+      this.pointer = {
+        active: false,
+        id: null,
+        startX: 0,
+        startY: 0,
+        lastX: 0,
+        lastTime: 0,
+        moved: false
+      };
+      this.modelMatrix = PassportCoinRenderer.identityMatrix();
+      this.viewMatrix = PassportCoinRenderer.translationMatrix(0, 0, -3.4);
+      this.projectionMatrix = PassportCoinRenderer.identityMatrix();
       this.animationFrame = null;
+      this.resizeObserver = null;
+      this.initialized = false;
+      this.failed = false;
       this.bindEvents();
-      if (window.ResizeObserver && this.container) {
-        this.resizeObserver = new ResizeObserver(() => this.handleResize());
-        this.resizeObserver.observe(this.container);
-      } else {
-        window.addEventListener("resize", () => this.handleResize());
+      this.init();
+    }
+
+    static identityMatrix() {
+      return new Float32Array([
+        1, 0, 0, 0,
+        0, 1, 0, 0,
+        0, 0, 1, 0,
+        0, 0, 0, 1
+      ]);
+    }
+
+    static translationMatrix(x, y, z) {
+      const out = PassportCoinRenderer.identityMatrix();
+      out[12] = x;
+      out[13] = y;
+      out[14] = z;
+      return out;
+    }
+
+    static perspectiveMatrix(fov, aspect, near, far) {
+      const f = 1.0 / Math.tan(fov / 2);
+      const nf = 1 / (near - far);
+      const out = new Float32Array(16);
+      out[0] = f / aspect;
+      out[1] = 0;
+      out[2] = 0;
+      out[3] = 0;
+      out[4] = 0;
+      out[5] = f;
+      out[6] = 0;
+      out[7] = 0;
+      out[8] = 0;
+      out[9] = 0;
+      out[10] = (far + near) * nf;
+      out[11] = -1;
+      out[12] = 0;
+      out[13] = 0;
+      out[14] = (2 * far * near) * nf;
+      out[15] = 0;
+      return out;
+    }
+
+    static multiplyMatrices(a, b) {
+      const out = new Float32Array(16);
+      for (let i = 0; i < 4; i += 1) {
+        const ai0 = a[i];
+        const ai1 = a[i + 4];
+        const ai2 = a[i + 8];
+        const ai3 = a[i + 12];
+        out[i] = ai0 * b[0] + ai1 * b[1] + ai2 * b[2] + ai3 * b[3];
+        out[i + 4] = ai0 * b[4] + ai1 * b[5] + ai2 * b[6] + ai3 * b[7];
+        out[i + 8] = ai0 * b[8] + ai1 * b[9] + ai2 * b[10] + ai3 * b[11];
+        out[i + 12] = ai0 * b[12] + ai1 * b[13] + ai2 * b[14] + ai3 * b[15];
       }
+      return out;
+    }
+
+    static rotateX(matrix, rad) {
+      const s = Math.sin(rad);
+      const c = Math.cos(rad);
+      const out = matrix.slice();
+      out[5] = c;
+      out[6] = s;
+      out[9] = -s;
+      out[10] = c;
+      return out;
+    }
+
+    static rotateY(matrix, rad) {
+      const s = Math.sin(rad);
+      const c = Math.cos(rad);
+      const out = matrix.slice();
+      out[0] = c;
+      out[2] = -s;
+      out[8] = s;
+      out[10] = c;
+      return out;
     }
 
     bindEvents() {
@@ -1471,101 +1475,268 @@ document.addEventListener("DOMContentLoaded", function(){
           this.handlePointerUp(event);
         }
       });
+      if (window.ResizeObserver) {
+        this.resizeObserver = new ResizeObserver(() => this.resize());
+        this.resizeObserver.observe(this.container);
+      } else {
+        window.addEventListener("resize", () => this.resize());
+      }
     }
 
-    async ensureInit() {
-      if (this.ready) {
+    init() {
+      if (!this.canvas) return;
+      const gl = this.canvas.getContext("webgl2", { antialias: true, alpha: true }) ||
+                 this.canvas.getContext("webgl", { antialias: true, alpha: true });
+      if (!gl) {
+        this.failed = true;
+        this.container?.classList.remove("stamp-coin3d--ready");
         return;
       }
-      if (this.initPromise) {
-        return this.initPromise;
+      this.gl = gl;
+      gl.enable(gl.DEPTH_TEST);
+      gl.enable(gl.CULL_FACE);
+      this.program = this.createProgram();
+      if (!this.program) {
+        this.failed = true;
+        return;
       }
-      this.initPromise = loadThree()
-        .then(THREE => {
-          this.THREE = THREE;
-          if (!this.canvas) {
-            throw new Error("Missing canvas");
+      gl.useProgram(this.program);
+      this.fetchLocations();
+      this.buffers = this.createGeometryBuffers(96);
+      this.textures.front = this.createSolidTexture([255, 255, 255, 255]);
+      this.textures.back = this.createSolidTexture([225, 235, 255, 255]);
+      this.resize();
+      this.initialized = true;
+      this.container?.classList.add("stamp-coin3d--ready");
+      this.renderLoop();
+    }
+
+    createShader(type, source) {
+      const shader = this.gl.createShader(type);
+      this.gl.shaderSource(shader, source);
+      this.gl.compileShader(shader);
+      if (!this.gl.getShaderParameter(shader, this.gl.COMPILE_STATUS)) {
+        this.gl.deleteShader(shader);
+        return null;
+      }
+      return shader;
+    }
+
+    createProgram() {
+      const vertexSource = `
+        attribute vec3 aPosition;
+        attribute vec3 aNormal;
+        attribute vec2 aUV;
+        attribute float aFace;
+
+        uniform mat4 uProjection;
+        uniform mat4 uView;
+        uniform mat4 uModel;
+
+        varying vec3 vNormal;
+        varying vec2 vUV;
+        varying float vFace;
+
+        void main() {
+          vec4 worldPos = uModel * vec4(aPosition, 1.0);
+          vNormal = mat3(uModel) * aNormal;
+          vUV = aUV;
+          vFace = aFace;
+          gl_Position = uProjection * uView * worldPos;
+        }
+      `;
+
+      const fragmentSource = `
+        precision mediump float;
+
+        varying vec3 vNormal;
+        varying vec2 vUV;
+        varying float vFace;
+
+        uniform sampler2D uFrontTex;
+        uniform sampler2D uBackTex;
+        uniform vec3 uLightDir;
+        uniform vec3 uAmbient;
+        uniform vec3 uLightColor;
+
+        void main() {
+          vec3 normal = normalize(vNormal);
+          float lighting = max(dot(normal, normalize(uLightDir)), 0.0);
+          vec3 baseColor;
+          if (vFace > 0.5) {
+            vec4 tex = texture2D(uFrontTex, vUV);
+            baseColor = tex.rgb;
+          } else if (vFace < -0.5) {
+            baseColor = texture2D(uBackTex, vUV).rgb;
+          } else {
+            float metal = 0.5 + 0.5 * vUV.y;
+            baseColor = mix(vec3(0.45, 0.56, 0.9), vec3(0.8, 0.9, 1.0), metal);
           }
-          this.renderer = new THREE.WebGLRenderer({
-            canvas: this.canvas,
-            alpha: true,
-            antialias: true
-          });
-          this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-          this.handleResize();
-          this.scene = new THREE.Scene();
-          this.camera = new THREE.PerspectiveCamera(
-            30,
-            this.getAspectRatio(),
-            0.1,
-            100
-          );
-          this.camera.position.set(0, 0, 4.2);
-          const hemiLight = new THREE.HemisphereLight(0xcfe9ff, 0x050812, 0.9);
-          const dirLight = new THREE.DirectionalLight(0xffffff, 1.1);
-          dirLight.position.set(2, 3.5, 3.2);
-          this.scene.add(hemiLight);
-          this.scene.add(dirLight);
-          this.sideMaterial = new THREE.MeshStandardMaterial({
-            color: 0xaec5ff,
-            metalness: 0.95,
-            roughness: 0.35
-          });
-          this.frontMaterial = new THREE.MeshStandardMaterial({
-            color: 0xffffff,
-            metalness: 0.2,
-            roughness: 0.3
-          });
-          this.backMaterial = this.frontMaterial.clone();
-          const geometry = new THREE.CylinderGeometry(1, 1, 0.32, 96, 1, false);
-          geometry.rotateX(Math.PI / 2);
-          this.coin = new THREE.Mesh(geometry, [
-            this.sideMaterial, // side
-            this.frontMaterial, // front/top
-            this.backMaterial // back/bottom
-          ]);
-          this.scene.add(this.coin);
-          this.ready = true;
-          this.container.classList.add("stamp-coin3d--ready");
-          this.animate();
-        })
-        .catch(() => {
-          this.ready = false;
-        });
-      return this.initPromise;
-    }
+          vec3 color = baseColor * (uAmbient + lighting * uLightColor);
+          gl_FragColor = vec4(color, 1.0);
+        }
+      `;
 
-    getAspectRatio() {
-      if (!this.container) return 1;
-      const { clientWidth, clientHeight } = this.container;
-      return Math.max(clientWidth / (clientHeight || 1), 1);
-    }
-
-    handleResize() {
-      if (!this.renderer || !this.container) return;
-      const width = this.container.clientWidth || 200;
-      const height = this.container.clientHeight || 200;
-      this.renderer.setSize(width, height, false);
-      if (this.camera) {
-        this.camera.aspect = width / height || 1;
-        this.camera.updateProjectionMatrix();
+      const vertexShader = this.createShader(this.gl.VERTEX_SHADER, vertexSource);
+      const fragmentShader = this.createShader(this.gl.FRAGMENT_SHADER, fragmentSource);
+      if (!vertexShader || !fragmentShader) {
+        return null;
       }
+      const program = this.gl.createProgram();
+      this.gl.attachShader(program, vertexShader);
+      this.gl.attachShader(program, fragmentShader);
+      this.gl.linkProgram(program);
+      if (!this.gl.getProgramParameter(program, this.gl.LINK_STATUS)) {
+        this.gl.deleteProgram(program);
+        return null;
+      }
+      return program;
     }
 
-    animate() {
-      if (!this.renderer || !this.scene || !this.camera) return;
-      this.rotation += this.spinVelocity;
-      this.spinVelocity *= 0.94;
-      if (this.coin) {
-        this.coin.rotation.y = this.rotation;
+    fetchLocations() {
+      const gl = this.gl;
+      this.attributes = {
+        position: gl.getAttribLocation(this.program, "aPosition"),
+        normal: gl.getAttribLocation(this.program, "aNormal"),
+        uv: gl.getAttribLocation(this.program, "aUV"),
+        face: gl.getAttribLocation(this.program, "aFace")
+      };
+      this.uniforms = {
+        projection: gl.getUniformLocation(this.program, "uProjection"),
+        view: gl.getUniformLocation(this.program, "uView"),
+        model: gl.getUniformLocation(this.program, "uModel"),
+        frontTex: gl.getUniformLocation(this.program, "uFrontTex"),
+        backTex: gl.getUniformLocation(this.program, "uBackTex"),
+        lightDir: gl.getUniformLocation(this.program, "uLightDir"),
+        lightColor: gl.getUniformLocation(this.program, "uLightColor"),
+        ambient: gl.getUniformLocation(this.program, "uAmbient")
+      };
+    }
+
+    createGeometryBuffers(segments) {
+      const radius = 1;
+      const depth = 0.32;
+      const positions = [];
+      const normals = [];
+      const uvs = [];
+      const faces = [];
+      const indices = [];
+
+      const addVertex = (pos, normal, uv, face) => {
+        positions.push(pos[0], pos[1], pos[2]);
+        normals.push(normal[0], normal[1], normal[2]);
+        uvs.push(uv[0], uv[1]);
+        faces.push(face);
+        return (positions.length / 3) - 1;
+      };
+
+      // Front face
+      const frontCenter = addVertex([0, 0, depth / 2], [0, 0, 1], [0.5, 0.5], 1);
+      for (let i = 0; i <= segments; i += 1) {
+        const angle = (i / segments) * Math.PI * 2;
+        const x = Math.cos(angle) * radius;
+        const y = Math.sin(angle) * radius;
+        addVertex(
+          [x, y, depth / 2],
+          [0, 0, 1],
+          [(x / radius + 1) / 2, (y / radius + 1) / 2],
+          1
+        );
       }
-      this.renderer.render(this.scene, this.camera);
-      this.animationFrame = requestAnimationFrame(() => this.animate());
+      for (let i = 0; i < segments; i += 1) {
+        indices.push(frontCenter, frontCenter + 1 + i, frontCenter + 2 + i);
+      }
+
+      // Back face
+      const backCenter = addVertex([0, 0, -depth / 2], [0, 0, -1], [0.5, 0.5], -1);
+      for (let i = 0; i <= segments; i += 1) {
+        const angle = (i / segments) * Math.PI * 2;
+        const x = Math.cos(angle) * radius;
+        const y = Math.sin(angle) * radius;
+        addVertex(
+          [x, y, -depth / 2],
+          [0, 0, -1],
+          [(x / radius + 1) / 2, (y / radius + 1) / 2],
+          -1
+        );
+      }
+      for (let i = 0; i < segments; i += 1) {
+        indices.push(backCenter, backCenter + 2 + i, backCenter + 1 + i);
+      }
+
+      // Side wall
+      for (let i = 0; i < segments; i += 1) {
+        const angle0 = (i / segments) * Math.PI * 2;
+        const angle1 = ((i + 1) / segments) * Math.PI * 2;
+        const x0 = Math.cos(angle0) * radius;
+        const y0 = Math.sin(angle0) * radius;
+        const x1 = Math.cos(angle1) * radius;
+        const y1 = Math.sin(angle1) * radius;
+        const normal = [
+          Math.cos(angle0 + (angle1 - angle0) / 2),
+          Math.sin(angle0 + (angle1 - angle0) / 2),
+          0
+        ];
+        const v0 = addVertex([x0, y0, depth / 2], normal, [i / segments, 0], 0);
+        const v1 = addVertex([x1, y1, depth / 2], normal, [(i + 1) / segments, 0], 0);
+        const v2 = addVertex([x1, y1, -depth / 2], normal, [(i + 1) / segments, 1], 0);
+        const v3 = addVertex([x0, y0, -depth / 2], normal, [i / segments, 1], 0);
+        indices.push(v0, v1, v2);
+        indices.push(v0, v2, v3);
+      }
+
+      const gl = this.gl;
+      const floatArray = f => new Float32Array(f);
+      const bufferData = (target, data) => {
+        const buffer = gl.createBuffer();
+        gl.bindBuffer(target, buffer);
+        gl.bufferData(target, data, gl.STATIC_DRAW);
+        return buffer;
+      };
+
+      return {
+        position: bufferData(gl.ARRAY_BUFFER, floatArray(positions)),
+        normal: bufferData(gl.ARRAY_BUFFER, floatArray(normals)),
+        uv: bufferData(gl.ARRAY_BUFFER, floatArray(uvs)),
+        face: bufferData(gl.ARRAY_BUFFER, floatArray(faces)),
+        index: bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices)),
+        count: indices.length
+      };
+    }
+
+    createSolidTexture(color = [255, 255, 255, 255]) {
+      const gl = this.gl;
+      const texture = gl.createTexture();
+      gl.bindTexture(gl.TEXTURE_2D, texture);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(color));
+      return texture;
+    }
+
+    resize() {
+      if (!this.gl || !this.canvas || this.failed) {
+        return;
+      }
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const width = this.container?.clientWidth || 200;
+      const height = this.container?.clientHeight || 200;
+      this.canvas.width = width * dpr;
+      this.canvas.height = height * dpr;
+      this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+      this.projectionMatrix = PassportCoinRenderer.perspectiveMatrix(35 * (Math.PI / 180), width / (height || 1), 0.1, 20);
+      if (this.initialized && !this.animationFrame) {
+        this.renderLoop();
+      }
     }
 
     handlePointerDown(event) {
-      if (!this.container) return;
-      this.ensureInit();
+      if (this.failed) {
+        this.onTap?.();
+        return;
+      }
       this.pointer.active = true;
       this.pointer.id = event.pointerId;
       this.pointer.startX = event.clientX;
@@ -1573,7 +1744,7 @@ document.addEventListener("DOMContentLoaded", function(){
       this.pointer.lastX = event.clientX;
       this.pointer.lastTime = performance.now();
       this.pointer.moved = false;
-      this.container.setPointerCapture?.(event.pointerId);
+      this.canvas?.setPointerCapture?.(event.pointerId);
       event.preventDefault();
       this.onSpark?.(event);
     }
@@ -1583,15 +1754,11 @@ document.addEventListener("DOMContentLoaded", function(){
       const now = performance.now();
       const dx = event.clientX - this.pointer.lastX;
       const deltaTime = Math.max(now - this.pointer.lastTime, 1);
-      this.rotation += dx * 0.01;
+      this.rotationY += dx * 0.01;
       this.spinVelocity = (dx / deltaTime) * 0.25;
       this.pointer.lastX = event.clientX;
       this.pointer.lastTime = now;
-      const travel = Math.hypot(
-        event.clientX - this.pointer.startX,
-        event.clientY - this.pointer.startY
-      );
-      if (travel > 6) {
+      if (Math.hypot(event.clientX - this.pointer.startX, event.clientY - this.pointer.startY) > 6) {
         this.pointer.moved = true;
       }
       this.onSpark?.(event);
@@ -1601,7 +1768,7 @@ document.addEventListener("DOMContentLoaded", function(){
       if (!this.pointer.active || event.pointerId !== this.pointer.id) return;
       this.pointer.active = false;
       try {
-        this.container.releasePointerCapture?.(event.pointerId);
+        this.canvas?.releasePointerCapture?.(event.pointerId);
       } catch (_err) {
         /* noop */
       }
@@ -1614,103 +1781,146 @@ document.addEventListener("DOMContentLoaded", function(){
       }
     }
 
-    resetSpin() {
-      this.rotation = 0;
-      this.spinVelocity = 0;
-      if (this.coin) {
-        this.coin.rotation.y = 0;
+    updateStampData({ frontImage, topLabel, bottomLabel }) {
+      if (this.failed) return;
+      if (frontImage) {
+        const image = new Image();
+        image.crossOrigin = "anonymous";
+        image.onload = () => {
+          this.bindTextureFromImage(this.textures.front, image);
+        };
+        image.onerror = () => {
+          this.bindTextureFromColor(this.textures.front, [255, 255, 255, 255]);
+        };
+        image.src = frontImage;
+      } else {
+        this.bindTextureFromColor(this.textures.front, [255, 255, 255, 255]);
       }
+      this.updateBackTexture(topLabel, bottomLabel);
     }
 
-    async updateStampData({ frontImage, topLabel, bottomLabel }) {
-      await this.ensureInit();
-      this.applyFrontTexture(frontImage);
-      this.applyBackTexture(topLabel, bottomLabel);
+    bindTextureFromImage(texture, image) {
+      if (!this.gl || !texture) return;
+      const gl = this.gl;
+      gl.bindTexture(gl.TEXTURE_2D, texture);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
     }
 
-    applyFrontTexture(imageUrl) {
-      if (!this.THREE || !this.frontMaterial) return;
-      if (!imageUrl) {
-        this.frontMaterial.map = null;
-        this.frontMaterial.color.set("#ffffff");
-        this.frontMaterial.needsUpdate = true;
-        return;
-      }
-      const loader = new this.THREE.TextureLoader();
-      loader.setCrossOrigin("anonymous");
-      loader.load(
-        imageUrl,
-        texture => {
-          texture.colorSpace = this.THREE.SRGBColorSpace;
-          this.frontMaterial.map = texture;
-          this.frontMaterial.needsUpdate = true;
-        },
-        undefined,
-        () => {
-          this.frontMaterial.map = null;
-          this.frontMaterial.color.set("#ffffff");
-          this.frontMaterial.needsUpdate = true;
-        }
-      );
+    bindTextureFromColor(texture, color) {
+      if (!this.gl || !texture) return;
+      const gl = this.gl;
+      gl.bindTexture(gl.TEXTURE_2D, texture);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(color));
     }
 
-    applyBackTexture(topLabel, bottomLabel) {
-      if (!this.THREE || !this.backMaterial) return;
-      const size = 1024;
-      const canvas = document.createElement("canvas");
-      canvas.width = size;
-      canvas.height = size;
-      const ctx = canvas.getContext("2d");
+    updateBackTexture(topLabel, bottomLabel) {
+      if (!this.gl || !this.textures.back) return;
+      const ctx = this.backCanvas.getContext("2d");
+      const size = this.backCanvas.width;
       const center = size / 2;
-      const innerRadius = size * 0.34;
-      const gradient = ctx.createRadialGradient(center, center, size * 0.15, center, center, size * 0.55);
-      gradient.addColorStop(0, "#121b2f");
-      gradient.addColorStop(1, "#050812");
+      ctx.clearRect(0, 0, size, size);
+      const gradient = ctx.createRadialGradient(center, center, size * 0.15, center, center, size * 0.6);
+      gradient.addColorStop(0, "#101828");
+      gradient.addColorStop(1, "#040714");
       ctx.fillStyle = gradient;
       ctx.fillRect(0, 0, size, size);
 
       ctx.fillStyle = "#e6efff";
       ctx.strokeStyle = "rgba(0,0,0,0.6)";
-      ctx.lineWidth = 6;
+      ctx.lineWidth = 8;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.font = "900 90px 'Space Grotesk', 'Inter', sans-serif";
+      ctx.font = "900 120px 'Space Grotesk', 'Inter', sans-serif";
       const label = (topLabel || "RDAB PASSPORT").toUpperCase();
-      ctx.strokeText(label, center, size * 0.32, size * 0.7);
-      ctx.fillText(label, center, size * 0.32, size * 0.7);
+      ctx.strokeText(label, center, size * 0.32, size * 0.68);
+      ctx.fillText(label, center, size * 0.32, size * 0.68);
 
+      ctx.font = "700 110px 'Space Grotesk', 'Inter', sans-serif";
       const motto = (bottomLabel || "IN RAIDING WE TRUST").toUpperCase();
-      this.drawArcText(ctx, motto, center, center + 40, innerRadius + 110, Math.PI * 0.8);
-
-      const texture = new this.THREE.CanvasTexture(canvas);
-      texture.colorSpace = this.THREE.SRGBColorSpace;
-      this.backMaterial.map = texture;
-      this.backMaterial.needsUpdate = true;
-    }
-
-    drawArcText(ctx, text, cx, cy, radius, arcAngle) {
-      if (!text) return;
-      const chars = text.split("");
-      const angleStep = arcAngle / (chars.length - 1 || 1);
-      const startAngle = Math.PI + (Math.PI - arcAngle) / 2;
+      const chars = motto.split("");
+      const arcRadius = size * 0.32;
+      const arcStart = Math.PI * 1.05;
+      const arcEnd = Math.PI * 1.95;
+      const angleStep = (arcEnd - arcStart) / Math.max(chars.length - 1, 1);
       ctx.save();
-      ctx.translate(cx, cy);
+      ctx.translate(center, center + 20);
       ctx.rotate(Math.PI);
-      ctx.font = "700 70px 'Space Grotesk', 'Inter', sans-serif";
-      ctx.fillStyle = "#e6efff";
-      ctx.strokeStyle = "rgba(0,0,0,0.55)";
-      ctx.lineWidth = 5;
       chars.forEach((char, index) => {
-        const angle = startAngle + angleStep * index;
+        const angle = arcStart + angleStep * index;
         ctx.save();
         ctx.rotate(angle);
-        ctx.translate(0, radius);
+        ctx.translate(0, arcRadius);
         ctx.rotate(Math.PI / 2);
         ctx.strokeText(char, 0, 0);
         ctx.fillText(char, 0, 0);
         ctx.restore();
       });
       ctx.restore();
+
+      this.bindTextureFromImage(this.textures.back, this.backCanvas);
+    }
+
+    updateModelMatrix() {
+      const tilt = -0.35;
+      const rotateX = PassportCoinRenderer.rotateX(PassportCoinRenderer.identityMatrix(), tilt);
+      const rotateY = PassportCoinRenderer.rotateY(PassportCoinRenderer.identityMatrix(), this.rotationY);
+      this.modelMatrix = PassportCoinRenderer.multiplyMatrices(rotateY, rotateX);
+    }
+
+    renderLoop() {
+      if (!this.gl || this.failed) return;
+      this.updateModelMatrix();
+      this.rotationY += this.spinVelocity;
+      this.spinVelocity *= 0.94;
+      const gl = this.gl;
+      gl.clearColor(0, 0, 0, 0);
+      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+      gl.useProgram(this.program);
+
+      gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.position);
+      gl.enableVertexAttribArray(this.attributes.position);
+      gl.vertexAttribPointer(this.attributes.position, 3, gl.FLOAT, false, 0, 0);
+
+      gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.normal);
+      gl.enableVertexAttribArray(this.attributes.normal);
+      gl.vertexAttribPointer(this.attributes.normal, 3, gl.FLOAT, false, 0, 0);
+
+      gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.uv);
+      gl.enableVertexAttribArray(this.attributes.uv);
+      gl.vertexAttribPointer(this.attributes.uv, 2, gl.FLOAT, false, 0, 0);
+
+      gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.face);
+      gl.enableVertexAttribArray(this.attributes.face);
+      gl.vertexAttribPointer(this.attributes.face, 1, gl.FLOAT, false, 0, 0);
+
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.buffers.index);
+
+      gl.uniformMatrix4fv(this.uniforms.projection, false, this.projectionMatrix);
+      gl.uniformMatrix4fv(this.uniforms.view, false, this.viewMatrix);
+      gl.uniformMatrix4fv(this.uniforms.model, false, this.modelMatrix);
+      gl.uniform3fv(this.uniforms.lightDir, new Float32Array([0.6, 0.6, 1.0]));
+      gl.uniform3fv(this.uniforms.lightColor, new Float32Array([0.85, 0.9, 1]));
+      gl.uniform3fv(this.uniforms.ambient, new Float32Array([0.25, 0.28, 0.35]));
+
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D, this.textures.front);
+      gl.uniform1i(this.uniforms.frontTex, 0);
+
+      gl.activeTexture(gl.TEXTURE1);
+      gl.bindTexture(gl.TEXTURE_2D, this.textures.back);
+      gl.uniform1i(this.uniforms.backTex, 1);
+
+      gl.drawElements(gl.TRIANGLES, this.buffers.count, gl.UNSIGNED_SHORT, 0);
+      this.animationFrame = requestAnimationFrame(() => this.renderLoop());
+    }
+
+    resetSpin() {
+      this.rotationY = 0;
+      this.spinVelocity = 0;
     }
   }
 
@@ -2088,18 +2298,6 @@ document.addEventListener("DOMContentLoaded", function(){
         iconTarget.src = stampIcon;
         iconTarget.alt = `${stampName} stamp art`;
       }
-      if (engravingTopTarget) {
-        const engravingParts = [];
-        if (stampName) {
-          engravingParts.push(stampName);
-        }
-        if (stampDate) {
-          engravingParts.push(stampDate);
-        }
-        const engravingText = engravingParts.join(" • ") || "RDAB PASSPORT";
-        engravingTopTarget.textContent = engravingText.toUpperCase();
-      }
-
       if (dateTarget) {
         let dateLine = "";
         if (stampDate) {

@@ -4080,12 +4080,6 @@ def admin_dashboard():
     except Exception as e:
         print("⚠️ Error fetching admin stats:", e)
 
-    digital_codes_summary = fetch_digital_code_summary()
-    digital_code_roster = []
-    if digital_codes_summary.get("supported"):
-        roster, _acct = fetch_trainer_roster()
-        digital_code_roster = roster[:250]
-
     return render_template(
         "admin_dashboard.html",
         active_catalog_items=active_catalog_items,
@@ -4097,6 +4091,21 @@ def admin_dashboard():
         show_leagues_app=SHOW_LEAGUES_APP,
         geocache_quest_available=geocache_quest_available,
         geocache_story_available=geocache_story_available,
+    )
+
+
+@app.route("/admin/digital-codes", methods=["GET"])
+@admin_required
+def admin_digital_codes():
+    session["last_page"] = request.path
+    digital_codes_summary = fetch_digital_code_summary()
+    digital_code_roster = []
+    if digital_codes_summary.get("supported"):
+        roster, _acct = fetch_trainer_roster()
+        digital_code_roster = roster[:250]
+
+    return render_template(
+        "admin_digital_codes.html",
         digital_codes=digital_codes_summary,
         digital_code_roster=digital_code_roster,
         digital_code_subject_default=DEFAULT_DIGITAL_CODE_SUBJECT,
@@ -4113,7 +4122,7 @@ def admin_digital_codes_upload():
     actor = _current_actor()
     ok, message, _details = add_digital_codes_from_payload(raw_codes, actor, batch_label or None, category=category_input)
     flash(message, "success" if ok else "error")
-    return redirect(url_for("admin_dashboard"))
+    return redirect(url_for("admin_digital_codes"))
 
 
 @app.route("/admin/digital-codes/assign", methods=["POST"])
@@ -4137,7 +4146,7 @@ def admin_digital_codes_assign():
         reward_description=reward_description,
     )
     flash(msg, "success" if ok else "error")
-    return redirect(url_for("admin_dashboard"))
+    return redirect(url_for("admin_digital_codes"))
 
 
 @app.route("/admin/testing-grounds")
@@ -7095,6 +7104,7 @@ def inbox():
         return redirect(url_for("home"))
 
     trainer = session["trainer"]
+    panel_mode = request.args.get("panel") == "1"
     tab = request.args.get("tab", "all").lower()           # all | notifications | receipts
     sort_by = request.args.get("sort", "newest")           # newest | oldest | unread | read | type
 
@@ -7169,14 +7179,17 @@ def inbox():
     bulletin_posts = get_community_bulletin_posts()
     latest_bulletin_post = bulletin_posts[0] if bulletin_posts else None
 
+    template_name = "partials/_inbox_panel.html" if panel_mode else "inbox.html"
+
     return render_template(
-        "inbox.html",
+        template_name,
         trainer=trainer,
         inbox=messages,
         sort_by=sort_by,
         tab=tab,
         show_back=False,
-        latest_bulletin_post=latest_bulletin_post
+        latest_bulletin_post=latest_bulletin_post,
+        panel_mode=panel_mode
     )
 
 @app.route("/inbox/message/<message_id>")
@@ -7187,6 +7200,7 @@ def inbox_message(message_id):
         return redirect(url_for("home"))
 
     trainer = session["trainer"]
+    panel_mode = request.args.get("panel") == "1"
     if not (USE_SUPABASE and supabase):
         flash("Inbox messages are unavailable right now. Please try again later.", "error")
         return redirect(url_for("inbox"))
@@ -7209,7 +7223,8 @@ def inbox_message(message_id):
         except Exception as e:
             print("⚠️ inbox_message (receipt) fetch failed:", e)
             abort(500)
-        return render_template("inbox_message.html", msg=msg, show_back=False)
+        template = "partials/_inbox_message_panel.html" if panel_mode else "inbox_message.html"
+        return render_template(template, msg=msg, show_back=False, panel_mode=panel_mode)
 
     # Normal notification
     try:
@@ -7232,7 +7247,8 @@ def inbox_message(message_id):
         print("⚠️ inbox_message (notification) failed:", e)
         abort(500)
 
-    return render_template("inbox_message.html", msg=msg, show_back=False)
+    template = "partials/_inbox_message_panel.html" if panel_mode else "inbox_message.html"
+    return render_template(template, msg=msg, show_back=False, panel_mode=panel_mode)
 
 
 @app.route("/community-bulletin")

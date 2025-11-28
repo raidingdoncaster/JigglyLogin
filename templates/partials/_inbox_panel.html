@@ -1,0 +1,192 @@
+{% set panel_mode = panel_mode | default(false) %}
+<section class="inbox-panel {{ 'inbox-panel--modal' if panel_mode else 'inbox-panel--page' }}">
+  <div class="inbox-panel__header">
+    <h2>📨 Inbox</h2>
+    {% if panel_mode %}
+      <button type="button"
+              class="inbox-panel__close"
+              data-inbox-panel-close
+              aria-label="Close inbox panel">✕</button>
+    {% endif %}
+  </div>
+
+  <div class="tabs" role="tablist">
+    <a class="tab {{ 'active' if tab == 'all' else '' }}"
+       href="{{ url_for('inbox', tab='all', sort=sort_by, panel=1 if panel_mode else None) }}"
+       {% if panel_mode %}data-inbox-panel-link="true"{% endif %}>All</a>
+    <a class="tab {{ 'active' if tab == 'notifications' else '' }}"
+       href="{{ url_for('inbox', tab='notifications', sort=sort_by, panel=1 if panel_mode else None) }}"
+       {% if panel_mode %}data-inbox-panel-link="true"{% endif %}>Notifications</a>
+    <a class="tab {{ 'active' if tab == 'receipts' else '' }}"
+       href="{{ url_for('inbox', tab='receipts', sort=sort_by, panel=1 if panel_mode else None) }}"
+       {% if panel_mode %}data-inbox-panel-link="true"{% endif %}>Receipts</a>
+  </div>
+
+  <div class="inbox-filters">
+    <form method="get"
+          action="{{ url_for('inbox') }}"
+          {% if panel_mode %}data-inbox-panel-form="true"{% endif %}>
+      <input type="hidden" name="tab" value="{{ tab }}">
+      {% if panel_mode %}
+        <input type="hidden" name="panel" value="1">
+      {% endif %}
+      <label for="sort">Sort by:</label>
+      <select name="sort" id="sort" onchange="this.form.submit()">
+        <option value="newest" {% if sort_by == 'newest' %}selected{% endif %}>Newest First</option>
+        <option value="oldest" {% if sort_by == 'oldest' %}selected{% endif %}>Oldest First</option>
+        <option value="unread" {% if sort_by == 'unread' %}selected{% endif %}>Unread Only</option>
+        <option value="read" {% if sort_by == 'read' %}selected{% endif %}>Read Only</option>
+        <option value="type" {% if sort_by == 'type' %}selected{% endif %}>By Type</option>
+      </select>
+    </form>
+  </div>
+
+  <div class="inbox-container" role="list">
+    {% for msg in inbox %}
+      {% set read = trainer in (msg.read_by or []) %}
+      <a href="{{ url_for('inbox_message', message_id=msg.id, panel=1 if panel_mode else None) }}"
+         class="inbox-card-link"
+         {% if panel_mode %}data-inbox-panel-link="true"{% endif %}
+         role="listitem">
+        <div class="inbox-card {{ 'read' if read else 'unread' }}">
+          <div class="inbox-row1">
+            <h3>{{ msg.subject }}</h3>
+            {% if msg.type %}
+              <span class="type-pill">{{ msg.type }}</span>
+            {% endif %}
+          </div>
+          <p class="inbox-date">{{ msg.sent_at|to_date }}</p>
+          <p class="snippet">{{ msg.message|striptags|replace('\r\n', ' ')|replace('\n', ' ')|truncate(110) }}</p>
+        </div>
+      </a>
+    {% else %}
+      <p class="empty-state">No messages yet.</p>
+    {% endfor %}
+  </div>
+
+  {% if not panel_mode %}
+  <div class="actions-row">
+    <a href="{{ url_for('dashboard') }}" class="btn">⬅ Back to Dashboard</a>
+  </div>
+  {% endif %}
+</section>
+
+<style>
+.inbox-panel{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+.inbox-panel__header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+}
+.inbox-panel__close{
+  width:36px;
+  height:36px;
+  border-radius:50%;
+  border:0;
+  background:#eef2ff;
+  color:#0f172a;
+  font-size:1.2em;
+  cursor:pointer;
+  box-shadow:0 6px 16px rgba(15,23,42,0.12);
+}
+.tabs {
+  display:flex;
+  gap:8px;
+  margin:8px 0 10px 0;
+}
+.tab {
+  text-decoration:none;
+  padding:6px 10px;
+  border-radius:999px;
+  background:#eef2ff;
+  color:#334155;
+  font-weight:700;
+  font-size:.9em;
+}
+.tab.active { background:#3a8dde; color:#fff; }
+
+.inbox-filters {
+  margin-top: 6px;
+  margin-bottom: 12px;
+  text-align: right;
+}
+.inbox-filters select {
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  font-size: 0.9em;
+}
+.inbox-container {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin-top: 10px;
+}
+.inbox-card-link {
+  text-decoration: none;
+  color: inherit;
+}
+.inbox-card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 18px;
+  box-shadow: 0 12px 28px rgba(15,23,42,0.12);
+  transition: background 0.3s ease, transform 0.2s ease;
+}
+.inbox-card.unread {
+  border-left: 5px solid #3a8dde;
+  background: #f0f8ff;
+}
+.inbox-card.read {
+  border-left: 5px solid #aaa;
+  opacity: 0.85;
+}
+.inbox-card:hover{transform:translateY(-2px);}
+.inbox-row1 {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:8px;
+}
+.inbox-card h3 {
+  margin: 0;
+  font-size: 1.05em;
+  color: #3a8dde;
+}
+.type-pill {
+  font-size: 0.75em;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #334155;
+  text-transform: uppercase;
+}
+.inbox-date {
+  font-size: 0.8em;
+  color: #777;
+  margin: 5px 0;
+}
+.snippet {
+  color: #555;
+  font-size: 0.9em;
+}
+.actions-row{margin-top:20px;text-align:center;}
+.btn {
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:10px 18px;
+  background:#3a8dde;
+  color:#fff;
+  border-radius:999px;
+  text-decoration:none;
+  font-weight:600;
+  box-shadow:0 8px 20px rgba(58,141,222,0.25);
+}
+.empty-state{text-align:center;color:#64748b;font-weight:600;}
+</style>

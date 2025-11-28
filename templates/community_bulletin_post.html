@@ -1603,6 +1603,7 @@ body.bp-modal-open {
       MAX_THREAD_DEPTH = parsedDepth;
     }
   }
+  var viewerUsername = "{{ (trainer.get('trainer_username') if trainer is mapping else trainer)|default('', true)|lower }}";
   var commentsData = [];
   if (article && article.dataset.initialComments) {
     try {
@@ -1856,8 +1857,12 @@ body.bp-modal-open {
     var isReply = !!options.isReply;
     var showReplies = !!options.showReplies;
     var authorLabel = escapeHtml(comment.author || "Trainer");
-    var trainerButton = (comment.trainer_profile_url
-      ? '<button type="button" class="bp-comment-trainer" data-trainer-profile-trigger data-trainer-username="' + escapeHtml(comment.trainer_username || "") + '" data-trainer-profile-url="' + escapeHtml(comment.trainer_profile_url) + '" data-trainer-display="' + authorLabel + '">' + authorLabel + "</button>"
+    var trainerProfileUrl = comment.trainer_profile_url || "";
+    var trainerUsername = (comment.trainer_username || "").toString();
+    var normalizedTrainer = trainerUsername.toLowerCase();
+    var isOwnComment = Boolean(viewerUsername && normalizedTrainer && normalizedTrainer === viewerUsername);
+    var trainerButton = (trainerProfileUrl
+      ? '<button type="button" class="bp-comment-trainer" data-trainer-profile-trigger data-trainer-profile-username="' + escapeHtml(trainerUsername) + '" data-trainer-profile-url="' + escapeHtml(trainerProfileUrl) + '" data-trainer-display="' + authorLabel + '"' + (isOwnComment ? " data-trainer-profile-own" : "") + ">" + authorLabel + "</button>"
       : "<strong>" + authorLabel + "</strong>");
     var commentId = escapeHtml(comment.id || "");
     var replies = Array.isArray(comment.replies) ? comment.replies : [];
