@@ -161,6 +161,79 @@
 .watch-view:hover{transform:translateY(-1px);box-shadow:0 12px 26px rgba(37,99,235,0.25);}
 .close-circle{position:absolute;top:12px;right:12px;background:rgba(15,23,42,0.08);border:none;border-radius:50%;width:32px;height:32px;font-size:1.2rem;line-height:1;color:#0f172a;cursor:pointer;transition:background .2s ease;}
 .close-circle:hover{background:rgba(15,23,42,0.2);}
+
+/* TUTORIAL MODAL */
+#catalog-tutorial{
+  position:fixed;inset:0;background:rgba(15,23,42,0.5);
+  display:flex;align-items:center;justify-content:center;z-index:130;
+}
+#catalog-tutorial.hidden{display:none;}
+.tutorial-modal{
+  position:relative;
+  width:min(540px,94vw);
+  background:linear-gradient(150deg,#ffffff 0%,#f2f6ff 100%);
+  border-radius:28px;
+  padding:24px 24px 26px;
+  box-shadow:0 30px 60px rgba(15,23,42,0.4);
+  display:flex;
+  flex-direction:column;
+  gap:18px;
+}
+.tutorial-hero{display:flex;gap:14px;align-items:center;}
+.tutorial-hero img{
+  width:72px;
+  height:72px;
+  border-radius:18px;
+  object-fit:cover;
+  box-shadow:0 6px 18px rgba(37,99,235,0.25);
+}
+.tutorial-hero h2{margin:0;font-size:1.35rem;color:#0f172a;}
+.tutorial-hero p{margin:4px 0 0;color:#475569;font-size:0.95rem;line-height:1.4;}
+.tutorial-steps{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+  gap:12px;
+}
+.tutorial-card{
+  background:#fff;
+  border-radius:18px;
+  padding:14px;
+  box-shadow:0 10px 26px rgba(15,23,42,0.12);
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+.tutorial-card img{width:56px;height:56px;object-fit:contain;}
+.tutorial-card h3{margin:0;color:#0f172a;font-size:1rem;}
+.tutorial-card p{margin:0;color:#475569;font-size:0.9rem;line-height:1.4;}
+.tutorial-note{margin:0;color:#475569;font-size:0.85rem;}
+.tutorial-actions{display:flex;flex-direction:column;gap:10px;}
+.tutorial-actions button{
+  border:none;
+  border-radius:999px;
+  background:#2563eb;
+  color:#fff;
+  font-weight:700;
+  font-size:1rem;
+  padding:12px;
+  cursor:pointer;
+  box-shadow:0 12px 24px rgba(37,99,235,0.35);
+  transition:transform .1s ease;
+}
+.tutorial-actions button:active{transform:translateY(1px);}
+.tutorial-secondary{
+  display:inline-flex;
+  justify-content:center;
+  align-items:center;
+  text-decoration:none;
+  font-weight:600;
+  color:#1d4ed8;
+  font-size:0.9rem;
+}
+@media(min-width:520px){
+  .tutorial-actions{flex-direction:row;align-items:center;}
+  .tutorial-secondary{flex:1;}
+}
 </style>
 
 <!-- HERO -->
@@ -197,7 +270,7 @@
 
 <!-- QUICK LINKS -->
 <div class="section quick-links">
-  <a href="#" class="quick-link">ℹ️ New here?!</a>
+  <a href="#" id="catalogTutorialLink" class="quick-link" role="button">ℹ️ New here?!</a>
   <a href="{{ url_for('inbox', tab='receipts') }}" class="quick-link">Order history</a>
   <button class="watchlist-btn" onclick="toggleWatchlist()"><img src="{{ url_for('static', filename='catalog/binocularsb.png') }}" alt="Watchlist"></button>
 </div>
@@ -289,6 +362,48 @@
   </div>
 </div>
 
+<!-- ONBOARDING MODAL -->
+<div id="catalog-tutorial" class="modal hidden">
+  <div class="tutorial-modal">
+    <button type="button" class="close-circle" id="closeTutorialBtn">×</button>
+    <section class="tutorial-hero">
+      <img src="{{ url_for('static', filename='catalog/catalog-app.png') }}" alt="Catalog preview">
+      <div>
+        <h2>New to stamp rewards?</h2>
+        <p>Here is the quickstart guide to earning stamps, tracking favorites, and redeeming goodies.</p>
+      </div>
+    </section>
+    <div class="tutorial-steps">
+      <article class="tutorial-card">
+        <img src="{{ url_for('static', filename='passport/stamper.png') }}" alt="Stamp icon">
+        <div>
+          <h3>1. Earn stamps</h3>
+          <p>Host raids, check in at events, or complete boosts. Your stamp total always lives at the top of the dashboard.</p>
+        </div>
+      </article>
+      <article class="tutorial-card">
+        <img src="{{ url_for('static', filename='catalog/binocularsb.png') }}" alt="Watchlist icon">
+        <div>
+          <h3>2. Make a watchlist</h3>
+          <p>See something you want? Tap the binoculars on the card to save it so you know what to grind for.</p>
+        </div>
+      </article>
+      <article class="tutorial-card">
+        <img src="{{ url_for('static', filename='catalog/container/trade.PNG') }}" alt="Trade button">
+        <div>
+          <h3>3. Redeem and collect</h3>
+          <p>Open an item, hit Trade, and confirm the stamp spend. We DM pickup/code info and log it under Order history.</p>
+        </div>
+      </article>
+    </div>
+    <p class="tutorial-note">Pro tip: Pins, plushies, and codes rotate each week, so check back after community meetups for fresh drops.</p>
+    <div class="tutorial-actions">
+      <button type="button" id="tutorialStartBtn">Got it, let's shop</button>
+      <a href="{{ url_for('inbox', tab='receipts') }}" class="tutorial-secondary">See my redemptions</a>
+    </div>
+  </div>
+</div>
+
 <!-- 🔵 Bottom Toolbar -->
 <div class="bottom-bar" id="bottomBar">
   <button id="scrollToSearch" title="Search">🔍</button>
@@ -360,11 +475,22 @@ const watchlistModal = document.getElementById("watchlist-modal");
 const watchlistContainer = document.getElementById("watchlist-items");
 const watchlistCountEl = document.getElementById("watchlist-count");
 const stamperIcon = "{{ url_for('static', filename='passport/stamper.png') }}";
+const tutorialModal = document.getElementById("catalog-tutorial");
+const tutorialLink = document.getElementById("catalogTutorialLink");
+const tutorialStartBtn = document.getElementById("tutorialStartBtn");
+const tutorialCloseBtn = document.getElementById("closeTutorialBtn");
 
 function setWatchlistCount(count) {
   if (watchlistCountEl) {
     watchlistCountEl.textContent = `${count}/${WATCHLIST_LIMIT} saved`;
   }
+}
+
+function syncBodyScrollLock() {
+  const modalOpen =
+    (watchlistModal && !watchlistModal.classList.contains("hidden")) ||
+    (tutorialModal && !tutorialModal.classList.contains("hidden"));
+  document.body.style.overflow = modalOpen ? "hidden" : "";
 }
 
 function renderWatchlistMessage(message, count) {
@@ -381,7 +507,7 @@ function toggleWatchlist() {
   if (!watchlistModal) return;
   const willOpen = watchlistModal.classList.contains("hidden");
   watchlistModal.classList.toggle("hidden");
-  document.body.style.overflow = willOpen ? "hidden" : "";
+  syncBodyScrollLock();
   if (willOpen) {
     renderWatchlistMessage("Loading…");
     loadWatchlist();
@@ -515,6 +641,41 @@ function toggleWatch(el) {
 
 watchlistModal?.addEventListener("click", e => {
   if (e.target === watchlistModal) {
+    toggleWatchlist();
+  }
+});
+
+function openTutorial() {
+  if (!tutorialModal) return;
+  tutorialModal.classList.remove("hidden");
+  syncBodyScrollLock();
+}
+
+function closeTutorial() {
+  if (!tutorialModal) return;
+  tutorialModal.classList.add("hidden");
+  syncBodyScrollLock();
+}
+
+tutorialLink?.addEventListener("click", e => {
+  e.preventDefault();
+  openTutorial();
+});
+tutorialStartBtn?.addEventListener("click", closeTutorial);
+tutorialCloseBtn?.addEventListener("click", closeTutorial);
+tutorialModal?.addEventListener("click", e => {
+  if (e.target === tutorialModal) {
+    closeTutorial();
+  }
+});
+
+document.addEventListener("keydown", e => {
+  if (e.key !== "Escape") return;
+  if (tutorialModal && !tutorialModal.classList.contains("hidden")) {
+    closeTutorial();
+    return;
+  }
+  if (watchlistModal && !watchlistModal.classList.contains("hidden")) {
     toggleWatchlist();
   }
 });

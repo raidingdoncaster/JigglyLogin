@@ -33,6 +33,7 @@ from city_perks import (
     ensure_city_perks_cache,
 )
 from models import CityPerk
+from content_filter import ContentFilter
 
 # ====== Feature toggle ======
 def _env_flag(name: str, default: bool) -> bool:
@@ -46,6 +47,14 @@ def _env_flag(name: str, default: bool) -> bool:
 USE_SUPABASE = _env_flag("USE_SUPABASE", True)  # ✅ Supabase for stamps/meetups
 MAINTENANCE_MODE = _env_flag("MAINTENANCE_MODE", False)  # ⛔️ Change to True to enable maintenance mode
 USE_GEOCACHE_QUEST = _env_flag("USE_GEOCACHE_QUEST", False)  # 🧭 Toggle Geocache quest endpoints
+
+# ====== Trainer metadata ======
+TEAM_CONFIG = {
+    "valor": {"label": "Team Valor", "icon": "passport/themes/valoricon.png"},
+    "mystic": {"label": "Team Mystic", "icon": "passport/themes/mysticicon.png"},
+    "instinct": {"label": "Team Instinct", "icon": "passport/themes/instincticon.png"},
+}
+MAX_TRAINER_LEVEL = 80
 
 # ====== Auth security settings ======
 LOGIN_MAX_ATTEMPTS = 5
@@ -115,6 +124,7 @@ app.permanent_session_lifetime = timedelta(days=365)
 app.config.setdefault("USE_SUPABASE", USE_SUPABASE)
 app.config.setdefault("USE_GEOCACHE_QUEST", USE_GEOCACHE_QUEST)
 
+CONTENT_FILTER = ContentFilter()
 
 @app.errorhandler(404)
 @app.errorhandler(500)
@@ -243,12 +253,13 @@ def get_passport_theme_data(slug: Optional[str] = None) -> dict:
 # ====== RDAB Community Bulletin ======
 
 COMMUNITY_BULLETIN_POSTS: list[dict] = []
+MAX_BULLETIN_COMMENT_DEPTH = 2  # depth 0 = root, depth 2 = deepest nested reply
 
 
-def get_community_bulletin_posts() -> list[dict]:
+def get_community_bulletin_posts(include_sections: bool = False) -> list[dict]:
     """Return newest-first RDAB Community Bulletin entries."""
 
-    posts = fetch_bulletin_posts_from_supabase(include_sections=False)
+    posts = fetch_bulletin_posts_from_supabase(include_sections=include_sections)
     if not posts:
         posts = copy.deepcopy(COMMUNITY_BULLETIN_POSTS)
     posts.sort(key=lambda post: parse_dt_safe(post.get("published_at")), reverse=True)
@@ -386,6 +397,90 @@ def fetch_bulletin_post_from_supabase(slug: str, include_sections: bool = True) 
     return _normalize_supabase_post(rows[0], include_sections=include_sections)
 
 
+def _memory_section_identifier(post: dict, section: dict, index: int) -> str:
+    """Return a deterministic identifier for a bulletin section."""
+    slug = (post.get("slug") or "post").replace(" ", "-")
+    section_id = section.get("id")
+    if section_id:
+        return str(section_id)
+    return f"{slug}-section-{index + 1}"
+
+
+def _build_memory_album(post: dict, sections: Optional[list[dict]] = None) -> Optional[dict]:
+    """Collate carousel slides and media blocks into a single memory album payload."""
+
+    sections = sections if sections is not None else (post.get("content_sections") or [])
+    slides: list[dict] = []
+    section_offsets: dict[str, int] = {}
+
+    for idx, section in enumerate(sections):
+        section_type = (section.get("section_type") or section.get("type") or "").lower()
+        section_id = _memory_section_identifier(post, section, idx)
+        added_any = False
+
+        if section_type == "carousel":
+            for slide in section.get("slides") or []:
+                image = slide.get("image")
+                if not image:
+                    continue
+                resolved_image = bulletin_media(image)
+                if not added_any:
+                    section_offsets[section_id] = len(slides)
+                    added_any = True
+                slides.append({
+                    "image": resolved_image,
+                    "caption": slide.get("caption"),
+                    "alt": slide.get("alt"),
+                    "section_id": section_id,
+                    "source": "carousel",
+                })
+
+        elif section_type == "media-block":
+            image = section.get("image")
+            if image:
+                resolved_image = bulletin_media(image)
+                section_offsets.setdefault(section_id, len(slides))
+                slides.append({
+                    "image": resolved_image,
+                    "caption": section.get("caption") or section.get("title"),
+                    "alt": section.get("alt"),
+                    "section_id": section_id,
+                    "source": "media",
+                })
+
+    if not slides:
+        return None
+
+    cover_image = next((slide["image"] for slide in slides if slide.get("image")), None)
+    if not cover_image:
+        cover_image = bulletin_media(post.get("header_image") or post.get("hero_image"))
+
+    album_id = (post.get("slug") or f"post-{post.get('id') or 'memory'}") + "-memory"
+    return {
+        "id": album_id,
+        "post_slug": post.get("slug"),
+        "title": post.get("title") or "Memory Album",
+        "summary": post.get("summary"),
+        "tag": post.get("tag") or (post.get("category") or "Memory"),
+        "cover_image": cover_image,
+        "slide_count": len(slides),
+        "slides": slides,
+        "published_at": post.get("published_at"),
+        "author": post.get("author") or "RDAB Staff",
+        "section_offsets": section_offsets,
+    }
+
+
+def _build_memory_albums(posts: list[dict]) -> list[dict]:
+    """Return memory albums for the provided bulletin posts."""
+    albums: list[dict] = []
+    for post in posts:
+        album = _build_memory_album(post)
+        if album:
+            albums.append(album)
+    return albums
+
+
 def _trainer_avatar_fallback(trainer: str) -> str:
     avatars = [
         "avatars/avatar1.png",
@@ -402,6 +497,109 @@ def _trainer_avatar_fallback(trainer: str) -> str:
     if not trainer:
         return avatars[0]
     return avatars[hash(trainer) % len(avatars)]
+
+
+def _team_metadata(value: Optional[str]) -> Optional[dict]:
+    if not value:
+        return None
+    slug = value.strip().lower()
+    config = TEAM_CONFIG.get(slug)
+    if not config:
+        return None
+    icon_path = config["icon"]
+    try:
+        icon_url = url_for("static", filename=icon_path)
+    except RuntimeError:
+        icon_url = f"/static/{icon_path}"
+    return {
+        "value": slug,
+        "label": config["label"],
+        "icon": icon_url,
+    }
+
+
+def _team_options_for_template() -> list[dict]:
+    options = []
+    for slug, meta in TEAM_CONFIG.items():
+        try:
+            icon_url = url_for("static", filename=meta["icon"])
+        except RuntimeError:
+            icon_url = f"/static/{meta['icon']}"
+        options.append({
+            "value": slug,
+            "label": meta["label"],
+            "icon": icon_url,
+        })
+    return options
+
+
+def _decode_featured_stamp(value) -> Optional[dict]:
+    if not value:
+        return None
+    data = value
+    if isinstance(value, str):
+        try:
+            data = json.loads(value)
+        except (ValueError, TypeError):
+            return None
+    if not isinstance(data, dict):
+        return None
+    icon = data.get("icon")
+    label = data.get("label")
+    if not icon:
+        return None
+    return {
+        "icon": icon,
+        "label": label or "Featured stamp",
+        "token": data.get("token"),
+    }
+
+
+def _record_featured_stamps(record: dict) -> list[dict]:
+    featured: list[dict] = []
+    for key in ("fstamp1", "fstamp2", "fstamp3"):
+        parsed = _decode_featured_stamp(record.get(key))
+        if parsed:
+            featured.append(parsed)
+    return featured
+
+
+def _encode_featured_stamp_value(icon: str, label: str, token: Optional[str] = None) -> str:
+    payload = {
+        "icon": icon,
+        "label": label or "Featured stamp",
+    }
+    if token:
+        payload["token"] = token
+    return json.dumps(payload)
+
+
+def _featured_stamp_token(trainer: str, stamp: dict) -> str:
+    raw = "|".join([
+        trainer or "",
+        stamp.get("icon") or "",
+        stamp.get("name") or stamp.get("label") or "",
+        stamp.get("awarded_at_iso") or "",
+    ])
+    return hashlib.sha256(raw.encode()).hexdigest()
+
+
+def _write_featured_stamps(username: str, stamps: list[dict]) -> None:
+    if not supabase:
+        raise RuntimeError("Supabase client not configured")
+    update_payload = {}
+    for idx in range(3):
+        key = f"fstamp{idx + 1}"
+        if idx < len(stamps):
+            stamp = stamps[idx]
+            update_payload[key] = _encode_featured_stamp_value(
+                stamp.get("icon") or "",
+                stamp.get("label") or "",
+                stamp.get("token"),
+            )
+        else:
+            update_payload[key] = None
+    supabase.table("sheet1").update(update_payload).eq("trainer_username", username).execute()
 
 
 def fetch_bulletin_comments_from_supabase(post_id: str) -> list[dict]:
@@ -436,11 +634,15 @@ def fetch_bulletin_comments_from_supabase(post_id: str) -> list[dict]:
             "replies": [],
             "trainer_username": trainer_username,
             "trainer_profile_url": profile_url,
+            "depth": 0,
         }
         by_id[cid] = comment
         parent_id = row.get("parent_comment_id")
         if parent_id and parent_id in by_id:
-            by_id[parent_id]["replies"].append(comment)
+            parent = by_id[parent_id]
+            parent_depth = parent.get("depth") or 0
+            comment["depth"] = parent_depth + 1
+            parent["replies"].append(comment)
         else:
             roots.append(comment)
     return roots
@@ -455,6 +657,110 @@ def _hydrate_comment_media_urls(comments: list[dict]) -> None:
             comment["avatar"] = url_for("static", filename=avatar)
         if comment.get("replies"):
             _hydrate_comment_media_urls(comment["replies"])
+
+
+def _send_comment_reply_notification(post: dict | None,
+                                     slug: str,
+                                     parent_comment: dict,
+                                     reply_comment: dict | None,
+                                     replier_username: str) -> None:
+    """Notify the original commenter when someone replies to their thread."""
+    if not supabase:
+        return
+    parent_username = (parent_comment.get("trainer_username") or "").strip()
+    if not parent_username:
+        return
+    reply_username = (replier_username or "").strip()
+    if reply_username and parent_username.lower() == reply_username.lower():
+        return
+
+    post_title = (post or {}).get("title") or "the community bulletin"
+    params: dict[str, str] = {}
+    parent_id = parent_comment.get("id")
+    if parent_id:
+        params["comment"] = str(parent_id)
+    reply_id = reply_comment.get("id") if reply_comment else None
+    if reply_id:
+        params["reply"] = str(reply_id)
+
+    try:
+        base_url = url_for("community_bulletin_post", slug=slug)
+    except RuntimeError:
+        base_url = f"/community-bulletin/{slug}"
+    thread_url = f"{base_url}#comments"
+    if params:
+        thread_url = f"{base_url}?{urlencode(params)}#comments"
+
+    metadata = {
+        "url": thread_url,
+        "cta_label": "Open comment thread",
+        "post_title": post_title,
+        "post_slug": slug,
+        "comment_reply": {
+            "parent": {
+                "id": parent_id,
+                "body": parent_comment.get("body"),
+                "author": parent_username,
+                "timestamp": parent_comment.get("created_at"),
+            },
+            "reply": {
+                "id": reply_id,
+                "body": (reply_comment or {}).get("body"),
+                "author": ((reply_comment or {}).get("trainer_username") or reply_username or "Trainer"),
+                "timestamp": (reply_comment or {}).get("created_at"),
+            },
+        },
+    }
+
+    subject = f"Your comment is getting some traction on {post_title}"
+    message = (
+        f"Another trainer replied to your comment on {post_title}. "
+        "Open the comments pane to keep the conversation going."
+    )
+    send_notification(parent_username, subject, message, notif_type="system", metadata=metadata)
+
+
+def _count_comment_nodes(comments: list[dict]) -> int:
+    total = 0
+    for comment in comments or []:
+        total += 1
+        total += _count_comment_nodes(comment.get("replies") or [])
+    return total
+
+
+def _bulletin_comment_depth(post_id: str, comment_id: str) -> Optional[int]:
+    """Return the nesting depth (0-based) for a comment id, or None if invalid."""
+
+    if not comment_id or not _bulletin_supabase_enabled():
+        return None
+    depth = 0
+    current_id = comment_id
+    visited: set[str] = set()
+    while current_id:
+        if current_id in visited:
+            break
+        visited.add(current_id)
+        try:
+            resp = (supabase.table("bulletin_post_comments")
+                    .select("id,parent_comment_id,post_id")
+                    .eq("id", current_id)
+                    .limit(1)
+                    .execute())
+        except Exception as exc:
+            print("⚠️ Supabase comment depth lookup failed:", exc)
+            return None
+        row = (resp.data or [None])[0]
+        if not row:
+            return None
+        if str(row.get("post_id")) != str(post_id):
+            return None
+        parent_id = row.get("parent_comment_id")
+        if parent_id:
+            depth += 1
+            current_id = parent_id
+        else:
+            break
+    return depth
 
 
 def _bulletin_widget_preview(posts: Optional[list[dict]] = None) -> Optional[dict]:
@@ -1891,6 +2197,16 @@ def inject_header_data():
 
     return dict(current_stamps=current_stamps, inbox_preview=inbox_preview)
 
+
+@app.context_processor
+def inject_trainer_team_options():
+    try:
+        options = _team_options_for_template()
+    except Exception:
+        options = []
+    return dict(trainer_team_options=options)
+
+
 # ====== Helpers ======
 def hash_value(value: str) -> str:
     return hashlib.sha256(value.encode()).hexdigest()
@@ -1929,6 +2245,11 @@ def find_user(username):
         record = records[0]
         record.setdefault("avatar_icon", "avatar1.png")
         record.setdefault("trainer_card_background", "standard.png")
+        record.setdefault("fstamp1", "")
+        record.setdefault("fstamp2", "")
+        record.setdefault("fstamp3", "")
+        record.setdefault("team", "")
+        record.setdefault("tlevel", None)
         record.setdefault("trainerbio", "")
         record["account_type"] = normalize_account_type(record.get("account_type"))
         return None, record
@@ -1959,6 +2280,13 @@ def get_public_trainer_profile(username: str) -> Optional[dict]:
         avatar_url = f"/static/avatars/{avatar_file}"
         background_url = f"/static/backgrounds/{background_file}"
 
+    team_info = _team_metadata(record.get("team"))
+    tlevel_raw = record.get("tlevel")
+    try:
+        trainer_level = int(tlevel_raw)
+    except (TypeError, ValueError):
+        trainer_level = None
+
     return {
         "username": record.get("trainer_username") or username,
         "account_type": record.get("account_type") or "Trainer",
@@ -1970,6 +2298,10 @@ def get_public_trainer_profile(username: str) -> Optional[dict]:
         "trainer_title": record.get("trainer_title"),
         "trainer_team": record.get("trainer_team"),
         "bio": bio,
+        "featured_stamps": _record_featured_stamps(record),
+        "team": team_info,
+        "trainer_level": trainer_level,
+        "is_max_level": bool(trainer_level and trainer_level >= MAX_TRAINER_LEVEL),
     }
 
 
@@ -2655,6 +2987,30 @@ NOTIFICATION_ALLOWED_ATTRS = {
     "a": ["href", "target", "rel", "title"],
 }
 
+DIGITAL_CODE_TABLE = os.environ.get("DIGITAL_CODE_TABLE", "digital_reward_codes")
+DIGITAL_CODE_STATUS_AVAILABLE = "AVAILABLE"
+DIGITAL_CODE_STATUS_REDEEMED = "REDEEMED"
+try:
+    DIGITAL_CODE_UPLOAD_LIMIT = max(1, int(os.environ.get("DIGITAL_CODE_UPLOAD_LIMIT", 400)))
+except (TypeError, ValueError):
+    DIGITAL_CODE_UPLOAD_LIMIT = 400
+
+DEFAULT_DIGITAL_CODE_SUBJECT = "Here’s your digital code"
+DIGITAL_CODE_DEFAULT_CATEGORY = os.environ.get("DIGITAL_CODE_DEFAULT_CATEGORY", "General")
+DIGITAL_CODE_CATEGORY_SUGGESTIONS = [
+    value.strip()
+    for value in os.environ.get("DIGITAL_CODE_CATEGORIES", "").split(",")
+    if value.strip()
+]
+DIGITAL_CODE_SOURCE_DEFAULT = os.environ.get("DIGITAL_CODE_SOURCE_DEFAULT", "admin_dashboard_manual")
+DIGITAL_CODE_SOURCE_SUGGESTIONS = [
+    value.strip()
+    for value in os.environ.get("DIGITAL_CODE_SOURCES", "admin_dashboard_manual,catalog_redemption,advent_event").split(",")
+    if value.strip()
+]
+MAX_DIGITAL_CODE_CATEGORY_LENGTH = 80
+MAX_DIGITAL_CODE_SOURCE_LENGTH = 80
+
 
 def sanitize_notification_html(body: str | None) -> str:
     if not body:
@@ -2670,20 +3026,508 @@ def sanitize_notification_html(body: str | None) -> str:
     return cleaned
 
 
-def send_notification(audience, subject, message, notif_type="system", metadata=None):
+def send_notification(audience, subject, message, notif_type="system", metadata=None, *, returning: bool = False):
+    """Send an inbox notification. When returning=True, return the inserted row (if available)."""
+    if not supabase:
+        print("⚠️ Failed to send notification: Supabase is unavailable.")
+        return None
+
     message_html = sanitize_notification_html(message)
+    payload = {
+        "type": notif_type,
+        "audience": audience,
+        "subject": subject,
+        "message": message_html,
+        "metadata": metadata or {},
+        "sent_at": datetime.utcnow().isoformat(),
+        "read_by": [],
+    }
     try:
-        supabase.table("notifications").insert({
-            "type": notif_type,
-            "audience": audience,
-            "subject": subject,
-            "message": message_html,
-            "metadata": metadata or {},
-            "sent_at": datetime.utcnow().isoformat(),
-            "read_by": []
-        }).execute()
+        insert_kwargs = {"returning": "representation"} if returning else {}
+        resp = supabase.table("notifications").insert(payload, **insert_kwargs).execute()
+        if returning:
+            rows = resp.data or []
+            return rows[0] if rows else payload
     except Exception as e:
         print("⚠️ Failed to send notification:", e)
+        return None
+    return None
+
+# ====== Digital reward codes ======
+def _digital_codes_supported() -> bool:
+    return bool(USE_SUPABASE and supabase and DIGITAL_CODE_TABLE)
+
+
+def _format_admin_timestamp(raw_ts: str | None) -> str:
+    if not raw_ts:
+        return ""
+    try:
+        dt = parser.isoparse(raw_ts)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt.astimezone(LONDON_TZ).strftime("%d %b %Y · %H:%M")
+    except Exception:
+        return raw_ts or ""
+
+
+def _prepare_category_value(raw: str | None, *, required: bool = True) -> str | None:
+    value = (raw or "").strip()
+    if not value:
+        return DIGITAL_CODE_DEFAULT_CATEGORY if required else None
+    return value[:MAX_DIGITAL_CODE_CATEGORY_LENGTH]
+
+
+def _prepare_source_value(raw: str | None, *, default_to_admin: bool = True) -> str:
+    value = (raw or "").strip()
+    if not value:
+        return DIGITAL_CODE_SOURCE_DEFAULT if default_to_admin else "system"
+    return value[:MAX_DIGITAL_CODE_SOURCE_LENGTH]
+
+
+def _infer_assigner_metadata(actor: str | None, actor_type_hint: str | None = None) -> tuple[str, str]:
+    """
+    Returns (assigner_type, assigner_label) where type is one of admin|feature|system.
+    """
+    label = (actor or "").strip() or "System"
+    normalized_hint = (actor_type_hint or "").strip().lower()
+    if normalized_hint in {"admin", "feature", "system"}:
+        assigner_type = normalized_hint
+    else:
+        assigner_type = "feature" if label and label != "System" else "system"
+
+    if assigner_type == "admin":
+        return assigner_type, label
+
+    _, record = find_user(label)
+    if record and record.get("account_type") == "Admin":
+        return "admin", record.get("trainer_username") or label
+
+    return assigner_type, label
+
+
+def _describe_assignment_origin(source: str | None, assigned_by_type: str, assigned_by_label: str | None) -> str:
+    key = (source or "").strip().lower()
+    if "catalog" in key:
+        return "You redeemed this via the RDAB Catalog."
+    if "advent" in key:
+        return "Unlocked during the Advent Calendar 2025 event."
+    if assigned_by_type == "admin":
+        ambassador = (assigned_by_label or "A Community Ambassador").strip()
+        return f"{ambassador} (Community Ambassador) gifted this reward to you."
+    return "You received this digital reward from RDAB."
+
+
+def _reward_summary_for_category(category: str | None, custom_text: str | None) -> str:
+    slug = (category or "").strip().lower()
+    if slug == "digital":
+        return "Redeem this code for 1 Premium Battle Pass, 1 Star Piece, 1 Incubator, and 1 Lure Module."
+    if slug == "ca":
+        return "Redeem this code for 2 Premium Battle Passes and 1 Star Piece."
+    custom = (custom_text or "").strip()
+    if custom:
+        return f"Redeem this code for {custom}."
+    return "Redeem this code for exclusive RDAB rewards."
+
+
+def _build_digital_code_message(code_value: str, category: str | None, assignment_source: str | None, assigned_by_type: str, assigned_by_label: str | None, custom_description: str | None) -> tuple[str, str]:
+    origin_sentence = _describe_assignment_origin(assignment_source, assigned_by_type, assigned_by_label)
+    reward_sentence = _reward_summary_for_category(category, custom_description)
+    redeem_url = f"https://store.pokemongo.com/offer-redemption?passcode={quote_plus(code_value)}"
+    message = (
+        "<p><strong>Here’s your digital code.</strong></p>"
+        f"<p>{origin_sentence}</p>"
+        f"<p><a href=\"{redeem_url}\" target=\"_blank\" rel=\"noopener\">{code_value}</a></p>"
+        f"<p>{reward_sentence}</p>"
+        "<p><strong>How to redeem:</strong></p>"
+        "<ol>"
+        "<li><strong>Step 1.</strong> Tap the code above to open the Pokémon GO offer redemption site.</li>"
+        "<li><strong>Step 2.</strong> Sign in with the Pokémon GO account you use with RDAB.</li>"
+        "<li><strong>Step 3.</strong> Redeem your code and enjoy the items!</li>"
+        "</ol>"
+        "<p>If you have any issues, please reach out to us via RDAB Support.</p>"
+    )
+    return message, reward_sentence
+
+
+def _parse_code_batch(raw_codes: str) -> list[str]:
+    if not raw_codes:
+        return []
+    cleaned = raw_codes.replace("\r\n", "\n")
+    tokens = re.split(r"[,\n]", cleaned)
+    codes = []
+    for token in tokens:
+        value = token.strip()
+        if value:
+            codes.append(value)
+    return codes
+
+
+def _chunked(seq: list[str], size: int = 80):
+    for idx in range(0, len(seq), size):
+        yield seq[idx: idx + size]
+
+
+def _reset_digital_code(code_id: str):
+    if not _digital_codes_supported() or not code_id:
+        return
+    try:
+        supabase.table(DIGITAL_CODE_TABLE).update({
+            "status": DIGITAL_CODE_STATUS_AVAILABLE,
+            "assigned_to": None,
+            "assigned_by": None,
+            "assigned_at": None,
+            "notification_id": None,
+            "notification_subject": None,
+        }).eq("id", code_id).execute()
+    except Exception as exc:
+        print("⚠️ digital code reset failed:", exc)
+
+
+def add_digital_codes_from_payload(raw_codes: str, actor: str, batch_label: str | None = None, category: str | None = None):
+    summary = {
+        "total": 0,
+        "inserted": 0,
+        "duplicates": 0,
+        "existing": 0,
+        "unique": 0,
+    }
+    if not _digital_codes_supported():
+        return False, "Digital codes require Supabase to be enabled.", summary
+
+    category_value = _prepare_category_value(category, required=True)
+    parsed = _parse_code_batch(raw_codes)
+    summary["total"] = len(parsed)
+    if not parsed:
+        return False, "Paste at least one code separated by commas.", summary
+    if len(parsed) > DIGITAL_CODE_UPLOAD_LIMIT:
+        return False, f"Upload up to {DIGITAL_CODE_UPLOAD_LIMIT} codes at once.", summary
+
+    deduped: list[str] = []
+    seen = set()
+    for code in parsed:
+        key = code.lower()
+        if key in seen:
+            summary["duplicates"] += 1
+            continue
+        seen.add(key)
+        deduped.append(code)
+    summary["unique"] = len(deduped)
+    if not deduped:
+        return False, "All provided codes were duplicates.", summary
+
+    existing_lookup: set[str] = set()
+    try:
+        for chunk in _chunked(deduped, 90):
+            resp = (
+                supabase.table(DIGITAL_CODE_TABLE)
+                .select("code")
+                .in_("code", chunk)
+                .execute()
+            )
+            for row in resp.data or []:
+                value = (row.get("code") or "").strip().lower()
+                if value:
+                    existing_lookup.add(value)
+    except Exception as exc:
+        print("⚠️ digital code lookup failed:", exc)
+        return False, "Could not verify existing codes. Try again.", summary
+
+    fresh_codes = [code for code in deduped if code.lower() not in existing_lookup]
+    summary["existing"] = len(deduped) - len(fresh_codes)
+    if not fresh_codes:
+        return False, "Every code you entered already exists in Supabase.", summary
+
+    payloads = []
+    for code in fresh_codes:
+        payloads.append({
+            "code": code,
+            "status": DIGITAL_CODE_STATUS_AVAILABLE,
+            "batch_label": (batch_label or None),
+             "category": category_value,
+            "uploaded_by": actor,
+            "assigned_to": None,
+            "assigned_by": None,
+            "assigned_by_type": None,
+            "assigned_source": None,
+            "redeemed_at": None,
+        })
+    try:
+        supabase.table(DIGITAL_CODE_TABLE).insert(payloads).execute()
+    except Exception as exc:
+        print("⚠️ Failed to insert digital codes:", exc)
+        return False, "Failed to store the codes in Supabase.", summary
+
+    summary["inserted"] = len(payloads)
+    fragment = "code" if summary["inserted"] == 1 else "codes"
+    message_bits = [f"✅ Added {summary['inserted']} {fragment}."]
+    if summary["existing"]:
+        message_bits.append(f"Skipped {summary['existing']} already in Supabase.")
+    if summary["duplicates"]:
+        dup_fragment = "duplicate" if summary["duplicates"] == 1 else "duplicates"
+        message_bits.append(f"Ignored {summary['duplicates']} {dup_fragment} in this upload.")
+    return True, " ".join(message_bits), summary
+
+
+def fetch_digital_code_summary(limit_available: int = 12, limit_history: int = 8) -> dict:
+    summary = {
+        "supported": _digital_codes_supported(),
+        "available_count": 0,
+        "assigned_count": 0,
+        "available_codes": [],
+        "assigned_recent": [],
+        "upload_limit": DIGITAL_CODE_UPLOAD_LIMIT,
+        "error": None,
+        "available_buckets": [],
+        "available_bucket_totals": [],
+        "category_options": sorted({DIGITAL_CODE_DEFAULT_CATEGORY, *DIGITAL_CODE_CATEGORY_SUGGESTIONS}),
+        "source_suggestions": sorted(
+            set(DIGITAL_CODE_SOURCE_SUGGESTIONS or [DIGITAL_CODE_SOURCE_DEFAULT])
+        ),
+        "default_category": DIGITAL_CODE_DEFAULT_CATEGORY,
+    }
+    if not summary["supported"]:
+        return summary
+
+    try:
+        available_resp = (
+            supabase.table(DIGITAL_CODE_TABLE)
+            .select("id, code, created_at, batch_label, category", count="exact")
+            .eq("status", DIGITAL_CODE_STATUS_AVAILABLE)
+            .order("created_at", desc=True)
+            .limit(limit_available)
+            .execute()
+        )
+        summary["available_count"] = available_resp.count or 0
+        bucket_map: dict[str, dict] = {}
+        available_rows = []
+        for row in available_resp.data or []:
+            category_label = _prepare_category_value(row.get("category"), required=True)
+            record = {
+                "id": row.get("id"),
+                "code": row.get("code"),
+                "created_at": row.get("created_at"),
+                "created_display": _format_admin_timestamp(row.get("created_at")),
+                "batch_label": row.get("batch_label"),
+                "category": category_label,
+            }
+            available_rows.append(record)
+            bucket_key = (category_label or DIGITAL_CODE_DEFAULT_CATEGORY).lower()
+            bucket = bucket_map.setdefault(bucket_key, {
+                "category": category_label,
+                "count": 0,
+                "codes": [],
+            })
+            bucket["count"] += 1
+            bucket["codes"].append(record)
+        summary["available_codes"] = available_rows
+        summary["available_buckets"] = sorted(bucket_map.values(), key=lambda item: (item["category"] or ""))
+        summary["category_options"].extend([bucket["category"] for bucket in summary["available_buckets"]])
+    except Exception as exc:
+        print("⚠️ digital code summary (available) failed:", exc)
+        summary["error"] = "Failed to load digital code inventory."
+        return summary
+
+    try:
+        totals_resp = (
+            supabase.table(DIGITAL_CODE_TABLE)
+            .select("category, count:id")
+            .eq("status", DIGITAL_CODE_STATUS_AVAILABLE)
+            .group("category")
+            .execute()
+        )
+        totals_rows = []
+        for row in totals_resp.data or []:
+            category_label = _prepare_category_value(row.get("category"), required=True)
+            counts = row.get("count") or row.get("count:id") or 0
+            try:
+                counts = int(counts)
+            except (TypeError, ValueError):
+                counts = 0
+            totals_rows.append({
+                "category": category_label,
+                "count": counts,
+            })
+            summary["category_options"].append(category_label)
+        summary["available_bucket_totals"] = sorted(totals_rows, key=lambda item: (item["category"] or ""))
+    except Exception as exc:
+        print("⚠️ digital code bucket totals failed:", exc)
+
+    try:
+        assigned_resp = (
+            supabase.table(DIGITAL_CODE_TABLE)
+            .select(
+                "id, code, assigned_to, assigned_by, assigned_by_type, assigned_source, redeemed_at, batch_label, notification_subject, category"
+            )
+            .eq("status", DIGITAL_CODE_STATUS_REDEEMED)
+            .order("redeemed_at", desc=True)
+            .limit(limit_history)
+            .execute()
+        )
+        summary["assigned_count"] = assigned_resp.count or 0
+        summary["assigned_recent"] = [
+            {
+                "id": row.get("id"),
+                "code": row.get("code"),
+                "assigned_to": row.get("assigned_to"),
+                "assigned_by": row.get("assigned_by"),
+                "assigned_by_type": row.get("assigned_by_type"),
+                "assigned_source": row.get("assigned_source"),
+                "redeemed_at": row.get("redeemed_at"),
+                "redeemed_display": _format_admin_timestamp(row.get("redeemed_at")),
+                "batch_label": row.get("batch_label"),
+                "subject": row.get("notification_subject"),
+                "category": _prepare_category_value(row.get("category"), required=True),
+            }
+            for row in assigned_resp.data or []
+        ]
+    except Exception as exc:
+        print("⚠️ digital code summary (history) failed:", exc)
+        summary["error"] = summary["error"] or "Failed to load delivery history."
+
+    try:
+        distinct_resp = (
+            supabase.table(DIGITAL_CODE_TABLE)
+            .select("category", distinct=True)
+            .execute()
+        )
+        for row in distinct_resp.data or []:
+            label = _prepare_category_value(row.get("category"), required=True)
+            if label:
+                summary["category_options"].append(label)
+    except Exception as exc:
+        print("⚠️ digital code categories fetch failed:", exc)
+
+    summary["category_options"] = sorted(set(filter(None, summary["category_options"])))
+
+    return summary
+
+
+def assign_digital_code_to_trainer(
+    trainer_username: str,
+    actor: str,
+    code_id: str | None,
+    subject: str | None,
+    assignment_source: str | None = None,
+    preferred_category: str | None = None,
+    actor_type_hint: str | None = None,
+    reward_description: str | None = None,
+):
+    if not _digital_codes_supported():
+        return False, "Digital codes require Supabase."
+
+    trainer_value = (trainer_username or "").strip()
+    if not trainer_value:
+        return False, "Enter a trainer username."
+
+    _, trainer_record = find_user(trainer_value)
+    if not trainer_record:
+        return False, f"Trainer “{trainer_value}” was not found."
+    resolved_trainer = trainer_record.get("trainer_username") or trainer_value
+
+    preferred_category_value = _prepare_category_value(preferred_category, required=False)
+
+    try:
+        query = (
+            supabase.table(DIGITAL_CODE_TABLE)
+            .select("id, code, batch_label, category")
+            .eq("status", DIGITAL_CODE_STATUS_AVAILABLE)
+        )
+        if code_id:
+            query = query.eq("id", code_id)
+        elif preferred_category_value:
+            query = query.eq("category", preferred_category_value)
+        else:
+            query = query.order("created_at")
+        resp = query.limit(1).execute()
+    except Exception as exc:
+        print("⚠️ digital code fetch failed:", exc)
+        return False, "Failed to load an available code."
+
+    rows = resp.data or []
+    if not rows:
+        if code_id:
+            return False, "Selected code is no longer available."
+        if preferred_category_value:
+            return False, f"No available codes remain in the “{preferred_category_value}” bucket. Upload more codes first."
+        return False, "No available codes remain. Upload more codes first."
+
+    code_row = rows[0]
+    selected_id = code_row.get("id")
+    code_value = (code_row.get("code") or "").strip()
+    if not selected_id or not code_value:
+        return False, "The selected code is invalid."
+
+    preferred_category_label = preferred_category_value or code_row.get("category")
+    assigned_by_type, assigned_by_label = _infer_assigner_metadata(actor, actor_type_hint)
+    assignment_source_value = _prepare_source_value(
+        assignment_source,
+        default_to_admin=(assigned_by_type == "admin"),
+    )
+    redeemed_at_iso = datetime.utcnow().replace(tzinfo=timezone.utc).isoformat()
+    reserve_payload = {
+        "status": DIGITAL_CODE_STATUS_REDEEMED,
+        "assigned_to": resolved_trainer,
+        "assigned_by": assigned_by_label,
+        "assigned_by_type": assigned_by_type,
+        "assigned_source": assignment_source_value,
+        "redeemed_at": redeemed_at_iso,
+    }
+    try:
+        reserve_resp = (
+            supabase.table(DIGITAL_CODE_TABLE)
+            .update(reserve_payload, returning="representation")
+            .eq("id", selected_id)
+            .eq("status", DIGITAL_CODE_STATUS_AVAILABLE)
+            .execute()
+        )
+        updated_rows = reserve_resp.data or []
+    except Exception as exc:
+        print("⚠️ digital code reserve failed:", exc)
+        return False, "Failed to reserve the code. Try again."
+    if not updated_rows:
+        return False, "That code was already redeemed. Refresh the panel."
+
+    subject_value = (subject or DEFAULT_DIGITAL_CODE_SUBJECT).strip() or DEFAULT_DIGITAL_CODE_SUBJECT
+    message_with_code, reward_summary = _build_digital_code_message(
+        code_value,
+        preferred_category_label,
+        assignment_source_value,
+        assigned_by_type,
+        assigned_by_label,
+        reward_description,
+    )
+    metadata = {
+        "reward_code": code_value,
+        "reward_code_id": selected_id,
+        "reward_code_batch": code_row.get("batch_label"),
+        "reward_code_category": _prepare_category_value(code_row.get("category"), required=True),
+        "digital_code_assigned_by": assigned_by_label,
+        "digital_code_assigned_type": assigned_by_type,
+        "digital_code_assigned_source": assignment_source_value,
+        "reward_summary": reward_summary,
+    }
+    notification_row = send_notification(
+        resolved_trainer,
+        subject_value,
+        message_with_code,
+        notif_type="prize",
+        metadata=metadata,
+        returning=True,
+    )
+    if not notification_row:
+        _reset_digital_code(selected_id)
+        return False, "Could not send the inbox notification. The code was returned to the pool."
+
+    follow_up = {
+        "notification_id": notification_row.get("id"),
+        "notification_subject": subject_value,
+    }
+    try:
+        supabase.table(DIGITAL_CODE_TABLE).update(follow_up).eq("id", selected_id).execute()
+    except Exception as exc:
+        print("⚠️ digital code follow-up update failed:", exc)
+
+    return True, f"🎉 Sent code {code_value} to {resolved_trainer}."
 
 # ====== Admin Panel ======
 from functools import wraps
@@ -3236,6 +4080,12 @@ def admin_dashboard():
     except Exception as e:
         print("⚠️ Error fetching admin stats:", e)
 
+    digital_codes_summary = fetch_digital_code_summary()
+    digital_code_roster = []
+    if digital_codes_summary.get("supported"):
+        roster, _acct = fetch_trainer_roster()
+        digital_code_roster = roster[:250]
+
     return render_template(
         "admin_dashboard.html",
         active_catalog_items=active_catalog_items,
@@ -3247,7 +4097,47 @@ def admin_dashboard():
         show_leagues_app=SHOW_LEAGUES_APP,
         geocache_quest_available=geocache_quest_available,
         geocache_story_available=geocache_story_available,
+        digital_codes=digital_codes_summary,
+        digital_code_roster=digital_code_roster,
+        digital_code_subject_default=DEFAULT_DIGITAL_CODE_SUBJECT,
+        digital_code_source_default=DIGITAL_CODE_SOURCE_DEFAULT,
     )
+
+
+@app.route("/admin/digital-codes/upload", methods=["POST"])
+@admin_required
+def admin_digital_codes_upload():
+    raw_codes = request.form.get("codes_csv") or request.form.get("codes_input") or ""
+    batch_label = (request.form.get("batch_label") or "").strip()
+    category_input = request.form.get("code_category") or request.form.get("category")
+    actor = _current_actor()
+    ok, message, _details = add_digital_codes_from_payload(raw_codes, actor, batch_label or None, category=category_input)
+    flash(message, "success" if ok else "error")
+    return redirect(url_for("admin_dashboard"))
+
+
+@app.route("/admin/digital-codes/assign", methods=["POST"])
+@admin_required
+def admin_digital_codes_assign():
+    trainer_username = request.form.get("trainer_username") or request.form.get("trainer") or ""
+    code_id = (request.form.get("code_id") or "").strip() or None
+    subject = request.form.get("subject") or request.form.get("notification_subject")
+    assignment_source = request.form.get("assignment_source") or DIGITAL_CODE_SOURCE_DEFAULT
+    category_filter = request.form.get("code_category") or request.form.get("preferred_category")
+    reward_description = request.form.get("reward_contents") or request.form.get("reward_description")
+    actor = _current_actor()
+    ok, msg = assign_digital_code_to_trainer(
+        trainer_username,
+        actor,
+        code_id,
+        subject,
+        assignment_source=assignment_source,
+        preferred_category=category_filter,
+        actor_type_hint="admin",
+        reward_description=reward_description,
+    )
+    flash(msg, "success" if ok else "error")
+    return redirect(url_for("admin_dashboard"))
 
 
 @app.route("/admin/testing-grounds")
@@ -5519,6 +6409,72 @@ def admin_notifications_delete(notification_id):
         return _notification_json_error("Failed to delete notification.", status=500)
 
 # ==== Login ====
+def _process_trainer_login(username: str, pin: str) -> dict:
+    """Shared login handler for both full-page and inline logins."""
+    username = (username or "").strip()
+    pin = (pin or "").strip()
+    security_state = session.get("login_security") or {
+        "remaining": LOGIN_MAX_ATTEMPTS,
+        "lock_until": None,
+    }
+    session["login_security"] = security_state
+
+    now = time.time()
+    lock_until = security_state.get("lock_until")
+    if lock_until and now < lock_until:
+        wait_seconds = max(int(lock_until - now), 1)
+        return {
+            "success": False,
+            "error": f"Too many incorrect attempts. Try again in {wait_seconds} seconds.",
+            "locked": True,
+        }
+    if not username or not pin:
+        return {
+            "success": False,
+            "error": "Trainer name and PIN are required.",
+            "locked": False,
+        }
+
+    _, user = find_user(username)
+    if user and _pin_matches(user, pin):
+        session["trainer"] = user.get("trainer_username")
+        session["account_type"] = normalize_account_type(user.get("account_type"))
+        session.permanent = True
+        try:
+            supabase.table("sheet1") \
+                .update({"last_login": datetime.utcnow().isoformat()}) \
+                .eq("trainer_username", user.get("trainer_username")) \
+                .execute()
+        except Exception as exc:
+            print("⚠️ Supabase last_login update failed:", exc)
+
+        security_state["remaining"] = LOGIN_MAX_ATTEMPTS
+        security_state["lock_until"] = None
+        session["login_security"] = security_state
+        return {"success": True, "trainer": user.get("trainer_username"), "user": user}
+
+    remaining = max(security_state.get("remaining", LOGIN_MAX_ATTEMPTS) - 1, 0)
+    security_state["remaining"] = remaining
+    if remaining <= 0:
+        security_state["lock_until"] = now + LOGIN_LOCKOUT_SECONDS
+        security_state["remaining"] = LOGIN_MAX_ATTEMPTS
+        session["login_security"] = security_state
+        return {
+            "success": False,
+            "error": f"Too many incorrect attempts. Try again in {LOGIN_LOCKOUT_SECONDS} seconds.",
+            "locked": True,
+        }
+
+    security_state["lock_until"] = None
+    attempt_word = "attempt" if remaining == 1 else "attempts"
+    session["login_security"] = security_state
+    return {
+        "success": False,
+        "error": f"Wrong PIN. {remaining} {attempt_word} remaining.",
+        "locked": False,
+    }
+
+
 @app.route("/login", methods=["GET", "POST"])
 def login():
     # 👇 NEW: If user already logged in, skip the login page entirely
@@ -5530,63 +6486,36 @@ def login():
         except:
             return redirect(url_for("dashboard"))
     if request.method == "POST":
-        security_state = session.get("login_security") or {
-            "remaining": LOGIN_MAX_ATTEMPTS,
-            "lock_until": None,
-        }
-        session["login_security"] = security_state
-
-        now = time.time()
-        lock_until = security_state.get("lock_until")
-        if lock_until and now < lock_until:
-            wait_seconds = max(int(lock_until - now), 1)
-            flash(f"Too many incorrect attempts. Try again in {wait_seconds} seconds.", "error")
-            return redirect(url_for("login"))
-
         username = request.form.get("username", "").strip()
         pin = request.form.get("pin", "")
-
-        _, user = find_user(username)
-        if user and _pin_matches(user, pin):
-            session["trainer"] = user.get("trainer_username")
-            session["account_type"] = normalize_account_type(user.get("account_type"))
-            session.permanent = True
-            try:
-                supabase.table("sheet1") \
-                    .update({"last_login": datetime.utcnow().isoformat()}) \
-                    .eq("trainer_username", user.get("trainer_username")) \
-                    .execute()
-            except Exception as e:
-                print("⚠️ Supabase last_login update failed:", e)
-
-            security_state["remaining"] = LOGIN_MAX_ATTEMPTS
-            security_state["lock_until"] = None
-            session["login_security"] = security_state
-
-            flash(f"Welcome back, {user.get('trainer_username')}!", "success")
+        result = _process_trainer_login(username, pin)
+        if result.get("success"):
+            user = result.get("user") or {}
+            flash(f"Welcome back, {user.get('trainer_username', 'Trainer')}!", "success")
             last_page = session.pop("last_page", None)
             if last_page:
                 return redirect(last_page)
             return redirect(url_for("dashboard"))
         else:
-            remaining = max(security_state.get("remaining", LOGIN_MAX_ATTEMPTS) - 1, 0)
-            security_state["remaining"] = remaining
-
-            if remaining <= 0:
-                security_state["lock_until"] = now + LOGIN_LOCKOUT_SECONDS
-                security_state["remaining"] = LOGIN_MAX_ATTEMPTS
-                session["login_security"] = security_state
-                flash(f"Too many incorrect attempts. Try again in {LOGIN_LOCKOUT_SECONDS} seconds.", "error")
-            else:
-                security_state["lock_until"] = None
-                attempt_word = "attempt" if remaining == 1 else "attempts"
-                session["login_security"] = security_state
-                flash(f"Wrong PIN. {remaining} {attempt_word} remaining.", "error")
-
+            flash(result.get("error") or "Unable to log in.", "error")
             return redirect(url_for("login"))
 
     # GET request — just show login form
     return render_template("login.html")
+
+
+@app.route("/api/session/login", methods=["POST"])
+def api_session_login():
+    payload = request.get_json(force=True, silent=True) or {}
+    username = (payload.get("username") or "").strip()
+    pin = (payload.get("pin") or "").strip()
+    if not username or not pin:
+        return jsonify({"success": False, "error": "Trainer name and PIN are required."}), 400
+    result = _process_trainer_login(username, pin)
+    if result.get("success"):
+        return jsonify({"success": True, "trainer": result.get("trainer")})
+    status_code = 429 if result.get("locked") else 401
+    return jsonify({"success": False, "error": result.get("error") or "Unable to log in."}), status_code
 
 # ====== Sign Up ======
 def _trainer_exists(trainer_name: str) -> bool:
@@ -6152,6 +7081,7 @@ def _build_receipt_message(trainer, rec):
         "read_by": [],
         "metadata": {
             "url": f"/catalog/receipt/{rec['id']}",
+            "cta_label": "View receipt",
             "status": rec.get("status"),
             "meetup": meetup if meetup else None,
             }
@@ -6309,7 +7239,15 @@ def inbox_message(message_id):
 def community_bulletin():
     session["last_page"] = request.path
 
-    posts = get_community_bulletin_posts()
+    posts_with_sections = get_community_bulletin_posts(include_sections=True)
+    memory_albums = _build_memory_albums(posts_with_sections)
+
+    posts: list[dict] = []
+    for post in posts_with_sections:
+        trimmed = dict(post)
+        trimmed.pop("content_sections", None)
+        posts.append(trimmed)
+
     latest_post = posts[0] if posts else None
     featured_posts = [p for p in posts if p.get("is_featured")] or posts[:2]
     featured_posts = featured_posts[:3]
@@ -6337,6 +7275,7 @@ def community_bulletin():
         featured_posts=featured_posts,
         category_sections=category_sections,
         tag_filters=tag_filters,
+        memory_albums=memory_albums,
         trainer=session.get("trainer"),
     )
 
@@ -6358,6 +7297,7 @@ def community_bulletin_post(slug):
         copied = copy.deepcopy(section)
         copied.setdefault("id", section.get("id") or f"section-{idx + 1}")
         formatted_sections.append(copied)
+    memory_album = _build_memory_album(post, sections=formatted_sections)
 
     if post.get("id") and _bulletin_supabase_enabled():
         comment_threads = fetch_bulletin_comments_from_supabase(post["id"])
@@ -6365,6 +7305,7 @@ def community_bulletin_post(slug):
         comment_threads = post.get("comment_threads") or []
     _hydrate_comment_media_urls(comment_threads)
     post["comment_threads"] = comment_threads
+    post["comment_count"] = _count_comment_nodes(comment_threads)
 
     liked_by_me = False
     if session.get("trainer") and post.get("id") and _bulletin_supabase_enabled():
@@ -6390,6 +7331,10 @@ def community_bulletin_post(slug):
         toc_sections=toc_sections,
         related_posts=related_posts,
         trainer=session.get("trainer"),
+        max_comment_depth=MAX_BULLETIN_COMMENT_DEPTH,
+        is_pwa=session.get("is_pwa", False),
+        memory_album=memory_album,
+        memory_albums=[memory_album] if memory_album else [],
     )
 
 
@@ -6451,32 +7396,76 @@ def api_bulletin_comments(slug):
     if request.method == "GET":
         comments = fetch_bulletin_comments_from_supabase(post_id)
         _hydrate_comment_media_urls(comments)
-        return jsonify({"comments": comments, "count": len(comments)})
+        return jsonify({"comments": comments, "count": _count_comment_nodes(comments)})
 
     if "trainer" not in session:
         return jsonify({"error": "Login required"}), 401
+    trainer = session["trainer"]
     payload = request.get_json(force=True, silent=True) or {}
     body = (payload.get("body") or "").strip()
     parent_id = payload.get("parent_id")
     if not body:
         return jsonify({"error": "Comment cannot be empty"}), 400
+    decision = CONTENT_FILTER.scan(body)
+    if decision:
+        return jsonify({
+            "error": "Comment blocked by community filter.",
+            "filter": decision.to_dict(),
+        }), 422
+    clean_body = bleach.clean(body, tags=[], attributes={}, strip=True)
+    if not clean_body:
+        return jsonify({"error": "Comment cannot be empty"}), 400
+    parent_comment_row = None
     insert_payload = {
         "post_id": post_id,
-        "trainer_username": session["trainer"],
-        "body": body,
+        "trainer_username": trainer,
+        "body": clean_body,
     }
     if parent_id:
+        parent_depth = _bulletin_comment_depth(post_id, parent_id)
+        if parent_depth is None:
+            return jsonify({"error": "Parent comment not found"}), 400
+        if parent_depth >= MAX_BULLETIN_COMMENT_DEPTH:
+            return jsonify({"error": "Replies can only nest two levels deep"}), 400
         insert_payload["parent_comment_id"] = parent_id
+        try:
+            lookup = (supabase.table("bulletin_post_comments")
+                      .select("id, post_id, trainer_username, body, created_at")
+                      .eq("id", parent_id)
+                      .limit(1)
+                      .execute())
+            parent_comment_row = (lookup.data or [None])[0]
+        except Exception as exc:
+            print("⚠️ Supabase parent comment lookup failed:", exc)
+            return jsonify({"error": "Unable to post comment"}), 500
+        if not parent_comment_row:
+            return jsonify({"error": "Parent comment not found"}), 400
+        if str(parent_comment_row.get("post_id")) != str(post_id):
+            return jsonify({"error": "Parent comment mismatch"}), 400
 
+    inserted_comment = None
     try:
-        supabase.table("bulletin_post_comments").insert(insert_payload).execute()
+        resp = supabase.table("bulletin_post_comments").insert(insert_payload).execute()
+        inserted_comment = (resp.data or [None])[0]
     except Exception as exc:
         print("⚠️ Supabase comment insert failed:", exc)
         return jsonify({"error": "Unable to post comment"}), 500
 
+    if parent_comment_row:
+        reply_snapshot = inserted_comment or {
+            "id": None,
+            "body": clean_body,
+            "trainer_username": trainer,
+            "created_at": datetime.utcnow().replace(tzinfo=timezone.utc).isoformat(),
+        }
+        try:
+            _send_comment_reply_notification(post, slug, parent_comment_row, reply_snapshot, trainer)
+        except Exception as exc:
+            print("⚠️ Comment reply notification send failed:", exc)
+
     comments = fetch_bulletin_comments_from_supabase(post_id)
     _hydrate_comment_media_urls(comments)
-    return jsonify({"comments": comments, "count": len(comments)})
+    return jsonify({"comments": comments, "count": _count_comment_nodes(comments)})
 
 
 @app.route("/api/trainers/<username>/profile", methods=["GET"])
@@ -6500,6 +7489,12 @@ def api_update_trainer_bio():
     bio = (payload.get("bio") or "").strip()
     if len(bio) > 200:
         bio = bio[:200]
+    decision = CONTENT_FILTER.scan(bio)
+    if decision:
+        return jsonify({
+            "error": "Trainer bio blocked by community filter.",
+            "filter": decision.to_dict(),
+        }), 422
     bio = bleach.clean(bio, tags=[], attributes={}, strip=True)
     username = session["trainer"]
     try:
@@ -6509,6 +7504,125 @@ def api_update_trainer_bio():
         return jsonify({"error": "Unable to update trainer bio"}), 500
     profile = get_public_trainer_profile(username) or {"username": username, "bio": bio}
     return jsonify({"bio": bio, "trainer": profile})
+
+
+@app.route("/api/profile/meta", methods=["POST"])
+def api_update_profile_meta():
+    if "trainer" not in session:
+        return jsonify({"error": "Login required"}), 401
+    if not supabase:
+        return jsonify({"error": "Profile service unavailable"}), 503
+    payload = request.get_json(force=True, silent=True) or {}
+    updates = {}
+
+    if "team" in payload:
+        team_value = (payload.get("team") or "").strip().lower()
+        if team_value and team_value not in TEAM_CONFIG:
+            return jsonify({"error": "Invalid team selection"}), 400
+        updates["team"] = team_value or None
+
+    if "trainer_level" in payload or "level" in payload:
+        level_value = payload.get("trainer_level", payload.get("level"))
+        if level_value in (None, "", "null"):
+            updates["tlevel"] = None
+        else:
+            try:
+                level_int = int(level_value)
+            except (TypeError, ValueError):
+                return jsonify({"error": "Invalid trainer level"}), 400
+            if not 1 <= level_int <= MAX_TRAINER_LEVEL:
+                return jsonify({"error": f"Trainer level must be between 1 and {MAX_TRAINER_LEVEL}"}), 400
+            updates["tlevel"] = level_int
+
+    if not updates:
+        return jsonify({"error": "No changes provided"}), 400
+
+    username = session["trainer"]
+    try:
+        supabase.table("sheet1").update(updates).eq("trainer_username", username).execute()
+    except Exception as exc:
+        print("⚠️ Supabase trainer meta update failed:", exc)
+        return jsonify({"error": "Unable to update profile"}), 500
+
+    profile = get_public_trainer_profile(username)
+    return jsonify({"trainer": profile})
+
+
+@app.route("/api/profile/featured-stamps", methods=["GET", "POST"])
+def api_featured_stamps():
+    if "trainer" not in session:
+        return jsonify({"error": "Login required"}), 401
+    if not supabase:
+        return jsonify({"error": "Profile service unavailable"}), 503
+    _, record = find_user(session["trainer"])
+    if not record:
+        return jsonify({"error": "Trainer not found"}), 404
+    trainer_username = record.get("trainer_username") or session["trainer"]
+    campfire_username = record.get("campfire_username")
+
+    if request.method == "GET":
+        _, stamps, _ = get_passport_stamps(trainer_username, campfire_username)
+        catalog: list[dict] = []
+        seen_tokens: set[str] = set()
+        for stamp in stamps:
+            token = _featured_stamp_token(trainer_username, stamp)
+            if token in seen_tokens:
+                continue
+            seen_tokens.add(token)
+            catalog.append({
+                "token": token,
+                "icon": stamp.get("icon"),
+                "label": stamp.get("name") or "Passport stamp",
+                "awarded_at": stamp.get("awarded_at") or "",
+                "awarded_at_iso": stamp.get("awarded_at_iso") or "",
+            })
+            if len(catalog) >= 60:
+                break
+        return jsonify({
+            "stamps": catalog,
+            "selected": _record_featured_stamps(record),
+        })
+
+    payload = request.get_json(force=True, silent=True) or {}
+    tokens = payload.get("tokens") or []
+    if not isinstance(tokens, list):
+        return jsonify({"error": "Invalid payload"}), 400
+    cleaned_tokens: list[str] = []
+    for token in tokens:
+        if not token:
+            continue
+        token_str = str(token)
+        if token_str not in cleaned_tokens:
+            cleaned_tokens.append(token_str)
+        if len(cleaned_tokens) >= 3:
+            break
+
+    _, stamps, _ = get_passport_stamps(trainer_username, campfire_username)
+    token_map = {}
+    for stamp in stamps:
+        token_map[_featured_stamp_token(trainer_username, stamp)] = stamp
+
+    selected: list[dict] = []
+    for token in cleaned_tokens:
+        stamp = token_map.get(token)
+        if not stamp:
+            continue
+        selected.append({
+            "icon": stamp.get("icon") or "",
+            "label": stamp.get("name") or "Passport stamp",
+            "token": token,
+        })
+        if len(selected) >= 3:
+            break
+
+    try:
+        _write_featured_stamps(trainer_username, selected)
+    except Exception as exc:
+        print("⚠️ Supabase featured stamp update failed:", exc)
+        return jsonify({"error": "Unable to update featured stamps"}), 500
+
+    profile = get_public_trainer_profile(trainer_username)
+    return jsonify({"trainer": profile})
 
 
 @app.route("/admin/community-bulletin", methods=["GET"])

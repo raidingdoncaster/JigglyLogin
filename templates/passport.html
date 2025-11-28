@@ -135,46 +135,12 @@
   <div class="stamp-detail-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="stamp-detail-title">
     <button type="button" class="stamp-detail-modal__close" data-stamp-modal-close aria-label="Close stamp details">✕</button>
     <div class="stamp-detail-modal__media">
-      {% set coin_edge_segments = 36 %}
-      <div class="stamp-coin" data-stamp-coin>
-        <div class="stamp-coin__glow"></div>
-        <div class="stamp-coin__core">
-          <div class="stamp-coin__sidewall" aria-hidden="true" style="--segment-count: {{ coin_edge_segments }}">
-            {% for segment in range(coin_edge_segments) %}
-              {% set rotation = (segment * (360 / coin_edge_segments)) %}
-              <span class="stamp-coin__side"
-                    aria-hidden="true"
-                    style="--segment-rotation: {{ '%.4fdeg' | format(rotation) }};
-                           --segment-shade: {{ '%.2f' | format(0.35 + (segment % 6) * 0.03) }};"></span>
-            {% endfor %}
-          </div>
-          <div class="stamp-coin__rim" aria-hidden="true"></div>
-          <div class="stamp-coin__face stamp-coin__face--front">
-            <img src="{{ url_for('static', filename='icons/tickstamp.png') }}" alt="Selected stamp" data-stamp-modal-icon loading="lazy">
-          </div>
-          <div class="stamp-coin__face stamp-coin__face--back" aria-hidden="true">
-            <svg class="stamp-engraving" viewBox="0 0 200 200" role="presentation" aria-hidden="true">
-              <defs>
-                <path id="stamp-engrave-bottom-path" d="M30,118 A70,70 0 0 0 170,118"></path>
-              </defs>
-              <text class="stamp-engraving__top-text"
-                    x="100"
-                    y="72"
-                    text-anchor="middle"
-                    alignment-baseline="middle"
-                    dominant-baseline="middle"
-                    textLength="130"
-                    lengthAdjust="spacingAndGlyphs"
-                    data-stamp-engraving-top>RDAB PASSPORT</text>
-              <text class="stamp-engraving__bottom">
-                <textPath href="#stamp-engrave-bottom-path" startOffset="50%" text-anchor="middle">IN RAIDING WE TRUST</textPath>
-              </text>
-            </svg>
-          </div>
+      <div class="stamp-coin3d" data-stamp-coin-container>
+        <canvas class="stamp-coin3d__canvas" data-stamp-coin-canvas aria-hidden="true"></canvas>
+        <div class="stamp-coin3d__fallback" data-stamp-coin-fallback>
+          <img src="{{ url_for('static', filename='icons/tickstamp.png') }}" alt="Selected stamp" loading="lazy">
+          <p>Interactive coin preview</p>
         </div>
-        <div class="stamp-coin__sheen" aria-hidden="true"></div>
-        <div class="stamp-coin__sparkles" aria-hidden="true"></div>
-        <div class="stamp-coin__glass" aria-hidden="true"></div>
       </div>
     </div>
     <p class="stamp-detail-modal__chip" data-stamp-modal-reason>Passport stamp</p>
@@ -1152,8 +1118,8 @@ button.stamp-slot:focus-visible {
   -webkit-backdrop-filter:blur(24px) saturate(160%);
 }
 .stamp-detail-modal__media {
-  width:120px;
-  height:120px;
+  width:140px;
+  height:140px;
   border-radius:50%;
   margin:0 auto 14px;
   border:2px solid var(--passport-modal-media-border, rgba(148,197,255,0.6));
@@ -1162,218 +1128,51 @@ button.stamp-slot:focus-visible {
   justify-content:center;
   background:var(--passport-modal-media-bg, rgba(30,41,59,0.65));
   box-shadow:0 12px 32px rgba(3,6,23,0.4);
-  perspective:900px;
+  perspective:1100px;
   transition:width 0.35s ease, height 0.35s ease;
 }
-.stamp-coin {
-  --coin-size: 112px;
-  --coin-radius: calc(var(--coin-size) / 2);
-  --coin-depth: 20px;
-  --stamp-coin-highlight: 0deg;
-  --stamp-coin-scale: 1;
+.stamp-coin3d {
   position:relative;
-  width:var(--coin-size);
-  height:var(--coin-size);
-  border-radius:50%;
-  transform-style:preserve-3d;
-  transform:rotateX(16deg) rotateY(var(--stamp-coin-rotation, 0deg)) scale(var(--stamp-coin-scale, 1));
-  transition:box-shadow 0.3s ease;
-  cursor:grab;
-  touch-action:none;
-  user-select:none;
-  will-change:transform;
-}
-.stamp-coin.is-dragging {
-  cursor:grabbing;
-}
-.stamp-coin.is-popping {
-  animation:stampCoinPop 0.85s cubic-bezier(0.26,0.8,0.32,1.2);
-}
-.stamp-coin__glow {
-  position:absolute;
-  inset:-16px;
-  border-radius:50%;
-  background:radial-gradient(circle, var(--passport-modal-accent, rgba(255,255,255,0.35)) 0%, transparent 70%);
-  filter:blur(18px);
-  opacity:0.6;
-  transform:translateZ(-10px);
-  pointer-events:none;
-  z-index:0;
-}
-.stamp-coin__core {
-  position:absolute;
-  inset:0;
-  border-radius:50%;
-  transform-style:preserve-3d;
-  background:radial-gradient(circle at 30% 30%, rgba(255,255,255,0.12), rgba(6,14,32,0.95));
-  box-shadow:inset 0 0 28px rgba(0,0,0,0.45);
-  overflow:hidden;
-  z-index:1;
-}
-.stamp-coin__sidewall {
-  position:absolute;
-  inset:0;
-  transform-style:preserve-3d;
-}
-.stamp-coin__side {
-  position:absolute;
-  width:calc(3.14159 * var(--coin-size) / var(--segment-count, 36));
-  height:var(--coin-depth);
-  top:calc(50% - (var(--coin-depth) / 2));
-  left:calc(50% - (3.14159 * var(--coin-size) / var(--segment-count, 36)) / 2);
-  background:linear-gradient(180deg,
-    rgba(255,255,255,0.65),
-    rgba(109,146,196, var(--segment-shade, 0.45)),
-    rgba(24,34,56,0.82));
-  border-radius:8px;
-  transform-origin:center;
-  transform:rotateY(var(--segment-rotation, 0deg)) translateZ(var(--coin-radius));
-  filter:brightness(1.05);
-  opacity:0.96;
-}
-.stamp-coin__rim {
-  position:absolute;
-  inset:0;
-  border-radius:50%;
-  background:linear-gradient(90deg, rgba(255,255,255,0.35), rgba(0,0,0,0.35));
-  border:6px solid rgba(255,255,255,0.08);
-  box-shadow:inset 0 0 18px rgba(0,0,0,0.35);
-  transform:translateZ(calc(var(--coin-depth) * 0.2));
-  z-index:1;
-}
-.stamp-coin__face {
-  position:absolute;
-  inset:6px;
+  width:130px;
+  height:130px;
   border-radius:50%;
   overflow:hidden;
-  transform:translateZ(calc(var(--coin-depth) * 0.6));
-  backface-visibility:hidden;
-  z-index:4;
 }
-.stamp-coin__face--front {
-  background:radial-gradient(circle at 30% 30%, rgba(255,255,255,0.35), transparent 65%), rgba(6,12,24,0.85);
-  box-shadow:0 14px 24px rgba(6,12,24,0.45), inset 0 0 18px rgba(0,0,0,0.4);
-  position:relative;
+.stamp-detail-modal.is-immersive .stamp-coin3d,
+.stamp-detail-modal.is-immersive .stamp-detail-modal__media {
+  width:210px;
+  height:210px;
 }
-.stamp-coin__face--front img {
+.stamp-coin3d__canvas {
   width:100%;
   height:100%;
-  object-fit:cover;
-  border-radius:50%;
-  transform:translateZ(2px);
-  pointer-events:none;
-  position:relative;
-  z-index:6;
+  display:block;
 }
-.stamp-coin__face--back {
-  background:radial-gradient(circle, rgba(9,12,22,0.85), rgba(4,6,14,0.95));
-  box-shadow:inset 0 0 22px rgba(0,0,0,0.6);
-  transform:rotateY(180deg) translateZ(calc(var(--coin-depth) * 0.6));
+.stamp-coin3d__fallback {
+  position:absolute;
+  inset:0;
+  border-radius:50%;
+  background:radial-gradient(circle at 30% 30%, rgba(255,255,255,0.15), rgba(6,12,24,0.85));
   display:flex;
+  flex-direction:column;
   align-items:center;
   justify-content:center;
+  gap:8px;
+  color:#e2e8f0;
+  font-size:0.75rem;
+  text-align:center;
+  padding:12px;
 }
-.stamp-engraving {
-  width:88%;
-  height:88%;
-  opacity:0.85;
-  pointer-events:none;
-}
-.stamp-engraving text,
-.stamp-engraving textPath {
-  font-size:10px;
-  letter-spacing:0.35em;
-  text-transform:uppercase;
-  fill:rgba(240,245,255,0.45);
-  stroke:rgba(0,0,0,0.55);
-  stroke-width:0.5px;
-  paint-order:stroke fill;
-  font-weight:600;
-}
-.stamp-engraving__top-text {
-  font-size:10px;
-  letter-spacing:0.32em;
-}
-.stamp-engraving__bottom textPath {
-  font-size:9px;
-  letter-spacing:0.45em;
-}
-.stamp-coin::after {
-  content:"";
-  position:absolute;
-  inset:0;
+.stamp-coin3d__fallback img {
+  width:64px;
+  height:64px;
+  object-fit:cover;
   border-radius:50%;
-  box-shadow:0 25px 55px rgba(3,6,23,0.55);
-  transform:translateZ(calc(-1 * var(--coin-depth)));
-  opacity:0.7;
-  pointer-events:none;
+  box-shadow:0 6px 18px rgba(0,0,0,0.35);
 }
-.stamp-coin__sheen {
-  position:absolute;
-  inset:9px;
-  border-radius:50%;
-  pointer-events:none;
-  transform:translateZ(calc(var(--coin-depth) * 0.95));
-  background:
-    radial-gradient(circle at 25% 18%, rgba(255,255,255,0.5), transparent 55%),
-    radial-gradient(circle at 70% 80%, rgba(59,130,246,0.25), transparent 60%),
-    linear-gradient(calc(var(--stamp-coin-highlight, 0deg) + 90deg), rgba(255,255,255,0.75), rgba(255,255,255,0.05));
-  mix-blend-mode:screen;
-  opacity:0.55;
-  filter:blur(0.2px);
-  transition:background 0.25s ease, opacity 0.4s ease;
-  z-index:7;
-}
-.stamp-coin__sparkles {
-  position:absolute;
-  inset:0;
-  border-radius:50%;
-  pointer-events:none;
-  transform:translateZ(calc(var(--coin-depth) * 1.1));
-  background:
-    radial-gradient(circle at 30% 40%, rgba(255,255,255,0.9) 0%, transparent 45%),
-    radial-gradient(circle at 70% 20%, rgba(230,248,255,0.6) 0%, transparent 35%),
-    radial-gradient(circle at 55% 75%, rgba(255,255,255,0.9) 0%, transparent 40%);
+.stamp-coin3d--ready .stamp-coin3d__fallback {
   opacity:0;
-  mix-blend-mode:screen;
-  z-index:8;
-}
-.stamp-coin.is-popping .stamp-coin__sparkles {
-  animation:sparkleBurst 0.95s ease-out forwards;
-}
-.stamp-detail-modal.is-immersive .stamp-coin {
-  --stamp-coin-scale: 1.65;
-  box-shadow:0 32px 90px rgba(3,6,23,0.65);
-}
-.stamp-detail-modal.is-immersive .stamp-detail-modal__media {
-  width:190px;
-  height:190px;
-}
-.stamp-detail-modal.is-immersive .stamp-detail-modal__dialog {
-  box-shadow:0 45px 120px rgba(2,8,23,0.55);
-}
-.stamp-detail-modal.is-immersive .stamp-modal-overlay {
-  opacity:0.85;
-}
-.stamp-detail-modal.is-immersive .stamp-modal-bokeh {
-  opacity:1;
-}
-.stamp-coin__glass {
-  position:absolute;
-  inset:-4px;
-  border-radius:50%;
   pointer-events:none;
-  transform:translateZ(calc(var(--coin-depth) * 1.25));
-  border:1px solid rgba(255,255,255,0.35);
-  background:
-    linear-gradient(140deg, rgba(255,255,255,0.45), rgba(255,255,255,0.08)),
-    radial-gradient(circle at 30% 20%, rgba(255,255,255,0.35), transparent 55%);
-  box-shadow:inset 0 0 30px rgba(255,255,255,0.25), inset 0 0 8px rgba(15,23,42,0.2);
-  opacity:0.9;
-  mix-blend-mode:screen;
-  mask:radial-gradient(circle, transparent 50%, rgba(0,0,0,0.95) 75%);
-  -webkit-mask:radial-gradient(circle, transparent 50%, rgba(0,0,0,0.95) 75%);
-  z-index:9;
 }
 .stamp-coin__glass::before,
 .stamp-coin__glass::after {
@@ -1609,6 +1408,312 @@ document.addEventListener("DOMContentLoaded", function(){
     });
   }
 
+  const THREE_CDN_URL = "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js";
+  let threePromise = null;
+
+  function loadThree() {
+    if (window.THREE) {
+      return Promise.resolve(window.THREE);
+    }
+    if (threePromise) {
+      return threePromise;
+    }
+    threePromise = new Promise((resolve, reject) => {
+      const script = document.createElement("script");
+      script.src = THREE_CDN_URL;
+      script.async = true;
+      script.onload = () => resolve(window.THREE);
+      script.onerror = () => reject(new Error("Unable to load 3D renderer"));
+      document.head.appendChild(script);
+    });
+    return threePromise;
+  }
+
+  class PassportCoin3D {
+    constructor(container, options = {}) {
+      this.container = container;
+      this.canvas = container.querySelector("[data-stamp-coin-canvas]");
+      this.fallback = container.querySelector("[data-stamp-coin-fallback]");
+      this.onTap = options.onTap;
+      this.onSpark = options.onSpark;
+      this.rotation = 0;
+      this.spinVelocity = 0;
+      this.pointer = { active: false, id: null, moved: false, startX: 0, startY: 0, lastX: 0, lastTime: 0 };
+      this.resizeObserver = null;
+      this.ready = false;
+      this.initPromise = null;
+      this.THREE = null;
+      this.scene = null;
+      this.camera = null;
+      this.renderer = null;
+      this.coin = null;
+      this.sideMaterial = null;
+      this.frontMaterial = null;
+      this.backMaterial = null;
+      this.animationFrame = null;
+      this.bindEvents();
+      if (window.ResizeObserver && this.container) {
+        this.resizeObserver = new ResizeObserver(() => this.handleResize());
+        this.resizeObserver.observe(this.container);
+      } else {
+        window.addEventListener("resize", () => this.handleResize());
+      }
+    }
+
+    bindEvents() {
+      if (!this.container) return;
+      this.container.addEventListener("pointerdown", event => this.handlePointerDown(event));
+      this.container.addEventListener("pointermove", event => this.handlePointerMove(event));
+      this.container.addEventListener("pointerup", event => this.handlePointerUp(event));
+      this.container.addEventListener("pointercancel", event => this.handlePointerUp(event));
+      this.container.addEventListener("pointerleave", event => {
+        if (this.pointer.active) {
+          this.handlePointerUp(event);
+        }
+      });
+    }
+
+    async ensureInit() {
+      if (this.ready) {
+        return;
+      }
+      if (this.initPromise) {
+        return this.initPromise;
+      }
+      this.initPromise = loadThree()
+        .then(THREE => {
+          this.THREE = THREE;
+          if (!this.canvas) {
+            throw new Error("Missing canvas");
+          }
+          this.renderer = new THREE.WebGLRenderer({
+            canvas: this.canvas,
+            alpha: true,
+            antialias: true
+          });
+          this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+          this.handleResize();
+          this.scene = new THREE.Scene();
+          this.camera = new THREE.PerspectiveCamera(
+            30,
+            this.getAspectRatio(),
+            0.1,
+            100
+          );
+          this.camera.position.set(0, 0, 4.2);
+          const hemiLight = new THREE.HemisphereLight(0xcfe9ff, 0x050812, 0.9);
+          const dirLight = new THREE.DirectionalLight(0xffffff, 1.1);
+          dirLight.position.set(2, 3.5, 3.2);
+          this.scene.add(hemiLight);
+          this.scene.add(dirLight);
+          this.sideMaterial = new THREE.MeshStandardMaterial({
+            color: 0xaec5ff,
+            metalness: 0.95,
+            roughness: 0.35
+          });
+          this.frontMaterial = new THREE.MeshStandardMaterial({
+            color: 0xffffff,
+            metalness: 0.2,
+            roughness: 0.3
+          });
+          this.backMaterial = this.frontMaterial.clone();
+          const geometry = new THREE.CylinderGeometry(1, 1, 0.32, 96, 1, false);
+          geometry.rotateX(Math.PI / 2);
+          this.coin = new THREE.Mesh(geometry, [
+            this.sideMaterial, // side
+            this.frontMaterial, // front/top
+            this.backMaterial // back/bottom
+          ]);
+          this.scene.add(this.coin);
+          this.ready = true;
+          this.container.classList.add("stamp-coin3d--ready");
+          this.animate();
+        })
+        .catch(() => {
+          this.ready = false;
+        });
+      return this.initPromise;
+    }
+
+    getAspectRatio() {
+      if (!this.container) return 1;
+      const { clientWidth, clientHeight } = this.container;
+      return Math.max(clientWidth / (clientHeight || 1), 1);
+    }
+
+    handleResize() {
+      if (!this.renderer || !this.container) return;
+      const width = this.container.clientWidth || 200;
+      const height = this.container.clientHeight || 200;
+      this.renderer.setSize(width, height, false);
+      if (this.camera) {
+        this.camera.aspect = width / height || 1;
+        this.camera.updateProjectionMatrix();
+      }
+    }
+
+    animate() {
+      if (!this.renderer || !this.scene || !this.camera) return;
+      this.rotation += this.spinVelocity;
+      this.spinVelocity *= 0.94;
+      if (this.coin) {
+        this.coin.rotation.y = this.rotation;
+      }
+      this.renderer.render(this.scene, this.camera);
+      this.animationFrame = requestAnimationFrame(() => this.animate());
+    }
+
+    handlePointerDown(event) {
+      if (!this.container) return;
+      this.ensureInit();
+      this.pointer.active = true;
+      this.pointer.id = event.pointerId;
+      this.pointer.startX = event.clientX;
+      this.pointer.startY = event.clientY;
+      this.pointer.lastX = event.clientX;
+      this.pointer.lastTime = performance.now();
+      this.pointer.moved = false;
+      this.container.setPointerCapture?.(event.pointerId);
+      event.preventDefault();
+      this.onSpark?.(event);
+    }
+
+    handlePointerMove(event) {
+      if (!this.pointer.active || event.pointerId !== this.pointer.id) return;
+      const now = performance.now();
+      const dx = event.clientX - this.pointer.lastX;
+      const deltaTime = Math.max(now - this.pointer.lastTime, 1);
+      this.rotation += dx * 0.01;
+      this.spinVelocity = (dx / deltaTime) * 0.25;
+      this.pointer.lastX = event.clientX;
+      this.pointer.lastTime = now;
+      const travel = Math.hypot(
+        event.clientX - this.pointer.startX,
+        event.clientY - this.pointer.startY
+      );
+      if (travel > 6) {
+        this.pointer.moved = true;
+      }
+      this.onSpark?.(event);
+    }
+
+    handlePointerUp(event) {
+      if (!this.pointer.active || event.pointerId !== this.pointer.id) return;
+      this.pointer.active = false;
+      try {
+        this.container.releasePointerCapture?.(event.pointerId);
+      } catch (_err) {
+        /* noop */
+      }
+      const wasTap = !this.pointer.moved;
+      this.pointer.id = null;
+      this.pointer.moved = false;
+      this.onSpark?.(event);
+      if (wasTap) {
+        this.onTap?.();
+      }
+    }
+
+    resetSpin() {
+      this.rotation = 0;
+      this.spinVelocity = 0;
+      if (this.coin) {
+        this.coin.rotation.y = 0;
+      }
+    }
+
+    async updateStampData({ frontImage, topLabel, bottomLabel }) {
+      await this.ensureInit();
+      this.applyFrontTexture(frontImage);
+      this.applyBackTexture(topLabel, bottomLabel);
+    }
+
+    applyFrontTexture(imageUrl) {
+      if (!this.THREE || !this.frontMaterial) return;
+      if (!imageUrl) {
+        this.frontMaterial.map = null;
+        this.frontMaterial.color.set("#ffffff");
+        this.frontMaterial.needsUpdate = true;
+        return;
+      }
+      const loader = new this.THREE.TextureLoader();
+      loader.setCrossOrigin("anonymous");
+      loader.load(
+        imageUrl,
+        texture => {
+          texture.colorSpace = this.THREE.SRGBColorSpace;
+          this.frontMaterial.map = texture;
+          this.frontMaterial.needsUpdate = true;
+        },
+        undefined,
+        () => {
+          this.frontMaterial.map = null;
+          this.frontMaterial.color.set("#ffffff");
+          this.frontMaterial.needsUpdate = true;
+        }
+      );
+    }
+
+    applyBackTexture(topLabel, bottomLabel) {
+      if (!this.THREE || !this.backMaterial) return;
+      const size = 1024;
+      const canvas = document.createElement("canvas");
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext("2d");
+      const center = size / 2;
+      const innerRadius = size * 0.34;
+      const gradient = ctx.createRadialGradient(center, center, size * 0.15, center, center, size * 0.55);
+      gradient.addColorStop(0, "#121b2f");
+      gradient.addColorStop(1, "#050812");
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, size, size);
+
+      ctx.fillStyle = "#e6efff";
+      ctx.strokeStyle = "rgba(0,0,0,0.6)";
+      ctx.lineWidth = 6;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.font = "900 90px 'Space Grotesk', 'Inter', sans-serif";
+      const label = (topLabel || "RDAB PASSPORT").toUpperCase();
+      ctx.strokeText(label, center, size * 0.32, size * 0.7);
+      ctx.fillText(label, center, size * 0.32, size * 0.7);
+
+      const motto = (bottomLabel || "IN RAIDING WE TRUST").toUpperCase();
+      this.drawArcText(ctx, motto, center, center + 40, innerRadius + 110, Math.PI * 0.8);
+
+      const texture = new this.THREE.CanvasTexture(canvas);
+      texture.colorSpace = this.THREE.SRGBColorSpace;
+      this.backMaterial.map = texture;
+      this.backMaterial.needsUpdate = true;
+    }
+
+    drawArcText(ctx, text, cx, cy, radius, arcAngle) {
+      if (!text) return;
+      const chars = text.split("");
+      const angleStep = arcAngle / (chars.length - 1 || 1);
+      const startAngle = Math.PI + (Math.PI - arcAngle) / 2;
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(Math.PI);
+      ctx.font = "700 70px 'Space Grotesk', 'Inter', sans-serif";
+      ctx.fillStyle = "#e6efff";
+      ctx.strokeStyle = "rgba(0,0,0,0.55)";
+      ctx.lineWidth = 5;
+      chars.forEach((char, index) => {
+        const angle = startAngle + angleStep * index;
+        ctx.save();
+        ctx.rotate(angle);
+        ctx.translate(0, radius);
+        ctx.rotate(Math.PI / 2);
+        ctx.strokeText(char, 0, 0);
+        ctx.fillText(char, 0, 0);
+        ctx.restore();
+      });
+      ctx.restore();
+    }
+  }
+
   const stampModal = document.querySelector("[data-stamp-modal]");
   if (stampModal) {
     const stampButtons = document.querySelectorAll("[data-stamp-trigger]");
@@ -1618,9 +1723,8 @@ document.addEventListener("DOMContentLoaded", function(){
     const reasonTarget = stampModal.querySelector("[data-stamp-modal-reason]");
     const dateTarget = stampModal.querySelector("[data-stamp-modal-date]");
     const descriptionTarget = stampModal.querySelector("[data-stamp-modal-description]");
-    const coin = stampModal.querySelector("[data-stamp-coin]");
-    const engravingTopTarget = stampModal.querySelector("[data-stamp-engraving-top]");
     const effectsLayer = stampModal.querySelector("[data-stamp-effects]");
+    const coinContainer = stampModal.querySelector("[data-stamp-coin-container]");
     const preventScroll = event => {
       if (!stampModal.hidden) {
         event.preventDefault();
@@ -1628,27 +1732,166 @@ document.addEventListener("DOMContentLoaded", function(){
     };
     stampModal.addEventListener("touchmove", preventScroll, { passive: false });
     stampModal.addEventListener("wheel", preventScroll, { passive: false });
-    let coinRotation = 0;
-    let spinVelocity = 0;
-    let dragActive = false;
-    let dragPointerId = null;
-    let lastX = 0;
-    let lastTime = 0;
-    let spinFrame = null;
-    let lastTrigger = null;
     let immersiveMode = false;
-    let pointerStartX = 0;
-    let pointerStartY = 0;
-    let pointerMoved = false;
     let lastShineTime = 0;
     let lockedScrollY = null;
+    let lastTrigger = null;
 
-    function updateCoinRotation() {
-      if (!coin) return;
-      const normalizedRotation = ((coinRotation % 360) + 360) % 360;
-      coin.style.setProperty("--stamp-coin-rotation", `${coinRotation}deg`);
-      coin.style.setProperty("--stamp-coin-highlight", `${normalizedRotation}deg`);
+    function setImmersiveMode(enabled) {
+      immersiveMode = Boolean(enabled);
+      stampModal.classList.toggle("is-immersive", immersiveMode);
+      if (!immersiveMode && effectsLayer) {
+        effectsLayer.innerHTML = "";
+      }
     }
+
+    function emitShineParticle(event) {
+      if (!effectsLayer || !event) {
+        return;
+      }
+      if (typeof event.clientX !== "number" || typeof event.clientY !== "number") {
+        return;
+      }
+      const now = performance.now();
+      if (event.type === "pointermove" && now - lastShineTime < 45) {
+        return;
+      }
+      lastShineTime = now;
+      const particle = document.createElement("span");
+      particle.className = "stamp-shine-particle";
+      const rect = stampModal.getBoundingClientRect();
+      particle.style.setProperty("--particle-x", `${event.clientX - rect.left}px`);
+      particle.style.setProperty("--particle-y", `${event.clientY - rect.top}px`);
+      const scaleSeed = 0.7 + Math.random() * 0.6;
+      particle.style.setProperty("--particle-scale-start", (scaleSeed * 0.6).toFixed(2));
+      particle.style.setProperty("--particle-scale-mid", (scaleSeed * 1.0).toFixed(2));
+      particle.style.setProperty("--particle-scale-end", (scaleSeed * 1.4).toFixed(2));
+      const hue = 170 + Math.floor(Math.random() * 140);
+      particle.style.setProperty("--particle-hue", `${hue}`);
+      effectsLayer.appendChild(particle);
+      setTimeout(() => particle.remove(), 650);
+    }
+
+    function lockScroll() {
+      if (lockedScrollY !== null) return;
+      lockedScrollY = window.scrollY || window.pageYOffset || document.documentElement.scrollTop || 0;
+      document.body.style.position = "fixed";
+      document.body.style.top = `-${lockedScrollY}px`;
+      document.body.style.width = "100%";
+      document.body.classList.add("stamp-modal-open");
+      document.documentElement.classList.add("stamp-modal-open");
+    }
+
+    function unlockScroll() {
+      if (lockedScrollY === null) return;
+      document.body.classList.remove("stamp-modal-open");
+      document.documentElement.classList.remove("stamp-modal-open");
+      document.body.style.position = "";
+      document.body.style.top = "";
+      document.body.style.width = "";
+      window.scrollTo(0, lockedScrollY);
+      lockedScrollY = null;
+    }
+
+    const coin3D = coinContainer
+      ? new PassportCoin3D(coinContainer, {
+          onTap: () => setImmersiveMode(!immersiveMode),
+          onSpark: emitShineParticle
+        })
+      : null;
+
+    function openStampModal(trigger) {
+      lastTrigger = trigger;
+      const stampName = trigger.dataset.stampName || "Passport stamp";
+      const stampIcon = trigger.dataset.stampIcon || "";
+      const stampReason = trigger.dataset.stampReason || "Passport stamp";
+      const stampDescription = trigger.dataset.stampDescription || "Passport stamp unlocked during the RDAB community events.";
+      const stampDate = trigger.dataset.stampDate || "";
+      const stampTime = trigger.dataset.stampTime || "";
+      const stampCount = Number(trigger.dataset.stampCount || "0");
+
+      if (nameTarget) {
+        nameTarget.textContent = stampName;
+      }
+      if (reasonTarget) {
+        reasonTarget.textContent = stampReason;
+      }
+      if (descriptionTarget) {
+        descriptionTarget.textContent = stampDescription;
+      }
+      if (iconTarget && stampIcon) {
+        iconTarget.src = stampIcon;
+        iconTarget.alt = `${stampName} stamp art`;
+      }
+
+      let dateLine = "";
+      if (stampDate) {
+        dateLine = `Acquired ${stampDate}`;
+        if (stampTime) {
+          dateLine += ` at ${stampTime}`;
+        }
+      } else if (stampTime) {
+        dateLine = `Acquired at ${stampTime}`;
+      }
+      if (stampCount > 1) {
+        const countLabel = `Awarded ×${stampCount}`;
+        dateLine = dateLine ? `${dateLine} • ${countLabel}` : countLabel;
+      }
+      if (dateTarget) {
+        dateTarget.textContent = dateLine;
+        dateTarget.hidden = !dateLine;
+      }
+
+      coin3D?.resetSpin();
+      coin3D?.updateStampData({
+        frontImage: stampIcon,
+        topLabel: (stampName ? `${stampName}${stampDate ? ` • ${stampDate}` : ""}` : "").trim(),
+        bottomLabel: "IN RAIDING WE TRUST"
+      });
+
+      stampModal.hidden = false;
+      stampModal.setAttribute("aria-hidden", "false");
+      lockScroll();
+      setImmersiveMode(false);
+      if (closeBtn) {
+        closeBtn.focus();
+      }
+    }
+
+    function closeStampModal() {
+      if (stampModal.hidden) {
+        return;
+      }
+      stampModal.hidden = true;
+      stampModal.setAttribute("aria-hidden", "true");
+      unlockScroll();
+      setImmersiveMode(false);
+      if (lastTrigger && typeof lastTrigger.focus === "function") {
+        lastTrigger.focus();
+      }
+      lastTrigger = null;
+    }
+
+    stampButtons.forEach(btn => {
+      btn.addEventListener("click", () => {
+        openStampModal(btn);
+      });
+    });
+
+    if (closeBtn) {
+      closeBtn.addEventListener("click", closeStampModal);
+    }
+    stampModal.addEventListener("click", function(event) {
+      if (event.target === stampModal) {
+        closeStampModal();
+      }
+    });
+    window.addEventListener("keydown", function(event) {
+      if (event.key === "Escape" && !stampModal.hidden) {
+        closeStampModal();
+      }
+    });
+  }
 
     function lockScroll() {
       if (lockedScrollY !== null) return;

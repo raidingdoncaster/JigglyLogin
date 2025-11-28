@@ -475,6 +475,37 @@
       color: #0f172a;
       margin-top: 4px;
     }
+    .trainer-profile-card__team {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 700;
+      color: #0f172a;
+    }
+    .trainer-profile-card__team img {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: #fff;
+      padding: 4px;
+      box-shadow: 0 4px 12px rgba(15,23,42,0.18);
+    }
+    .trainer-profile-card__level-value {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 60px;
+      border-radius: 999px;
+      padding: 6px 12px;
+      background: #e2e8f0;
+      color: #0f172a;
+      font-weight: 700;
+    }
+    .trainer-profile-card__level-value.is-max-level {
+      background: linear-gradient(135deg, #f97316, #facc15);
+      color: #fff;
+      box-shadow: 0 0 12px rgba(250, 204, 21, 0.8);
+    }
     .trainer-profile-card__future {
       padding: 0 24px 24px 24px;
       border-top: 1px solid #e2e8f0;
@@ -487,6 +518,78 @@
       margin: 0;
       color: #475569;
       font-size: 0.9rem;
+    }
+    .trainer-profile-card__featured {
+      padding: 0 24px 10px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .trainer-profile-card__featured-title {
+      margin: 0;
+      font-size: 0.95rem;
+      color: #0f172a;
+      font-weight: 700;
+    }
+    .trainer-profile-card__featured-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .trainer-profile-card__featured-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: #eef2ff;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #1d4ed8;
+    }
+    .trainer-profile-card__featured-item img {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      border: 2px solid #fff;
+      box-shadow: 0 4px 8px rgba(15,23,42,0.22);
+    }
+    .trainer-profile-card__bio {
+      padding: 0 24px 24px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .trainer-profile-card__bio-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .trainer-profile-card__bio-header h4 {
+      margin: 0;
+      font-size: 1rem;
+      color: #0f172a;
+    }
+    .trainer-profile-card__bio-header span {
+      font-size: 0.75rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #475569;
+      border: 1px solid #e2e8f0;
+      border-radius: 999px;
+      padding: 4px 10px;
+    }
+    .trainer-profile-card__bio-text {
+      margin: 0;
+      color: #1e293b;
+      line-height: 1.5;
+      white-space: pre-wrap;
+    }
+    .trainer-profile-card__bio-empty {
+      margin: 0;
+      color: #94a3b8;
+      font-style: italic;
     }
     .trainer-profile-popover__actions {
       display: flex;
@@ -570,6 +673,348 @@
       color: #1d4ed8;
       border: 1px solid #bfdbfe;
     }
+    .trainer-profile-featured-editor {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding: 16px;
+      border: 1px solid #e2e8f0;
+      border-radius: 16px;
+    }
+    .trainer-profile-featured-editor__header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .trainer-profile-featured-editor__header label {
+      font-weight: 600;
+      color: #0f172a;
+    }
+    .trainer-profile-featured-editor__header span {
+      font-size: 0.8rem;
+      color: #475569;
+    }
+    .trainer-profile-featured-selected {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .trainer-profile-featured-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border-radius: 999px;
+      background: #f1f5f9;
+      padding: 6px 10px;
+      font-size: 0.85rem;
+      color: #0f172a;
+    }
+    .trainer-profile-featured-chip img {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+    }
+    .trainer-profile-featured-chip button {
+      border: none;
+      background: transparent;
+      color: #475569;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+    .trainer-profile-featured-empty {
+      margin: 0;
+      font-size: 0.85rem;
+      color: #94a3b8;
+    }
+    .trainer-profile-featured-toggle,
+    .trainer-profile-featured-save {
+      border: none;
+      border-radius: 999px;
+      padding: 8px 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .trainer-profile-featured-toggle {
+      background: #e0f2fe;
+      color: #0369a1;
+    }
+    .trainer-profile-featured-save {
+      align-self: flex-start;
+      background: var(--brand);
+      color: #fff;
+      margin-top: 8px;
+    }
+    .trainer-profile-featured-catalog {
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .trainer-profile-featured-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 8px;
+      max-height: 220px;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+    .trainer-profile-featured-option {
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      cursor: pointer;
+      background: #fff;
+      text-align: left;
+      font-family: inherit;
+    }
+    .trainer-profile-featured-option img {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+    }
+    .trainer-profile-featured-option strong {
+      font-size: 0.9rem;
+      color: #0f172a;
+    }
+    .trainer-profile-featured-option span {
+      font-size: 0.75rem;
+      color: #475569;
+    }
+    .trainer-profile-featured-option.is-selected {
+      border-color: var(--brand);
+      box-shadow: 0 0 0 2px rgba(58,141,222,0.2);
+    }
+    .trainer-profile-featured-status {
+      font-size: 0.85rem;
+      font-weight: 600;
+      padding: 8px 12px;
+      border-radius: 10px;
+    }
+    .trainer-profile-featured-status.is-error {
+      background: #fef2f2;
+      color: #b91c1c;
+      border: 1px solid #fecaca;
+    }
+    .trainer-profile-featured-status.is-success {
+      background: #ecfdf5;
+      color: #065f46;
+      border: 1px solid #a7f3d0;
+    }
+    .trainer-profile-featured-status.is-info {
+      background: #eff6ff;
+      color: #1d4ed8;
+      border: 1px solid #bfdbfe;
+    }
+    .trainer-profile-meta {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding: 16px;
+      border: 1px solid #e2e8f0;
+      border-radius: 16px;
+    }
+    .trainer-profile-meta form {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .trainer-profile-meta label {
+      font-weight: 600;
+      font-size: 0.85rem;
+      color: #0f172a;
+    }
+    .trainer-profile-meta select {
+      border-radius: 12px;
+      border: 1px solid #cbd5f5;
+      padding: 8px 10px;
+      font-family: inherit;
+      background: #fff;
+    }
+    .trainer-profile-meta button {
+      border: none;
+      border-radius: 999px;
+      padding: 10px 16px;
+      background: #0f172a;
+      color: #fff;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 4px;
+    }
+    .trainer-profile-meta-status {
+      font-size: 0.85rem;
+      font-weight: 600;
+      padding: 8px 12px;
+      border-radius: 10px;
+    }
+    .trainer-profile-meta-status.is-error {
+      background: #fef2f2;
+      color: #b91c1c;
+      border: 1px solid #fecaca;
+    }
+    .trainer-profile-meta-status.is-success {
+      background: #ecfdf5;
+      color: #065f46;
+      border: 1px solid #a7f3d0;
+    }
+    .trainer-profile-meta-status.is-info {
+      background: #eff6ff;
+      color: #1d4ed8;
+      border: 1px solid #bfdbfe;
+    }
+
+    .content-filter-progress {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 8px;
+      padding: 8px 12px;
+      border-radius: 10px;
+      border: 1px solid #cbd5f5;
+      background: #f8fbff;
+      color: #1e293b;
+      font-size: 0.85rem;
+      font-weight: 500;
+    }
+    .content-filter-progress__spinner {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      border: 2px solid rgba(37, 99, 235, 0.22);
+      border-top-color: #2563eb;
+      animation: contentFilterSpin 0.9s linear infinite;
+    }
+    @keyframes contentFilterSpin {
+      to { transform: rotate(360deg); }
+    }
+
+    .content-filter-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 7000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: rgba(15, 23, 42, 0.45);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+    }
+    .content-filter-modal.is-open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .content-filter-modal__dialog {
+      position: relative;
+      width: min(420px, 92vw);
+      background: #fff;
+      border-radius: 24px;
+      padding: 28px;
+      box-shadow: 0 25px 70px rgba(15, 23, 42, 0.25);
+      text-align: center;
+      overflow: hidden;
+    }
+    .content-filter-modal__halo {
+      position: absolute;
+      inset: 18px;
+      border-radius: 22px;
+      background: linear-gradient(135deg, rgba(59, 130, 246, 0.12), rgba(99, 102, 241, 0.1));
+      pointer-events: none;
+    }
+    .content-filter-modal__body {
+      position: relative;
+      z-index: 1;
+    }
+    .content-filter-modal__icon {
+      width: 56px;
+      height: 56px;
+      margin: 0 auto 16px;
+      border-radius: 16px;
+      background: #fef3c7;
+      color: #b45309;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.75rem;
+      box-shadow: inset 0 0 0 1px rgba(180, 83, 9, 0.15);
+    }
+    .content-filter-modal__title {
+      margin: 0;
+      font-size: 1.35rem;
+      color: #0f172a;
+    }
+    .content-filter-modal__match {
+      margin: 16px 0 10px;
+      padding: 10px 14px;
+      border-radius: 12px;
+      background: #fee2e2;
+      color: #b91c1c;
+      font-weight: 600;
+      font-family: var(--identity-font);
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .content-filter-modal__subtitle {
+      margin: 12px 0 2px;
+      font-size: 0.95rem;
+      color: #475569;
+      font-weight: 600;
+    }
+    .content-filter-modal__match span {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(185, 28, 28, 0.12);
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #7f1d1d;
+    }
+    .content-filter-modal__message {
+      font-size: 0.95rem;
+      color: #334155;
+      line-height: 1.5;
+      margin-bottom: 16px;
+    }
+    .content-filter-modal__message a {
+      color: #2563eb;
+      font-weight: 600;
+      text-decoration: none;
+    }
+    .content-filter-modal__message a:hover {
+      text-decoration: underline;
+    }
+    .content-filter-modal__actions {
+      display: flex;
+      justify-content: center;
+    }
+    .content-filter-modal__close {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      border: none;
+      border-radius: 999px;
+      padding: 12px 26px;
+      background: linear-gradient(135deg, #3a8dde, #5eb8ff);
+      color: #fff;
+      font-weight: 700;
+      font-size: 1rem;
+      cursor: pointer;
+      box-shadow: 0 12px 24px rgba(58, 141, 222, 0.35);
+    }
+    .content-filter-modal__close:focus-visible {
+      outline: 2px solid #2563eb;
+      outline-offset: 2px;
+    }
 
     /* Mobile */
     @media(max-width:480px){
@@ -582,6 +1027,11 @@
       .container{ margin:16px auto 48px; padding:20px 16px; border-radius:14px; }
     }
   </style>
+
+  <script>
+    window.__COMMUNITY_STANDARDS_URL = "{{ url_for('policy_page', slug='community-standards') }}";
+  </script>
+  <script src="{{ url_for('static', filename='js/content-filter.js') }}"></script>
 
   <script>
     window.addEventListener("DOMContentLoaded",()=>{
@@ -605,6 +1055,9 @@
         };
       })();
       window.__overlayLock=bodyScrollLock;
+
+      const TRAINER_TEAM_OPTIONS = {{ (trainer_team_options or []) | tojson }};
+      const MAX_TRAINER_LEVEL = 80;
 
       const headerEl=document.querySelector(".site-header");
       const setHeaderOffset=()=>{
@@ -716,18 +1169,67 @@
         const accountEl=overlay.querySelector("[data-trainer-profile-account]");
         const campfireEl=overlay.querySelector("[data-trainer-profile-campfire]");
         const stampsEl=overlay.querySelector("[data-trainer-profile-stamps]");
-        const teamEl=overlay.querySelector("[data-trainer-profile-team]");
         const joinedEl=overlay.querySelector("[data-trainer-profile-joined]");
+        const teamRow=overlay.querySelector("[data-trainer-profile-team-row]");
+        const teamValueEl=overlay.querySelector("[data-trainer-profile-team-value]");
+        const levelRow=overlay.querySelector("[data-trainer-profile-level-row]");
+        const levelValueEl=overlay.querySelector("[data-trainer-profile-level-value]");
         const actionsEl=overlay.querySelector("[data-trainer-profile-actions]");
         const customizeLink=overlay.querySelector("[data-trainer-profile-customize]");
+        const metaPanel=overlay.querySelector("[data-trainer-profile-meta]");
+        const metaForm=overlay.querySelector("[data-trainer-profile-meta-form]");
+        const teamSelect=overlay.querySelector("[data-trainer-team-select]");
+        const levelSelect=overlay.querySelector("[data-trainer-level-select]");
+        const metaStatus=overlay.querySelector("[data-trainer-profile-meta-status]");
         const bioForm=overlay.querySelector("[data-trainer-profile-bio-form]");
         const bioInput=overlay.querySelector("[data-trainer-profile-bio-input]");
         const bioCount=overlay.querySelector("[data-trainer-profile-bio-count]");
         const bioStatus=overlay.querySelector("[data-trainer-profile-bio-status]");
+        const bioFilterProgress=overlay.querySelector("[data-content-filter-progress]");
+        const bioBlock=overlay.querySelector("[data-trainer-profile-bio-block]");
+        const bioText=overlay.querySelector("[data-trainer-profile-bio-text]");
+        const bioEmpty=overlay.querySelector("[data-trainer-profile-bio-empty]");
+        const bioPill=overlay.querySelector("[data-trainer-profile-bio-pill]");
+        const featuredRow=overlay.querySelector("[data-trainer-profile-featured]");
+        const featuredList=overlay.querySelector("[data-trainer-profile-featured-list]");
+        const featuredEditor=overlay.querySelector("[data-trainer-profile-featured-editor]");
+        const featuredSelected=overlay.querySelector("[data-trainer-profile-featured-selected]");
+        const featuredCount=overlay.querySelector("[data-trainer-profile-featured-count]");
+        const featuredCatalogPanel=overlay.querySelector("[data-trainer-profile-featured-catalog]");
+        const featuredGrid=overlay.querySelector("[data-trainer-profile-featured-grid]");
+        const featuredLoadBtn=overlay.querySelector("[data-trainer-profile-featured-load]");
+        const featuredSaveBtn=overlay.querySelector("[data-trainer-profile-featured-save]");
+        const featuredStatus=overlay.querySelector("[data-trainer-profile-featured-status]");
         const bodyLock=window.__overlayLock || {lock(){},unlock(){}};
         const cache={};
-        const state={ username:"", profileUrl:null, editable:false, displayName:"Trainer" };
+        const state={
+          username:"",
+          profileUrl:null,
+          editable:false,
+          displayName:"Trainer",
+          featuredSelection:[],
+          featuredCatalog:[],
+          featuredCatalogLoaded:false,
+          featuredCatalogLoading:false,
+          catalogPromise:null,
+          teamValue:"",
+          levelValue:"",
+        };
         let closeTimer=null;
+        let metaSelectsInitialized=false;
+
+        const escapeHtml=(value)=>{
+          return (value || "").replace(/[&<>"']/g,(char)=>{
+            switch(char){
+              case "&": return "&amp;";
+              case "<": return "&lt;";
+              case ">": return "&gt;";
+              case "\"": return "&quot;";
+              case "'": return "&#039;";
+              default: return char;
+            }
+          });
+        };
 
         const formatDate=(value)=>{
           if(!value) return "—";
@@ -767,10 +1269,92 @@
           else bioStatus.classList.add("is-info");
         };
 
+        const clearMetaStatus=()=>{
+          if(!metaStatus) return;
+          metaStatus.hidden=true;
+          metaStatus.textContent="";
+          metaStatus.classList.remove("is-error","is-success","is-info");
+        };
+
+        const setMetaStatus=(message,tone)=>{
+          if(!metaStatus) return;
+          metaStatus.hidden=false;
+          metaStatus.textContent=message;
+          metaStatus.classList.remove("is-error","is-success","is-info");
+          if(tone==="error") metaStatus.classList.add("is-error");
+          else if(tone==="success") metaStatus.classList.add("is-success");
+          else metaStatus.classList.add("is-info");
+        };
+
+        const ensureMetaSelects=()=>{
+          if(metaSelectsInitialized) return;
+          if(teamSelect){
+            let options='<option value=\"\">Select your team</option>';
+            TRAINER_TEAM_OPTIONS.forEach(function(opt){
+              options += `<option value=\"${opt.value}\">${opt.label}</option>`;
+            });
+            teamSelect.innerHTML = options;
+          }
+          if(levelSelect){
+            let options='<option value=\"\">Select level</option>';
+            for(let lvl=1; lvl<=MAX_TRAINER_LEVEL; lvl++){
+              options += `<option value=\"${lvl}\">Level ${lvl}</option>`;
+            }
+            levelSelect.innerHTML = options;
+          }
+          metaSelectsInitialized=true;
+        };
+
+        const populateMetaForm=()=>{
+          if(!metaForm || !state.editable) return;
+          ensureMetaSelects();
+          if(teamSelect){
+            teamSelect.value = state.teamValue || "";
+          }
+          if(levelSelect){
+            levelSelect.value = state.levelValue ? String(state.levelValue) : "";
+          }
+          clearMetaStatus();
+        };
+
+        const toggleBioFilterProgress=(active)=>{
+          if(!bioFilterProgress) return;
+          bioFilterProgress.hidden = !active;
+        };
+
+        const runBioFilterCheck=(value)=>{
+          const filter=window.RDABContentFilter;
+          if(!filter || typeof filter.scan!=="function"){
+            return Promise.resolve({ allowed:true });
+          }
+          toggleBioFilterProgress(true);
+          return filter.scan(value)
+            .then(result=>{
+              toggleBioFilterProgress(false);
+              return result;
+            })
+            .catch(err=>{
+              console.warn("Content filter error:", err);
+              toggleBioFilterProgress(false);
+              return { allowed:true };
+            });
+        };
+
         const updateBioCount=()=>{
           if(!bioInput || !bioCount) return;
           const len=bioInput.value.length;
           bioCount.textContent=`${len}/200`;
+        };
+
+        const setBioText=(value)=>{
+          const text=(value || "").trim();
+          if(bioText){
+            bioText.textContent=text;
+            bioText.hidden=!text;
+          }
+          if(bioEmpty){
+            bioEmpty.hidden=!!text;
+          }
         };
 
         const populateBio=(data)=>{
@@ -784,11 +1368,206 @@
           if(actionsEl) actionsEl.hidden = !show;
           if(customizeLink) customizeLink.hidden = !show;
           if(bioForm) bioForm.hidden = !show;
+          if(metaPanel) metaPanel.hidden = !show;
+          if(featuredEditor) featuredEditor.hidden = !show;
+          if(bioPill) bioPill.textContent = show ? "Player View" : "Public Profile";
           if(!show && bioInput){
             bioInput.value="";
             updateBioCount();
           }
+          if(!show && featuredCatalogPanel){
+            featuredCatalogPanel.hidden=true;
+          }
+          if(!show){
+            state.featuredSelection=[];
+            renderFeaturedSelection();
+            clearMetaStatus();
+          } else {
+            populateMetaForm();
+          }
           resetStatus();
+          clearFeaturedStatus();
+        };
+
+        const renderTeamRow=(info)=>{
+          if(!teamRow || !teamValueEl){
+            return;
+          }
+          if(!info){
+            teamRow.hidden=true;
+            teamValueEl.innerHTML="—";
+            return;
+          }
+          const icon=info.icon ? escapeHtml(info.icon) : "";
+          const label=escapeHtml(info.label || "Trainer Team");
+          teamRow.hidden=false;
+          if(icon){
+            teamValueEl.innerHTML=`<img src="${icon}" alt="${label} icon"><span>${label}</span>`;
+          }else{
+            teamValueEl.textContent=label;
+          }
+        };
+
+        const renderLevelRow=(levelValue,isMax)=>{
+          if(!levelRow || !levelValueEl){
+            return;
+          }
+          if(!levelValue){
+            levelRow.hidden=true;
+            levelValueEl.textContent="—";
+            levelValueEl.classList.remove("is-max-level");
+            return;
+          }
+          levelRow.hidden=false;
+          levelValueEl.textContent = `Lv. ${levelValue}`;
+          levelValueEl.classList.toggle("is-max-level", !!isMax);
+        };
+
+        const renderFeaturedRow=(items)=>{
+          if(!featuredRow || !featuredList){
+            return;
+          }
+          if(!items || !items.length){
+            featuredRow.hidden=true;
+            featuredList.innerHTML="";
+            return;
+          }
+          featuredRow.hidden=false;
+          featuredList.innerHTML=items.map((item)=>{
+            const icon=escapeHtml(item.icon || "");
+            const label=escapeHtml(item.label || "Featured stamp");
+            return `
+              <div class="trainer-profile-card__featured-item">
+                <img src="${icon}" alt="${label}">
+                <span>${label}</span>
+              </div>
+            `;
+          }).join("");
+        };
+
+        const renderFeaturedSelection=()=>{
+          if(!featuredSelected) return;
+          if(!state.featuredSelection.length){
+            featuredSelected.innerHTML='<p class="trainer-profile-featured-empty">No featured stamps yet.</p>';
+          }else{
+            featuredSelected.innerHTML=state.featuredSelection.map((item, index)=>{
+              const icon=escapeHtml(item.icon || "");
+              const label=escapeHtml(item.label || "Featured stamp");
+              return `
+                <span class="trainer-profile-featured-chip">
+                  <img src="${icon}" alt="${label}">
+                  <span>${label}</span>
+                  <button type="button" data-featured-remove="${index}" aria-label="Remove featured stamp">×</button>
+                </span>
+              `;
+            }).join("");
+          }
+          if(featuredCount){
+            featuredCount.textContent = `${state.featuredSelection.length}/3`;
+          }
+          updateCatalogSelectionState();
+        };
+
+        const clearFeaturedStatus=()=>{
+          if(!featuredStatus) return;
+          featuredStatus.hidden=true;
+          featuredStatus.textContent="";
+          featuredStatus.classList.remove("is-error","is-success","is-info");
+        };
+
+        const setFeaturedStatus=(message,tone)=>{
+          if(!featuredStatus) return;
+          featuredStatus.hidden=false;
+          featuredStatus.textContent=message;
+          featuredStatus.classList.remove("is-error","is-success","is-info");
+          if(tone==="error") featuredStatus.classList.add("is-error");
+          else if(tone==="success") featuredStatus.classList.add("is-success");
+          else featuredStatus.classList.add("is-info");
+        };
+
+        const syncSelectionTokensWithCatalog=()=>{
+          if(!state.featuredCatalog.length) return;
+          state.featuredSelection=state.featuredSelection.map((item)=>{
+            if(item.token) return item;
+            const match=state.featuredCatalog.find(stamp =>
+              stamp.icon===item.icon && stamp.label===item.label
+            );
+            if(match){
+              return { ...item, token: match.token };
+            }
+            return item;
+          });
+        };
+
+        const updateCatalogSelectionState=()=>{
+          if(!featuredGrid) return;
+          featuredGrid.querySelectorAll("[data-featured-token]").forEach(btn=>{
+            const token=btn.getAttribute("data-featured-token");
+            const isSelected=state.featuredSelection.some(item=>item.token && item.token===token);
+            btn.classList.toggle("is-selected", isSelected);
+          });
+        };
+
+        const renderFeaturedCatalog=()=>{
+          if(!featuredGrid) return;
+          if(!state.featuredCatalog.length){
+            featuredGrid.innerHTML='<p class="trainer-profile-featured-empty" style="grid-column:1/-1;">No stamps to show yet. Earn stamps to start featuring them!</p>';
+          }else{
+            featuredGrid.innerHTML=state.featuredCatalog.map((stamp)=>{
+              const icon=escapeHtml(stamp.icon || "");
+              const label=escapeHtml(stamp.label || "Stamp");
+              const awarded=escapeHtml(stamp.awarded_at || "");
+              return `
+                <button type="button"
+                        class="trainer-profile-featured-option"
+                        data-featured-token="${stamp.token}"
+                        data-featured-icon="${icon}"
+                        data-featured-label="${label}">
+                  <img src="${icon}" alt="${label}">
+                  <strong>${label}</strong>
+                  <span>${awarded || "Recently earned"}</span>
+                </button>
+              `;
+            }).join("");
+          }
+          updateCatalogSelectionState();
+        };
+
+        const ensureCatalogLoaded=()=>{
+          if(state.featuredCatalogLoaded){
+            return Promise.resolve(state.featuredCatalog);
+          }
+          if(state.featuredCatalogLoading && state.catalogPromise){
+            return state.catalogPromise;
+          }
+          state.featuredCatalogLoading=true;
+          state.catalogPromise=fetch("/api/profile/featured-stamps")
+            .then(resp=>resp.json().then(body=>({ ok:resp.ok, body })))
+            .then(({ok,body})=>{
+              if(!ok) throw new Error(body && body.error ? body.error : "Unable to load stamps.");
+              const catalog=Array.isArray(body && body.stamps) ? body.stamps : [];
+              state.featuredCatalog=catalog;
+              state.featuredCatalogLoaded=true;
+              state.featuredCatalogLoading=false;
+              state.catalogPromise=null;
+              syncSelectionTokensWithCatalog();
+              renderFeaturedCatalog();
+              renderFeaturedSelection();
+              clearFeaturedStatus();
+              return catalog;
+            })
+            .catch(err=>{
+              state.featuredCatalogLoading=false;
+              state.catalogPromise=null;
+              setFeaturedStatus(err && err.message ? err.message : "Unable to load stamps.", "error");
+              throw err;
+            });
+          return state.catalogPromise;
+        };
+
+        const toggleCatalogVisibility=()=>{
+          if(!featuredCatalogPanel) return;
+          featuredCatalogPanel.hidden = !featuredCatalogPanel.hidden;
         };
 
         const hydrateProfile=(data,fallbackName)=>{
@@ -814,10 +1593,29 @@
             const stampValue = data && typeof data.stamps !== "undefined" ? data.stamps : "—";
             stampsEl.textContent = typeof stampValue === "number" ? stampValue.toLocaleString() : (stampValue || "—");
           }
-          if(teamEl) teamEl.textContent = data && data.trainer_team ? data.trainer_team : "—";
           if(joinedEl) joinedEl.textContent = data && data.joined_at ? formatDate(data.joined_at) : "—";
+          const teamInfo = data && data.team ? data.team : null;
+          renderTeamRow(teamInfo);
+          state.teamValue = teamInfo && teamInfo.value ? teamInfo.value : "";
+          const trainerLevel = (data && typeof data.trainer_level === "number") ? data.trainer_level : null;
+          state.levelValue = trainerLevel ? String(trainerLevel) : "";
+          renderLevelRow(trainerLevel, data && data.is_max_level);
+          setBioText(data && typeof data.bio === "string" ? data.bio : "");
+          const featuredItems = Array.isArray(data && data.featured_stamps) ? data.featured_stamps : [];
+          renderFeaturedRow(featuredItems);
+          state.featuredSelection = featuredItems.map(item=>({
+            icon: item.icon || "",
+            label: item.label || "Featured stamp",
+            token: item.token || null,
+          }));
+          renderFeaturedSelection();
+          if(state.featuredCatalogLoaded){
+            syncSelectionTokensWithCatalog();
+            updateCatalogSelectionState();
+          }
           if(state.editable){
             populateBio(data);
+            populateMetaForm();
           }
         };
 
@@ -828,10 +1626,25 @@
           state.profileUrl=options.url || (username ? `/api/trainers/${encodeURIComponent(username)}/profile` : null);
           state.editable=!!options.editable;
           state.displayName=options.displayName || username || "Trainer";
+          state.teamValue="";
+          state.levelValue="";
           setActionsVisible(state.editable);
           if(!state.editable && bioInput){
             bioInput.value="";
             updateBioCount();
+          }
+          if(!state.editable){
+            state.featuredCatalogLoaded=false;
+            state.featuredCatalog=[];
+          }
+          setBioText("");
+          renderTeamRow(null);
+          renderLevelRow(null,false);
+          renderFeaturedRow([]);
+          state.featuredSelection=[];
+          renderFeaturedSelection();
+          if(state.editable){
+            populateMetaForm();
           }
           overlay.hidden=false;
           requestAnimationFrame(()=>overlay.classList.add("is-visible"));
@@ -883,31 +1696,53 @@
             bioInput.value=bioValue;
           }
           updateBioCount();
-          setBioStatus("Saving bio…","info");
           const submitBtn=bioForm.querySelector("button[type='submit']");
           if(submitBtn) submitBtn.disabled=true;
-          fetch("/api/profile/bio",{
-            method:"POST",
-            headers:{ "Content-Type":"application/json" },
-            body:JSON.stringify({ bio: bioValue })
-          })
-            .then(resp=>resp.json().then(body=>({ ok:resp.ok, body })))
-            .then(({ok,body})=>{
-              if(!ok) throw new Error(body && body.error ? body.error : "Unable to update bio.");
-              setBioStatus("Bio updated!","success");
-              const trainer=body && body.trainer;
-              if(trainer && state.username){
-                cache[state.username.toLowerCase()]=trainer;
-                hydrateProfile(trainer, state.displayName);
+          runBioFilterCheck(bioValue).then(result=>{
+            if(!result.allowed){
+              setBioStatus("Community filter blocked that update. Please adjust your wording.","error");
+              if(window.RDABContentFilter && typeof window.RDABContentFilter.showWarning==="function"){
+                window.RDABContentFilter.showWarning(result);
               }
-            })
-            .catch(err=>{
-              console.warn(err);
-              setBioStatus(err && err.message ? err.message : "Unable to update bio.","error");
-            })
-            .finally(()=>{
               if(submitBtn) submitBtn.disabled=false;
-            });
+              return;
+            }
+            setBioStatus("Saving bio…","info");
+            fetch("/api/profile/bio",{
+              method:"POST",
+              headers:{ "Content-Type":"application/json" },
+              body:JSON.stringify({ bio: bioValue })
+            })
+              .then(resp=>resp.json().then(body=>({ ok:resp.ok, body })))
+              .then(({ok,body})=>{
+                if(!ok){
+                  const error=new Error(body && body.error ? body.error : "Unable to update bio.");
+                  if(body && body.filter){
+                    error.isFilter=true;
+                    error.filter=body.filter;
+                  }
+                  throw error;
+                }
+                setBioStatus("Bio updated!","success");
+                const trainer=body && body.trainer;
+                if(trainer && state.username){
+                  cache[state.username.toLowerCase()]=trainer;
+                  hydrateProfile(trainer, state.displayName);
+                }
+              })
+              .catch(err=>{
+                console.warn(err);
+                if(err && err.isFilter && err.filter && window.RDABContentFilter && typeof window.RDABContentFilter.showWarning==="function"){
+                  window.RDABContentFilter.showWarning(err.filter);
+                  setBioStatus("Community filter blocked that update. Please adjust your wording.","error");
+                }else{
+                  setBioStatus(err && err.message ? err.message : "Unable to update bio.","error");
+                }
+              })
+              .finally(()=>{
+                if(submitBtn) submitBtn.disabled=false;
+              });
+          });
         };
 
         overlay.querySelectorAll("[data-trainer-profile-close]").forEach(btn=>{
@@ -922,6 +1757,148 @@
         if(bioInput){
           bioInput.addEventListener("input", updateBioCount);
         }
+        if(featuredLoadBtn){
+          featuredLoadBtn.addEventListener("click",()=>{
+            if(!state.editable){
+              return;
+            }
+            ensureCatalogLoaded().then(()=>{
+              toggleCatalogVisibility();
+            }).catch(()=>{});
+          });
+        }
+        if(featuredGrid){
+          featuredGrid.addEventListener("click",(event)=>{
+            const btn=event.target.closest("[data-featured-token]");
+            if(!btn || !state.editable) return;
+            const token=btn.getAttribute("data-featured-token");
+            const icon=btn.getAttribute("data-featured-icon") || "";
+            const label=btn.getAttribute("data-featured-label") || "";
+            if(state.featuredSelection.some(item=>item.token===token)){
+              state.featuredSelection=state.featuredSelection.filter(item=>item.token!==token);
+              renderFeaturedSelection();
+              clearFeaturedStatus();
+              return;
+            }
+            if(state.featuredSelection.length >= 3){
+              setFeaturedStatus("You can only feature up to three stamps.", "error");
+              return;
+            }
+            state.featuredSelection.push({ token, icon, label });
+            renderFeaturedSelection();
+            clearFeaturedStatus();
+          });
+        }
+        if(featuredSelected){
+          featuredSelected.addEventListener("click",(event)=>{
+            const btn=event.target.closest("[data-featured-remove]");
+            if(!btn) return;
+            const index=parseInt(btn.getAttribute("data-featured-remove") || "-1", 10);
+            if(isNaN(index) || index < 0 || index >= state.featuredSelection.length) return;
+            state.featuredSelection.splice(index,1);
+            renderFeaturedSelection();
+            clearFeaturedStatus();
+          });
+        }
+        if(featuredSaveBtn){
+          featuredSaveBtn.addEventListener("click",()=>{
+            if(!state.editable) return;
+            ensureCatalogLoaded().then(()=>{
+              const tokens=state.featuredSelection.map(item=>item.token).filter(Boolean);
+              if(state.featuredSelection.length && !tokens.length){
+                setFeaturedStatus("Please pick stamps from the list to save them.", "error");
+                return;
+              }
+              setFeaturedStatus("Saving featured stamps…","info");
+              featuredSaveBtn.disabled=true;
+              return fetch("/api/profile/featured-stamps",{
+                method:"POST",
+                headers:{ "Content-Type":"application/json" },
+                body:JSON.stringify({ tokens })
+              })
+                .then(resp=>resp.json().then(body=>({ ok:resp.ok, body })))
+                .then(({ok,body})=>{
+                  if(!ok) throw new Error(body && body.error ? body.error : "Unable to update featured stamps.");
+                  const trainer=body && body.trainer;
+                  if(trainer && state.username){
+                    cache[state.username.toLowerCase()]=trainer;
+                    hydrateProfile(trainer, state.displayName);
+                  }
+                  setFeaturedStatus("Featured stamps updated!", "success");
+                })
+                .catch(err=>{
+                  console.warn(err);
+                  setFeaturedStatus(err && err.message ? err.message : "Unable to update featured stamps.", "error");
+                })
+                .finally(()=>{
+                  featuredSaveBtn.disabled=false;
+                });
+            }).catch(()=>{});
+          });
+        }
+        if(teamSelect){
+          teamSelect.addEventListener("change", clearMetaStatus);
+        }
+        if(levelSelect){
+          levelSelect.addEventListener("change", clearMetaStatus);
+        }
+        if(metaForm){
+          metaForm.addEventListener("submit",(evt)=>{
+            evt.preventDefault();
+            if(!state.editable) return;
+            ensureMetaSelects();
+            const desiredTeam=(teamSelect ? (teamSelect.value || "").toLowerCase() : "");
+            const currentTeam=state.teamValue || "";
+            const desiredLevelRaw=levelSelect ? (levelSelect.value || "") : "";
+            const currentLevelRaw=state.levelValue ? String(state.levelValue) : "";
+            const payload={};
+            if(desiredTeam !== currentTeam){
+              payload.team = desiredTeam;
+            }
+            if(desiredLevelRaw !== currentLevelRaw){
+              if(!desiredLevelRaw){
+                payload.trainer_level = null;
+              }else{
+                const levelInt=parseInt(desiredLevelRaw,10);
+                if(isNaN(levelInt) || levelInt < 1 || levelInt > MAX_TRAINER_LEVEL){
+                  setMetaStatus(`Level must be between 1 and ${MAX_TRAINER_LEVEL}.`,"error");
+                  return;
+                }
+                payload.trainer_level = levelInt;
+              }
+            }
+            if(!("team" in payload) && !("trainer_level" in payload)){
+              setMetaStatus("No changes to save.","info");
+              return;
+            }
+            setMetaStatus("Saving profile…","info");
+            const submitBtn=metaForm.querySelector("button[type='submit']");
+            if(submitBtn) submitBtn.disabled=true;
+            fetch("/api/profile/meta",{
+              method:"POST",
+              headers:{ "Content-Type":"application/json" },
+              body:JSON.stringify(payload)
+            })
+              .then(resp=>resp.json().then(body=>({ ok:resp.ok, body })))
+              .then(({ok,body})=>{
+                if(!ok) throw new Error(body && body.error ? body.error : "Unable to update profile.");
+                setMetaStatus("Profile updated!","success");
+                const trainer=body && body.trainer;
+                if(trainer && state.username){
+                  cache[state.username.toLowerCase()]=trainer;
+                  hydrateProfile(trainer, state.displayName);
+                }
+              })
+              .catch(err=>{
+                console.warn(err);
+                setMetaStatus(err && err.message ? err.message : "Unable to update profile.","error");
+              })
+              .finally(()=>{
+                if(submitBtn) submitBtn.disabled=false;
+              });
+          });
+        }
+
         document.addEventListener("keydown",(evt)=>{
           if(evt.key==="Escape" && !overlay.hidden){
             close();
@@ -1166,6 +2143,35 @@
   {% endif %}
 
   {% include "partials/trainer_profile_popover.html" %}
+
+  <div class="content-filter-modal" data-content-filter-modal hidden>
+    <div class="content-filter-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="contentFilterTitle">
+      <div class="content-filter-modal__halo"></div>
+      <div class="content-filter-modal__body">
+        <div class="content-filter-modal__icon">⚠️</div>
+        <h3 class="content-filter-modal__title" id="contentFilterTitle">Hold up, Trainer!</h3>
+        <p class="content-filter-modal__subtitle">We stopped this phrase to keep the community safe:</p>
+        <div class="content-filter-modal__match">
+          <span data-filter-severity>critical</span>
+          <strong data-filter-match>phrase</strong>
+        </div>
+        <p class="content-filter-modal__message">
+          Read the
+          <a href="{{ url_for('policy_page', slug='community-standards') }}"
+             target="_blank" rel="noopener">Community Standards</a> —
+          our Community Code of Conduct, also known as Arceus Law. Remember
+          inappropriate behaviour and language is not tolerated anywhere in RDAB.
+        </p>
+        <div class="content-filter-modal__actions">
+          <button type="button"
+                  class="content-filter-modal__close"
+                  data-content-filter-dismiss>
+            Ok, I understand
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- Register Service Worker (single canonical URL) -->
   <script>

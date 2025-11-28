@@ -1,15 +1,24 @@
 {% extends "base.html" %}
 
 {% block page_settings %}
-  {% set container_class = 'is-wide' %}
+  {% set container_class = 'is-wide city-perks-page' %}
 {% endblock %}
 
 {% block content %}
 <div class="city-perks-hero">
   <div>
     <p class="hero-eyebrow">City perks</p>
-    <h1>Unlock local bonuses while you explore</h1>
-    <p>Partner cafés, shops, and gathering spots keep trainer adventures fresh. Tap an icon to browse, search, or view the map.</p>
+    <div class="hero-title-row">
+      <h1>Unlock local bonuses while you explore</h1>
+      <button
+        type="button"
+        class="city-perks-help-btn"
+        data-action="open-perks-help"
+        aria-label="Learn about City Perks"
+      >
+        ?
+      </button>
+    </div>
   </div>
   <div class="hero-meta">
     <div>
@@ -19,51 +28,54 @@
   </div>
 </div>
 
-<div class="city-perks-actions">
-  <a class="action-tile" href="{{ url_for('city_perks_page') }}">
-    <span class="action-icon">🌀</span>
+<nav class="perks-floating-bar" aria-label="City perks quick actions">
+  <a class="floating-bar__btn" href="{{ url_for('city_perks_page') }}">
     <span>All perks</span>
   </a>
-  <button class="action-tile" type="button" data-action="toggle-search">
-    <span class="action-icon">🔎</span>
+  <button class="floating-bar__btn" type="button" data-action="toggle-search">
     <span>Search</span>
   </button>
-  <button class="action-tile" type="button" data-action="open-map">
-    <span class="action-icon">🗺️</span>
-    <span>Interactive map</span>
+  <button class="floating-bar__btn" type="button" data-action="open-map">
+    <span>Map</span>
   </button>
-</div>
+</nav>
 
-<form class="perks-filters {% if filters_active %}is-visible{% endif %}" method="get" id="perks-filter-form">
-  <div class="filter-field">
-    <label for="area-select">Area</label>
-    <select id="area-select" name="area">
-      <option value="">All areas</option>
-      {% for value in areas %}
-        <option value="{{ value }}" {% if selected_area == value %}selected{% endif %}>{{ value }}</option>
-      {% endfor %}
-    </select>
+<div class="perks-search-drawer {% if filters_active %}is-open{% endif %}" id="perks-search-drawer" aria-hidden="{{ 'false' if filters_active else 'true' }}">
+  <div class="perks-search-drawer__header">
+    <div>
+      <p>Search & filter</p>
+      <h3>Dial in your next perk</h3>
+    </div>
+    <button type="button" class="perks-search-drawer__close" data-action="close-search">&times;</button>
   </div>
-  <div class="filter-field">
-    <label for="category-select">Category</label>
-    <select id="category-select" name="category">
-      <option value="">All categories</option>
-      {% for value in categories %}
-        <option value="{{ value }}" {% if selected_category == value %}selected{% endif %}>{{ value }}</option>
-      {% endfor %}
-    </select>
-  </div>
-  <div class="filter-field">
-    <label for="search-input">Search</label>
-    <input type="search" id="search-input" name="q" placeholder="Partner or perk name" value="{{ search_term }}">
-  </div>
-  <div class="filter-actions">
-    <button type="submit">Apply filters</button>
-    {% if filters_active %}
-      <a class="reset" href="{{ url_for('city_perks_page') }}">Reset</a>
-    {% endif %}
-  </div>
-</form>
+  <form class="perks-filters" method="get" id="perks-filter-form">
+    <div class="filter-field">
+      <label for="area-select">Area</label>
+      <select id="area-select" name="area">
+        <option value="">All areas</option>
+        {% for value in areas %}
+          <option value="{{ value }}" {% if selected_area == value %}selected{% endif %}>{{ value }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="filter-field">
+      <label for="category-select">Category</label>
+      <select id="category-select" name="category">
+        <option value="">All categories</option>
+        {% for value in categories %}
+          <option value="{{ value }}" {% if selected_category == value %}selected{% endif %}>{{ value }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="filter-field">
+      <label for="search-input">Search</label>
+      <input type="search" id="search-input" name="q" placeholder="Partner or perk name" value="{{ search_term }}">
+    </div>
+    <div class="filter-actions">
+      <button type="button" data-action="clear-filters">Clear filters</button>
+    </div>
+  </form>
+</div>
 
 {% if perks %}
   <div class="perks-grid">
@@ -93,10 +105,24 @@
             {% elif perk.offer_text %}
               <p class="perk-tagline">{{ perk.offer_text }}</p>
             {% endif %}
+            {% if perk.area or perk.category %}
+              <div class="perk-meta-chips">
+                {% if perk.area %}
+                  <span>{{ perk.area }}</span>
+                {% endif %}
+                {% if perk.category %}
+                  <span>{{ perk.category }}</span>
+                {% endif %}
+              </div>
+            {% endif %}
           </div>
           <button class="perk-expand" type="button" aria-label="View details">
             →
           </button>
+        </div>
+        <div class="perk-card__footer">
+          <span>{{ perk.perk_mode_label }}</span>
+          <span>{{ perk.category or "All categories" }}</span>
         </div>
       </article>
     {% endfor %}
@@ -127,6 +153,24 @@
   </div>
 </div>
 
+<div class="perks-help-modal" id="perks-help-modal" aria-hidden="true">
+  <div class="perks-help-modal__backdrop" data-action="close-perks-help"></div>
+  <div class="perks-help-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="perks-help-title">
+    <button type="button" class="perks-help-modal__close" data-action="close-perks-help">&times;</button>
+    <p class="perks-help-modal__eyebrow">Need a refresher?</p>
+    <h3 id="perks-help-title">What are City Perks?</h3>
+    <p>
+      City Perks are exclusive discounts and bonuses from our partner cafés, stores, and digital services.
+      They are refreshed regularly to match the adventures nearby.
+    </p>
+    <ul>
+      <li><strong>In-person:</strong> Show your RDAB app or membership card to the staff.</li>
+      <li><strong>Digital:</strong> Copy the discount code shown in the perk details and redeem it at checkout.</li>
+    </ul>
+    <p>Need more help? Ping the RDAB team in the community bulletin.</p>
+  </div>
+</div>
+
 <div class="perks-map-panel" id="perks-map-panel" aria-hidden="true">
   <div class="perks-map-panel__inner">
     <div class="perks-map-panel__header">
@@ -148,8 +192,31 @@
   flex-wrap:wrap;
   align-items:center;
 }
+.city-perks-page {
+  padding-bottom:180px;
+  position:relative;
+}
 .city-perks-hero h1 { margin:4px 0 8px; }
 .city-perks-hero p { margin:0; color:#475467; }
+.hero-title-row {
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+.city-perks-help-btn {
+  width:36px;
+  height:36px;
+  border-radius:50%;
+  border:1px solid #cbd5f5;
+  background:#fff;
+  box-shadow:0 10px 20px rgba(15,23,42,0.15);
+  font-weight:700;
+  color:#1d4ed8;
+  cursor:pointer;
+}
+.city-perks-help-btn:hover {
+  background:#f1f5f9;
+}
 .hero-meta {
   display:flex;
   gap:16px;
@@ -168,39 +235,93 @@
   line-height:1;
 }
 
-.city-perks-actions {
-  margin:20px 0;
+.perks-floating-bar {
+  position:fixed;
+  bottom:24px;
+  left:50%;
+  transform:translateX(-50%);
   display:flex;
   gap:12px;
-  flex-wrap:nowrap;
-  overflow-x:auto;
-  padding-bottom:4px;
-  scrollbar-width:none;
+  background:#0f172a;
+  padding:8px 12px;
+  border-radius:999px;
+  box-shadow:0 24px 60px rgba(15,23,42,0.35);
+  z-index:2800;
+  width:min(420px, 90%);
 }
-.city-perks-actions::-webkit-scrollbar {
-  display:none;
-}
-.action-tile {
-  border:1px solid #e2e8f0;
-  border-radius:16px;
-  padding:14px;
-  display:flex;
-  gap:12px;
-  align-items:center;
-  justify-content:center;
-  background:#fff;
+.floating-bar__btn {
+  flex:1;
+  border:none;
+  background:rgba(255,255,255,0.08);
+  color:#fff;
+  border-radius:999px;
+  padding:10px 12px;
   font-weight:600;
-  color:#111827;
   text-decoration:none;
+  text-align:center;
   cursor:pointer;
-  box-shadow:0 8px 16px rgba(15,23,42,0.08);
-  flex:0 0 180px;
+  transition:background .2s ease;
 }
-.action-icon {
-  font-size:1.4rem;
+.floating-bar__btn:hover,
+.floating-bar__btn:focus-visible {
+  background:rgba(255,255,255,0.2);
 }
+.floating-bar__btn:active {
+  background:rgba(255,255,255,0.3);
+}
+
+.perks-search-drawer {
+  position:fixed;
+  bottom:110px;
+  left:50%;
+  transform:translateX(-50%) translateY(10px);
+  width:min(600px,90%);
+  background:#fff;
+  border-radius:28px;
+  box-shadow:0 30px 80px rgba(15,23,42,0.35);
+  padding:20px;
+  z-index:3200;
+  opacity:0;
+  pointer-events:none;
+  visibility:hidden;
+  transition:opacity .2s ease, transform .2s ease;
+}
+.perks-search-drawer.is-open {
+  opacity:1;
+  transform:translateX(-50%) translateY(0);
+  pointer-events:auto;
+  visibility:visible;
+}
+.perks-search-drawer__header {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:16px;
+}
+.perks-search-drawer__header p {
+  margin:0;
+  text-transform:uppercase;
+  letter-spacing:0.08em;
+  font-size:0.7rem;
+  color:#94a3b8;
+}
+.perks-search-drawer__header h3 {
+  margin:4px 0 0;
+}
+.perks-search-drawer__close {
+  border:none;
+  background:#0f172a;
+  color:#fff;
+  width:40px;
+  height:40px;
+  border-radius:50%;
+  font-size:1.3rem;
+  cursor:pointer;
+}
+
 .perks-filters {
-  margin:24px 0;
+  margin:0;
   display:grid;
   grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
   gap:16px;
@@ -208,10 +329,6 @@
   padding:18px;
   border-radius:16px;
   border:1px solid #e2e8f0;
-  display:none;
-}
-.perks-filters.is-visible {
-  display:grid;
 }
 .filter-field label {
   font-weight:600;
@@ -227,24 +344,16 @@
 }
 .filter-actions {
   display:flex;
-  gap:8px;
-  align-items:flex-end;
+  justify-content:flex-start;
 }
 .filter-actions button {
   padding:10px 16px;
   border-radius:10px;
-  border:none;
-  background:#111827;
-  color:#fff;
-  font-weight:600;
-}
-.filter-actions .reset {
-  padding:10px 16px;
-  border-radius:10px;
   border:1px solid #d0d5dd;
-  text-decoration:none;
-  font-weight:600;
+  background:#fff;
   color:#1d4ed8;
+  font-weight:600;
+  cursor:pointer;
 }
 .perks-grid {
   display:grid;
@@ -252,12 +361,19 @@
   gap:16px;
 }
 .perk-card {
-  background:#fff;
-  border-radius:20px;
-  box-shadow:0 18px 30px rgba(15,23,42,0.12);
+  background:linear-gradient(180deg,#fff,#f8fafc);
+  border-radius:24px;
+  border:1px solid #e2e8f0;
+  box-shadow:0 18px 40px rgba(15,23,42,0.12);
   overflow:hidden;
   display:flex;
   flex-direction:column;
+  min-height:100%;
+  transition:transform .2s ease, box-shadow .2s ease;
+}
+.perk-card:hover {
+  transform:translateY(-3px);
+  box-shadow:0 24px 46px rgba(15,23,42,0.18);
 }
 .perk-cover {
   position:relative;
@@ -292,7 +408,7 @@
   display:flex;
   align-items:center;
   gap:12px;
-  padding:14px;
+  padding:18px;
 }
 .perk-logo {
   width:56px;
@@ -331,6 +447,21 @@
   color:#475467;
   font-size:0.9rem;
 }
+.perk-meta-chips {
+  margin-top:10px;
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+}
+.perk-meta-chips span {
+  font-size:0.75rem;
+  text-transform:uppercase;
+  letter-spacing:0.08em;
+  background:#f1f5f9;
+  border-radius:999px;
+  padding:4px 10px;
+  color:#1d4ed8;
+}
 .perk-expand {
   margin-left:auto;
   border:none;
@@ -344,6 +475,20 @@
   display:flex;
   align-items:center;
   justify-content:center;
+  transition:background .2s ease, transform .2s ease;
+}
+.perk-expand:hover {
+  background:#0f1628;
+  transform:translateX(2px);
+}
+.perk-card__footer {
+  display:flex;
+  justify-content:space-between;
+  padding:14px 20px 18px;
+  border-top:1px dashed rgba(15,23,42,0.1);
+  font-size:0.85rem;
+  color:#475467;
+  font-weight:600;
 }
 .perks-empty {
   padding:40px;
@@ -365,7 +510,7 @@
   align-items:center;
   justify-content:center;
   padding:20px;
-  z-index:3000;
+  z-index:5000;
 }
 .perks-map-panel.is-open {
   display:flex;
@@ -411,10 +556,82 @@
   flex:1;
   min-height:520px;
 }
+.perks-map__fallback {
+  min-height:320px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  padding:32px;
+  color:#475467;
+  font-weight:600;
+}
+
+.perks-help-modal {
+  position:fixed;
+  inset:0;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  padding:20px;
+  z-index:4500;
+}
+.perks-help-modal.is-open {
+  display:flex;
+}
+.perks-help-modal__backdrop {
+  position:absolute;
+  inset:0;
+  background:rgba(15,23,42,0.7);
+}
+.perks-help-modal__dialog {
+  position:relative;
+  z-index:1;
+  background:#fff;
+  border-radius:20px;
+  padding:28px;
+  max-width:420px;
+  width:100%;
+  box-shadow:0 24px 60px rgba(15,23,42,0.35);
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+.perks-help-modal__close {
+  position:absolute;
+  top:12px;
+  right:12px;
+  border:none;
+  background:rgba(15,23,42,0.7);
+  color:#fff;
+  width:32px;
+  height:32px;
+  border-radius:50%;
+  cursor:pointer;
+  font-size:1.2rem;
+}
+.perks-help-modal__eyebrow {
+  margin:0;
+  text-transform:uppercase;
+  letter-spacing:0.18em;
+  font-size:0.75rem;
+  color:#94a3b8;
+}
+.perks-help-modal__dialog h3 {
+  margin:0;
+}
+.perks-help-modal__dialog ul {
+  margin:0;
+  padding-left:20px;
+  color:#475467;
+}
 
 .perk-modal {
   position:fixed;
-  inset:0;
+  top:calc(var(--header-height) + 12px);
+  bottom:12px;
+  left:0;
+  right:0;
   display:none;
   align-items:center;
   justify-content:center;
@@ -529,9 +746,6 @@
   .filter-actions{
     justify-content:flex-start;
   }
-  .perks-grid{
-    grid-template-columns:1fr;
-  }
 }
 </style>
 
@@ -554,6 +768,12 @@
   const mapButton = document.querySelector("[data-action='open-map']");
   const mapPanel = document.getElementById("perks-map-panel");
   const mapCloseButtons = mapPanel ? mapPanel.querySelectorAll("[data-action='close-map']") : [];
+  const searchDrawer = document.getElementById("perks-search-drawer");
+  const searchCloseButtons = document.querySelectorAll("[data-action='close-search']");
+  const clearFiltersButton = document.querySelector("[data-action='clear-filters']");
+  const helpModal = document.getElementById("perks-help-modal");
+  const helpOpenButton = document.querySelector("[data-action='open-perks-help']");
+  const helpCloseButtons = helpModal ? helpModal.querySelectorAll("[data-action='close-perks-help']") : [];
   const modal = document.getElementById("perk-modal");
   const modalCover = modal.querySelector("[data-field='modal-cover']");
   const modalLogo = modal.querySelector("[data-field='modal-logo']");
@@ -564,23 +784,52 @@
   const modalDetails = modal.querySelector("[data-field='modal-details']");
   const modalLinks = modal.querySelector("[data-field='modal-links']");
 
-  function toggleFilters() {
-    if (!filterForm) return;
-    filterForm.classList.toggle("is-visible");
+  function openSearchDrawer() {
+    if (!searchDrawer) return;
+    searchDrawer.classList.add("is-open");
+    searchDrawer.setAttribute("aria-hidden", "false");
+  }
+
+  function closeSearchDrawer() {
+    if (!searchDrawer) return;
+    searchDrawer.classList.remove("is-open");
+    searchDrawer.setAttribute("aria-hidden", "true");
+  }
+
+  function toggleSearchDrawer() {
+    if (!searchDrawer) return;
+    if (searchDrawer.classList.contains("is-open")) {
+      closeSearchDrawer();
+    } else {
+      openSearchDrawer();
+    }
   }
 
   const mapPerksData = {{ map_perks | tojson | safe }};
   let mapInstance = null;
   let mapInitialized = false;
 
+  function ensureMapReady() {
+    if (!mapPanel) return;
+    const run = () => {
+      if (!mapInitialized) {
+        mapInitialized = initMap();
+      } else if (mapInstance) {
+        mapInstance.invalidateSize();
+      }
+    };
+    if (typeof window.requestAnimationFrame === "function") {
+      window.requestAnimationFrame(run);
+    } else {
+      setTimeout(run, 50);
+    }
+  }
+
   function showMapPanel() {
     if (!mapPanel) return;
     mapPanel.classList.add("is-open");
     mapPanel.setAttribute("aria-hidden", "false");
-    if (!mapInitialized) {
-      initMap();
-      mapInitialized = true;
-    }
+    ensureMapReady();
   }
 
   function hideMapPanel() {
@@ -634,9 +883,26 @@
     modal.setAttribute("aria-hidden", "false");
   }
 
-  if (searchToggle && filterForm) {
-    searchToggle.addEventListener("click", toggleFilters);
+  if (searchToggle) {
+    searchToggle.addEventListener("click", toggleSearchDrawer);
   }
+  searchCloseButtons.forEach((btn) => btn.addEventListener("click", closeSearchDrawer));
+  if (searchDrawer) {
+    searchDrawer.addEventListener("keyup", (event) => {
+      if (event.key === "Escape") {
+        closeSearchDrawer();
+      }
+    });
+    document.addEventListener("click", (event) => {
+      if (!searchDrawer.classList.contains("is-open")) return;
+      const toggleTarget = event.target.closest("[data-action='toggle-search']");
+      if (toggleTarget) return;
+      if (!searchDrawer.contains(event.target)) {
+        closeSearchDrawer();
+      }
+    });
+  }
+
   if (mapButton) {
     mapButton.addEventListener("click", showMapPanel);
   }
@@ -656,31 +922,115 @@
   modal.querySelectorAll("[data-action='close-modal']").forEach((el) =>
     el.addEventListener("click", closeModal)
   );
+  function openHelpModal() {
+    if (!helpModal) return;
+    helpModal.classList.add("is-open");
+    helpModal.setAttribute("aria-hidden", "false");
+  }
+  function closeHelpModal() {
+    if (!helpModal) return;
+    helpModal.classList.remove("is-open");
+    helpModal.setAttribute("aria-hidden", "true");
+  }
+  if (helpOpenButton) {
+    helpOpenButton.addEventListener("click", openHelpModal);
+  }
+  helpCloseButtons.forEach((btn) => btn.addEventListener("click", closeHelpModal));
+  if (helpModal) {
+    helpModal.addEventListener("click", (event) => {
+      if (event.target.dataset.action === "close-perks-help" || event.target === helpModal) {
+        closeHelpModal();
+      }
+    });
+  }
+
+  function requestFilterSubmit() {
+    if (!filterForm) return;
+    if (typeof filterForm.requestSubmit === "function") {
+      filterForm.requestSubmit();
+    } else {
+      filterForm.submit();
+    }
+  }
+
+  if (filterForm) {
+    const selects = filterForm.querySelectorAll("select");
+    selects.forEach((select) => {
+      select.addEventListener("change", () => {
+        requestFilterSubmit();
+      });
+    });
+    const searchInput = filterForm.querySelector("input[type='search']");
+    let searchDebounce = null;
+    if (searchInput) {
+      searchInput.addEventListener("input", () => {
+        clearTimeout(searchDebounce);
+        searchDebounce = setTimeout(requestFilterSubmit, 500);
+      });
+    }
+  }
+
+  if (clearFiltersButton && filterForm) {
+    clearFiltersButton.addEventListener("click", () => {
+      filterForm.querySelectorAll("select").forEach((select) => {
+        select.value = "";
+      });
+      const searchInput = filterForm.querySelector("input[type='search']");
+      if (searchInput) {
+        searchInput.value = "";
+      }
+      requestFilterSubmit();
+    });
+  }
+
+  function renderMapFallback(message) {
+    const container = document.getElementById("perks-map");
+    if (!container) return;
+    container.innerHTML = '<div class="perks-map__fallback">' + message + "</div>";
+  }
 
   function initMap() {
+    const mapElement = document.getElementById("perks-map");
+    if (!mapElement) return false;
     if (!window.L) {
       console.error("Leaflet failed to load.");
-      return;
+      renderMapFallback("We couldn't load the map right now. Please refresh and try again.");
+      return false;
     }
-    mapInstance = L.map("perks-map").setView([53.5228, -1.1285], 13);
+
+    mapElement.innerHTML = "";
+    const defaultCenter = [53.5228, -1.1285];
+    const defaultZoom = 13;
+    mapInstance = L.map(mapElement).setView(defaultCenter, defaultZoom);
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       maxZoom: 18,
       attribution: "&copy; OpenStreetMap contributors",
     }).addTo(mapInstance);
 
+    const markerBounds = [];
     mapPerksData.forEach((perk) => {
-      const lat = perk.location.latitude;
-      const lng = perk.location.longitude;
-      if (typeof lat !== "number" || typeof lng !== "number") return;
+      const lat = Number(perk.location && perk.location.latitude);
+      const lng = Number(perk.location && perk.location.longitude);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
       const popup = `
         <div class="map-popup">
           <strong>${perk.partner_name || ""}</strong><br>
           ${perk.name || ""}
           ${perk.short_tagline ? `<p>${perk.short_tagline}</p>` : ""}
-          ${perk.location.address ? `<small>${perk.location.address}</small>` : ""}
+          ${perk.location && perk.location.address ? `<small>${perk.location.address}</small>` : ""}
         </div>`;
       L.marker([lat, lng]).addTo(mapInstance).bindPopup(popup);
+      markerBounds.push([lat, lng]);
     });
+
+    if (markerBounds.length > 0) {
+      mapInstance.fitBounds(markerBounds, { padding: [24, 24] });
+    } else {
+      mapInstance.setView(defaultCenter, defaultZoom);
+    }
+
+    mapInstance.invalidateSize();
+    return true;
   }
 
   document.querySelectorAll(".perk-expand").forEach((btn) => {

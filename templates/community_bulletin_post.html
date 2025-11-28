@@ -34,12 +34,30 @@
   </div>
 </section>
 
+{% if memory_album %}
+<section class="bp-memory-banner">
+  <div>
+    <p class="bp-memory-eyebrow">Memory album</p>
+    <h3>View {{ memory_album.slide_count }} highlight photos from this post</h3>
+    <p>{{ memory_album.summary or post.summary }}</p>
+  </div>
+  <button type="button"
+          class="bp-memory-btn"
+          data-memory-launch="{{ memory_album.id }}"
+          data-memory-start="0">
+    View the full memory
+  </button>
+</section>
+{% endif %}
+
 <div class="bp-layout">
   <article class="bp-article"
            data-bulletin-slug="{{ post.slug }}"
            data-initial-comments='{{ (post.comment_threads or [])|tojson|safe }}'
            data-can-comment="{{ 'true' if trainer else 'false' }}"
-           data-liked="{{ 'true' if post.get('liked_by_me') else 'false' }}">
+           data-liked="{{ 'true' if post.get('liked_by_me') else 'false' }}"
+           data-is-pwa="{{ 'true' if is_pwa else 'false' }}"
+           data-max-comment-depth="{{ max_comment_depth or 2 }}">
     {% if toc_sections %}
     <div class="bp-card bp-toc-card">
       <div class="bp-card-title">
@@ -92,11 +110,22 @@
             {% endfor %}
           </div>
         {% elif section.type == "carousel" and section.slides %}
+          {% set section_offset = memory_album.section_offsets.get(section.id) if memory_album else none %}
           <div class="bp-carousel" data-carousel>
             <div class="bp-carousel-track" data-carousel-track>
               {% for slide in section.slides %}
-              <figure class="bp-carousel-slide">
-                <img src="{{ slide.image|bulletin_media }}" alt="{{ slide.caption or ('Slide ' ~ loop.index) }}">
+              {% set slide_index = (section_offset + loop.index0) if section_offset is not none else loop.index0 %}
+              <figure class="bp-carousel-slide"
+                      {% if memory_album %}
+                      data-photo-trigger
+                      data-memory-album="{{ memory_album.id }}"
+                      data-photo-index="{{ slide_index }}"
+                      role="button"
+                      tabindex="0"
+                      {% endif %}>
+                <img src="{{ slide.image|bulletin_media }}"
+                     alt="{{ slide.caption or ('Slide ' ~ loop.index) }}"
+                     data-photo-src="{{ slide.image|bulletin_media }}">
                 {% if slide.caption %}
                 <figcaption>{{ slide.caption }}</figcaption>
                 {% endif %}
@@ -107,7 +136,14 @@
               <button type="button" class="bp-carousel-nav" data-carousel-prev aria-label="Previous slide">‹</button>
               <span class="bp-carousel-indicator" data-carousel-indicator>01/{{ '%02d' % (section.slides|length) }}</span>
               <button type="button" class="bp-carousel-nav" data-carousel-next aria-label="Next slide">›</button>
-              {% if section.album_url %}
+              {% if memory_album and section_offset is not none %}
+              <button type="button"
+                      class="bp-carousel-album"
+                      data-memory-launch="{{ memory_album.id }}"
+                      data-memory-start="{{ section_offset }}">
+                View the full memory
+              </button>
+              {% elif section.album_url %}
               <a class="bp-carousel-album" href="{{ section.album_url }}" target="_blank" rel="noopener">Open album ↗</a>
               {% endif %}
             </div>
@@ -116,8 +152,18 @@
             {% endif %}
           </div>
         {% elif section.type == "media-block" and section.image %}
-          <figure class="bp-media-block {{ 'is-full' if section.fullbleed else '' }}">
-            <img src="{{ section.image|bulletin_media }}" alt="{{ section.alt or section.caption or section.title or post.title }}">
+          {% set media_offset = memory_album.section_offsets.get(section.id) if memory_album else none %}
+          <figure class="bp-media-block {{ 'is-full' if section.fullbleed else '' }}"
+                  {% if memory_album and media_offset is not none %}
+                  data-photo-trigger
+                  data-memory-album="{{ memory_album.id }}"
+                  data-photo-index="{{ media_offset }}"
+                  role="button"
+                  tabindex="0"
+                  {% endif %}>
+            <img src="{{ section.image|bulletin_media }}"
+                 alt="{{ section.alt or section.caption or section.title or post.title }}"
+                 data-photo-src="{{ section.image|bulletin_media }}">
             {% if section.caption or section.credit %}
             <figcaption>
               {% if section.caption %}
@@ -214,17 +260,33 @@
   <a class="bp-btn-outline" href="{{ url_for('community_bulletin') }}">← View all bulletin posts</a>
 </div>
 
-<div class="bp-comments-panel" data-comments-panel>
+<div class="bp-comments-panel" data-comments-panel id="comments">
   <div class="bp-comments-backdrop" data-comments-close></div>
   <div class="bp-comments-sheet">
     <header class="bp-comments-header">
       <button type="button" class="bp-comments-back" data-comments-close aria-label="Close comments">← Back</button>
       <div>
         <h3>Comments</h3>
-        <p data-comments-count>{{ (post.comment_threads or [])|length }} community replies</p>
+        <p data-comments-count>{{ post.comment_count or (post.comment_threads or [])|length }} community replies</p>
       </div>
       <button type="button" class="bp-comments-close" data-comments-close aria-label="Close comments">✕</button>
     </header>
+    <div class="bp-thread-view" data-thread-view hidden aria-hidden="true">
+      <div class="bp-thread-view__backdrop" data-thread-close></div>
+      <div class="bp-thread-view__dialog" role="dialog" aria-modal="true" tabindex="-1" data-thread-dialog>
+        <header class="bp-thread-view__header">
+          <button type="button" class="bp-thread-view__back" data-thread-close aria-label="Back to all comments">← Back to comments</button>
+          <div>
+            <h4>Comment thread</h4>
+            <p data-thread-count>0 replies</p>
+          </div>
+          <button type="button" class="bp-thread-view__close" data-thread-close aria-label="Close thread">✕</button>
+        </header>
+        <div class="bp-thread-view__body" data-thread-body>
+          <p class="bp-comment-empty">Select "View replies" to open a thread.</p>
+        </div>
+      </div>
+    </div>
     <div class="bp-comments-content" data-comments-container>
       <p class="bp-comment-empty">Loading comments…</p>
     </div>
@@ -248,13 +310,62 @@
                 {% if not can_comment %}disabled{% endif %}
                 data-comment-input></textarea>
       <input type="hidden" name="parent_id" data-comment-parent>
+      <div class="content-filter-progress"
+           data-content-filter-progress
+           role="status"
+           aria-live="polite"
+           hidden>
+        <span class="content-filter-progress__spinner" aria-hidden="true"></span>
+        <span>Give us just a second, we're checking this to keep the community safe.</span>
+      </div>
       <button type="submit" {% if not can_comment %}disabled{% endif %}>Post Comment</button>
       {% if not can_comment %}
-        <small class="bp-comment-hint">You need to be logged in as a trainer to add comments.</small>
+        <div class="bp-login-inline">
+          <small class="bp-comment-hint">You need to be logged in as a trainer to add comments.</small>
+          {% if not is_pwa %}
+          <button type="button" class="bp-login-inline__btn" data-open-login-modal>Log in</button>
+          {% endif %}
+        </div>
       {% endif %}
     </form>
   </div>
 </div>
+
+{% if not trainer %}
+<div class="bp-login-modal" data-login-modal hidden data-login-endpoint="{{ url_for('api_session_login') }}">
+  <div class="bp-login-modal__backdrop" data-login-close></div>
+  <div class="bp-login-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="bpWebLoginTitle" tabindex="-1">
+    <button type="button" class="bp-login-modal__close" data-login-close aria-label="Close login form">✕</button>
+    <h3 id="bpWebLoginTitle">Log in to RDAB</h3>
+    <p>Use your trainer credentials to leave comments and reactions from the browser.</p>
+    <form data-login-form>
+      <label for="webLoginUsername">Trainer Name</label>
+      <input id="webLoginUsername"
+             name="username"
+             type="text"
+             autocomplete="username"
+             required>
+      <label for="webLoginPin">4-digit PIN</label>
+      <input id="webLoginPin"
+             name="pin"
+             type="password"
+             inputmode="numeric"
+             pattern="\d{4}"
+             maxlength="4"
+             autocomplete="current-password"
+             required>
+      <button type="submit">Log in</button>
+      <p class="bp-login-modal__error" data-login-error role="alert"></p>
+    </form>
+    <p class="bp-login-modal__note">
+      Need an account?
+      To create an account you must sign up using the RDAB app.
+      Find out how to install it
+      <a href="{{ url_for('home', install='1') }}#install" target="_blank" rel="noopener">here</a>.
+    </p>
+  </div>
+</div>
+{% endif %}
 
 <div class="bp-engagement-bar" data-engagement-bar>
   <button class="bp-engage-btn {{ 'is-liked' if post.get('liked_by_me') else '' }}"
@@ -292,6 +403,56 @@
   background: #fff;
   box-shadow: 0 18px 40px rgba(15, 23, 42, 0.1);
   margin-bottom: 32px;
+}
+
+.bp-memory-banner {
+  background: linear-gradient(120deg, #0f172a, #1e3a8a);
+  color: #fff;
+  border-radius: 28px;
+  padding: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 32px;
+  box-shadow: 0 24px 40px rgba(2, 6, 23, 0.3);
+}
+
+.bp-memory-eyebrow {
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  margin: 0 0 6px 0;
+  color: #94a3b8;
+  font-weight: 700;
+}
+
+.bp-memory-banner h3 {
+  margin: 0;
+  font-size: 1.4rem;
+}
+
+.bp-memory-banner p {
+  margin: 6px 0 0 0;
+  color: rgba(248, 250, 252, 0.85);
+}
+
+.bp-memory-btn {
+  border: none;
+  border-radius: 18px;
+  padding: 12px 18px;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #0f172a;
+  background: linear-gradient(120deg, #3a8dde, #68f7d0);
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 12px 20px rgba(56, 189, 248, 0.3);
+}
+
+.bp-memory-btn:hover,
+.bp-memory-btn:focus-visible {
+  transform: translateY(-2px);
 }
 
 .bp-hero-media img {
@@ -564,6 +725,11 @@
   padding: 8px 14px;
   border-radius: 999px;
   background: #d1fae5;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .bp-carousel-description {
@@ -758,6 +924,7 @@
   transition: transform 0.3s ease;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .bp-comments-panel.is-open .bp-comments-sheet {
@@ -817,6 +984,13 @@
 .bp-comment {
   display: flex;
   gap: 12px;
+  align-items: flex-start;
+  width: 100%;
+}
+
+.bp-comment--highlight .bp-comment-body {
+  background: #eef4ff;
+  box-shadow: 0 0 0 2px rgba(58, 141, 222, 0.25);
 }
 
 .bp-comment-avatar img {
@@ -884,11 +1058,13 @@
 }
 
 .bp-comment-replies {
-  margin-top: 10px;
-  padding-left: 34px;
+  margin-top: 12px;
+  margin-left: 8px;
+  padding-left: 20px;
+  border-left: 1px solid #e2e8f0;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
 }
 
 .bp-comment--reply .bp-comment-body {
@@ -904,6 +1080,42 @@
   cursor: pointer;
   padding: 0;
   margin-top: 6px;
+}
+
+.bp-thread-toggle {
+  margin-top: 8px;
+  width: 100%;
+  border: none;
+  background: #eef2ff;
+  color: #0f172a;
+  font: inherit;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.bp-thread-toggle span:first-child {
+  color: #475569;
+  font-weight: 500;
+}
+
+.bp-thread-toggle span:last-child {
+  color: #2563eb;
+}
+
+.bp-thread-toggle:hover,
+.bp-thread-toggle:focus-visible {
+  background: #e0e7ff;
+}
+
+.bp-thread-toggle:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
 }
 
 .bp-reply-banner {
@@ -961,6 +1173,224 @@
 .bp-comment-hint {
   font-size: 0.8rem;
   color: #64748b;
+}
+
+.bp-login-inline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.bp-login-inline__btn {
+  border: none;
+  border-radius: 999px;
+  background: #1d4ed8;
+  color: #fff;
+  padding: 6px 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.bp-login-inline__btn:hover,
+.bp-login-inline__btn:focus-visible {
+  background: #2563eb;
+}
+
+.bp-login-modal {
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 1200;
+  padding: 24px;
+}
+
+.bp-login-modal.is-open {
+  display: flex;
+}
+
+.bp-login-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(2, 6, 23, 0.6);
+  backdrop-filter: blur(2px);
+}
+
+.bp-login-modal__dialog {
+  position: relative;
+  background: #fff;
+  border-radius: 24px;
+  width: min(420px, 100%);
+  padding: 24px;
+  box-shadow: 0 30px 60px rgba(15, 23, 42, 0.35);
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.bp-login-modal__dialog h3 {
+  margin: 0;
+}
+
+.bp-login-modal__dialog p {
+  margin: 0;
+  color: #475569;
+}
+
+.bp-login-modal__dialog form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.bp-login-modal__dialog label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.bp-login-modal__dialog input {
+  border-radius: 12px;
+  border: 1px solid #cbd5f5;
+  padding: 10px;
+  font-size: 1rem;
+}
+
+.bp-login-modal__dialog button[type="submit"] {
+  border: none;
+  background: #0f172a;
+  color: #fff;
+  padding: 10px 16px;
+  border-radius: 999px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.bp-login-modal__close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  border: none;
+  background: transparent;
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+
+.bp-login-modal__error {
+  min-height: 1.2em;
+  color: #dc2626;
+  font-weight: 600;
+}
+
+.bp-login-modal__note {
+  font-size: 0.85rem;
+  color: #475569;
+}
+
+.bp-login-modal__note a {
+  color: #1d4ed8;
+  font-weight: 600;
+}
+
+body.bp-modal-open {
+  overflow: hidden;
+}
+
+.bp-thread-view {
+  position: absolute;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  z-index: 5;
+  pointer-events: none;
+}
+
+.bp-thread-view.is-open {
+  display: flex;
+  pointer-events: auto;
+}
+
+.bp-thread-view__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(1px);
+}
+
+.bp-thread-view__dialog {
+  position: relative;
+  background: #fff;
+  border-radius: 24px;
+  width: min(520px, 100%);
+  max-height: calc(100% - 56px);
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 45px rgba(15, 23, 42, 0.2);
+  z-index: 1;
+  overflow: hidden;
+}
+
+.bp-thread-view__header {
+  padding: 16px 20px;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.bp-thread-view__header h4 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.bp-thread-view__header p {
+  margin: 4px 0 0 0;
+  color: #475569;
+  font-size: 0.85rem;
+}
+
+.bp-thread-view__body {
+  padding: 16px 20px 20px;
+  overflow-y: auto;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.bp-thread-view__close,
+.bp-thread-view__back {
+  border: none;
+  background: transparent;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.bp-thread-view__close {
+  font-size: 1rem;
+  color: #0f172a;
+}
+
+.bp-thread-view__back {
+  color: #2563eb;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.bp-thread-view__dialog .bp-comment {
+  background: transparent;
+}
+
+.bp-thread-view__dialog .bp-comment-body {
+  background: #f8fafc;
 }
 
 .bp-engagement-bar {
@@ -1052,6 +1482,12 @@
     margin-left: -16px;
     margin-right: -16px;
     width: calc(100% + 32px);
+  }
+
+  .bp-thread-view__dialog {
+    border-radius: 16px;
+    width: 100%;
+    max-height: 100%;
   }
 }
 @media (max-width: 1024px) {
@@ -1157,6 +1593,16 @@
   var article = document.querySelector("[data-bulletin-slug]");
   var slug = article ? article.dataset.bulletinSlug : null;
   var canComment = article ? article.dataset.canComment === "true" : false;
+  var isPwaContext = article ? article.dataset.isPwa === "true" : false;
+  var loginUrl = "{{ url_for('login') }}";
+  var loginApiUrl = "{{ url_for('api_session_login') }}";
+  var MAX_THREAD_DEPTH = {{ max_comment_depth or 2 }};
+  if (article && article.dataset.maxCommentDepth) {
+    var parsedDepth = parseInt(article.dataset.maxCommentDepth, 10);
+    if (!isNaN(parsedDepth)) {
+      MAX_THREAD_DEPTH = parsedDepth;
+    }
+  }
   var commentsData = [];
   if (article && article.dataset.initialComments) {
     try {
@@ -1165,6 +1611,15 @@
       commentsData = [];
     }
   }
+  var THREAD_PLACEHOLDER = '<p class="bp-comment-empty">Select "View replies" to open a thread.</p>';
+  var threadFocusRequest = (window.location.hash || "").toLowerCase().indexOf("comments") !== -1;
+  var loginModal = document.querySelector("[data-login-modal]");
+  var loginForm = loginModal ? loginModal.querySelector("[data-login-form]") : null;
+  var loginError = loginModal ? loginModal.querySelector("[data-login-error]") : null;
+  var loginModalCloseEls = loginModal ? loginModal.querySelectorAll("[data-login-close]") : [];
+  var loginTriggers = document.querySelectorAll("[data-open-login-modal]");
+  var loginSubmitButton = loginForm ? loginForm.querySelector("button[type='submit']") : null;
+  var loginApiEndpoint = loginModal && loginModal.dataset.loginEndpoint ? loginModal.dataset.loginEndpoint : loginApiUrl;
 
   var scrollLock = window.__overlayLock || {
     lock: function () { document.body.style.overflow = "hidden"; },
@@ -1189,6 +1644,105 @@
   if (backTop) {
     backTop.addEventListener("click", function () {
       window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+  }
+
+  function openLoginModal() {
+    if (!loginModal) {
+      window.location.href = loginUrl;
+      return;
+    }
+    loginModal.classList.add("is-open");
+    loginModal.removeAttribute("hidden");
+    document.body.classList.add("bp-modal-open");
+    if (loginError) {
+      loginError.textContent = "";
+    }
+    if (loginForm) {
+      loginForm.reset();
+      var firstInput = loginForm.querySelector("input");
+      if (firstInput) {
+        window.setTimeout(function () { firstInput.focus(); }, 30);
+      }
+    }
+  }
+
+  function closeLoginModal() {
+    if (!loginModal) return;
+    loginModal.classList.remove("is-open");
+    loginModal.setAttribute("hidden", "hidden");
+    document.body.classList.remove("bp-modal-open");
+  }
+
+  function promptLogin() {
+    if (isPwaContext) {
+      window.location.href = loginUrl;
+      return;
+    }
+    openLoginModal();
+  }
+
+  loginModalCloseEls.forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      closeLoginModal();
+    });
+  });
+  if (loginModal) {
+    loginModal.addEventListener("click", function (evt) {
+      if (evt.target === loginModal) {
+        closeLoginModal();
+      }
+    });
+  }
+  loginTriggers.forEach(function (btn) {
+    btn.addEventListener("click", function (evt) {
+      evt.preventDefault();
+      promptLogin();
+    });
+  });
+  if (loginForm) {
+    loginForm.addEventListener("submit", function (evt) {
+      evt.preventDefault();
+      var usernameField = loginForm.querySelector("[name='username']");
+      var pinField = loginForm.querySelector("[name='pin']");
+      var username = usernameField ? usernameField.value.trim() : "";
+      var pin = pinField ? pinField.value.trim() : "";
+      if (!username || !pin) {
+        if (loginError) {
+          loginError.textContent = "Enter your trainer name and PIN.";
+        }
+        return;
+      }
+      if (loginSubmitButton) loginSubmitButton.disabled = true;
+      fetch(loginApiEndpoint || loginApiUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+        },
+        body: JSON.stringify({ username: username, pin: pin }),
+      })
+        .then(function (resp) {
+          return resp.json().catch(function () { return {}; }).then(function (body) {
+            return { ok: resp.ok, body: body };
+          });
+        })
+        .then(function (payload) {
+          if (!payload.ok || !payload.body || payload.body.success === false) {
+            var error = (payload.body && payload.body.error) ? payload.body.error : "Unable to log in.";
+            throw new Error(error);
+          }
+          if (loginError) loginError.textContent = "";
+          window.location.reload();
+        })
+        .catch(function (err) {
+          if (loginError) {
+            loginError.textContent = err && err.message ? err.message : "Unable to log in.";
+          }
+        })
+        .finally(function () {
+          if (loginSubmitButton) loginSubmitButton.disabled = false;
+        });
     });
   }
 
@@ -1217,163 +1771,119 @@
     }
   }
 
-  var trainerProfileOverlay = document.querySelector("[data-trainer-profile]");
-  var trainerProfileLoading = trainerProfileOverlay ? trainerProfileOverlay.querySelector("[data-trainer-profile-loading]") : null;
-  var trainerProfileCard = trainerProfileOverlay ? trainerProfileOverlay.querySelector("[data-trainer-profile-card]") : null;
-  var trainerProfileError = trainerProfileOverlay ? trainerProfileOverlay.querySelector("[data-trainer-profile-error]") : null;
-  var trainerProfileHero = trainerProfileOverlay ? trainerProfileOverlay.querySelector("[data-trainer-profile-hero]") : null;
-  var trainerProfileAvatar = trainerProfileOverlay ? trainerProfileOverlay.querySelector("[data-trainer-profile-avatar]") : null;
-  var trainerProfileName = trainerProfileOverlay ? trainerProfileOverlay.querySelector("[data-trainer-profile-name]") : null;
-  var trainerProfileAccount = trainerProfileOverlay ? trainerProfileOverlay.querySelector("[data-trainer-profile-account]") : null;
-  var trainerProfileCampfire = trainerProfileOverlay ? trainerProfileOverlay.querySelector("[data-trainer-profile-campfire]") : null;
-  var trainerProfileStamps = trainerProfileOverlay ? trainerProfileOverlay.querySelector("[data-trainer-profile-stamps]") : null;
-  var trainerProfileTeam = trainerProfileOverlay ? trainerProfileOverlay.querySelector("[data-trainer-profile-team]") : null;
-  var trainerProfileJoined = trainerProfileOverlay ? trainerProfileOverlay.querySelector("[data-trainer-profile-joined]") : null;
-  var trainerProfileCloseEls = trainerProfileOverlay ? trainerProfileOverlay.querySelectorAll("[data-trainer-profile-close]") : [];
-  var trainerProfileCache = {};
-  var trainerProfileCloseTimer = null;
+  function totalCommentCount(list) {
+    return (Array.isArray(list) ? list : []).reduce(function (sum, comment) {
+      return sum + 1 + totalCommentCount(comment.replies || []);
+    }, 0);
+  }
 
-  function setTrainerProfileView(mode) {
-    if (trainerProfileLoading) trainerProfileLoading.hidden = mode !== "loading";
-    if (trainerProfileCard) trainerProfileCard.hidden = mode !== "ready";
-    if (trainerProfileError) {
-      trainerProfileError.hidden = mode !== "error";
-      if (mode !== "error") {
-        trainerProfileError.textContent = "";
+  function replyCount(comment) {
+    if (!comment || !Array.isArray(comment.replies)) return 0;
+    return totalCommentCount(comment.replies);
+  }
+
+  function findCommentById(id, list) {
+    if (!id) return null;
+    var search = Array.isArray(list) ? list : commentsData;
+    for (var i = 0; i < search.length; i++) {
+      var comment = search[i];
+      if ((comment.id || "").toString() === id.toString()) {
+        return comment;
+      }
+      var nested = findCommentById(id, comment.replies || []);
+      if (nested) {
+        return nested;
       }
     }
+    return null;
   }
-
-  function hydrateTrainerProfile(data, fallbackName) {
-    var displayName = data && data.username ? data.username : (fallbackName || "Trainer");
-    if (trainerProfileName) {
-      trainerProfileName.textContent = displayName;
-    }
-    if (trainerProfileAccount) {
-      var headline = data && data.trainer_title ? data.trainer_title : null;
-      var accountLabel = headline || (data && data.account_type ? data.account_type + " Account" : "Trainer Account");
-      trainerProfileAccount.textContent = accountLabel;
-    }
-    if (trainerProfileAvatar) {
-      trainerProfileAvatar.src = data && data.avatar_url ? data.avatar_url : DEFAULT_TRAINER_AVATAR;
-      trainerProfileAvatar.alt = displayName + " avatar";
-    }
-    if (trainerProfileHero) {
-      var heroBg = data && data.background_url ? "url('" + data.background_url + "')" : "url('" + DEFAULT_TRAINER_BACKGROUND + "')";
-      trainerProfileHero.style.backgroundImage = heroBg;
-    }
-    if (trainerProfileCampfire) {
-      trainerProfileCampfire.textContent = data && data.campfire_username ? "@" + data.campfire_username : "—";
-    }
-    if (trainerProfileStamps) {
-      var stampsValue = data && typeof data.stamps !== "undefined" ? data.stamps : "—";
-      if (typeof stampsValue === "number") {
-        trainerProfileStamps.textContent = stampsValue.toLocaleString();
-      } else {
-        trainerProfileStamps.textContent = stampsValue || "—";
-      }
-    }
-    if (trainerProfileTeam) {
-      trainerProfileTeam.textContent = data && data.trainer_team ? data.trainer_team : "—";
-    }
-    if (trainerProfileJoined) {
-      trainerProfileJoined.textContent = data && data.joined_at ? formatDate(data.joined_at) : "—";
-    }
-  }
-
-  function openTrainerProfile(username, profileUrl, fallbackName) {
-    if (!trainerProfileOverlay || !profileUrl) return;
-    clearTimeout(trainerProfileCloseTimer);
-    var wasHidden = trainerProfileOverlay.hidden;
-    trainerProfileOverlay.hidden = false;
-    requestAnimationFrame(function () {
-      trainerProfileOverlay.classList.add("is-visible");
-    });
-    if (wasHidden) {
-      lockBodyScroll();
-    }
-    setTrainerProfileView("loading");
-    hydrateTrainerProfile(null, fallbackName || username);
-    var cacheKey = (username || fallbackName || "").trim().toLowerCase();
-    if (cacheKey && trainerProfileCache[cacheKey]) {
-      hydrateTrainerProfile(trainerProfileCache[cacheKey], fallbackName || username);
-      setTrainerProfileView("ready");
-      return;
-    }
-    fetch(profileUrl)
-      .then(function (resp) {
-        return resp.json().then(function (body) {
-          return { ok: resp.ok, body: body };
-        });
-      })
-      .then(function (payload) {
-        if (!payload.ok) {
-          throw new Error(payload.body && payload.body.error ? payload.body.error : "Unable to load trainer profile.");
-        }
-        var trainer = payload.body && payload.body.trainer;
-        if (!trainer) {
-          throw new Error("Trainer profile missing.");
-        }
-        if (cacheKey) {
-          trainerProfileCache[cacheKey] = trainer;
-        }
-        hydrateTrainerProfile(trainer, fallbackName || username);
-        setTrainerProfileView("ready");
-      })
-      .catch(function (err) {
-        console.warn(err);
-        if (trainerProfileError) {
-          trainerProfileError.textContent = err && err.message ? err.message : "Unable to load trainer profile. Please try again.";
-        }
-        setTrainerProfileView("error");
-      });
-  }
-
-  function closeTrainerProfile() {
-    if (!trainerProfileOverlay || trainerProfileOverlay.hidden) return;
-    trainerProfileOverlay.classList.remove("is-visible");
-    trainerProfileCloseTimer = setTimeout(function () {
-      trainerProfileOverlay.hidden = true;
-      setTrainerProfileView("loading");
-      unlockBodyScroll();
-    }, 220);
-  }
-
-  trainerProfileCloseEls.forEach(function (btn) {
-    btn.addEventListener("click", closeTrainerProfile);
-  });
-
-  document.addEventListener("click", function (evt) {
-    var trigger = evt.target.closest("[data-trainer-profile-trigger]");
-    if (!trigger) return;
-    var profileUrl = trigger.getAttribute("data-trainer-profile-url");
-    if (!profileUrl) return;
-    evt.preventDefault();
-    var username = trigger.getAttribute("data-trainer-username") || "";
-    var fallbackName = trigger.getAttribute("data-trainer-display") || trigger.textContent || username;
-    openTrainerProfile(username, profileUrl, fallbackName);
-  });
 
   var commentsContainer = document.querySelector("[data-comments-container]");
   var commentsCountLabel = document.querySelector("[data-comments-count]");
+  var threadView = document.querySelector("[data-thread-view]");
+  var threadBody = threadView ? threadView.querySelector("[data-thread-body]") : null;
+  var threadCountLabel = threadView ? threadView.querySelector("[data-thread-count]") : null;
+  var threadDialog = threadView ? threadView.querySelector("[data-thread-dialog]") : null;
+  var threadCloseEls = threadView ? threadView.querySelectorAll("[data-thread-close]") : [];
 
-  function commentTemplate(comment, isReply) {
+  function renderThread(comment) {
+    if (!threadBody || !comment) return;
+    threadBody.innerHTML = commentTemplate(comment, { showReplies: true });
+    var totalReplies = replyCount(comment);
+    if (threadCountLabel) {
+      threadCountLabel.textContent = totalReplies
+        ? totalReplies + (totalReplies === 1 ? " reply" : " replies")
+        : "No replies yet";
+    }
+  }
+
+  function openThread(comment) {
+    if (!threadView || !comment) return;
+    threadView.dataset.threadOpen = comment.id || "";
+    renderThread(comment);
+    threadView.classList.add("is-open");
+    threadView.removeAttribute("hidden");
+    threadView.setAttribute("aria-hidden", "false");
+    if (threadDialog) {
+      threadDialog.focus();
+    }
+  }
+
+  function closeThreadView() {
+    if (!threadView || !threadView.classList.contains("is-open")) {
+      return false;
+    }
+    threadView.classList.remove("is-open");
+    threadView.setAttribute("hidden", "hidden");
+    threadView.setAttribute("aria-hidden", "true");
+    delete threadView.dataset.threadOpen;
+    if (threadBody) {
+      threadBody.scrollTop = 0;
+      threadBody.innerHTML = THREAD_PLACEHOLDER;
+    }
+    return true;
+  }
+
+  threadCloseEls.forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      closeThreadView();
+    });
+  });
+
+  function commentTemplate(comment, options) {
     if (!comment) return "";
-    var replies = Array.isArray(comment.replies) ? comment.replies.map(function (reply) {
-      return commentTemplate(reply, true);
-    }).join("") : "";
-    var replyBtn = canComment
-      ? '<button type="button" class="bp-reply-btn" data-reply-target="' + escapeHtml(comment.id || "") + '" data-reply-author="' + escapeHtml(comment.author || "Trainer") + '">Reply</button>'
-      : "";
+    options = options || {};
+    var isReply = !!options.isReply;
+    var showReplies = !!options.showReplies;
     var authorLabel = escapeHtml(comment.author || "Trainer");
     var trainerButton = (comment.trainer_profile_url
       ? '<button type="button" class="bp-comment-trainer" data-trainer-profile-trigger data-trainer-username="' + escapeHtml(comment.trainer_username || "") + '" data-trainer-profile-url="' + escapeHtml(comment.trainer_profile_url) + '" data-trainer-display="' + authorLabel + '">' + authorLabel + "</button>"
       : "<strong>" + authorLabel + "</strong>");
+    var commentId = escapeHtml(comment.id || "");
+    var replies = Array.isArray(comment.replies) ? comment.replies : [];
+    var repliesMarkup = "";
+    var repliesTotal = replyCount(comment);
+    if (showReplies && replies.length) {
+      repliesMarkup = '<div class="bp-comment-replies">' + replies.map(function (reply) {
+        return commentTemplate(reply, { isReply: true, showReplies: true });
+      }).join("") + "</div>";
+    } else if (!showReplies && repliesTotal) {
+      repliesMarkup =
+        '<button type="button" class="bp-thread-toggle" data-thread-trigger="' + commentId + '" aria-haspopup="dialog">' +
+          '<span>' + repliesTotal + (repliesTotal === 1 ? " reply" : " replies") + "</span>" +
+          "<span>View replies</span>" +
+        "</button>";
+    }
+    var depth = typeof comment.depth === "number" ? comment.depth : 0;
+    var allowReply = canComment && depth < MAX_THREAD_DEPTH;
+    var replyBtn = allowReply
+      ? '<button type="button" class="bp-reply-btn" data-reply-target="' + commentId + '" data-reply-author="' + authorLabel + '">Reply</button>'
+      : "";
     var classes = "bp-comment" + (isReply ? " bp-comment--reply" : "");
     return (
-      '<article class="' + classes + '">' +
+      '<article class="' + classes + '" data-comment-id="' + commentId + '">' +
         '<div class="bp-comment-avatar">' +
-          '<img src="' + escapeHtml(resolveAvatar(comment.avatar)) + '" alt="' + escapeHtml(comment.author || "Trainer") + '">' +
+          '<img src="' + escapeHtml(resolveAvatar(comment.avatar)) + '" alt="' + authorLabel + '">' +
         "</div>" +
         '<div class="bp-comment-body">' +
           '<div class="bp-comment-meta">' +
@@ -1382,7 +1892,7 @@
           "</div>" +
           "<p>" + escapeHtml(comment.body || "") + "</p>" +
           replyBtn +
-          (replies ? '<div class="bp-comment-replies">' + replies + "</div>" : "") +
+          repliesMarkup +
         "</div>" +
       "</article>"
     );
@@ -1395,12 +1905,26 @@
         commentsContainer.innerHTML = '<p class="bp-comment-empty">Be the first to leave a comment.</p>';
       } else {
         commentsContainer.innerHTML = commentsData.map(function (comment) {
-          return commentTemplate(comment, false);
+          return commentTemplate(comment, { showReplies: false });
         }).join("");
       }
     }
+    var totalCount = totalCommentCount(commentsData);
     if (commentsCountLabel) {
-      commentsCountLabel.textContent = commentsData.length + (commentsData.length === 1 ? " community reply" : " community replies");
+      commentsCountLabel.textContent = totalCount + (totalCount === 1 ? " community reply" : " community replies");
+    }
+    if (threadView && threadView.classList.contains("is-open")) {
+      var openId = threadView.dataset.threadOpen;
+      if (openId) {
+        var activeThread = findCommentById(openId, commentsData);
+        if (activeThread) {
+          renderThread(activeThread);
+        } else {
+          closeThreadView();
+        }
+      } else {
+        closeThreadView();
+      }
     }
   }
 
@@ -1438,7 +1962,7 @@
     }
     likeButton.addEventListener("click", function () {
       if (!canComment) {
-        alert("Log in to like this post.");
+        promptLogin();
         return;
       }
       var wasLiked = liked;
@@ -1494,7 +2018,7 @@
   function openComments() {
     if (!commentsPanel || commentsPanel.classList.contains("is-open")) return;
     commentsPanel.classList.add("is-open");
-    lockBodyScroll();
+    scrollLock.lock();
     if (!commentsLoadedOnce) {
       commentsLoadedOnce = true;
       refreshComments();
@@ -1503,8 +2027,9 @@
 
   function closeComments() {
     if (!commentsPanel || !commentsPanel.classList.contains("is-open")) return;
+    closeThreadView();
     commentsPanel.classList.remove("is-open");
-    unlockBodyScroll();
+    scrollLock.unlock();
   }
 
   commentsToggles.forEach(function (btn) {
@@ -1516,10 +2041,18 @@
 
   document.addEventListener("keydown", function (evt) {
     if (evt.key === "Escape") {
+      if (loginModal && loginModal.classList.contains("is-open")) {
+        closeLoginModal();
+        return;
+      }
+      if (closeThreadView()) return;
       closeComments();
-      closeTrainerProfile();
     }
   });
+
+  if (threadFocusRequest && commentsPanel) {
+    openComments();
+  }
 
   var form = document.querySelector("[data-comment-form]");
   var textarea = form ? form.querySelector("[data-comment-input]") : null;
@@ -1527,6 +2060,7 @@
   var replyBanner = form ? form.querySelector("[data-reply-banner]") : null;
   var replyLabel = form ? form.querySelector("[data-reply-target-label]") : null;
   var replyCancel = form ? form.querySelector("[data-reply-cancel]") : null;
+  var filterProgress = form ? form.querySelector("[data-content-filter-progress]") : null;
 
   function clearReplyTarget() {
     if (parentInput) parentInput.value = "";
@@ -1538,22 +2072,67 @@
     clearReplyTarget();
   });
 
-  commentsContainer && commentsContainer.addEventListener("click", function (evt) {
+  function toggleFilterProgress(active) {
+    if (!filterProgress) return;
+    filterProgress.hidden = !active;
+  }
+
+  function runCommentFilter(value) {
+    var filter = window.RDABContentFilter;
+    if (!filter || typeof filter.scan !== "function") {
+      return Promise.resolve({ allowed: true });
+    }
+    toggleFilterProgress(true);
+    return filter.scan(value)
+      .then(function (result) {
+        toggleFilterProgress(false);
+        return result;
+      })
+      .catch(function (err) {
+        console.warn("Content filter error:", err);
+        toggleFilterProgress(false);
+        return { allowed: true };
+      });
+  }
+
+  function handleReplyClick(evt) {
     var btn = evt.target.closest("[data-reply-target]");
-    if (!btn) return;
-    if (!canComment) return;
+    if (!btn || !canComment) return false;
     var targetId = btn.getAttribute("data-reply-target");
     var targetAuthor = btn.getAttribute("data-reply-author") || "Trainer";
     if (parentInput) parentInput.value = targetId || "";
     if (replyLabel) replyLabel.textContent = targetAuthor;
     if (replyBanner) replyBanner.classList.remove("is-hidden");
     textarea && textarea.focus();
+    closeThreadView();
+    return true;
+  }
+
+  function handleThreadToggle(evt) {
+    var toggle = evt.target.closest("[data-thread-trigger]");
+    if (!toggle) return false;
+    var targetId = toggle.getAttribute("data-thread-trigger");
+    if (!targetId) return false;
+    var comment = findCommentById(targetId, commentsData);
+    if (comment) {
+      openThread(comment);
+    }
+    return true;
+  }
+
+  commentsContainer && commentsContainer.addEventListener("click", function (evt) {
+    if (handleReplyClick(evt)) return;
+    handleThreadToggle(evt);
+  });
+
+  threadBody && threadBody.addEventListener("click", function (evt) {
+    handleReplyClick(evt);
   });
 
   form && form.addEventListener("submit", function (evt) {
     evt.preventDefault();
     if (!canComment || !slug) {
-      alert("Log in to comment.");
+      promptLogin();
       return;
     }
     if (!textarea) return;
@@ -1562,30 +2141,62 @@
       alert("Please enter a comment.");
       return;
     }
+    var submitBtn = form.querySelector("button[type='submit']");
+    if (submitBtn) submitBtn.disabled = true;
     var payload = {
       body: body,
       parent_id: parentInput && parentInput.value ? parentInput.value : null,
     };
-    fetch("/api/bulletin/" + slug + "/comments", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    })
-      .then(function (resp) { return resp.json(); })
-      .then(function (data) {
-        if (data && Array.isArray(data.comments)) {
-          updateCommentsUI(data.comments);
-          textarea.value = "";
-          clearReplyTarget();
-        } else {
-          throw new Error(data && data.error ? data.error : "Unable to post comment");
+    runCommentFilter(body).then(function (result) {
+      if (!result.allowed) {
+        if (window.RDABContentFilter && typeof window.RDABContentFilter.showWarning === "function") {
+          window.RDABContentFilter.showWarning(result);
         }
+        if (submitBtn) submitBtn.disabled = false;
+        return;
+      }
+      fetch("/api/bulletin/" + slug + "/comments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
       })
-      .catch(function (err) {
-        console.warn(err);
-        alert("Unable to post comment right now. Please try again soon.");
-      });
+        .then(function (resp) {
+          return resp.json().then(function (body) {
+            return { ok: resp.ok, body: body };
+          });
+        })
+        .then(function (payload) {
+          if (!payload.ok) {
+            var error = new Error(payload.body && payload.body.error ? payload.body.error : "Unable to post comment");
+            if (payload.body && payload.body.filter) {
+              error.isFilter = true;
+              error.filter = payload.body.filter;
+            }
+            throw error;
+          }
+          var data = payload.body;
+          if (data && Array.isArray(data.comments)) {
+            updateCommentsUI(data.comments);
+            textarea.value = "";
+            clearReplyTarget();
+          } else {
+            throw new Error("Unable to post comment");
+          }
+        })
+        .catch(function (err) {
+          console.warn(err);
+          if (err && err.isFilter && err.filter && window.RDABContentFilter && typeof window.RDABContentFilter.showWarning === "function") {
+            window.RDABContentFilter.showWarning(err.filter);
+          } else {
+            alert(err && err.message ? err.message : "Unable to post comment right now. Please try again soon.");
+          }
+        })
+        .finally(function () {
+          if (submitBtn) submitBtn.disabled = false;
+        });
+    });
   });
 })();
 </script>
+{% include "partials/memory_overlay.html" %}
 {% endblock %}

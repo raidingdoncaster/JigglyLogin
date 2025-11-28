@@ -58,6 +58,43 @@
 </section>
 
 
+{% if memory_albums %}
+<section class="cb-memory-block" id="memory-albums">
+  <div class="cb-section-heading">
+    <span class="cb-section-shadow">Memories</span>
+    <h3>Memory albums</h3>
+    <p>Swipe through the best photo drops from recent stories.</p>
+  </div>
+  <div class="cb-memory-grid">
+    {% for album in memory_albums[:6] %}
+    <article class="cb-memory-card">
+      <div class="cb-memory-media">
+        <img src="{{ (album.cover_image or album.slides[0].image)|bulletin_media }}" alt="{{ album.title }} memory cover">
+        <div class="cb-memory-meta-pill">
+          <span>{{ album.slide_count }} photos</span>
+          <span>•</span>
+          <span>{{ album.published_at|to_date if album.published_at else 'Soon' }}</span>
+        </div>
+      </div>
+      <div class="cb-memory-body">
+        <p class="cb-tag">{{ album.tag or 'Memory' }}</p>
+        <h4>{{ album.title }}</h4>
+        <p class="cb-memory-summary">{{ album.summary or 'Relive this community moment.' }}</p>
+        <button type="button"
+                class="cb-memory-btn"
+                data-memory-launch="{{ album.id }}"
+                data-memory-start="0">
+          View the full memory
+        </button>
+      </div>
+    </article>
+    {% else %}
+    <p class="cb-mini-empty">No memory albums yet — upload a carousel to start one.</p>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
 {% for section in category_sections %}
 <section class="cb-category-block" id="category-{{ section.name|replace(' ', '-')|lower() }}">
   <div class="cb-section-heading">
@@ -477,6 +514,93 @@ body.cb-modal-open {
   margin-bottom: 32px;
 }
 
+.cb-memory-block {
+  padding: 32px 24px 40px;
+  background: #040a20;
+  border-radius: 28px;
+  color: #f8fbff;
+  box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.15);
+  margin-bottom: 48px;
+}
+
+.cb-memory-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 18px;
+  margin-top: 18px;
+}
+
+.cb-memory-card {
+  background: rgba(15, 23, 42, 0.65);
+  border-radius: 20px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.cb-memory-media {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+}
+
+.cb-memory-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.5s ease;
+}
+
+.cb-memory-card:hover .cb-memory-media img {
+  transform: scale(1.05);
+}
+
+.cb-memory-meta-pill {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  right: 12px;
+  background: rgba(2, 6, 23, 0.75);
+  border-radius: 999px;
+  padding: 6px 12px;
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  font-size: 0.8rem;
+}
+
+.cb-memory-body {
+  padding: 16px 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+}
+
+.cb-memory-summary {
+  margin: 0;
+  color: rgba(248, 251, 255, 0.85);
+}
+
+.cb-memory-btn {
+  margin-top: auto;
+  border: none;
+  border-radius: 14px;
+  padding: 10px 14px;
+  background: linear-gradient(120deg, #3a8dde, #68f7d0);
+  color: #0f172a;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.cb-memory-btn:hover,
+.cb-memory-btn:focus-visible {
+  transform: translateY(-2px);
+}
+
 .cb-empty {
   text-align: center;
   margin: 0;
@@ -606,6 +730,9 @@ body.cb-modal-open {
 
 @media (max-width: 640px) {
   .cb-latest-item {
+    grid-template-columns: 1fr;
+  }
+  .cb-memory-grid {
     grid-template-columns: 1fr;
   }
   .cb-latest-thumb img {
@@ -838,4 +965,5 @@ body.cb-modal-open {
   });
 })();
 </script>
+{% include "partials/memory_overlay.html" %}
 {% endblock %}

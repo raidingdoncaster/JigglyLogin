@@ -217,6 +217,11 @@
   guide.addEventListener('click',e=>{
     if(e.target===guide){closeGuide();}
   });
+  const params=new URLSearchParams(window.location.search);
+  if(params.get('install')==='1' || window.location.hash.toLowerCase()==='#install'){
+    detectPlatform();
+    guide.classList.add('is-open');
+  }
 })();
 </script>
 

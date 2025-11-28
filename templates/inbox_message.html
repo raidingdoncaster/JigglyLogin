@@ -25,6 +25,10 @@
     </div>
   </div>
 
+  {% set metadata = msg.metadata or {} %}
+  {% set comment_thread = metadata.comment_reply %}
+  {% set comment_thread_url = metadata.url if comment_thread else None %}
+  {% set comment_thread_cta = metadata.cta_label if comment_thread else None %}
   {% set body_content = msg.message or '' %}
   <div class="body">
     {% if '<' in body_content %}
@@ -33,9 +37,34 @@
       {{ body_content|nl2br }}
     {% endif %}
 
-    {% if msg.metadata and msg.metadata.url %}
+    {% if comment_thread %}
+      {% set parent_body = comment_thread.parent.body if comment_thread.parent else '' %}
+      {% set reply_body = comment_thread.reply.body if comment_thread.reply else '' %}
+      <div class="thread-card">
+        <div class="thread-header">
+          Conversation on <strong>{{ metadata.post_title or 'the community bulletin' }}</strong>
+        </div>
+        <div class="thread-comments">
+          <div class="thread-bubble yours">
+            <p class="bubble-label">Your comment</p>
+            <p class="comment-text">{{ (parent_body or 'Comment unavailable')|e|replace('\n','<br>')|safe }}</p>
+          </div>
+          <div class="thread-bubble reply">
+            <p class="bubble-label">Reply from {{ (comment_thread.reply.author or 'Trainer') if comment_thread.reply else 'Trainer' }}</p>
+            <p class="comment-text">{{ (reply_body or 'Reply unavailable')|e|replace('\n','<br>')|safe }}</p>
+          </div>
+        </div>
+        {% if comment_thread_url %}
+        <div class="cta">
+          <a class="btn primary" href="{{ comment_thread_url }}">{{ comment_thread_cta or 'Open comment thread' }}</a>
+        </div>
+        {% endif %}
+      </div>
+    {% endif %}
+
+    {% if metadata.url and not comment_thread %}
     <div class="cta">
-      <a class="btn primary" href="{{ msg.metadata.url }}">View receipt</a>
+      <a class="btn primary" href="{{ metadata.url }}">{{ metadata.cta_label or ( 'View receipt' if msg.type == 'receipt' else 'View details') }}</a>
     </div>
     {% endif %}
   </div>
@@ -58,6 +87,14 @@
 .btn.primary { background:#3a8dde; color:#fff; box-shadow:0 8px 20px rgba(58,141,222,0.25); }
 .btn.secondary { background:#eef2ff; color:#3a8dde; }
 .aud { background:#f4f4f5; padding:2px 8px; border-radius:999px; font-size:.8em; font-weight:600; }
+.thread-card { margin-top:18px; padding:16px; border-radius:14px; background:#f8fafc; border:1px solid #e2e8f0; }
+.thread-header { font-weight:600; margin-bottom:12px; color:#0f172a; }
+.thread-comments { display:flex; flex-direction:column; gap:12px; }
+.thread-bubble { padding:12px; border-radius:12px; background:#fff; border:1px solid #dbeafe; box-shadow:0 4px 12px rgba(15,23,42,0.06); }
+.thread-bubble.yours { border-color:#c7d2fe; }
+.thread-bubble.reply { border-color:#bfdbfe; background:#f0f7ff; }
+.bubble-label { font-size:.8em; font-weight:700; color:#475569; margin-bottom:6px; text-transform:uppercase; letter-spacing:.04em; }
+.comment-text { margin:0; color:#0f172a; line-height:1.4; }
 </style>
 
 {% endblock %}

@@ -86,6 +86,178 @@
 </div>
 </div>
 
+<!-- Digital Codes Panel -->
+  {% if digital_codes.supported %}
+    <section class="digital-codes-panel">
+      <div class="digital-code-summary-widget">
+        <div class="digital-code-summary-total">
+          <p>Total active codes</p>
+          <strong>{{ digital_codes.available_count }}</strong>
+        </div>
+        <div class="digital-code-summary-buckets">
+          {% if digital_codes.available_bucket_totals %}
+            {% for bucket in digital_codes.available_bucket_totals %}
+              <span class="digital-code-chip">
+                {{ bucket.category or 'General' }} · {{ bucket.count }}
+              </span>
+            {% endfor %}
+          {% else %}
+            <span class="digital-code-chip is-empty">No buckets yet</span>
+          {% endif %}
+        </div>
+      </div>
+      <div class="digital-codes-header">
+        <div>
+          <p class="digital-codes-eyebrow">Digital Codes</p>
+          <h3>Reward Codes Inbox Drops</h3>
+        <p>Upload comma-separated codes, then assign them directly to trainers with an inbox notification.</p>
+      </div>
+      <div class="digital-codes-metrics">
+        <div>
+          <span>Available</span>
+          <strong>{{ digital_codes.available_count }}</strong>
+        </div>
+        <div>
+          <span>Delivered</span>
+          <strong>{{ digital_codes.assigned_count }}</strong>
+        </div>
+      </div>
+    </div>
+    {% if digital_codes.error %}
+      <div class="digital-code-alert">{{ digital_codes.error }}</div>
+    {% endif %}
+    <div class="digital-codes-grid">
+      <form class="digital-code-card" method="post" action="{{ url_for('admin_digital_codes_upload') }}">
+        <h4>1. Upload Codes</h4>
+        <label for="codes_csv">Comma separated codes (max {{ digital_codes.upload_limit }})</label>
+        <textarea id="codes_csv" name="codes_csv" rows="4" placeholder="ABC-123,DEF-456" required></textarea>
+        <label for="code_category">Category bucket</label>
+        <input
+          id="code_category"
+          name="code_category"
+          type="text"
+          list="digital-code-category-options"
+          value="{{ digital_codes.default_category }}"
+          maxlength="80"
+          placeholder="e.g. Catalog Rewards"
+        >
+        <label for="batch_label">Batch label <small>(optional, helps with tracking)</small></label>
+        <input id="batch_label" name="batch_label" type="text" maxlength="80" placeholder="Example: GO Fest April drop">
+        <button type="submit">Upload Codes</button>
+      </form>
+      <form class="digital-code-card" method="post" action="{{ url_for('admin_digital_codes_assign') }}">
+        <h4>2. Send to a Trainer</h4>
+        <label for="trainer_username">Trainer username</label>
+        <input id="trainer_username" name="trainer_username" type="text" list="digital-code-trainers" placeholder="Trainer name" required autocomplete="off">
+        <label for="code_id">Choose a specific code (optional)</label>
+        <select id="code_id" name="code_id">
+          <option value="">Auto-pick next available</option>
+          {% for code in digital_codes.available_codes %}
+            <option value="{{ code.id }}">{{ code.code }} ({{ code.category }})</option>
+          {% endfor %}
+        </select>
+        <label for="assign_category">Preferred bucket (auto-pick)</label>
+        <select id="assign_category" name="code_category">
+          <option value="">Any bucket</option>
+          {% for category in digital_codes.category_options %}
+            <option value="{{ category }}">{{ category }}</option>
+          {% endfor %}
+        </select>
+        <label for="subject">Inbox subject</label>
+        <input id="subject" name="subject" type="text" value="{{ digital_code_subject_default }}">
+        <label for="reward_contents">Reward contents <small>(used for custom buckets)</small></label>
+        <textarea id="reward_contents" name="reward_contents" rows="3" placeholder="e.g., Redeem for Mega Energy and Stardust boosts"></textarea>
+        <label for="assignment_source">Source tag</label>
+        <input
+          id="assignment_source"
+          name="assignment_source"
+          type="text"
+          list="digital-code-source-options"
+          maxlength="80"
+          value="{{ digital_code_source_default or 'admin_dashboard_manual' }}"
+          placeholder="catalog_redemption"
+        >
+        <button type="submit">Send Inbox Code</button>
+      </form>
+      <div class="digital-code-card digital-code-card--inventory">
+        <h4>Inventory</h4>
+        {% if digital_codes.available_buckets %}
+          <div class="digital-code-buckets">
+            {% for bucket in digital_codes.available_buckets %}
+              <section class="digital-code-bucket">
+                <header>
+                  <strong>{{ bucket.category or 'General' }}</strong>
+                  <span class="digital-code-tag">{{ bucket.count }}</span>
+                </header>
+                <ul>
+                  {% for record in bucket.codes %}
+                    <li>
+                      <code>{{ record.code }}</code>
+                      <span>{{ record.batch_label or 'Unlabelled batch' }}</span>
+                      <small>{{ record.created_display }}</small>
+                    </li>
+                  {% endfor %}
+                </ul>
+              </section>
+            {% endfor %}
+          </div>
+        {% else %}
+          <p class="digital-code-empty">No codes uploaded yet.</p>
+        {% endif %}
+      </div>
+      <div class="digital-code-card digital-code-card--history">
+        <h4>Recent deliveries</h4>
+        {% if digital_codes.assigned_recent %}
+          <ul>
+            {% for record in digital_codes.assigned_recent %}
+              <li>
+                <div>
+                  <code>{{ record.code }}</code> → <strong>{{ record.assigned_to or 'Unknown' }}</strong>
+                  <span class="digital-code-tag">{{ record.category or 'General' }}</span>
+                </div>
+                <small>
+                  Redeemed {{ record.redeemed_display or 'Just now' }}
+                  {% if record.assigned_by %}
+                    • by {{ record.assigned_by }}
+                    {% if record.assigned_by_type %} ({{ record.assigned_by_type|title }}){% endif %}
+                  {% endif %}
+                  {% if record.assigned_source %} • via {{ record.assigned_source }}{% endif %}
+                  {% if record.batch_label %} • {{ record.batch_label }}{% endif %}
+                </small>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="digital-code-empty">Deliveries will appear here once you send a code.</p>
+        {% endif %}
+      </div>
+    </div>
+  </section>
+  <datalist id="digital-code-trainers">
+    {% for trainer in digital_code_roster %}
+      <option value="{{ trainer.trainer_username }}"></option>
+    {% endfor %}
+  </datalist>
+  <datalist id="digital-code-category-options">
+    {% for category in digital_codes.category_options %}
+      <option value="{{ category }}"></option>
+    {% endfor %}
+  </datalist>
+  <datalist id="digital-code-source-options">
+    {% for source in digital_codes.source_suggestions %}
+      <option value="{{ source }}"></option>
+    {% endfor %}
+  </datalist>
+{% else %}
+  <section class="digital-codes-panel is-disabled">
+    <div>
+      <p class="digital-codes-eyebrow">Digital Codes</p>
+      <h3>Supabase required</h3>
+      <p>Connect Supabase to enable bulk code uploads and inbox delivery tooling.</p>
+    </div>
+  </section>
+{% endif %}
+
 <!-- RDAB Support Widget -->
 <div class="rdab-support-widget">
   <div class="rdab-support-widget__header">
@@ -175,6 +347,217 @@
   margin-top:4px;
   font-size:0.75em;
   color:#667085;
+}
+.digital-codes-panel {
+  margin-top:30px;
+  padding:24px;
+  border-radius:24px;
+  background:#f8fafc;
+  box-shadow:inset 0 0 0 1px rgba(15,23,42,0.04);
+}
+.digital-codes-panel.is-disabled {
+  background:#f1f5f9;
+  text-align:center;
+  opacity:0.7;
+}
+.digital-codes-header {
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:18px;
+  flex-wrap:wrap;
+}
+.digital-codes-eyebrow {
+  text-transform:uppercase;
+  font-size:0.72rem;
+  letter-spacing:0.24em;
+  color:#94a3b8;
+  margin:0 0 6px;
+}
+.digital-codes-metrics {
+  display:flex;
+  gap:18px;
+}
+.digital-codes-metrics div {
+  background:#fff;
+  border-radius:16px;
+  padding:12px 18px;
+  min-width:120px;
+  box-shadow:0 6px 16px rgba(15,23,42,0.08);
+  text-align:center;
+}
+.digital-codes-metrics span {
+  display:block;
+  font-size:0.78rem;
+  text-transform:uppercase;
+  letter-spacing:0.08em;
+  color:#64748b;
+}
+.digital-codes-metrics strong {
+  display:block;
+  font-size:1.4rem;
+  color:#0f172a;
+}
+.digital-codes-grid {
+  margin-top:20px;
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(240px,1fr));
+  gap:18px;
+}
+.digital-code-card {
+  background:#fff;
+  border-radius:18px;
+  padding:18px;
+  box-shadow:0 12px 24px rgba(15,23,42,0.08);
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+.digital-code-card h4 {
+  margin:0;
+  font-size:1rem;
+}
+.digital-code-card label {
+  font-size:0.85rem;
+  font-weight:600;
+  color:#0f172a;
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+.digital-code-card label small {
+  font-weight:400;
+  color:#64748b;
+}
+.digital-code-card input,
+.digital-code-card textarea,
+.digital-code-card select {
+  width:100%;
+  border-radius:12px;
+  border:1px solid #d7dee8;
+  padding:10px 12px;
+  font:inherit;
+  background:#f8fafc;
+}
+.digital-code-card textarea {
+  resize:vertical;
+  min-height:100px;
+}
+.digital-code-card button {
+  margin-top:auto;
+  align-self:flex-end;
+  padding:10px 20px;
+  border-radius:999px;
+  background:#2563eb;
+  color:#fff;
+  border:none;
+  font-weight:600;
+  cursor:pointer;
+  transition:background .18s ease;
+}
+.digital-code-card button:hover { background:#1e40af; }
+.digital-code-card ul {
+  list-style:none;
+  padding:0;
+  margin:0;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+.digital-code-card li code {
+  background:#eff6ff;
+  color:#1d4ed8;
+  font-family:"JetBrains Mono", "SFMono-Regular", Consolas, monospace;
+  border-radius:10px;
+  padding:3px 10px;
+  display:inline-block;
+}
+.digital-code-card li span {
+  display:block;
+  font-size:0.8rem;
+  color:#4b5563;
+}
+.digital-code-card li small {
+  display:block;
+  font-size:0.75rem;
+  color:#94a3b8;
+}
+.digital-code-empty {
+  margin:0;
+  color:#64748b;
+  font-style:italic;
+}
+.digital-code-alert {
+  background:#fef2f2;
+  border:1px solid #fecaca;
+  border-radius:16px;
+  padding:10px 16px;
+  color:#b91c1c;
+  font-weight:600;
+}
+.digital-code-summary-widget {
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+  margin-bottom:20px;
+  padding:16px 20px;
+  border-radius:20px;
+  background:#0f172a;
+  color:#f8fafc;
+  box-shadow:0 14px 30px rgba(15,23,42,0.4);
+}
+.digital-code-summary-total p {
+  margin:0;
+  text-transform:uppercase;
+  font-size:0.75rem;
+  letter-spacing:0.22em;
+  color:#94a3b8;
+}
+.digital-code-summary-total strong {
+  display:block;
+  font-size:2rem;
+  margin-top:4px;
+}
+.digital-code-summary-buckets {
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+}
+.digital-code-chip {
+  border-radius:999px;
+  background:#e0f2fe;
+  color:#0369a1;
+  padding:4px 14px;
+  font-size:0.8rem;
+  font-weight:600;
+}
+.digital-code-chip.is-empty {
+  background:#cbd5f5;
+  color:#1e1b4b;
+}
+.digital-code-tag {
+  border-radius:999px;
+  background:#e0f2fe;
+  color:#0369a1;
+  padding:2px 10px;
+  font-size:0.75rem;
+  font-weight:600;
+}
+.digital-code-buckets {
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+}
+.digital-code-bucket header {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin-bottom:6px;
+}
+.digital-code-bucket ul {
+  gap:10px;
 }
 .rdab-support-widget {
   margin-top:28px;

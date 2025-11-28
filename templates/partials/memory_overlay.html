@@ -1,0 +1,188 @@
+{% set _memory_payload = memory_albums|tojson|safe if memory_albums is defined else '[]' %}
+<style>
+.memory-overlay {
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 5000;
+  padding: 16px;
+}
+.memory-overlay.is-open {
+  display: flex;
+}
+.memory-overlay__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(2, 6, 23, 0.85);
+  backdrop-filter: blur(2px);
+}
+.memory-overlay__frame {
+  position: relative;
+  background: #030712;
+  color: #f8fafc;
+  border-radius: 28px;
+  width: min(960px, 96vw);
+  height: min(88vh, 720px);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px;
+  box-shadow: 0 40px 70px rgba(2, 6, 23, 0.6);
+  z-index: 1;
+  outline: none;
+}
+.memory-overlay__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+.memory-overlay__header h4 {
+  margin: 0;
+  font-size: 1.2rem;
+}
+.memory-overlay__eyebrow {
+  margin: 0;
+  font-size: 0.75rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+.memory-overlay__meta {
+  margin: 4px 0 0 0;
+  color: rgba(248, 250, 252, 0.8);
+  font-size: 0.9rem;
+}
+.memory-overlay__counter {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: #94a3b8;
+}
+.memory-overlay__media {
+  flex: 1;
+  border-radius: 24px;
+  background: #020617;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.memory-overlay__media img {
+  max-width: 100%;
+  max-height: 100%;
+  transition: transform 0.2s ease;
+  transform-origin: center center;
+}
+.memory-overlay__caption {
+  min-height: 24px;
+  margin: 0;
+  font-size: 0.95rem;
+  color: rgba(248, 250, 252, 0.84);
+}
+.memory-overlay__bottom {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.memory-overlay__nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+.memory-overlay__nav button {
+  border: none;
+  background: #0f172a;
+  color: #fff;
+  border-radius: 999px;
+  width: 48px;
+  height: 48px;
+  font-size: 1.25rem;
+  cursor: pointer;
+  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.45);
+}
+.memory-overlay__zoom {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(15, 23, 42, 0.65);
+  border-radius: 999px;
+  padding: 6px 12px;
+}
+.memory-overlay__zoom button {
+  width: 32px;
+  height: 32px;
+  font-size: 1rem;
+  background: transparent;
+  border: 1px solid rgba(248, 250, 252, 0.4);
+  border-radius: 999px;
+  box-shadow: none;
+}
+.memory-overlay__zoom span {
+  min-width: 48px;
+  text-align: center;
+  font-weight: 600;
+}
+.memory-overlay__close {
+  border: none;
+  border-radius: 16px;
+  padding: 12px 16px;
+  background: linear-gradient(120deg, #f97316, #facc15);
+  color: #0f172a;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 14px 30px rgba(249, 115, 22, 0.45);
+}
+@media (max-width: 640px) {
+  .memory-overlay__frame {
+    width: 100%;
+    height: 100%;
+    border-radius: 0;
+    padding: 18px;
+  }
+  .memory-overlay__nav {
+    flex-wrap: wrap;
+  }
+  .memory-overlay__nav button {
+    width: 44px;
+    height: 44px;
+  }
+  .memory-overlay__close {
+    width: 100%;
+  }
+}
+</style>
+
+<div class="memory-overlay" data-memory-overlay data-memory-albums='{{ _memory_payload }}' hidden>
+  <div class="memory-overlay__backdrop" data-memory-close></div>
+  <div class="memory-overlay__frame" data-memory-frame tabindex="-1" role="dialog" aria-modal="true" aria-label="Memory album viewer">
+    <header class="memory-overlay__header">
+      <div>
+        <p class="memory-overlay__eyebrow">Memory album</p>
+        <h4 data-memory-title>Community memory</h4>
+        <p class="memory-overlay__meta" data-memory-meta></p>
+      </div>
+      <span class="memory-overlay__counter" data-memory-progress>0/0</span>
+    </header>
+    <div class="memory-overlay__media" data-memory-media>
+      <img data-memory-image src="" alt="">
+    </div>
+    <p class="memory-overlay__caption" data-memory-caption></p>
+    <div class="memory-overlay__bottom">
+      <div class="memory-overlay__nav">
+        <button type="button" data-memory-prev aria-label="Previous photo">‹</button>
+        <div class="memory-overlay__zoom">
+          <button type="button" data-memory-zoom-out aria-label="Zoom out">−</button>
+          <span data-memory-zoom-level>100%</span>
+          <button type="button" data-memory-zoom-in aria-label="Zoom in">+</button>
+        </div>
+        <button type="button" data-memory-next aria-label="Next photo">›</button>
+      </div>
+      <button type="button" class="memory-overlay__close" data-memory-close>Close photo ✕</button>
+    </div>
+  </div>
+</div>
+<script src="{{ url_for('static', filename='js/memory-viewer.js') }}"></script>
