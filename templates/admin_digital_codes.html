@@ -36,23 +36,42 @@
       </div>
     </section>
 
-    <section class="digital-codes-buckets">
-      <h3>Bucket health</h3>
-      <p class="muted">Counts per bucket are visible, but individual codes stay hidden for security.</p>
-      <div class="digital-code-summary-buckets">
-        {% if digital_codes.available_bucket_totals %}
-          {% for bucket in digital_codes.available_bucket_totals %}
-            <span class="digital-code-chip">
-              {{ bucket.category or 'General' }} · {{ bucket.count }}
-            </span>
-          {% endfor %}
-        {% else %}
-          <span class="digital-code-chip is-empty">No buckets yet</span>
+    <section class="digital-codes-history">
+      <div class="history-header">
+        <div>
+          <h3>Recent deliveries</h3>
+          <p class="muted">Latest codes that landed in trainer inboxes.</p>
+        </div>
+        {% if digital_codes.assigned_recent %}
+          <button type="button" class="btn" data-open-modal="send">Send another</button>
         {% endif %}
       </div>
+      {% if digital_codes.assigned_recent %}
+        <ul class="digital-code-history-list">
+          {% for record in digital_codes.assigned_recent[:6] %}
+            {% set code_value = record.code or '' %}
+            {% set code_tail = code_value[-4:] %}
+            <li>
+              <div class="history-code">
+                <code>••••{{ code_tail }}</code>
+                <span>{{ record.category_label or 'Bucket' }}</span>
+              </div>
+              <div class="history-meta">
+                <strong>{{ record.assigned_to or 'Unknown trainer' }}</strong>
+                <small>
+                  {{ record.redeemed_display or 'Just now' }}
+                  {% if record.assigned_by %} • by {{ record.assigned_by }}{% endif %}
+                </small>
+              </div>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="muted">No codes have been sent yet. Once you send a code, the delivery log will appear here.</p>
+      {% endif %}
     </section>
   {% else %}
-    <section class="digital-codes-buckets">
+    <section class="digital-codes-empty">
       <h3>Supabase required</h3>
       <p class="muted">Connect Supabase to unlock digital code upload and delivery tooling.</p>
     </section>
@@ -81,7 +100,7 @@
         <span>Choose a bucket</span>
         <select name="bucket_choice_upload" data-upload-bucket>
           {% for preset in bucket_presets %}
-            <option value="{{ preset.slug }}">{{ preset.label }}</option>
+            <option value="{{ preset.slug }}" {% if preset.slug == digital_code_default_bucket %}selected{% endif %}>{{ preset.label }}</option>
           {% endfor %}
           {% for option in extra_buckets %}
             <option value="{{ option.slug }}">{{ option.label }}</option>
@@ -149,7 +168,7 @@
         <span>Bucket</span>
         <select name="bucket_choice" data-bucket-select>
           {% for preset in bucket_presets %}
-            <option value="{{ preset.slug }}">{{ preset.label }}</option>
+            <option value="{{ preset.slug }}" {% if preset.slug == digital_code_default_bucket %}selected{% endif %}>{{ preset.label }}</option>
           {% endfor %}
           {% for option in extra_buckets %}
             <option value="{{ option.slug }}">{{ option.label }}</option>
@@ -364,6 +383,12 @@
   }
 
   if (bucketSelect) {
+    if (defaultBucket) {
+      const match = Array.from(bucketSelect.options || []).find((opt) => opt.value === defaultBucket);
+      if (match) {
+        bucketSelect.value = defaultBucket;
+      }
+    }
     bucketSelect.addEventListener("change", updateBucketPreview);
     updateBucketPreview();
   }
@@ -465,6 +490,12 @@
   display:flex;
   gap:12px;
 }
+.digital-codes-empty {
+  background:#fff;
+  border-radius:18px;
+  padding:18px;
+  box-shadow:0 12px 24px rgba(15,23,42,0.08);
+}
 .digital-codes-summary {
   display:grid;
   grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
@@ -490,29 +521,59 @@
   font-size:1.9rem;
   margin-top:4px;
 }
-.digital-codes-buckets {
+.digital-codes-history {
   background:#fff;
   border-radius:18px;
   padding:18px;
   box-shadow:0 12px 24px rgba(15,23,42,0.08);
+  margin-top:14px;
 }
-.digital-code-summary-buckets {
+.history-header {
   display:flex;
-  flex-wrap:wrap;
-  gap:10px;
-  margin-top:12px;
+  justify-content:space-between;
+  gap:12px;
+  align-items:center;
 }
-.digital-code-chip {
-  border-radius:999px;
-  background:#e0f2fe;
-  color:#0369a1;
-  padding:4px 14px;
+.digital-code-history-list {
+  list-style:none;
+  margin:16px 0 0;
+  padding:0;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+.digital-code-history-list li {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  border:1px solid #e2e8f0;
+  border-radius:14px;
+  padding:10px 14px;
+  background:#f8fafc;
+}
+.history-code {
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+}
+.history-code code {
+  font-family:"JetBrains Mono","SFMono-Regular",Consolas,monospace;
+  background:#0f172a;
+  color:#fff;
+  border-radius:10px;
+  padding:2px 8px;
   font-weight:600;
-  font-size:0.8rem;
+  letter-spacing:0.08em;
 }
-.digital-code-chip.is-empty {
-  background:#fef3c7;
-  color:#854d0e;
+.history-code span {
+  font-size:0.82rem;
+  color:#475467;
+}
+.history-meta {
+  text-align:right;
+}
+.history-meta small {
+  color:#64748b;
 }
 .btn {
   border:none;

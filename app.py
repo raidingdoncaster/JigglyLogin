@@ -3092,14 +3092,31 @@ def send_notification(audience, subject, message, notif_type="system", metadata=
         "sent_at": sent_at,
         "read_by": [],
     }
+    inserted_row = None
+    insert_ok = False
     try:
-        supabase.table("notifications").insert(payload).execute()
-    except Exception as e:
-        print("⚠️ Failed to send notification:", e)
-        return None
+        resp = supabase.table("notifications").insert(payload, returning="representation").execute()
+        rows = getattr(resp, "data", None) or []
+        if rows:
+            inserted_row = rows[0]
+        insert_ok = True
+    except Exception as exc:
+        print("⚠️ Failed to send notification:", exc)
+
+    if not insert_ok:
+        if not supabase_insert_row("notifications", payload):
+            error_text = getattr(g, "supabase_last_error", "")
+            if error_text:
+                print("⚠️ Supabase REST notification insert failed:", error_text)
+            return None
+
     if returning:
-        return _fetch_notification_by_key(audience, subject, sent_at) or payload
-    return payload
+        if inserted_row and inserted_row.get("id"):
+            return inserted_row
+        fetched = _fetch_notification_by_key(audience, subject, sent_at)
+        if fetched:
+            return fetched
+    return inserted_row or payload
 
 # ====== Digital reward codes ======
 def _digital_codes_supported() -> bool:
