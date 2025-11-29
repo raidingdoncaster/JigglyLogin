@@ -3008,6 +3008,23 @@ DIGITAL_CODE_SOURCE_SUGGESTIONS = [
     for value in os.environ.get("DIGITAL_CODE_SOURCES", "admin_dashboard_manual,catalog_redemption,advent_event").split(",")
     if value.strip()
 ]
+DIGITAL_CODE_SOURCE_PRESETS = [
+    {
+        "value": "catalog_redemption",
+        "label": "Catalog Redemption",
+        "description": "Player redeemed items via the RDAB Catalog.",
+    },
+    {
+        "value": "advent_event_2025",
+        "label": "Advent Calendar 2025",
+        "description": "Unlocked during the Advent Calendar 2025 event.",
+    },
+    {
+        "value": "ambassador_gift",
+        "label": "Community Ambassador Gift",
+        "description": "Gifted manually by a community ambassador/admin.",
+    },
+]
 MAX_DIGITAL_CODE_CATEGORY_LENGTH = 80
 MAX_DIGITAL_CODE_SOURCE_LENGTH = 80
 
@@ -3026,6 +3043,27 @@ def sanitize_notification_html(body: str | None) -> str:
     return cleaned
 
 
+def _fetch_notification_by_key(audience: str, subject: str, sent_at: str):
+    if not supabase:
+        return None
+    try:
+        resp = (
+            supabase.table("notifications")
+            .select("*")
+            .eq("audience", audience)
+            .eq("subject", subject)
+            .eq("sent_at", sent_at)
+            .limit(1)
+            .execute()
+        )
+        rows = resp.data or []
+        if rows:
+            return rows[0]
+    except Exception as exc:
+        print("⚠️ Failed to fetch notification row:", exc)
+    return None
+
+
 def send_notification(audience, subject, message, notif_type="system", metadata=None, *, returning: bool = False):
     """Send an inbox notification. When returning=True, return the inserted row (if available)."""
     if not supabase:
@@ -3033,25 +3071,24 @@ def send_notification(audience, subject, message, notif_type="system", metadata=
         return None
 
     message_html = sanitize_notification_html(message)
+    sent_at = datetime.utcnow().isoformat()
     payload = {
         "type": notif_type,
         "audience": audience,
         "subject": subject,
         "message": message_html,
         "metadata": metadata or {},
-        "sent_at": datetime.utcnow().isoformat(),
+        "sent_at": sent_at,
         "read_by": [],
     }
     try:
-        insert_kwargs = {"returning": "representation"} if returning else {}
-        resp = supabase.table("notifications").insert(payload, **insert_kwargs).execute()
-        if returning:
-            rows = resp.data or []
-            return rows[0] if rows else payload
+        supabase.table("notifications").insert(payload).execute()
     except Exception as e:
         print("⚠️ Failed to send notification:", e)
         return None
-    return None
+    if returning:
+        return _fetch_notification_by_key(audience, subject, sent_at) or payload
+    return payload
 
 # ====== Digital reward codes ======
 def _digital_codes_supported() -> bool:
@@ -4110,6 +4147,7 @@ def admin_digital_codes():
         digital_code_roster=digital_code_roster,
         digital_code_subject_default=DEFAULT_DIGITAL_CODE_SUBJECT,
         digital_code_source_default=DIGITAL_CODE_SOURCE_DEFAULT,
+        digital_code_source_presets=DIGITAL_CODE_SOURCE_PRESETS,
     )
 
 
@@ -4118,7 +4156,9 @@ def admin_digital_codes():
 def admin_digital_codes_upload():
     raw_codes = request.form.get("codes_csv") or request.form.get("codes_input") or ""
     batch_label = (request.form.get("batch_label") or "").strip()
-    category_input = request.form.get("code_category") or request.form.get("category")
+    selected_category = request.form.get("code_category") or ""
+    custom_category = request.form.get("code_category_custom") or ""
+    category_input = custom_category or selected_category or request.form.get("category")
     actor = _current_actor()
     ok, message, _details = add_digital_codes_from_payload(raw_codes, actor, batch_label or None, category=category_input)
     flash(message, "success" if ok else "error")
@@ -4130,10 +4170,23 @@ def admin_digital_codes_upload():
 def admin_digital_codes_assign():
     trainer_username = request.form.get("trainer_username") or request.form.get("trainer") or ""
     code_id = (request.form.get("code_id") or "").strip() or None
-    subject = request.form.get("subject") or request.form.get("notification_subject")
-    assignment_source = request.form.get("assignment_source") or DIGITAL_CODE_SOURCE_DEFAULT
-    category_filter = request.form.get("code_category") or request.form.get("preferred_category")
-    reward_description = request.form.get("reward_contents") or request.form.get("reward_description")
+    subject = None
+    if request.form.get("use_custom_subject"):
+        subject = (request.form.get("custom_subject") or request.form.get("subject") or "").strip() or None
+
+    selected_category = request.form.get("code_category") or ""
+    custom_category = request.form.get("code_category_custom") or ""
+    category_filter = custom_category or selected_category or request.form.get("preferred_category")
+
+    if request.form.get("use_custom_source"):
+        assignment_source = request.form.get("assignment_source_custom") or DIGITAL_CODE_SOURCE_DEFAULT
+    else:
+        assignment_source = request.form.get("assignment_source_choice") or DIGITAL_CODE_SOURCE_DEFAULT
+
+    reward_description = None
+    if request.form.get("add_custom_reward"):
+        reward_description = request.form.get("reward_contents") or request.form.get("reward_description")
+
     actor = _current_actor()
     ok, msg = assign_digital_code_to_trainer(
         trainer_username,
@@ -6315,31 +6368,29 @@ def admin_notifications():
             flash("Select at least one trainer or choose All Trainers.", "warning")
             return redirect(url_for("admin_notifications"))
 
-        sanitized_message = sanitize_notification_html(raw_message)
-        payloads = []
-        sent_at = datetime.utcnow().isoformat()
+        success_count = 0
         for recipient in recipients:
-            payloads.append({
-                "type": notif_type,
-                "audience": recipient,
-                "subject": subject,
-                "message": sanitized_message,
-                "metadata": {},
-                "sent_at": sent_at,
-                "read_by": [],
-            })
+            note = send_notification(
+                recipient,
+                subject,
+                raw_message,
+                notif_type=notif_type,
+                metadata={},
+            )
+            if note:
+                success_count += 1
 
-        try:
-            supabase.table("notifications").insert(payloads).execute()
+        if success_count == len(recipients):
             if recipients == ["ALL"]:
                 flash("✅ Notification sent to all trainers.", "success")
             else:
                 total = len(recipients)
                 flash(f"✅ Notification sent to {total} trainer{'s' if total != 1 else ''}.", "success")
-        except Exception as e:
-            print("⚠️ Failed sending notification:", e)
+        elif success_count > 0:
+            failed = len(recipients) - success_count
+            flash(f"⚠️ Sent {success_count} notification(s), but {failed} failed.", "warning")
+        else:
             flash("❌ Failed to send notification.", "error")
-
         return redirect(url_for("admin_notifications"))
 
     notifications = []

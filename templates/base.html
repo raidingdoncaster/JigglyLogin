@@ -1274,8 +1274,17 @@
         mm.style.display='flex';
         bodyScrollLock.lock();
       }));
-      document.getElementById('closeAccountModal')?.addEventListener('click', closeAccountModal);
-      mm?.addEventListener('click', (e)=>{ if(e.target === mm) closeAccountModal(); });
+      const closeAccountBtn = document.getElementById('closeAccountModal');
+      if(closeAccountBtn){
+        closeAccountBtn.addEventListener('click', closeAccountModal);
+      }
+      if(mm){
+        mm.addEventListener('click',(e)=>{
+          if(e.target === mm){
+            closeAccountModal();
+          }
+        });
+      }
       document.addEventListener('keydown', (e)=>{ if(e.key==='Escape' && mm && mm.style.display==='flex') closeAccountModal(); });
 
       function closeAccountModal(){

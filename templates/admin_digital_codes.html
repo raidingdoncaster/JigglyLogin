@@ -56,15 +56,22 @@
         <h4>1. Upload Codes</h4>
         <label for="codes_csv">Comma separated codes (max {{ digital_codes.upload_limit }})</label>
         <textarea id="codes_csv" name="codes_csv" rows="4" placeholder="ABC-123,DEF-456" required></textarea>
-        <label for="code_category">Category bucket</label>
+        <label for="code_category">Choose existing bucket</label>
+        <select id="code_category" name="code_category">
+          {% for category in digital_codes.category_options %}
+            <option value="{{ category }}" {% if category == digital_codes.default_category %}selected{% endif %}>{{ category }}</option>
+          {% endfor %}
+          {% if not digital_codes.category_options %}
+            <option value="{{ digital_codes.default_category }}" selected>{{ digital_codes.default_category }}</option>
+          {% endif %}
+        </select>
+        <label for="code_category_custom">Or create a new bucket <small>(optional)</small></label>
         <input
-          id="code_category"
-          name="code_category"
+          id="code_category_custom"
+          name="code_category_custom"
           type="text"
-          list="digital-code-category-options"
-          value="{{ digital_codes.default_category }}"
           maxlength="80"
-          placeholder="e.g. Catalog Rewards"
+          placeholder="Enter a new bucket name"
         >
         <label for="batch_label">Batch label <small>(optional, helps with tracking)</small></label>
         <input id="batch_label" name="batch_label" type="text" maxlength="80" placeholder="Example: GO Fest April drop">
@@ -74,34 +81,66 @@
         <h4>2. Send to a Trainer</h4>
         <label for="trainer_username">Trainer username</label>
         <input id="trainer_username" name="trainer_username" type="text" list="digital-code-trainers" placeholder="Trainer name" required autocomplete="off">
-        <label for="code_id">Choose a specific code (optional)</label>
+        <label for="assign_category">Preferred bucket</label>
+        <select id="assign_category" name="code_category">
+          <option value="">Auto-detect best bucket</option>
+          {% for category in digital_codes.category_options %}
+            <option value="{{ category }}">{{ category }}</option>
+          {% endfor %}
+        </select>
+        <label for="code_category_custom">Custom bucket override <small>(optional)</small></label>
+        <input id="code_category_custom" name="code_category_custom" type="text" maxlength="80" placeholder="Enter bucket name if it’s not listed">
+
+        <label for="code_id">Choose a specific code <small>(optional)</small></label>
         <select id="code_id" name="code_id">
           <option value="">Auto-pick next available</option>
           {% for code in digital_codes.available_codes %}
             <option value="{{ code.id }}">{{ code.code }} ({{ code.category }})</option>
           {% endfor %}
         </select>
-        <label for="assign_category">Preferred bucket (auto-pick)</label>
-        <select id="assign_category" name="code_category">
-          <option value="">Any bucket</option>
-          {% for category in digital_codes.category_options %}
-            <option value="{{ category }}">{{ category }}</option>
-          {% endfor %}
-        </select>
-        <label for="subject">Inbox subject</label>
-        <input id="subject" name="subject" type="text" value="{{ digital_code_subject_default }}">
-        <label for="reward_contents">Reward contents <small>(used for custom buckets)</small></label>
-        <textarea id="reward_contents" name="reward_contents" rows="3" placeholder="e.g., Redeem for Mega Energy and Stardust boosts"></textarea>
-        <label for="assignment_source">Source tag</label>
-        <input
-          id="assignment_source"
-          name="assignment_source"
-          type="text"
-          list="digital-code-source-options"
-          maxlength="80"
-          value="{{ digital_code_source_default or 'admin_dashboard_manual' }}"
-          placeholder="catalog_redemption"
-        >
+
+        <div class="digital-code-fieldset">
+          <p>Reason for this code</p>
+          <div class="digital-code-radio-list">
+            {% for preset in digital_code_source_presets %}
+              <label class="digital-code-radio">
+                <input type="radio" name="assignment_source_choice" value="{{ preset.value }}" {% if loop.first %}checked{% endif %}>
+                <span>
+                  <strong>{{ preset.label }}</strong>
+                  <small>{{ preset.description }}</small>
+                </span>
+              </label>
+            {% endfor %}
+          </div>
+          <label class="digital-code-checkbox">
+            <input type="checkbox" name="use_custom_source" value="1">
+            <span>Use a custom source tag</span>
+          </label>
+          <input type="text" name="assignment_source_custom" placeholder="custom_source_tag">
+        </div>
+
+        <label class="digital-code-checkbox">
+          <input type="checkbox" name="add_custom_reward" value="1">
+          <span>Add custom reward description</span>
+        </label>
+        <textarea id="reward_contents" name="reward_contents" rows="3" placeholder="Describe the rewards (optional)"></textarea>
+
+        <label class="digital-code-checkbox">
+          <input type="checkbox" name="use_custom_subject" value="1">
+          <span>Use a custom inbox subject</span>
+        </label>
+        <input id="custom_subject" name="custom_subject" type="text" placeholder="{{ digital_code_subject_default }}">
+
+        <div class="digital-code-preview">
+          <p><strong>Automatic notification preview</strong></p>
+          <p>The inbox message includes:</p>
+          <ul>
+            <li>A link that opens the Pokémon GO redemption page with the code filled in.</li>
+            <li>A breakdown of how the player earned the code.</li>
+            <li>Steps on how to redeem plus an RDAB Support reminder.</li>
+          </ul>
+          <p>No extra copy is required unless you add an optional custom reward note.</p>
+        </div>
         <button type="submit">Send Inbox Code</button>
       </form>
       <div class="digital-code-card digital-code-card--inventory">
@@ -161,16 +200,6 @@
   <datalist id="digital-code-trainers">
     {% for trainer in digital_code_roster %}
       <option value="{{ trainer.trainer_username }}"></option>
-    {% endfor %}
-  </datalist>
-  <datalist id="digital-code-category-options">
-    {% for category in digital_codes.category_options %}
-      <option value="{{ category }}"></option>
-    {% endfor %}
-  </datalist>
-  <datalist id="digital-code-source-options">
-    {% for source in digital_codes.source_suggestions %}
-      <option value="{{ source }}"></option>
     {% endfor %}
   </datalist>
 {% else %}
@@ -405,6 +434,68 @@
 }
 .digital-code-bucket ul {
   gap:10px;
+}
+.digital-code-fieldset {
+  border-radius:16px;
+  background:#f1f5f9;
+  padding:14px;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+.digital-code-fieldset p {
+  margin:0;
+  font-weight:600;
+  color:#0f172a;
+}
+.digital-code-radio-list {
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+.digital-code-radio {
+  display:flex;
+  gap:10px;
+  padding:10px;
+  border-radius:12px;
+  background:#fff;
+  border:1px solid #e2e8f0;
+}
+.digital-code-radio input {
+  margin-top:4px;
+}
+.digital-code-radio span {
+  display:flex;
+  flex-direction:column;
+}
+.digital-code-radio span strong {
+  font-size:0.9rem;
+}
+.digital-code-radio span small {
+  color:#64748b;
+}
+.digital-code-checkbox {
+  display:flex;
+  align-items:center;
+  gap:8px;
+  font-size:0.85rem;
+  font-weight:600;
+  color:#0f172a;
+}
+.digital-code-preview {
+  background:#f8fafc;
+  border:1px dashed #cbd5f5;
+  border-radius:16px;
+  padding:14px;
+  font-size:0.9rem;
+  color:#0f172a;
+}
+.digital-code-preview ul {
+  margin:8px 0 0 18px;
+  padding:0;
+}
+.digital-code-preview li {
+  margin-bottom:4px;
 }
 </style>
 {% endblock %}
