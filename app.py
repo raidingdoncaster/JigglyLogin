@@ -3008,23 +3008,34 @@ DIGITAL_CODE_SOURCE_SUGGESTIONS = [
     for value in os.environ.get("DIGITAL_CODE_SOURCES", "admin_dashboard_manual,catalog_redemption,advent_event").split(",")
     if value.strip()
 ]
-DIGITAL_CODE_SOURCE_PRESETS = [
+DIGITAL_CODE_BUCKET_PRESETS = [
     {
-        "value": "catalog_redemption",
-        "label": "Catalog Redemption",
-        "description": "Player redeemed items via the RDAB Catalog.",
+        "slug": "digital",
+        "label": "Digital Reward Bundle",
+        "reason": "This digital reward bundle includes a Premium Battle Pass, Star Piece, Incubator, and Lure Module.",
+        "subject": "Your digital reward bundle",
+        "source": "digital_reward_bundle",
+        "reward_description": "1 Premium Battle Pass, 1 Star Piece, 1 Incubator, and 1 Lure Module.",
     },
     {
-        "value": "advent_event_2025",
-        "label": "Advent Calendar 2025",
-        "description": "Unlocked during the Advent Calendar 2025 event.",
-    },
-    {
-        "value": "ambassador_gift",
+        "slug": "ca",
         "label": "Community Ambassador Gift",
-        "description": "Gifted manually by a community ambassador/admin.",
+        "reason": "A Community Ambassador gifted you this code to celebrate your impact on the community.",
+        "subject": "A Community Ambassador sent you a gift",
+        "source": "ambassador_gift",
+        "reward_description": "2 Premium Battle Passes and 1 Star Piece.",
+    },
+    {
+        "slug": "advent25",
+        "label": "Advent Calendar 2025",
+        "reason": "Unlocked during the RDAB Advent Calendar 2025 festivities.",
+        "subject": "Your Advent Calendar reward",
+        "source": "advent_event_2025",
+        "reward_description": "Seasonal Advent surprise bundle.",
     },
 ]
+DIGITAL_CODE_BUCKET_PRESET_MAP = {preset["slug"]: preset for preset in DIGITAL_CODE_BUCKET_PRESETS}
+DIGITAL_CODE_DEFAULT_BUCKET = DIGITAL_CODE_BUCKET_PRESETS[0]["slug"] if DIGITAL_CODE_BUCKET_PRESETS else "digital"
 MAX_DIGITAL_CODE_CATEGORY_LENGTH = 80
 MAX_DIGITAL_CODE_SOURCE_LENGTH = 80
 
@@ -3121,6 +3132,14 @@ def _prepare_source_value(raw: str | None, *, default_to_admin: bool = True) -> 
     return value[:MAX_DIGITAL_CODE_SOURCE_LENGTH]
 
 
+def _bucket_label(category: str | None) -> str:
+    slug = (category or "").strip().lower()
+    preset = DIGITAL_CODE_BUCKET_PRESET_MAP.get(slug)
+    if preset:
+        return preset.get("label") or slug or "Bucket"
+    return category or DIGITAL_CODE_DEFAULT_CATEGORY
+
+
 def _infer_assigner_metadata(actor: str | None, actor_type_hint: str | None = None) -> tuple[str, str]:
     """
     Returns (assigner_type, assigner_label) where type is one of admin|feature|system.
@@ -3166,8 +3185,17 @@ def _reward_summary_for_category(category: str | None, custom_text: str | None) 
     return "Redeem this code for exclusive RDAB rewards."
 
 
-def _build_digital_code_message(code_value: str, category: str | None, assignment_source: str | None, assigned_by_type: str, assigned_by_label: str | None, custom_description: str | None) -> tuple[str, str]:
-    origin_sentence = _describe_assignment_origin(assignment_source, assigned_by_type, assigned_by_label)
+def _build_digital_code_message(
+    code_value: str,
+    category: str | None,
+    assignment_source: str | None,
+    assigned_by_type: str,
+    assigned_by_label: str | None,
+    custom_description: str | None,
+    *,
+    reason_text: str | None = None,
+) -> tuple[str, str]:
+    origin_sentence = reason_text or _describe_assignment_origin(assignment_source, assigned_by_type, assigned_by_label)
     reward_sentence = _reward_summary_for_category(category, custom_description)
     redeem_url = f"https://store.pokemongo.com/offer-redemption?passcode={quote_plus(code_value)}"
     message = (
@@ -3316,7 +3344,7 @@ def fetch_digital_code_summary(limit_available: int = 12, limit_history: int = 8
         "error": None,
         "available_buckets": [],
         "available_bucket_totals": [],
-        "category_options": sorted({DIGITAL_CODE_DEFAULT_CATEGORY, *DIGITAL_CODE_CATEGORY_SUGGESTIONS}),
+        "category_options": [],
         "source_suggestions": sorted(
             set(DIGITAL_CODE_SOURCE_SUGGESTIONS or [DIGITAL_CODE_SOURCE_DEFAULT])
         ),
@@ -3338,27 +3366,33 @@ def fetch_digital_code_summary(limit_available: int = 12, limit_history: int = 8
         bucket_map: dict[str, dict] = {}
         available_rows = []
         for row in available_resp.data or []:
-            category_label = _prepare_category_value(row.get("category"), required=True)
+            raw_category = row.get("category")
+            category_label = _bucket_label(raw_category)
+            slug_key = (raw_category or "").strip().lower() or category_label.lower()
             record = {
                 "id": row.get("id"),
                 "code": row.get("code"),
                 "created_at": row.get("created_at"),
                 "created_display": _format_admin_timestamp(row.get("created_at")),
                 "batch_label": row.get("batch_label"),
-                "category": category_label,
+                "category": slug_key,
+                "category_label": category_label,
             }
             available_rows.append(record)
-            bucket_key = (category_label or DIGITAL_CODE_DEFAULT_CATEGORY).lower()
+            bucket_key = slug_key or DIGITAL_CODE_DEFAULT_BUCKET
             bucket = bucket_map.setdefault(bucket_key, {
                 "category": category_label,
+                "slug": slug_key,
                 "count": 0,
-                "codes": [],
             })
             bucket["count"] += 1
-            bucket["codes"].append(record)
         summary["available_codes"] = available_rows
         summary["available_buckets"] = sorted(bucket_map.values(), key=lambda item: (item["category"] or ""))
-        summary["category_options"].extend([bucket["category"] for bucket in summary["available_buckets"]])
+        for bucket in summary["available_buckets"]:
+            summary["category_options"].append({
+                "slug": bucket.get("slug") or bucket.get("category"),
+                "label": bucket.get("category") or DIGITAL_CODE_DEFAULT_CATEGORY,
+            })
     except Exception as exc:
         print("⚠️ digital code summary (available) failed:", exc)
         summary["error"] = "Failed to load digital code inventory."
@@ -3374,7 +3408,9 @@ def fetch_digital_code_summary(limit_available: int = 12, limit_history: int = 8
         )
         totals_rows = []
         for row in totals_resp.data or []:
-            category_label = _prepare_category_value(row.get("category"), required=True)
+            raw_category = row.get("category")
+            category_label = _bucket_label(raw_category)
+            slug_key = (raw_category or "").strip().lower()
             counts = row.get("count") or row.get("count:id") or 0
             try:
                 counts = int(counts)
@@ -3382,9 +3418,13 @@ def fetch_digital_code_summary(limit_available: int = 12, limit_history: int = 8
                 counts = 0
             totals_rows.append({
                 "category": category_label,
+                "slug": slug_key,
                 "count": counts,
             })
-            summary["category_options"].append(category_label)
+            summary["category_options"].append({
+                "slug": slug_key or category_label,
+                "label": category_label,
+            })
         summary["available_bucket_totals"] = sorted(totals_rows, key=lambda item: (item["category"] or ""))
     except Exception as exc:
         print("⚠️ digital code bucket totals failed:", exc)
@@ -3413,7 +3453,8 @@ def fetch_digital_code_summary(limit_available: int = 12, limit_history: int = 8
                 "redeemed_display": _format_admin_timestamp(row.get("redeemed_at")),
                 "batch_label": row.get("batch_label"),
                 "subject": row.get("notification_subject"),
-                "category": _prepare_category_value(row.get("category"), required=True),
+                "category": row.get("category"),
+                "category_label": _bucket_label(row.get("category")),
             }
             for row in assigned_resp.data or []
         ]
@@ -3428,13 +3469,32 @@ def fetch_digital_code_summary(limit_available: int = 12, limit_history: int = 8
             .execute()
         )
         for row in distinct_resp.data or []:
-            label = _prepare_category_value(row.get("category"), required=True)
-            if label:
-                summary["category_options"].append(label)
+            label = _bucket_label(row.get("category"))
+            slug_key = (row.get("category") or "").strip().lower()
+            summary["category_options"].append({
+                "slug": slug_key or label,
+                "label": label,
+            })
     except Exception as exc:
         print("⚠️ digital code categories fetch failed:", exc)
 
-    summary["category_options"] = sorted(set(filter(None, summary["category_options"])))
+    dedup = {}
+    for option in summary["category_options"]:
+        if not isinstance(option, dict):
+            slug = (option or "").strip()
+            if not slug:
+                continue
+            dedup.setdefault(slug, {"slug": slug, "label": _bucket_label(slug)})
+            continue
+        slug = (option.get("slug") or option.get("label") or "").strip()
+        if not slug:
+            continue
+        if slug not in dedup:
+            dedup[slug] = {
+                "slug": slug,
+                "label": option.get("label") or _bucket_label(slug),
+            }
+    summary["category_options"] = list(dedup.values())
 
     return summary
 
@@ -3448,6 +3508,7 @@ def assign_digital_code_to_trainer(
     preferred_category: str | None = None,
     actor_type_hint: str | None = None,
     reward_description: str | None = None,
+    bucket_reason: str | None = None,
 ):
     if not _digital_codes_supported():
         return False, "Digital codes require Supabase."
@@ -3532,6 +3593,7 @@ def assign_digital_code_to_trainer(
         assigned_by_type,
         assigned_by_label,
         reward_description,
+        reason_text=bucket_reason,
     )
     metadata = {
         "reward_code": code_value,
@@ -4141,13 +4203,29 @@ def admin_digital_codes():
         roster, _acct = fetch_trainer_roster()
         digital_code_roster = roster[:250]
 
+    preset_slugs = {preset["slug"] for preset in DIGITAL_CODE_BUCKET_PRESETS}
+    extra_bucket_options: list[dict] = []
+    for option in digital_codes_summary.get("category_options") or []:
+        slug_value = (option.get("slug") or "").strip() if isinstance(option, dict) else str(option).strip()
+        label_value = option.get("label") if isinstance(option, dict) else option
+        if slug_value and slug_value in preset_slugs:
+            continue
+        if not label_value:
+            continue
+        extra_bucket_options.append({
+            "slug": slug_value or label_value,
+            "label": label_value,
+        })
+
     return render_template(
         "admin_digital_codes.html",
         digital_codes=digital_codes_summary,
         digital_code_roster=digital_code_roster,
         digital_code_subject_default=DEFAULT_DIGITAL_CODE_SUBJECT,
         digital_code_source_default=DIGITAL_CODE_SOURCE_DEFAULT,
-        digital_code_source_presets=DIGITAL_CODE_SOURCE_PRESETS,
+        digital_code_bucket_presets=DIGITAL_CODE_BUCKET_PRESETS,
+        digital_code_default_bucket=DIGITAL_CODE_DEFAULT_BUCKET,
+        digital_code_extra_buckets=extra_bucket_options,
     )
 
 
@@ -4156,9 +4234,12 @@ def admin_digital_codes():
 def admin_digital_codes_upload():
     raw_codes = request.form.get("codes_csv") or request.form.get("codes_input") or ""
     batch_label = (request.form.get("batch_label") or "").strip()
-    selected_category = request.form.get("code_category") or ""
-    custom_category = request.form.get("code_category_custom") or ""
-    category_input = custom_category or selected_category or request.form.get("category")
+    bucket_choice = (request.form.get("bucket_choice_upload") or DIGITAL_CODE_DEFAULT_BUCKET).strip()
+    custom_bucket = (request.form.get("bucket_choice_upload_custom") or "").strip()
+    if bucket_choice.lower() == "custom":
+        category_input = custom_bucket or DIGITAL_CODE_DEFAULT_CATEGORY
+    else:
+        category_input = bucket_choice
     actor = _current_actor()
     ok, message, _details = add_digital_codes_from_payload(raw_codes, actor, batch_label or None, category=category_input)
     flash(message, "success" if ok else "error")
@@ -4170,22 +4251,41 @@ def admin_digital_codes_upload():
 def admin_digital_codes_assign():
     trainer_username = request.form.get("trainer_username") or request.form.get("trainer") or ""
     code_id = (request.form.get("code_id") or "").strip() or None
+    bucket_choice = (request.form.get("bucket_choice") or DIGITAL_CODE_DEFAULT_BUCKET).strip()
+    custom_bucket_name = (request.form.get("custom_bucket_name") or "").strip()
+    custom_reason = (request.form.get("custom_reason") or "").strip()
+    custom_reward = (request.form.get("custom_reward") or "").strip()
+    custom_subject = (request.form.get("custom_subject") or "").strip()
+    use_override = bool(request.form.get("use_generic_override"))
+
     subject = None
-    if request.form.get("use_custom_subject"):
-        subject = (request.form.get("custom_subject") or request.form.get("subject") or "").strip() or None
-
-    selected_category = request.form.get("code_category") or ""
-    custom_category = request.form.get("code_category_custom") or ""
-    category_filter = custom_category or selected_category or request.form.get("preferred_category")
-
-    if request.form.get("use_custom_source"):
-        assignment_source = request.form.get("assignment_source_custom") or DIGITAL_CODE_SOURCE_DEFAULT
-    else:
-        assignment_source = request.form.get("assignment_source_choice") or DIGITAL_CODE_SOURCE_DEFAULT
-
+    assignment_source = None
+    bucket_reason = None
     reward_description = None
-    if request.form.get("add_custom_reward"):
-        reward_description = request.form.get("reward_contents") or request.form.get("reward_description")
+    category_filter = bucket_choice or DIGITAL_CODE_DEFAULT_BUCKET
+
+    preset = DIGITAL_CODE_BUCKET_PRESET_MAP.get(bucket_choice.lower())
+    if bucket_choice.lower() == "custom" or (use_override and custom_bucket_name):
+        category_filter = custom_bucket_name or DIGITAL_CODE_DEFAULT_CATEGORY
+        assignment_source = "manual_override"
+    elif preset:
+        assignment_source = preset.get("source") or DIGITAL_CODE_SOURCE_DEFAULT
+        bucket_reason = preset.get("reason")
+        reward_description = preset.get("reward_description")
+        if preset.get("subject"):
+            subject = preset["subject"]
+    else:
+        assignment_source = DIGITAL_CODE_SOURCE_DEFAULT
+
+    if custom_reason:
+        bucket_reason = custom_reason
+    if custom_reward:
+        reward_description = custom_reward
+    if custom_subject:
+        subject = custom_subject
+
+    if use_override and custom_bucket_name:
+        category_filter = custom_bucket_name
 
     actor = _current_actor()
     ok, msg = assign_digital_code_to_trainer(
@@ -4197,6 +4297,7 @@ def admin_digital_codes_assign():
         preferred_category=category_filter,
         actor_type_hint="admin",
         reward_description=reward_description,
+        bucket_reason=bucket_reason,
     )
     flash(msg, "success" if ok else "error")
     return redirect(url_for("admin_digital_codes"))

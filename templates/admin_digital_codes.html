@@ -5,21 +5,40 @@
 {% endblock %}
 
 {% block content %}
-<div class="admin-header digital-codes-page-header">
-  <div>
-    <p class="digital-codes-eyebrow">Admin Tool</p>
-    <h1>Digital Codes</h1>
-    <p>Upload comma-separated codes, bucket them, and deliver inbox drops with guided redemption steps.</p>
-  </div>
-</div>
+{% set bucket_presets = digital_code_bucket_presets or [] %}
+{% set roster = digital_code_roster or [] %}
+{% set extra_buckets = digital_code_extra_buckets or [] %}
 
-{% if digital_codes.supported %}
-  <section class="digital-codes-panel">
-    <div class="digital-code-summary-widget">
-      <div class="digital-code-summary-total">
+<div class="digital-codes-page">
+  <div class="digital-codes-page__header">
+    <div>
+      <p class="digital-codes-eyebrow">Admin tool</p>
+      <h1>Digital Codes</h1>
+      <p>Upload comma-separated codes, bucket them, and deliver guided inbox drops with one click.</p>
+    </div>
+    {% if digital_codes.supported %}
+      <div class="digital-codes-actions">
+        <button type="button" class="btn primary" data-open-modal="upload">⬆️ Upload codes</button>
+        <button type="button" class="btn" data-open-modal="send">✉️ Send code</button>
+      </div>
+    {% endif %}
+  </div>
+
+  {% if digital_codes.supported %}
+    <section class="digital-codes-summary">
+      <div class="summary-card">
         <p>Total active codes</p>
         <strong>{{ digital_codes.available_count }}</strong>
       </div>
+      <div class="summary-card">
+        <p>Delivered all-time</p>
+        <strong>{{ digital_codes.assigned_count }}</strong>
+      </div>
+    </section>
+
+    <section class="digital-codes-buckets">
+      <h3>Bucket health</h3>
+      <p class="muted">Counts per bucket are visible, but individual codes stay hidden for security.</p>
       <div class="digital-code-summary-buckets">
         {% if digital_codes.available_bucket_totals %}
           {% for bucket in digital_codes.available_bucket_totals %}
@@ -31,471 +50,664 @@
           <span class="digital-code-chip is-empty">No buckets yet</span>
         {% endif %}
       </div>
-    </div>
-    <div class="digital-codes-header">
-      <div>
-        <h3>Reward Codes Inbox Drops</h3>
-        <p>Admins can upload comma-separated codes, categorize them, and send inbox notifications with step-by-step redemption instructions.</p>
-      </div>
-      <div class="digital-codes-metrics">
-        <div>
-          <span>Available</span>
-          <strong>{{ digital_codes.available_count }}</strong>
-        </div>
-        <div>
-          <span>Delivered</span>
-          <strong>{{ digital_codes.assigned_count }}</strong>
-        </div>
-      </div>
-    </div>
-    {% if digital_codes.error %}
-      <div class="digital-code-alert">{{ digital_codes.error }}</div>
-    {% endif %}
-    <div class="digital-codes-grid">
-      <form class="digital-code-card" method="post" action="{{ url_for('admin_digital_codes_upload') }}">
-        <h4>1. Upload Codes</h4>
-        <label for="codes_csv">Comma separated codes (max {{ digital_codes.upload_limit }})</label>
-        <textarea id="codes_csv" name="codes_csv" rows="4" placeholder="ABC-123,DEF-456" required></textarea>
-        <label for="code_category">Choose existing bucket</label>
-        <select id="code_category" name="code_category">
-          {% for category in digital_codes.category_options %}
-            <option value="{{ category }}" {% if category == digital_codes.default_category %}selected{% endif %}>{{ category }}</option>
-          {% endfor %}
-          {% if not digital_codes.category_options %}
-            <option value="{{ digital_codes.default_category }}" selected>{{ digital_codes.default_category }}</option>
-          {% endif %}
-        </select>
-        <label for="code_category_custom">Or create a new bucket <small>(optional)</small></label>
-        <input
-          id="code_category_custom"
-          name="code_category_custom"
-          type="text"
-          maxlength="80"
-          placeholder="Enter a new bucket name"
-        >
-        <label for="batch_label">Batch label <small>(optional, helps with tracking)</small></label>
-        <input id="batch_label" name="batch_label" type="text" maxlength="80" placeholder="Example: GO Fest April drop">
-        <button type="submit">Upload Codes</button>
-      </form>
-      <form class="digital-code-card" method="post" action="{{ url_for('admin_digital_codes_assign') }}">
-        <h4>2. Send to a Trainer</h4>
-        <label for="trainer_username">Trainer username</label>
-        <input id="trainer_username" name="trainer_username" type="text" list="digital-code-trainers" placeholder="Trainer name" required autocomplete="off">
-        <label for="assign_category">Preferred bucket</label>
-        <select id="assign_category" name="code_category">
-          <option value="">Auto-detect best bucket</option>
-          {% for category in digital_codes.category_options %}
-            <option value="{{ category }}">{{ category }}</option>
-          {% endfor %}
-        </select>
-        <label for="code_category_custom">Custom bucket override <small>(optional)</small></label>
-        <input id="code_category_custom" name="code_category_custom" type="text" maxlength="80" placeholder="Enter bucket name if it’s not listed">
-
-        <label for="code_id">Choose a specific code <small>(optional)</small></label>
-        <select id="code_id" name="code_id">
-          <option value="">Auto-pick next available</option>
-          {% for code in digital_codes.available_codes %}
-            <option value="{{ code.id }}">{{ code.code }} ({{ code.category }})</option>
-          {% endfor %}
-        </select>
-
-        <div class="digital-code-fieldset">
-          <p>Reason for this code</p>
-          <div class="digital-code-radio-list">
-            {% for preset in digital_code_source_presets %}
-              <label class="digital-code-radio">
-                <input type="radio" name="assignment_source_choice" value="{{ preset.value }}" {% if loop.first %}checked{% endif %}>
-                <span>
-                  <strong>{{ preset.label }}</strong>
-                  <small>{{ preset.description }}</small>
-                </span>
-              </label>
-            {% endfor %}
-          </div>
-          <label class="digital-code-checkbox">
-            <input type="checkbox" name="use_custom_source" value="1">
-            <span>Use a custom source tag</span>
-          </label>
-          <input type="text" name="assignment_source_custom" placeholder="custom_source_tag">
-        </div>
-
-        <label class="digital-code-checkbox">
-          <input type="checkbox" name="add_custom_reward" value="1">
-          <span>Add custom reward description</span>
-        </label>
-        <textarea id="reward_contents" name="reward_contents" rows="3" placeholder="Describe the rewards (optional)"></textarea>
-
-        <label class="digital-code-checkbox">
-          <input type="checkbox" name="use_custom_subject" value="1">
-          <span>Use a custom inbox subject</span>
-        </label>
-        <input id="custom_subject" name="custom_subject" type="text" placeholder="{{ digital_code_subject_default }}">
-
-        <div class="digital-code-preview">
-          <p><strong>Automatic notification preview</strong></p>
-          <p>The inbox message includes:</p>
-          <ul>
-            <li>A link that opens the Pokémon GO redemption page with the code filled in.</li>
-            <li>A breakdown of how the player earned the code.</li>
-            <li>Steps on how to redeem plus an RDAB Support reminder.</li>
-          </ul>
-          <p>No extra copy is required unless you add an optional custom reward note.</p>
-        </div>
-        <button type="submit">Send Inbox Code</button>
-      </form>
-      <div class="digital-code-card digital-code-card--inventory">
-        <h4>Inventory</h4>
-        {% if digital_codes.available_buckets %}
-          <div class="digital-code-buckets">
-            {% for bucket in digital_codes.available_buckets %}
-              <section class="digital-code-bucket">
-                <header>
-                  <strong>{{ bucket.category or 'General' }}</strong>
-                  <span class="digital-code-tag">{{ bucket.count }}</span>
-                </header>
-                <ul>
-                  {% for record in bucket.codes %}
-                    <li>
-                      <code>{{ record.code }}</code>
-                      <span>{{ record.batch_label or 'Unlabelled batch' }}</span>
-                      <small>{{ record.created_display }}</small>
-                    </li>
-                  {% endfor %}
-                </ul>
-              </section>
-            {% endfor %}
-          </div>
-        {% else %}
-          <p class="digital-code-empty">No codes uploaded yet.</p>
-        {% endif %}
-      </div>
-      <div class="digital-code-card digital-code-card--history">
-        <h4>Recent deliveries</h4>
-        {% if digital_codes.assigned_recent %}
-          <ul>
-            {% for record in digital_codes.assigned_recent %}
-              <li>
-                <div>
-                  <code>{{ record.code }}</code> → <strong>{{ record.assigned_to or 'Unknown' }}</strong>
-                  <span class="digital-code-tag">{{ record.category or 'General' }}</span>
-                </div>
-                <small>
-                  Redeemed {{ record.redeemed_display or 'Just now' }}
-                  {% if record.assigned_by %}
-                    • by {{ record.assigned_by }}
-                    {% if record.assigned_by_type %} ({{ record.assigned_by_type|title }}){% endif %}
-                  {% endif %}
-                  {% if record.assigned_source %} • via {{ record.assigned_source }}{% endif %}
-                  {% if record.batch_label %} • {{ record.batch_label }}{% endif %}
-                </small>
-              </li>
-            {% endfor %}
-          </ul>
-        {% else %}
-          <p class="digital-code-empty">Deliveries will appear here once you send a code.</p>
-        {% endif %}
-      </div>
-    </div>
-  </section>
-  <datalist id="digital-code-trainers">
-    {% for trainer in digital_code_roster %}
-      <option value="{{ trainer.trainer_username }}"></option>
-    {% endfor %}
-  </datalist>
-{% else %}
-  <section class="digital-codes-panel is-disabled">
-    <div>
-      <p class="digital-codes-eyebrow">Digital Codes</p>
+    </section>
+  {% else %}
+    <section class="digital-codes-buckets">
       <h3>Supabase required</h3>
-      <p>Connect Supabase to enable bulk code uploads and inbox delivery tooling.</p>
+      <p class="muted">Connect Supabase to unlock digital code upload and delivery tooling.</p>
+    </section>
+  {% endif %}
+</div>
+
+{% if digital_codes.supported %}
+
+<!-- Upload modal -->
+<div class="digital-modal" id="digitalUploadModal" aria-hidden="true">
+  <div class="digital-modal__overlay" data-close-modal></div>
+  <div class="digital-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="uploadModalTitle">
+    <div class="digital-modal__header">
+      <div>
+        <p class="digital-codes-eyebrow">Upload</p>
+        <h3 id="uploadModalTitle">Add digital codes</h3>
+      </div>
+      <button type="button" class="digital-modal__close" data-close-modal aria-label="Close">&times;</button>
     </div>
-  </section>
+    <form method="post" action="{{ url_for('admin_digital_codes_upload') }}" class="digital-form" id="uploadForm">
+      <label>
+        <span>Comma separated codes (max {{ digital_codes.upload_limit }})</span>
+        <textarea name="codes_csv" rows="5" placeholder="ABC-123, DEF-456, GHI-789" required></textarea>
+      </label>
+      <label>
+        <span>Choose a bucket</span>
+        <select name="bucket_choice_upload" data-upload-bucket>
+          {% for preset in bucket_presets %}
+            <option value="{{ preset.slug }}">{{ preset.label }}</option>
+          {% endfor %}
+          {% for option in extra_buckets %}
+            <option value="{{ option.slug }}">{{ option.label }}</option>
+          {% endfor %}
+          <option value="custom">Create a new bucket…</option>
+        </select>
+      </label>
+      <label data-upload-custom hidden>
+        <span>New bucket name</span>
+        <input type="text" name="bucket_choice_upload_custom" maxlength="80" placeholder="e.g. Event-exclusive bundle">
+      </label>
+      <label>
+        <span>Batch label <small>(optional)</small></span>
+        <input type="text" name="batch_label" maxlength="80" placeholder="GO Fest July drop">
+      </label>
+      <div class="digital-modal__actions">
+        <button type="button" class="btn" data-close-modal>Cancel</button>
+        <button type="submit" class="btn primary">Upload</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Send modal -->
+<div class="digital-modal" id="digitalSendModal" aria-hidden="true">
+  <div class="digital-modal__overlay" data-close-modal></div>
+  <div class="digital-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="sendModalTitle">
+    <div class="digital-modal__header">
+      <div>
+        <p class="digital-codes-eyebrow">Delivery</p>
+        <h3 id="sendModalTitle">Send a digital code</h3>
+      </div>
+      <button type="button" class="digital-modal__close" data-close-modal aria-label="Close">&times;</button>
+    </div>
+    <form method="post" action="{{ url_for('admin_digital_codes_assign') }}" class="digital-form" id="sendForm">
+      <div class="trainer-picker" data-trainer-picker>
+        <label>
+          <span>Trainer username</span>
+          <input type="search" placeholder="Search trainers…" data-trainer-search autocomplete="off">
+        </label>
+        <div class="trainer-picker__list" data-trainer-list>
+          {% if roster %}
+            {% for trainer in roster %}
+              <button type="button"
+                      class="trainer-picker__option"
+                      data-username="{{ trainer.trainer_username }}"
+                      data-account="{{ trainer.account_type or 'Trainer' }}">
+                <span>{{ trainer.trainer_username }}</span>
+                <small>{{ trainer.account_type or 'Trainer' }}</small>
+              </button>
+            {% endfor %}
+          {% else %}
+            <p class="empty-note">Trainer roster unavailable. Enter username manually below.</p>
+          {% endif %}
+        </div>
+        <label class="manual-entry">
+          <span>Manual entry</span>
+          <input type="text" placeholder="Trainer username" data-trainer-manual>
+        </label>
+        <input type="hidden" name="trainer_username" data-trainer-input required>
+        <p class="trainer-picker__selected" data-trainer-selected>Pick a trainer to continue.</p>
+      </div>
+
+      <label>
+        <span>Bucket</span>
+        <select name="bucket_choice" data-bucket-select>
+          {% for preset in bucket_presets %}
+            <option value="{{ preset.slug }}">{{ preset.label }}</option>
+          {% endfor %}
+          {% for option in extra_buckets %}
+            <option value="{{ option.slug }}">{{ option.label }}</option>
+          {% endfor %}
+          <option value="custom">Custom bucket…</option>
+        </select>
+      </label>
+
+      <div class="bucket-preview" data-bucket-preview>
+        <p data-bucket-label>Digital Reward Bundle</p>
+        <p class="muted" data-bucket-reason>Upload or send a code to see the reason preview.</p>
+        <p class="muted" data-bucket-reward></p>
+      </div>
+
+      <label class="digital-code-checkbox">
+        <input type="checkbox" name="use_generic_override" data-override-toggle>
+        <span>Use generic override (custom bucket + messaging)</span>
+      </label>
+
+      <div class="override-fields" data-override-fields hidden>
+        <label>
+          <span>Custom bucket name</span>
+          <input type="text" name="custom_bucket_name" maxlength="80" placeholder="Community Giveaway">
+        </label>
+        <label>
+          <span>Custom reason shown to trainers</span>
+          <textarea name="custom_reason" rows="3" placeholder="Why the trainer received this code"></textarea>
+        </label>
+        <label>
+          <span>Custom reward description</span>
+          <textarea name="custom_reward" rows="2" placeholder="Redeem this code for… (optional)"></textarea>
+        </label>
+        <label>
+          <span>Custom inbox subject</span>
+          <input type="text" name="custom_subject" placeholder="Here’s a special code from RDAB">
+        </label>
+      </div>
+
+      <div class="digital-modal__actions">
+        <button type="button" class="btn" data-close-modal>Cancel</button>
+        <button type="submit" class="btn primary">Send inbox code</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Confirmation modal -->
+<div class="digital-modal" id="digitalConfirmModal" aria-hidden="true">
+  <div class="digital-modal__overlay" data-close-confirm></div>
+  <div class="digital-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="confirmModalTitle">
+    <div class="digital-modal__header">
+      <div>
+        <p class="digital-codes-eyebrow">Confirm</p>
+        <h3 id="confirmModalTitle">Send this code?</h3>
+      </div>
+      <button type="button" class="digital-modal__close" data-close-confirm aria-label="Close">&times;</button>
+    </div>
+    <div class="confirm-summary">
+      <dl>
+        <div>
+          <dt>Trainer</dt>
+          <dd data-confirm-trainer>–</dd>
+        </div>
+        <div>
+          <dt>Bucket</dt>
+          <dd data-confirm-bucket>–</dd>
+        </div>
+        <div>
+          <dt>Reason</dt>
+          <dd data-confirm-reason>–</dd>
+        </div>
+        <div>
+          <dt>Subject</dt>
+          <dd data-confirm-subject>{{ digital_code_subject_default }}</dd>
+        </div>
+      </dl>
+      <p class="muted">This operation will send <strong>1</strong> code from the selected bucket.</p>
+      <div class="confirm-preview" data-confirm-preview></div>
+    </div>
+    <div class="digital-modal__actions">
+      <button type="button" class="btn" data-close-confirm>Go back</button>
+      <button type="button" class="btn primary" data-confirm-send>Send now</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const bucketPresets = {{ bucket_presets|tojson }};
+  const defaultBucket = "{{ digital_code_default_bucket }}";
+  const defaultSubject = {{ digital_code_subject_default|tojson }};
+  const presetMap = {};
+  bucketPresets.forEach((preset) => {
+    presetMap[preset.slug] = preset;
+  });
+
+  const uploadModal = document.getElementById("digitalUploadModal");
+  const sendModal = document.getElementById("digitalSendModal");
+  const confirmModal = document.getElementById("digitalConfirmModal");
+  let pendingForm = null;
+
+  function toggleModal(modal, show) {
+    if (!modal) return;
+    modal.setAttribute("aria-hidden", String(!show));
+    modal.classList.toggle("is-open", show);
+    document.body.classList.toggle("digital-modal-open", show);
+  }
+
+  document.querySelectorAll("[data-open-modal]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const target = btn.dataset.openModal;
+      if (target === "upload") toggleModal(uploadModal, true);
+      if (target === "send") toggleModal(sendModal, true);
+    });
+  });
+
+  document.querySelectorAll("[data-close-modal]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      toggleModal(uploadModal, false);
+      toggleModal(sendModal, false);
+    });
+  });
+  document.querySelectorAll("[data-close-confirm]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      toggleModal(confirmModal, false);
+      pendingForm = null;
+    });
+  });
+
+  // Upload custom bucket toggle
+  const uploadBucketSelect = document.querySelector("[data-upload-bucket]");
+  const uploadCustomField = document.querySelector("[data-upload-custom]");
+  if (uploadBucketSelect && uploadCustomField) {
+    uploadBucketSelect.addEventListener("change", () => {
+      uploadCustomField.hidden = uploadBucketSelect.value !== "custom";
+    });
+  }
+
+  // Trainer picker
+  document.querySelectorAll("[data-trainer-picker]").forEach((picker) => {
+    const searchInput = picker.querySelector("[data-trainer-search]");
+    const manualInput = picker.querySelector("[data-trainer-manual]");
+    const list = picker.querySelector("[data-trainer-list]");
+    const hiddenInput = picker.querySelector("[data-trainer-input]");
+    const selectedLabel = picker.querySelector("[data-trainer-selected]");
+
+    function setTrainer(username) {
+      if (!hiddenInput) return;
+      hiddenInput.value = username || "";
+      if (selectedLabel) {
+        selectedLabel.textContent = username ? `Selected: ${username}` : "Pick a trainer to continue.";
+      }
+    }
+
+    if (list) {
+      list.addEventListener("click", (event) => {
+        const option = event.target.closest(".trainer-picker__option");
+        if (!option) return;
+        event.preventDefault();
+        const username = option.dataset.username;
+        setTrainer(username);
+        if (searchInput) {
+          searchInput.value = username;
+        }
+      });
+    }
+
+    if (manualInput) {
+      manualInput.addEventListener("input", () => setTrainer(manualInput.value.trim()));
+    }
+
+    if (searchInput && list) {
+      searchInput.addEventListener("input", () => {
+        const term = searchInput.value.trim().toLowerCase();
+        list.querySelectorAll(".trainer-picker__option").forEach((option) => {
+          const username = option.dataset.username.toLowerCase();
+          const account = (option.dataset.account || "").toLowerCase();
+          const match = !term || username.includes(term) || account.includes(term);
+          option.hidden = !match;
+        });
+      });
+    }
+  });
+
+  // Bucket preview logic
+  const bucketSelect = document.querySelector("[data-bucket-select]");
+  const bucketPreview = document.querySelector("[data-bucket-preview]");
+  const bucketReason = document.querySelector("[data-bucket-reason]");
+  const bucketReward = document.querySelector("[data-bucket-reward]");
+  const bucketLabel = document.querySelector("[data-bucket-label]");
+  const overrideToggle = document.querySelector("[data-override-toggle]");
+  const overrideFields = document.querySelector("[data-override-fields]");
+
+  function updateBucketPreview() {
+    if (!bucketSelect || !bucketPreview) return;
+    const value = bucketSelect.value;
+    const preset = presetMap[value];
+    if (value === "custom") {
+      bucketLabel.textContent = "Custom bucket";
+      bucketReason.textContent = "Set your own reason inside the override section.";
+      bucketReward.textContent = "";
+      overrideFields.hidden = false;
+      overrideToggle.checked = true;
+    } else {
+      bucketLabel.textContent = preset ? preset.label : "Bucket";
+      bucketReason.textContent = preset ? preset.reason : "This bucket follows RDAB’s standard messaging.";
+      bucketReward.textContent = preset && preset.reward_description ? preset.reward_description : "";
+      if (!overrideToggle.checked) {
+        overrideFields.hidden = true;
+      }
+    }
+  }
+
+  if (bucketSelect) {
+    bucketSelect.addEventListener("change", updateBucketPreview);
+    updateBucketPreview();
+  }
+
+  if (overrideToggle && overrideFields) {
+    overrideToggle.addEventListener("change", () => {
+      overrideFields.hidden = !overrideToggle.checked;
+    });
+  }
+
+  // Confirmation dialog
+  const sendForm = document.getElementById("sendForm");
+  const confirmTrainer = document.querySelector("[data-confirm-trainer]");
+  const confirmBucket = document.querySelector("[data-confirm-bucket]");
+  const confirmReason = document.querySelector("[data-confirm-reason]");
+  const confirmSubject = document.querySelector("[data-confirm-subject]");
+  const confirmPreview = document.querySelector("[data-confirm-preview]");
+  const confirmButton = document.querySelector("[data-confirm-send]");
+
+  function buildPreviewText(trainer, bucketText, reasonText, rewardText) {
+    return `
+      <p><strong>Message preview</strong></p>
+      <p>Hello ${trainer || 'Trainer'},</p>
+      <p>${reasonText || 'You received a digital reward from RDAB.'}</p>
+      ${rewardText ? `<p>${rewardText}</p>` : ""}
+      <p>Includes a link to redeem the code and instructions on how to use it, plus an RDAB Support reminder.</p>
+    `;
+  }
+
+  if (sendForm) {
+    sendForm.addEventListener("submit", (event) => {
+      if (sendForm.dataset.confirmed === "true") {
+        sendForm.dataset.confirmed = "";
+        return;
+      }
+      event.preventDefault();
+
+      const trainerValue = sendForm.querySelector("[data-trainer-input]")?.value || sendForm.querySelector("[data-trainer-manual]")?.value || "";
+      if (!trainerValue) {
+        alert("Select a trainer before sending.");
+        return;
+      }
+
+      const bucketValue = bucketSelect ? bucketSelect.value : "";
+      const preset = presetMap[bucketValue];
+      const bucketText = preset ? preset.label : (sendForm.querySelector("[name='custom_bucket_name']")?.value || "Custom bucket");
+      const reasonText =
+        sendForm.querySelector("[name='custom_reason']")?.value?.trim() ||
+        (preset ? preset.reason : "You received a digital reward from RDAB.");
+      const rewardText =
+        sendForm.querySelector("[name='custom_reward']")?.value?.trim() ||
+        (preset ? preset.reward_description : "");
+      const subjectText =
+        sendForm.querySelector("[name='custom_subject']")?.value?.trim() ||
+        (preset ? preset.subject : defaultSubject);
+
+      if (confirmTrainer) confirmTrainer.textContent = trainerValue;
+      if (confirmBucket) confirmBucket.textContent = bucketText;
+      if (confirmReason) confirmReason.textContent = reasonText;
+      if (confirmSubject) confirmSubject.textContent = subjectText;
+      if (confirmPreview) confirmPreview.innerHTML = buildPreviewText(trainerValue, bucketText, reasonText, rewardText);
+
+      pendingForm = sendForm;
+      toggleModal(confirmModal, true);
+    });
+  }
+
+  if (confirmButton) {
+    confirmButton.addEventListener("click", () => {
+      if (!pendingForm) return;
+      pendingForm.dataset.confirmed = "true";
+      toggleModal(confirmModal, false);
+      toggleModal(sendModal, false);
+      pendingForm.submit();
+      pendingForm = null;
+    });
+  }
+})();
+</script>
 {% endif %}
 
 <style>
-.digital-codes-page-header h1 {
-  margin:0;
-}
-.digital-codes-page-header p {
-  margin:4px 0 0;
+.digital-codes-page__header {
+  display:flex;
+  justify-content:space-between;
+  gap:18px;
+  align-items:flex-start;
+  flex-wrap:wrap;
+  margin-bottom:20px;
 }
 .digital-codes-eyebrow {
   text-transform:uppercase;
   font-size:0.72rem;
   letter-spacing:0.24em;
   color:#94a3b8;
-  margin:0 0 6px;
+  margin:0 0 4px;
 }
-.digital-codes-panel {
-  margin-top:24px;
-  padding:24px;
-  border-radius:24px;
-  background:#f8fafc;
-  box-shadow:inset 0 0 0 1px rgba(15,23,42,0.04);
-}
-.digital-codes-panel.is-disabled {
-  background:#f1f5f9;
-  text-align:center;
-  opacity:0.7;
-}
-.digital-codes-header {
+.digital-codes-actions {
   display:flex;
-  justify-content:space-between;
-  align-items:flex-start;
-  gap:18px;
-  flex-wrap:wrap;
+  gap:12px;
 }
-.digital-codes-header h3 {
-  margin:0 0 6px;
-}
-.digital-codes-metrics {
-  display:flex;
-  gap:18px;
-}
-.digital-codes-metrics div {
-  background:#fff;
-  border-radius:16px;
-  padding:12px 18px;
-  min-width:120px;
-  box-shadow:0 6px 16px rgba(15,23,42,0.08);
-  text-align:center;
-}
-.digital-codes-metrics span {
-  display:block;
-  font-size:0.78rem;
-  text-transform:uppercase;
-  letter-spacing:0.08em;
-  color:#64748b;
-}
-.digital-codes-metrics strong {
-  display:block;
-  font-size:1.4rem;
-  color:#0f172a;
-}
-.digital-codes-grid {
-  margin-top:20px;
+.digital-codes-summary {
   display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(240px,1fr));
-  gap:18px;
+  grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
+  gap:12px;
+  margin-bottom:20px;
 }
-.digital-code-card {
+.summary-card {
+  background:#0f172a;
+  color:#f8fafc;
+  border-radius:18px;
+  padding:16px;
+  box-shadow:0 12px 24px rgba(15,23,42,0.28);
+}
+.summary-card p {
+  margin:0;
+  text-transform:uppercase;
+  font-size:0.75rem;
+  letter-spacing:0.24em;
+  color:#94a3b8;
+}
+.summary-card strong {
+  display:block;
+  font-size:1.9rem;
+  margin-top:4px;
+}
+.digital-codes-buckets {
   background:#fff;
   border-radius:18px;
   padding:18px;
   box-shadow:0 12px 24px rgba(15,23,42,0.08);
-  display:flex;
-  flex-direction:column;
-  gap:12px;
-}
-.digital-code-card h4 {
-  margin:0;
-  font-size:1rem;
-}
-.digital-code-card label {
-  font-size:0.85rem;
-  font-weight:600;
-  color:#0f172a;
-  display:flex;
-  flex-direction:column;
-  gap:6px;
-}
-.digital-code-card label small {
-  font-weight:400;
-  color:#64748b;
-}
-.digital-code-card input,
-.digital-code-card textarea,
-.digital-code-card select {
-  width:100%;
-  border-radius:12px;
-  border:1px solid #d7dee8;
-  padding:10px 12px;
-  font:inherit;
-  background:#f8fafc;
-}
-.digital-code-card textarea {
-  resize:vertical;
-  min-height:100px;
-}
-.digital-code-card button {
-  margin-top:auto;
-  align-self:flex-end;
-  padding:10px 20px;
-  border-radius:999px;
-  background:#2563eb;
-  color:#fff;
-  border:none;
-  font-weight:600;
-  cursor:pointer;
-  transition:background .18s ease;
-}
-.digital-code-card button:hover {
-  background:#1e40af;
-}
-.digital-code-card ul {
-  list-style:none;
-  padding:0;
-  margin:0;
-  display:flex;
-  flex-direction:column;
-  gap:12px;
-}
-.digital-code-card li code {
-  background:#eff6ff;
-  color:#1d4ed8;
-  font-family:"JetBrains Mono","SFMono-Regular",Consolas,monospace;
-  border-radius:10px;
-  padding:3px 10px;
-  display:inline-block;
-}
-.digital-code-card li span {
-  display:block;
-  font-size:0.8rem;
-  color:#4b5563;
-}
-.digital-code-card li small {
-  display:block;
-  font-size:0.75rem;
-  color:#94a3b8;
-}
-.digital-code-empty {
-  margin:0;
-  color:#64748b;
-  font-style:italic;
-}
-.digital-code-alert {
-  background:#fef2f2;
-  border:1px solid #fecaca;
-  border-radius:16px;
-  padding:10px 16px;
-  color:#b91c1c;
-  font-weight:600;
-}
-.digital-code-summary-widget {
-  display:flex;
-  flex-wrap:wrap;
-  align-items:center;
-  justify-content:space-between;
-  gap:16px;
-  margin-bottom:20px;
-  padding:16px 20px;
-  border-radius:20px;
-  background:#0f172a;
-  color:#f8fafc;
-  box-shadow:0 14px 30px rgba(15,23,42,0.4);
-}
-.digital-code-summary-total p {
-  margin:0;
-  text-transform:uppercase;
-  font-size:0.75rem;
-  letter-spacing:0.22em;
-  color:#94a3b8;
-}
-.digital-code-summary-total strong {
-  display:block;
-  font-size:2rem;
-  margin-top:4px;
 }
 .digital-code-summary-buckets {
   display:flex;
   flex-wrap:wrap;
   gap:10px;
+  margin-top:12px;
 }
 .digital-code-chip {
   border-radius:999px;
   background:#e0f2fe;
   color:#0369a1;
   padding:4px 14px;
-  font-size:0.8rem;
   font-weight:600;
+  font-size:0.8rem;
 }
 .digital-code-chip.is-empty {
-  background:#cbd5f5;
-  color:#1e1b4b;
+  background:#fef3c7;
+  color:#854d0e;
 }
-.digital-code-tag {
+.btn {
+  border:none;
   border-radius:999px;
-  background:#e0f2fe;
-  color:#0369a1;
-  padding:2px 10px;
-  font-size:0.75rem;
+  padding:10px 18px;
   font-weight:600;
+  cursor:pointer;
+  background:#e2e8f0;
+  color:#0f172a;
 }
-.digital-code-buckets {
+.btn.primary {
+  background:#2563eb;
+  color:#fff;
+}
+.digital-modal {
+  position:fixed;
+  inset:0;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  z-index:2000;
+}
+.digital-modal.is-open {
+  display:flex;
+}
+.digital-modal__overlay {
+  position:absolute;
+  inset:0;
+  background:rgba(15,23,42,0.6);
+}
+.digital-modal__dialog {
+  position:relative;
+  background:#fff;
+  border-radius:20px;
+  padding:22px;
+  width:min(620px, 90vw);
+  max-height:90vh;
+  overflow:auto;
+  box-shadow:0 20px 40px rgba(15,23,42,0.25);
+}
+.digital-modal__header {
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:12px;
+  margin-bottom:16px;
+}
+.digital-modal__close {
+  border:none;
+  background:transparent;
+  font-size:1.5rem;
+  cursor:pointer;
+  color:#0f172a;
+}
+.digital-form {
   display:flex;
   flex-direction:column;
   gap:14px;
 }
-.digital-code-bucket header {
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  margin-bottom:6px;
-}
-.digital-code-bucket ul {
-  gap:10px;
-}
-.digital-code-fieldset {
-  border-radius:16px;
-  background:#f1f5f9;
-  padding:14px;
+.digital-form label {
   display:flex;
   flex-direction:column;
-  gap:12px;
-}
-.digital-code-fieldset p {
-  margin:0;
+  gap:6px;
   font-weight:600;
   color:#0f172a;
 }
-.digital-code-radio-list {
-  display:flex;
-  flex-direction:column;
-  gap:10px;
-}
-.digital-code-radio {
-  display:flex;
-  gap:10px;
-  padding:10px;
+.digital-form input,
+.digital-form textarea,
+.digital-form select {
+  border:1px solid #d7dee8;
   border-radius:12px;
-  background:#fff;
+  padding:10px 12px;
+  font:inherit;
+  background:#f8fafc;
+}
+.digital-modal__actions {
+  display:flex;
+  justify-content:flex-end;
+  gap:10px;
+  margin-top:8px;
+}
+.muted {
+  color:#64748b;
+  margin:4px 0 0;
+}
+.trainer-picker {
   border:1px solid #e2e8f0;
-}
-.digital-code-radio input {
-  margin-top:4px;
-}
-.digital-code-radio span {
+  border-radius:16px;
+  padding:14px;
+  background:#f8fafc;
   display:flex;
   flex-direction:column;
+  gap:10px;
 }
-.digital-code-radio span strong {
-  font-size:0.9rem;
+.trainer-picker__list {
+  max-height:180px;
+  overflow:auto;
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+  gap:8px;
 }
-.digital-code-radio span small {
+.trainer-picker__option {
+  border:1px solid #dbe2f0;
+  border-radius:12px;
+  padding:10px;
+  background:#fff;
+  text-align:left;
+  cursor:pointer;
+}
+.trainer-picker__option span {
+  display:block;
+  font-weight:600;
+  color:#0f172a;
+}
+.trainer-picker__option small {
   color:#64748b;
+}
+.trainer-picker__selected {
+  margin:0;
+  font-style:italic;
+  color:#475467;
+}
+.bucket-preview {
+  border-radius:16px;
+  padding:14px;
+  background:#eef2ff;
+}
+.bucket-preview p {
+  margin:0 0 6px;
 }
 .digital-code-checkbox {
   display:flex;
   align-items:center;
   gap:8px;
-  font-size:0.85rem;
   font-weight:600;
-  color:#0f172a;
 }
-.digital-code-preview {
-  background:#f8fafc;
+.override-fields {
   border:1px dashed #cbd5f5;
   border-radius:16px;
-  padding:14px;
+  padding:12px;
+  background:#fff;
+}
+.confirm-summary dl {
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
+  gap:10px;
+  margin:0 0 12px;
+}
+.confirm-summary dt {
+  font-size:0.75rem;
+  text-transform:uppercase;
+  letter-spacing:0.18em;
+  color:#64748b;
+  margin-bottom:2px;
+}
+.confirm-summary dd {
+  margin:0;
+  font-weight:600;
+}
+.confirm-preview {
+  border-radius:12px;
+  background:#f8fafc;
+  padding:12px;
   font-size:0.9rem;
   color:#0f172a;
 }
-.digital-code-preview ul {
-  margin:8px 0 0 18px;
-  padding:0;
+.manual-entry span {
+  font-weight:600;
+  color:#0f172a;
 }
-.digital-code-preview li {
-  margin-bottom:4px;
+.manual-entry input {
+  width:100%;
+}
+.empty-note {
+  margin:0;
+  font-style:italic;
+  color:#94a3b8;
+}
+.btn:disabled {
+  opacity:0.6;
+  cursor:not-allowed;
+}
+body.digital-modal-open {
+  overflow:hidden;
+}
+@media (max-width:640px) {
+  .digital-modal__dialog {
+    padding:16px;
+  }
+  .digital-codes-actions {
+    width:100%;
+  }
+  .digital-codes-actions .btn {
+    flex:1;
+  }
 }
 </style>
 {% endblock %}
