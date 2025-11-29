@@ -633,14 +633,71 @@
       color: #94a3b8;
       font-style: italic;
     }
-    .trainer-profile-popover__actions {
+    .trainer-profile-popover__viewer {
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 16px;
+    }
+    .trainer-profile-popover__owner-actions {
+      padding: 16px;
+      border-radius: 16px;
+      background: #f8fafc;
+      text-align: center;
+      box-shadow: inset 0 0 0 1px rgba(15,23,42,0.06);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      align-items: center;
+    }
+    .trainer-profile-owner-hint {
+      margin: 0;
+      font-size: 0.85rem;
+      color: #475569;
+    }
+    .trainer-profile-edit-btn {
+      border: none;
+      border-radius: 999px;
+      padding: 10px 26px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      color: #fff;
+      background: #0f172a;
+      cursor: pointer;
+    }
+    .trainer-profile-popover__editor {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
       background: #fff;
       border-radius: 18px;
       padding: 18px;
       box-shadow: 0 18px 50px rgba(15,23,42,0.18);
+    }
+    .trainer-profile-editor__header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .trainer-profile-editor__eyebrow {
+      margin: 0;
+      text-transform: uppercase;
+      letter-spacing: 0.2em;
+      font-size: 0.7rem;
+      color: #94a3b8;
+      font-weight: 700;
+    }
+    .trainer-profile-editor__header h4 {
+      margin: 2px 0 0;
+      font-size: 1.1rem;
+      color: #0f172a;
+    }
+    .trainer-profile-editor__close {
+      border: none;
+      background: transparent;
+      font-weight: 600;
+      color: #2563eb;
+      cursor: pointer;
     }
     .trainer-profile-popover__action-btn {
       display: inline-flex;
@@ -1316,6 +1373,7 @@
         const loadingEl=overlay.querySelector("[data-trainer-profile-loading]");
         const errorEl=overlay.querySelector("[data-trainer-profile-error]");
         const cardEl=overlay.querySelector("[data-trainer-profile-card]");
+        const viewerPanel=overlay.querySelector("[data-trainer-profile-viewer]");
         const heroEl=overlay.querySelector("[data-trainer-profile-hero]");
         const avatarEl=overlay.querySelector("[data-trainer-profile-avatar]");
         const nameEl=overlay.querySelector("[data-trainer-profile-name]");
@@ -1327,7 +1385,10 @@
         const teamValueEl=overlay.querySelector("[data-trainer-profile-team-value]");
         const levelRow=overlay.querySelector("[data-trainer-profile-level-row]");
         const levelValueEl=overlay.querySelector("[data-trainer-profile-level-value]");
-        const actionsEl=overlay.querySelector("[data-trainer-profile-actions]");
+        const ownerPanel=overlay.querySelector("[data-trainer-profile-owner]");
+        const editOpenBtn=overlay.querySelector("[data-trainer-profile-edit-open]");
+        const editorPanel=overlay.querySelector("[data-trainer-profile-editor]");
+        const editorCloseBtn=overlay.querySelector("[data-trainer-profile-editor-close]");
         const customizeLink=overlay.querySelector("[data-trainer-profile-customize]");
         const metaPanel=overlay.querySelector("[data-trainer-profile-meta]");
         const metaForm=overlay.querySelector("[data-trainer-profile-meta-form]");
@@ -1358,7 +1419,9 @@
         const state={
           username:"",
           profileUrl:null,
-          editable:false,
+          isOwner:false,
+          mode:"public",
+          viewState:"loading",
           displayName:"Trainer",
           featuredSelection:[],
           featuredCatalog:[],
@@ -1395,6 +1458,7 @@
         };
 
         const setView=(mode,message)=>{
+          state.viewState=mode;
           if(loadingEl) loadingEl.hidden = mode!=="loading";
           if(cardEl) cardEl.hidden = mode!=="ready";
           if(errorEl){
@@ -1403,6 +1467,7 @@
               errorEl.textContent = message || "Unable to load trainer profile right now.";
             }
           }
+          updateModeVisibility();
         };
 
         const resetStatus=()=>{
@@ -1459,7 +1524,7 @@
         };
 
         const populateMetaForm=()=>{
-          if(!metaForm || !state.editable) return;
+          if(!metaForm || !state.isOwner) return;
           ensureMetaSelects();
           if(teamSelect){
             teamSelect.value = state.teamValue || "";
@@ -1517,29 +1582,37 @@
           updateBioCount();
         };
 
-        const setActionsVisible=(show)=>{
-          if(actionsEl) actionsEl.hidden = !show;
-          if(customizeLink) customizeLink.hidden = !show;
-          if(bioForm) bioForm.hidden = !show;
-          if(metaPanel) metaPanel.hidden = !show;
-          if(featuredEditor) featuredEditor.hidden = !show;
-          if(bioPill) bioPill.textContent = show ? "Player View" : "Public Profile";
-          if(!show && bioInput){
-            bioInput.value="";
-            updateBioCount();
+        const updateModeVisibility=()=>{
+          const isOwner=state.isOwner;
+          const isEditor=state.mode==="editor";
+          const canShowOwnerCta=isOwner && state.mode==="owner" && state.viewState==="ready";
+          if(viewerPanel) viewerPanel.hidden = isEditor;
+          if(ownerPanel) ownerPanel.hidden = !canShowOwnerCta;
+          if(editOpenBtn) editOpenBtn.disabled = !canShowOwnerCta;
+          if(editorPanel) editorPanel.hidden = !isEditor;
+          if(customizeLink) customizeLink.hidden = !isEditor;
+          if(metaPanel) metaPanel.hidden = !isEditor;
+          if(featuredEditor) featuredEditor.hidden = !isEditor;
+          if(bioForm) bioForm.hidden = !isEditor;
+          if(bioPill){
+            if(state.mode==="public"){
+              bioPill.textContent="Public Profile";
+            }else if(state.mode==="owner"){
+              bioPill.textContent="Player View";
+            }else{
+              bioPill.textContent="Edit Mode";
+            }
           }
-          if(!show && featuredCatalogPanel){
+          if(!isEditor && featuredCatalogPanel){
             featuredCatalogPanel.hidden=true;
           }
-          if(!show){
-            state.featuredSelection=[];
-            renderFeaturedSelection();
-            clearMetaStatus();
-          } else {
+          if(isEditor){
             populateMetaForm();
+          }else{
+            resetStatus();
+            clearFeaturedStatus();
+            clearMetaStatus();
           }
-          resetStatus();
-          clearFeaturedStatus();
         };
 
         const renderTeamRow=(info)=>{
@@ -1766,7 +1839,7 @@
             syncSelectionTokensWithCatalog();
             updateCatalogSelectionState();
           }
-          if(state.editable){
+          if(state.isOwner){
             populateBio(data);
             populateMetaForm();
           }
@@ -1777,28 +1850,27 @@
           const username=(options.username || "").trim();
           state.username=username;
           state.profileUrl=options.url || (username ? `/api/trainers/${encodeURIComponent(username)}/profile` : null);
-          state.editable=!!options.editable;
+          state.isOwner=!!options.editable;
+          state.mode=state.isOwner ? "owner" : "public";
           state.displayName=options.displayName || username || "Trainer";
           state.teamValue="";
           state.levelValue="";
-          setActionsVisible(state.editable);
-          if(!state.editable && bioInput){
+          state.featuredSelection=[];
+          state.featuredCatalog=[];
+          state.featuredCatalogLoaded=false;
+          state.featuredCatalogLoading=false;
+          state.catalogPromise=null;
+          state.viewState="loading";
+          updateModeVisibility();
+          if(!state.isOwner && bioInput){
             bioInput.value="";
             updateBioCount();
-          }
-          if(!state.editable){
-            state.featuredCatalogLoaded=false;
-            state.featuredCatalog=[];
           }
           setBioText("");
           renderTeamRow(null);
           renderLevelRow(null,false);
           renderFeaturedRow([]);
-          state.featuredSelection=[];
           renderFeaturedSelection();
-          if(state.editable){
-            populateMetaForm();
-          }
           overlay.hidden=false;
           requestAnimationFrame(()=>overlay.classList.add("is-visible"));
           bodyLock.lock();
@@ -1831,6 +1903,8 @@
 
         const close=()=>{
           if(!overlay || overlay.hidden) return;
+          state.mode = state.isOwner ? "owner" : "public";
+          updateModeVisibility();
           overlay.classList.remove("is-visible");
           if(closeTimer) clearTimeout(closeTimer);
           closeTimer=setTimeout(()=>{
@@ -1842,7 +1916,7 @@
 
         const submitBio=(evt)=>{
           evt.preventDefault();
-          if(!state.editable || !bioForm || !bioInput) return;
+          if(!state.isOwner || state.mode!=="editor" || !bioForm || !bioInput) return;
           let bioValue=(bioInput.value || "").trim();
           if(bioValue.length>200){
             bioValue=bioValue.slice(0,200);
@@ -1912,7 +1986,7 @@
         }
         if(featuredLoadBtn){
           featuredLoadBtn.addEventListener("click",()=>{
-            if(!state.editable){
+            if(!state.isOwner || state.mode!=="editor"){
               return;
             }
             ensureCatalogLoaded().then(()=>{
@@ -1923,7 +1997,7 @@
         if(featuredGrid){
           featuredGrid.addEventListener("click",(event)=>{
             const btn=event.target.closest("[data-featured-token]");
-            if(!btn || !state.editable) return;
+            if(!btn || !state.isOwner || state.mode!=="editor") return;
             const token=btn.getAttribute("data-featured-token");
             const icon=btn.getAttribute("data-featured-icon") || "";
             const label=btn.getAttribute("data-featured-label") || "";
@@ -1945,7 +2019,7 @@
         if(featuredSelected){
           featuredSelected.addEventListener("click",(event)=>{
             const btn=event.target.closest("[data-featured-remove]");
-            if(!btn) return;
+            if(!btn || state.mode!=="editor" || !state.isOwner) return;
             const index=parseInt(btn.getAttribute("data-featured-remove") || "-1", 10);
             if(isNaN(index) || index < 0 || index >= state.featuredSelection.length) return;
             state.featuredSelection.splice(index,1);
@@ -1953,9 +2027,24 @@
             clearFeaturedStatus();
           });
         }
+        if(editOpenBtn){
+          editOpenBtn.addEventListener("click",()=>{
+            if(!state.isOwner || state.mode!=="owner" || state.viewState!=="ready") return;
+            state.mode="editor";
+            updateModeVisibility();
+          });
+        }
+        if(editorCloseBtn){
+          editorCloseBtn.addEventListener("click",(evt)=>{
+            evt.preventDefault();
+            if(!state.isOwner) return;
+            state.mode="owner";
+            updateModeVisibility();
+          });
+        }
         if(featuredSaveBtn){
           featuredSaveBtn.addEventListener("click",()=>{
-            if(!state.editable) return;
+            if(!state.isOwner || state.mode!=="editor") return;
             ensureCatalogLoaded().then(()=>{
               const tokens=state.featuredSelection.map(item=>item.token).filter(Boolean);
               if(state.featuredSelection.length && !tokens.length){
@@ -1998,7 +2087,7 @@
         if(metaForm){
           metaForm.addEventListener("submit",(evt)=>{
             evt.preventDefault();
-            if(!state.editable) return;
+            if(!state.isOwner || state.mode!=="editor") return;
             ensureMetaSelects();
             const desiredTeam=(teamSelect ? (teamSelect.value || "").toLowerCase() : "");
             const currentTeam=state.teamValue || "";

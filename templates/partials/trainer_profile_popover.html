@@ -2,69 +2,84 @@
   <div class="trainer-profile-popover__backdrop" data-trainer-profile-close></div>
   <div class="trainer-profile-popover__modal" role="dialog" aria-modal="true" aria-label="Trainer profile spotlight">
     <button type="button" class="trainer-profile-popover__close" data-trainer-profile-close aria-label="Close trainer profile">✕</button>
-    <div class="trainer-profile-popover__loading" data-trainer-profile-loading>Loading trainer profile…</div>
-    <div class="trainer-profile-popover__error" data-trainer-profile-error hidden></div>
-    <article class="trainer-profile-card" data-trainer-profile-card hidden>
-      <div class="trainer-profile-card__hero" data-trainer-profile-hero>
-        <div class="trainer-profile-card__overlay"></div>
-        <div class="trainer-profile-card__head">
-          <img src="{{ url_for('static', filename='avatars/avatar1.png') }}"
-               alt="Trainer avatar"
-               data-trainer-profile-avatar>
+    <div class="trainer-profile-popover__viewer" data-trainer-profile-viewer>
+      <article class="trainer-profile-card" data-trainer-profile-card hidden>
+        <div class="trainer-profile-card__hero" data-trainer-profile-hero>
+          <div class="trainer-profile-card__overlay"></div>
+          <div class="trainer-profile-card__head">
+            <img src="{{ url_for('static', filename='avatars/avatar1.png') }}"
+                 alt="Trainer avatar"
+                 data-trainer-profile-avatar>
+            <div>
+              <p class="trainer-profile-card__eyebrow">Trainer spotlight</p>
+              <h3 data-trainer-profile-name>Trainer Name</h3>
+              <p class="trainer-profile-card__account" data-trainer-profile-account>Standard Account</p>
+            </div>
+          </div>
+          <dl class="trainer-profile-card__stats">
+            <div>
+              <dt>Campfire</dt>
+              <dd data-trainer-profile-campfire>—</dd>
+            </div>
+            <div>
+              <dt>Passport Stamps</dt>
+              <dd data-trainer-profile-stamps>0</dd>
+            </div>
+          </dl>
+        </div>
+        <div class="trainer-profile-card__details">
+          <div data-trainer-profile-team-row hidden>
+            <span>Team</span>
+            <div class="trainer-profile-card__team" data-trainer-profile-team-value>—</div>
+          </div>
+          <div data-trainer-profile-level-row hidden>
+            <span>Trainer Level</span>
+            <strong class="trainer-profile-card__level-value" data-trainer-profile-level-value>—</strong>
+          </div>
           <div>
-            <p class="trainer-profile-card__eyebrow">Trainer spotlight</p>
-            <h3 data-trainer-profile-name>Trainer Name</h3>
-            <p class="trainer-profile-card__account" data-trainer-profile-account>Standard Account</p>
+            <span>Joined</span>
+            <strong data-trainer-profile-joined>—</strong>
           </div>
         </div>
-        <dl class="trainer-profile-card__stats">
-          <div>
-            <dt>Campfire</dt>
-            <dd data-trainer-profile-campfire>—</dd>
-          </div>
-          <div>
-            <dt>Passport Stamps</dt>
-            <dd data-trainer-profile-stamps>0</dd>
-          </div>
-        </dl>
-      </div>
-  <div class="trainer-profile-card__details">
-    <div data-trainer-profile-team-row hidden>
-      <span>Team</span>
-      <div class="trainer-profile-card__team" data-trainer-profile-team-value>—</div>
-    </div>
-    <div data-trainer-profile-level-row hidden>
-      <span>Trainer Level</span>
-      <strong class="trainer-profile-card__level-value" data-trainer-profile-level-value>—</strong>
-    </div>
-    <div>
-      <span>Joined</span>
-      <strong data-trainer-profile-joined>—</strong>
-    </div>
-  </div>
-      <div class="trainer-profile-card__featured" data-trainer-profile-featured hidden>
-        <p class="trainer-profile-card__featured-title">Featured Stamps</p>
-        <div class="trainer-profile-card__featured-row" data-trainer-profile-featured-list></div>
-      </div>
-      <div class="trainer-profile-card__future">
-        <h4>Future drops</h4>
-        <p>Achievements, highlights, and photo memories will roll out here soon.</p>
-      </div>
-      <div class="trainer-profile-card__bio" data-trainer-profile-bio-block>
-        <div class="trainer-profile-card__bio-header">
-          <h4>Trainer Bio</h4>
-          <span data-trainer-profile-bio-pill>Public</span>
+        <div class="trainer-profile-card__featured" data-trainer-profile-featured hidden>
+          <p class="trainer-profile-card__featured-title">Featured Stamps</p>
+          <div class="trainer-profile-card__featured-row" data-trainer-profile-featured-list></div>
         </div>
-        <p class="trainer-profile-card__bio-text"
-           data-trainer-profile-bio-text
-           hidden></p>
-        <p class="trainer-profile-card__bio-empty"
-           data-trainer-profile-bio-empty>No bio added yet.</p>
+        <div class="trainer-profile-card__future">
+          <h4>Future drops</h4>
+          <p>Achievements, highlights, and photo memories will roll out here soon.</p>
+        </div>
+        <div class="trainer-profile-card__bio" data-trainer-profile-bio-block>
+          <div class="trainer-profile-card__bio-header">
+            <h4>Trainer Bio</h4>
+            <span data-trainer-profile-bio-pill>Public</span>
+          </div>
+          <p class="trainer-profile-card__bio-text"
+             data-trainer-profile-bio-text
+             hidden></p>
+          <p class="trainer-profile-card__bio-empty"
+             data-trainer-profile-bio-empty>No bio added yet.</p>
+        </div>
+      </article>
+      <div class="trainer-profile-popover__owner-actions" data-trainer-profile-owner hidden>
+        <p class="trainer-profile-owner-hint">This is exactly how other players see your profile.</p>
+        <button type="button"
+                class="trainer-profile-edit-btn"
+                data-trainer-profile-edit-open>✏️ Edit Profile</button>
       </div>
-    </article>
-    <div class="trainer-profile-popover__actions" data-trainer-profile-actions hidden>
-      <a href="{{ url_for('change_avatar') }}" class="trainer-profile-popover__action-btn" data-trainer-profile-customize hidden>✏️ Customise Trainer Card</a>
-      <div class="trainer-profile-meta" data-trainer-profile-meta hidden>
+    </div>
+    <div class="trainer-profile-popover__editor" data-trainer-profile-editor hidden>
+      <div class="trainer-profile-editor__header">
+        <div>
+          <p class="trainer-profile-editor__eyebrow">My settings</p>
+          <h4>Edit trainer profile</h4>
+        </div>
+        <button type="button"
+                class="trainer-profile-editor__close"
+                data-trainer-profile-editor-close>← Back to profile</button>
+      </div>
+      <a href="{{ url_for('change_avatar') }}" class="trainer-profile-popover__action-btn" data-trainer-profile-customize>✏️ Customise Trainer Card</a>
+      <div class="trainer-profile-meta" data-trainer-profile-meta>
         <form data-trainer-profile-meta-form>
           <label for="trainerTeamSelect">Team</label>
           <select id="trainerTeamSelect"
@@ -80,7 +95,7 @@
         </form>
         <div class="trainer-profile-meta-status" data-trainer-profile-meta-status hidden></div>
       </div>
-      <div class="trainer-profile-featured-editor" data-trainer-profile-featured-editor hidden>
+      <div class="trainer-profile-featured-editor" data-trainer-profile-featured-editor>
         <div class="trainer-profile-featured-editor__header">
           <label>Featured Stamps</label>
           <span data-trainer-profile-featured-count>0/3</span>
@@ -100,7 +115,7 @@
         </div>
         <div class="trainer-profile-featured-status" data-trainer-profile-featured-status hidden></div>
       </div>
-      <form class="trainer-profile-bio" data-trainer-profile-bio-form hidden>
+      <form class="trainer-profile-bio" data-trainer-profile-bio-form>
         <label for="trainerBioInput">Trainer Bio</label>
         <textarea id="trainerBioInput"
                   name="trainerbio"

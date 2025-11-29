@@ -9,11 +9,7 @@
   <form id="customizer-form" class="customizer-card" action="{{ url_for('change_avatar') }}" method="post" novalidate>
     <div class="customizer-summary">
       <header class="customizer-header">
-        <div>
-          <p class="customizer-eyebrow">RDAB Custom Lab</p>
-          <h1>Personalise Your RDAB Experience</h1>
-          <p>Swap avatars, trainer card backgrounds, and passport themes with a single tap. Every choice saves instantly.</p>
-        </div>
+        <h1>RDAB Custom Lab</h1>
         <button type="button"
                 class="customizer-help-btn"
                 id="customizer-help-button"
@@ -27,28 +23,16 @@
         </button>
       </header>
 
-      <div class="customizer-preview">
-        <div class="preview-avatar-card">
-          <div class="preview-avatar-frame">
+      <div class="trainer-card-preview">
+        <div class="trainer-card-canvas"
+             data-preview-background
+             style="background-image: url('{{ url_for('static', filename='backgrounds/' + current_background) }}');">
+          <div class="trainer-avatar-frame">
             <img src="{{ url_for('static', filename='avatars/' + current_avatar) }}"
                  alt="Current avatar"
                  data-preview-avatar>
           </div>
-          <p class="preview-label">Trainer Icon</p>
-        </div>
-        <div class="preview-meta">
-          <div class="preview-row">
-            <p class="preview-label">Trainer Card Background</p>
-            <div class="preview-background"
-                 data-preview-background
-                 style="background-image: url('{{ url_for('static', filename='backgrounds/' + current_background) }}');">
-              <span data-preview-background-label>{{ current_background }}</span>
-            </div>
-          </div>
-          <div class="preview-row">
-            <p class="preview-label">Passport Theme</p>
-            <div class="preview-theme" data-preview-theme>{{ current_passport_theme_data.label }}</div>
-          </div>
+          <span class="trainer-theme-pill" data-preview-theme>{{ current_passport_theme_data.label }}</span>
         </div>
       </div>
 
@@ -229,28 +213,28 @@ body.customizer-locked {
   overflow:hidden;
 }
 .customizer-shell {
-  padding:16px;
+  padding:12px;
   min-height:100vh;
   display:flex;
-  align-items:center;
+  align-items:flex-start;
   justify-content:center;
 }
 .customizer-card {
   background:#fdfdff;
-  border-radius:28px;
-  padding:24px;
-  box-shadow:0 24px 60px rgba(15,23,42,0.18);
-  width:min(1180px, 95vw);
-  height:min(760px, calc(100vh - 32px));
+  border-radius:24px;
+  padding:20px;
+  box-shadow:0 16px 40px rgba(15,23,42,0.18);
+  width:min(960px, 95vw);
+  height:min(640px, calc(100vh - 24px));
   display:grid;
-  grid-template-columns:minmax(280px, 0.95fr) minmax(420px, 1.05fr);
-  gap:24px;
+  grid-template-columns:minmax(260px, 0.95fr) minmax(360px, 1.05fr);
+  gap:20px;
   overflow:hidden;
 }
 .customizer-summary {
   display:grid;
-  grid-template-rows:auto 1fr auto;
-  gap:16px;
+  grid-template-rows:auto minmax(0,1fr) auto;
+  gap:14px;
   height:100%;
   min-height:0;
 }
@@ -262,25 +246,15 @@ body.customizer-locked {
 }
 .customizer-header {
   display:flex;
+  align-items:center;
   justify-content:space-between;
-  gap:18px;
-  align-items:flex-start;
-}
-.customizer-eyebrow {
-  margin:0 0 6px;
-  text-transform:uppercase;
-  letter-spacing:0.12em;
-  font-size:0.78rem;
-  color:#475569;
+  gap:12px;
 }
 .customizer-header h1 {
   margin:0;
-  font-size:1.7rem;
+  font-size:1.35rem;
   color:#0f172a;
-}
-.customizer-header p {
-  margin:8px 0 0;
-  color:#475569;
+  font-weight:700;
 }
 .customizer-help-btn {
   width:44px;
@@ -306,76 +280,51 @@ body.customizer-locked {
   height:22px;
   fill:currentColor;
 }
-.customizer-preview {
-  display:flex;
-  flex-direction:column;
-  gap:16px;
-  background:linear-gradient(135deg, #f8fbff, #eef2ff);
-  border-radius:24px;
-  padding:20px;
-  border:1px solid rgba(148,163,184,0.35);
+.trainer-card-preview {
   min-height:0;
-}
-.preview-avatar-card {
   display:flex;
-  flex-direction:column;
-  gap:10px;
-  align-items:center;
-  justify-content:center;
 }
-.preview-avatar-frame {
+.trainer-card-canvas {
+  width:100%;
+  aspect-ratio: 5 / 3;
+  border-radius:20px;
+  background-size:cover;
+  background-position:center;
+  border:1px solid rgba(148,163,184,0.4);
+  position:relative;
+  padding:18px;
+  display:flex;
+  align-items:flex-end;
+  justify-content:flex-start;
+  overflow:hidden;
+  box-shadow:0 24px 50px rgba(15,23,42,0.22) inset;
+}
+.trainer-avatar-frame {
   width:96px;
   height:96px;
   border-radius:50%;
-  border:4px solid rgba(59,130,246,0.4);
-  padding:4px;
+  border:4px solid rgba(255,255,255,0.8);
   background:#fff;
-  box-shadow:0 20px 35px rgba(15,23,42,0.15);
+  padding:4px;
+  box-shadow:0 10px 30px rgba(15,23,42,0.3);
 }
-.preview-avatar-frame img {
+.trainer-avatar-frame img {
   width:100%;
   height:100%;
   object-fit:cover;
   border-radius:50%;
 }
-.preview-meta {
-  flex:1;
-  display:flex;
-  flex-direction:column;
-  gap:12px;
-}
-.preview-row {
-  flex:1;
-  min-width:220px;
-}
-.preview-label {
-  margin:0 0 6px;
-  font-weight:600;
-  color:#0f172a;
-  font-size:0.9rem;
-}
-.preview-background {
-  border-radius:16px;
-  min-height:90px;
-  background-size:cover;
-  background-position:center;
-  display:flex;
-  align-items:flex-end;
-  padding:10px 14px;
-  font-weight:600;
-  color:#fff;
-  text-shadow:0 4px 12px rgba(0,0,0,0.35);
-}
-.preview-theme {
-  border-radius:999px;
-  padding:8px 16px;
-  background:#1e3a8a;
+.trainer-theme-pill {
+  position:absolute;
+  left:18px;
+  bottom:16px;
+  background:rgba(15,23,42,0.9);
   color:#e0f2ff;
-  display:inline-flex;
-  align-items:center;
-  gap:8px;
+  border-radius:999px;
+  padding:6px 14px;
+  font-size:0.85rem;
   font-weight:600;
-  box-shadow:0 12px 22px rgba(30,58,138,0.25);
+  box-shadow:0 12px 24px rgba(15,23,42,0.25);
 }
 .customizer-status {
   border-radius:14px;
@@ -589,8 +538,8 @@ body.customizer-locked {
 @media (max-width: 900px) {
   .customizer-card {
     padding:18px;
-    gap:18px;
-    grid-template-columns:minmax(240px, 0.9fr) minmax(320px, 1.1fr);
+    gap:14px;
+    grid-template-columns:minmax(200px, 0.95fr) minmax(260px, 1.05fr);
   }
   .customizer-header {
     flex-wrap:wrap;
@@ -607,7 +556,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const form = document.getElementById("customizer-form");
   const previewAvatar = document.querySelector("[data-preview-avatar]");
   const previewBackground = document.querySelector("[data-preview-background]");
-  const previewBackgroundLabel = document.querySelector("[data-preview-background-label]");
   const previewTheme = document.querySelector("[data-preview-theme]");
   const statusBadge = document.querySelector("[data-customizer-status]");
   const tabs = document.querySelectorAll("[data-customizer-tab]");
@@ -693,9 +641,6 @@ document.addEventListener("DOMContentLoaded", () => {
       if (previewBackground) {
         previewBackground.style.backgroundImage = `url(${assetRoots.backgrounds + value})`;
       }
-      if (previewBackgroundLabel) {
-        previewBackgroundLabel.textContent = value;
-      }
     } else if (field === "passport_theme_choice" && previewTheme) {
       previewTheme.textContent = themeLookup[value] || previewTheme.textContent;
     }
@@ -736,9 +681,6 @@ document.addEventListener("DOMContentLoaded", () => {
       }
       if (previewBackground && data.background) {
         previewBackground.style.backgroundImage = `url(${assetRoots.backgrounds + data.background})`;
-      }
-      if (previewBackgroundLabel && data.background) {
-        previewBackgroundLabel.textContent = data.background;
       }
       if (previewTheme && data.passport_theme_label) {
         previewTheme.textContent = data.passport_theme_label;

@@ -1137,6 +1137,12 @@ button.stamp-slot:focus-visible {
   height:130px;
   border-radius:50%;
   overflow:hidden;
+  transform-style:preserve-3d;
+  transition:transform 0.45s ease, filter 0.35s ease;
+}
+.stamp-coin3d.is-awakening {
+  animation:stampCoinEntrance 0.85s cubic-bezier(0.26, 0.8, 0.3, 1.15);
+  filter:drop-shadow(0 18px 34px rgba(7,12,28,0.45));
 }
 .stamp-detail-modal.is-immersive .stamp-coin3d,
 .stamp-detail-modal.is-immersive .stamp-detail-modal__media {
@@ -1212,6 +1218,20 @@ button.stamp-slot:focus-visible {
     transform:translate(-5%, -5%) scale(1);
   }
 }
+@keyframes stampCoinEntrance {
+  0% {
+    transform:translateY(40px) scale(0.65) rotateX(50deg);
+    opacity:0;
+  }
+  60% {
+    transform:translateY(-12px) scale(1.08) rotateX(20deg);
+    opacity:1;
+  }
+  100% {
+    transform:translateY(0) scale(1) rotateX(0deg);
+    opacity:1;
+  }
+}
 .stamp-shine-particle {
   position:absolute;
   width:18px;
@@ -1244,8 +1264,10 @@ button.stamp-slot:focus-visible {
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .stamp-coin.is-popping {
-    animation:none;
+  .stamp-coin3d,
+  .stamp-coin3d.is-awakening {
+    animation:none !important;
+    transition:none !important;
   }
   .stamp-detail-modal,
   .stamp-detail-modal__dialog {
@@ -1782,21 +1804,44 @@ document.addEventListener("DOMContentLoaded", function(){
     }
 
     updateStampData({ frontImage, topLabel, bottomLabel }) {
-      if (this.failed) return;
+      if (this.failed) {
+        this.triggerEntrance();
+        return;
+      }
       if (frontImage) {
-        const image = new Image();
-        image.crossOrigin = "anonymous";
-        image.onload = () => {
-          this.bindTextureFromImage(this.textures.front, image);
-        };
-        image.onerror = () => {
-          this.bindTextureFromColor(this.textures.front, [255, 255, 255, 255]);
-        };
-        image.src = frontImage;
+        this.fetchTexture(frontImage)
+          .then(image => {
+            const assetSrc = image.src;
+            this.bindTextureFromImage(this.textures.front, image);
+            if (assetSrc?.startsWith("blob:")) {
+              URL.revokeObjectURL(assetSrc);
+            }
+          })
+          .catch(() => {
+            this.bindTextureFromColor(this.textures.front, [255, 255, 255, 255]);
+          })
+          .finally(() => this.triggerEntrance());
       } else {
         this.bindTextureFromColor(this.textures.front, [255, 255, 255, 255]);
+        this.triggerEntrance();
       }
       this.updateBackTexture(topLabel, bottomLabel);
+    }
+
+    fetchTexture(url) {
+      return fetch(url, { mode: "cors", credentials: "omit" })
+        .then(resp => {
+          if (!resp.ok) {
+            throw new Error("Texture load failed");
+          }
+          return resp.blob();
+        })
+        .then(blob => new Promise((resolve, reject) => {
+          const img = new Image();
+          img.onload = () => resolve(img);
+          img.onerror = () => reject(new Error("Texture decode failed"));
+          img.src = URL.createObjectURL(blob);
+        }));
     }
 
     bindTextureFromImage(texture, image) {
@@ -1842,19 +1887,18 @@ document.addEventListener("DOMContentLoaded", function(){
       ctx.font = "700 110px 'Space Grotesk', 'Inter', sans-serif";
       const motto = (bottomLabel || "IN RAIDING WE TRUST").toUpperCase();
       const chars = motto.split("");
-      const arcRadius = size * 0.32;
-      const arcStart = Math.PI * 1.05;
-      const arcEnd = Math.PI * 1.95;
-      const angleStep = (arcEnd - arcStart) / Math.max(chars.length - 1, 1);
+      const arcRadius = size * 0.38;
+      const arcSpan = Math.PI * 0.9;
+      const arcStart = Math.PI + (Math.PI - arcSpan) / 2;
+      const angleStep = arcSpan / Math.max(chars.length - 1, 1);
       ctx.save();
-      ctx.translate(center, center + 20);
-      ctx.rotate(Math.PI);
+      ctx.translate(center, center + 70);
       chars.forEach((char, index) => {
         const angle = arcStart + angleStep * index;
         ctx.save();
         ctx.rotate(angle);
         ctx.translate(0, arcRadius);
-        ctx.rotate(Math.PI / 2);
+        ctx.rotate(-Math.PI / 2);
         ctx.strokeText(char, 0, 0);
         ctx.fillText(char, 0, 0);
         ctx.restore();
@@ -1865,7 +1909,7 @@ document.addEventListener("DOMContentLoaded", function(){
     }
 
     updateModelMatrix() {
-      const tilt = -0.35;
+      const tilt = 0.35;
       const rotateX = PassportCoinRenderer.rotateX(PassportCoinRenderer.identityMatrix(), tilt);
       const rotateY = PassportCoinRenderer.rotateY(PassportCoinRenderer.identityMatrix(), this.rotationY);
       this.modelMatrix = PassportCoinRenderer.multiplyMatrices(rotateY, rotateX);
@@ -1921,6 +1965,13 @@ document.addEventListener("DOMContentLoaded", function(){
     resetSpin() {
       this.rotationY = 0;
       this.spinVelocity = 0;
+    }
+
+    triggerEntrance() {
+      if (!this.container) return;
+      this.container.classList.remove("is-awakening");
+      void this.container.offsetWidth;
+      this.container.classList.add("is-awakening");
     }
   }
 
@@ -2010,6 +2061,13 @@ document.addEventListener("DOMContentLoaded", function(){
         })
       : null;
 
+    function startCoinEntrance() {
+      if (!coinContainer) return;
+      coinContainer.classList.remove("is-awakening");
+      void coinContainer.offsetWidth;
+      coinContainer.classList.add("is-awakening");
+    }
+
     function openStampModal(trigger) {
       lastTrigger = trigger;
       const stampName = trigger.dataset.stampName || "Passport stamp";
@@ -2052,7 +2110,9 @@ document.addEventListener("DOMContentLoaded", function(){
         dateTarget.hidden = !dateLine;
       }
 
+      startCoinEntrance();
       coin3D?.resetSpin();
+      coin3D?.triggerEntrance?.();
       coin3D?.updateStampData({
         frontImage: stampIcon,
         topLabel: (stampName ? `${stampName}${stampDate ? ` • ${stampDate}` : ""}` : "").trim(),
