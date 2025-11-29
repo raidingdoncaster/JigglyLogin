@@ -14,6 +14,8 @@ from advent.service import (
     open_advent_day,
 )
 
+TOTAL_ADVENT_DAYS = 25
+
 AdminProvider = Callable[[], Optional[dict]]
 
 
@@ -77,6 +79,43 @@ def _create_shared_advent_blueprint(
     award_stamps: bool,
 ) -> Blueprint:
     bp = Blueprint(blueprint_name, __name__, url_prefix=url_prefix)
+
+    QUEST_DEFINITIONS = (
+        {
+            "id": "quest_12_doors",
+            "title": "Warm-Up Quest",
+            "description": "Open 12 Advent doors to earn a surprise digital code.",
+            "reward": "Digital code",
+            "target_days": 12,
+            "icon": "digital-code",
+        },
+        {
+            "id": "quest_25_doors",
+            "title": "Holiday Hero Quest",
+            "description": "Open all 25 doors to enter the Holiday Charizard Plushie raffle and unlock the Advent 2025 community medal.",
+            "reward": "Plushie raffle entry + community medal",
+            "target_days": TOTAL_ADVENT_DAYS,
+            "icon": "charizard-medal",
+        },
+    )
+
+    def _build_quest_progress(opened_count: int) -> list[dict]:
+        quests = []
+        for quest in QUEST_DEFINITIONS:
+            target = quest["target_days"]
+            progress = min(opened_count, target)
+            percent = int((progress / target) * 100) if target else 0
+            quests.append(
+                {
+                    **quest,
+                    "progress_days": progress,
+                    "completed": progress >= target,
+                    "percent": percent,
+                    "target_days": target,
+                    "icon": quest.get("icon"),
+                }
+            )
+        return quests
 
     def _require_user(json_mode: bool) -> Union[dict, object]:
         user = current_user_provider()
@@ -156,6 +195,8 @@ def _create_shared_advent_blueprint(
             return redirect(url_for(dashboard_endpoint))
 
         state = get_advent_state_for_user(user_id, today_day)
+        opened_count = len(state.get("opened_days") or [])
+        quests = _build_quest_progress(opened_count)
 
         return render_template(
             template_name,
@@ -165,6 +206,9 @@ def _create_shared_advent_blueprint(
             state=state,
             admin_mode=day_override_enabled,
             open_endpoint=f"{blueprint_name}.open_day",
+            opened_count=opened_count,
+            total_days=TOTAL_ADVENT_DAYS,
+            quests=quests,
         )
 
     def _wants_json() -> bool:
@@ -221,6 +265,8 @@ def _create_shared_advent_blueprint(
 
         if open_advent_day(user_id, day, trainer_username):
             state = get_advent_state_for_user(user_id, today_day)
+            opened_count = len(state.get("opened_days") or [])
+            quests = _build_quest_progress(opened_count)
             award_result: Optional[Tuple[bool, Optional[str]]] = None
             if award_stamps and trainer_username:
                 award_result = award_advent_passport_stamp(trainer_username, day)
@@ -232,6 +278,9 @@ def _create_shared_advent_blueprint(
                 "stamp_png": (config.get(day) or {}).get("stamp_png", ""),
                 "next_openable_day": state.get("openable_day"),
                 "stamp_awarded": award_result[0] if award_result else None,
+                "opened_count": opened_count,
+                "total_days": TOTAL_ADVENT_DAYS,
+                "quests": quests,
             }
             if award_result and award_result[1]:
                 payload["stamp_award_error"] = award_result[1]

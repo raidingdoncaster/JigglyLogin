@@ -48,6 +48,18 @@ USE_SUPABASE = _env_flag("USE_SUPABASE", True)  # ✅ Supabase for stamps/meetup
 MAINTENANCE_MODE = _env_flag("MAINTENANCE_MODE", False)  # ⛔️ Change to True to enable maintenance mode
 USE_GEOCACHE_QUEST = _env_flag("USE_GEOCACHE_QUEST", False)  # 🧭 Toggle Geocache quest endpoints
 
+# ====== Live event toggles ======
+LIVE_EVENT_FLAGS = {
+    "holidays_advent_2025": {
+        "label": "Holidays Advent 2025",
+        "enabled": _env_flag("LIVE_EVENT_HOLIDAYS_ADVENT_2025", False),
+    },
+}
+
+def is_live_event_enabled(key: str) -> bool:
+    event = LIVE_EVENT_FLAGS.get(key, {})
+    return bool(event.get("enabled"))
+
 # ====== Trainer metadata ======
 TEAM_CONFIG = {
     "valor": {"label": "Team Valor", "icon": "passport/themes/valoricon.png"},
@@ -3079,11 +3091,17 @@ def send_notification(audience, subject, message, notif_type="system", metadata=
     """Send an inbox notification. When returning=True, return the inserted row (if available)."""
     if not supabase:
         print("⚠️ Failed to send notification: Supabase is unavailable.")
+        try:
+            g.supabase_last_error = "Supabase client unavailable."
+        except RuntimeError:
+            pass
         return None
 
     message_html = sanitize_notification_html(message)
     sent_at = datetime.utcnow().isoformat()
+    notification_id = str(uuid.uuid4())
     payload = {
+        "id": notification_id,
         "type": notif_type,
         "audience": audience,
         "subject": subject,
@@ -3102,6 +3120,10 @@ def send_notification(audience, subject, message, notif_type="system", metadata=
         insert_ok = True
     except Exception as exc:
         print("⚠️ Failed to send notification:", exc)
+        try:
+            g.supabase_last_error = str(exc)
+        except RuntimeError:
+            pass
 
     if not insert_ok:
         if not supabase_insert_row("notifications", payload):
@@ -3116,6 +3138,19 @@ def send_notification(audience, subject, message, notif_type="system", metadata=
         fetched = _fetch_notification_by_key(audience, subject, sent_at)
         if fetched:
             return fetched
+        try:
+            resp = (
+                supabase.table("notifications")
+                .select("*")
+                .eq("id", notification_id)
+                .limit(1)
+                .execute()
+            )
+            rows = resp.data or []
+            if rows:
+                return rows[0]
+        except Exception as exc:
+            print("⚠️ Failed to fetch notification by id:", exc)
     return inserted_row or payload
 
 # ====== Digital reward codes ======
@@ -3631,7 +3666,14 @@ def assign_digital_code_to_trainer(
         returning=True,
     )
     if not notification_row:
+        error_detail = ""
+        try:
+            error_detail = getattr(g, "supabase_last_error", "") or ""
+        except RuntimeError:
+            error_detail = ""
         _reset_digital_code(selected_id)
+        if error_detail:
+            return False, f"Could not send the inbox notification. The code was returned to the pool. Details: {error_detail}"
         return False, "Could not send the inbox notification. The code was returned to the pool."
 
     follow_up = {
@@ -4341,11 +4383,11 @@ def admin_testing_grounds():
             "cta_url": url_for("admin_testing_login_concept"),
         },
         {
-            "name": "Advent Calendar",
-            "status": "Alpha",
-            "summary": "Preview the 25-day stamp-and-quote experience before launching to trainers.",
-            "cta_label": "Open Advent Calendar",
-            "cta_url": url_for("admin_advent.view_calendar"),
+            "name": "Advent Calendar 2025",
+            "status": "Live QA",
+            "summary": "Jump into the trainer-facing Holidays Advent 2025 experience for quick checks.",
+            "cta_label": "View Advent Calendar 2025",
+            "cta_url": url_for("player_advent.view_calendar"),
         },
     ]
 
@@ -6984,6 +7026,7 @@ def dashboard():
     bulletin_posts = get_community_bulletin_posts()
     bulletin_preview = _bulletin_widget_preview(bulletin_posts)
     bulletin_latest_posts = bulletin_posts[:2]
+    advent_banner_enabled = is_live_event_enabled("holidays_advent_2025")
 
     return render_template(
         "dashboard.html",
@@ -7005,6 +7048,9 @@ def dashboard():
         show_leagues_app=SHOW_LEAGUES_APP,
         bulletin_preview=bulletin_preview,
         bulletin_latest_posts=bulletin_latest_posts,
+        show_advent_2025_banner=advent_banner_enabled,
+        advent_2025_banner_url=url_for("static", filename="advent/advent25banner.png") if advent_banner_enabled else None,
+        advent_2025_cta=url_for("player_advent.view_calendar"),
     )
 
 @app.route("/calendar")

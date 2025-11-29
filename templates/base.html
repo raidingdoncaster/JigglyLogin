@@ -5,6 +5,13 @@
   <meta name="theme-color" content="#3a8dde">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
+  {% set _session_trainer_obj = session.get('trainer') %}
+  {% if _session_trainer_obj is mapping %}
+    {% set _current_trainer_username = _session_trainer_obj.get('trainer_username') or _session_trainer_obj.get('username') %}
+  {% else %}
+    {% set _current_trainer_username = _session_trainer_obj %}
+  {% endif %}
+
   <script>
     // Detect if running as a PWA standalone (iOS + Android)
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches
@@ -1364,6 +1371,7 @@
         });
       }
 
+      const CURRENT_TRAINER_USERNAME = "{{ (_current_trainer_username or '')|lower }}";
       const DEFAULT_TRAINER_AVATAR = "{{ url_for('static', filename='avatars/avatar1.png') }}";
       const DEFAULT_TRAINER_BACKGROUND = "{{ url_for('static', filename='backgrounds/standard.png') }}";
 
@@ -1848,9 +1856,11 @@
         const open=(options)=>{
           if(!overlay) return;
           const username=(options.username || "").trim();
+          const normalizedUsername=username ? username.toLowerCase() : "";
           state.username=username;
           state.profileUrl=options.url || (username ? `/api/trainers/${encodeURIComponent(username)}/profile` : null);
-          state.isOwner=!!options.editable;
+          const isCurrentUser=Boolean(CURRENT_TRAINER_USERNAME && normalizedUsername && normalizedUsername === CURRENT_TRAINER_USERNAME);
+          state.isOwner=Boolean(options.editable && isCurrentUser);
           state.mode=state.isOwner ? "owner" : "public";
           state.displayName=options.displayName || username || "Trainer";
           state.teamValue="";
@@ -1875,7 +1885,7 @@
           requestAnimationFrame(()=>overlay.classList.add("is-visible"));
           bodyLock.lock();
           setView("loading");
-          const cacheKey=username.toLowerCase();
+          const cacheKey=normalizedUsername;
           if(cacheKey && cache[cacheKey]){
             hydrateProfile(cache[cacheKey], state.displayName);
             setView("ready");

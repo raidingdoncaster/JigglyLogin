@@ -35,6 +35,14 @@
     </div>
   </div>
 </div>
+
+{% if show_advent_2025_banner and advent_2025_banner_url %}
+<div class="advent-2025-banner">
+  <a href="{{ advent_2025_cta }}" class="advent-2025-banner__link">
+    <img src="{{ advent_2025_banner_url }}" alt="Holidays Advent 2025 live event banner" width="500" height="250">
+  </a>
+</div>
+{% endif %}
 <style>
 .trainer-card { position: relative; background-size: cover; background-position: center;
   border-radius: 16px; overflow: hidden; margin-bottom: 12px; box-shadow: 0 8px 24px rgba(15,23,42,0.22); color: white; }
@@ -47,6 +55,10 @@
 .avatar { width:68px; height:68px; border-radius:50%; border:3px solid rgba(255,255,255,0.9); box-shadow: 0 2px 8px rgba(0,0,0,0.35); }
 .meetup-icon { width:22px; height:22px; vertical-align:middle; margin-right:6px; border-radius:50%; border:2px solid #fff; }
 .customize-link { font-size:0.9em; color:#ffdd57; text-decoration:none; font-weight:600; }
+.advent-2025-banner { margin: 16px 0 8px; display:flex; justify-content:center; }
+.advent-2025-banner__link { display:inline-flex; border-radius:24px; overflow:hidden; box-shadow:0 18px 36px rgba(15,23,42,0.22); transition:transform 0.2s ease, box-shadow 0.2s ease; }
+.advent-2025-banner__link:hover { transform:translateY(-4px); box-shadow:0 24px 40px rgba(15,23,42,0.28); }
+.advent-2025-banner img { display:block; width:500px; max-width:100%; height:auto; }
 </style>
 
 <!-- Widgets -->
