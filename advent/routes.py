@@ -145,11 +145,14 @@ def _create_shared_advent_blueprint(
             return _default_day(), "Day override must be between 1 and 25."
         return candidate, None
 
-    def _default_day() -> int:
+    def _season_day() -> int:
         now = datetime.now(tz=timezone.utc)
         if now.month == 12:
-            return max(1, min(now.day, 25))
-        return 25
+            return max(1, min(now.day, TOTAL_ADVENT_DAYS))
+        return 0
+
+    def _default_day() -> int:
+        return _season_day() if not day_override_enabled else _season_day()
 
     def _extract_user_id(user: dict) -> Optional[int]:
         try:

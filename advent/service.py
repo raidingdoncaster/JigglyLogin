@@ -94,7 +94,9 @@ def get_advent_state_for_user(
     opened_days = get_user_opened_days(user_id)
     opened_lookup = set(opened_days)
 
-    if allow_previous_day:
+    if today_day <= 0:
+        candidates: List[int] = []
+    elif allow_previous_day:
         candidates = sorted({today_day, max(1, today_day - 1)})
     else:
         candidates = list(range(1, today_day + 1))
@@ -144,9 +146,9 @@ def open_advent_day(user_id: int, day: int, username: Optional[str] = None) -> b
 
 def _clamp_day(day: int) -> int:
     try:
-        return max(1, min(int(day), 25))
+        return max(0, min(int(day), 25))
     except (TypeError, ValueError):
-        return 1
+        return 0
 
 
 def _resolve_config_path() -> Path:

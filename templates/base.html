@@ -2628,7 +2628,7 @@
   {% set container_class = container_class|default('') %}
   {% set _container_classes = ('container ' ~ (container_class|default('')))|trim %}
   <!-- Page content -->
-  <div class="{{ _container_classes }}">
+  <div class="{{ _container_classes }}" data-section-loader-scope>
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
         {% for category, message in messages %}
@@ -2766,6 +2766,10 @@
   <!-- Global section + image loader helpers -->
   <script>
   (function () {
+    const loaderScope = document.querySelector("[data-section-loader-scope]");
+    if (!loaderScope) {
+      return;
+    }
     const SKIP_ATTR = 'data-skip-global-loader';
     const SECTION_MIN_MS = 280;
     const IMAGE_MIN_MS = 340;
@@ -2819,6 +2823,7 @@
 
     function prepareSections(root) {
       if (!root) return;
+      if (root !== loaderScope && !loaderScope.contains(root)) return;
       if (root.nodeType === 1 && root.tagName === 'SECTION') {
         prepareSection(root);
       }
@@ -2900,6 +2905,7 @@
 
     function prepareImages(root) {
       if (!root) return;
+      if (root !== loaderScope && !loaderScope.contains(root)) return;
       if (root.nodeType === 1 && root.tagName === 'IMG') {
         attachImageLoader(root);
       }
@@ -2913,24 +2919,28 @@
         if (record.type === 'childList') {
           record.addedNodes.forEach((node) => {
             if (node.nodeType !== 1) return;
-            prepareSections(node);
-            prepareImages(node);
+            if (loaderScope.contains(node)) {
+              prepareSections(node);
+              prepareImages(node);
+            }
           });
         } else if (record.type === 'attributes' && record.target && record.target.tagName === 'IMG') {
-          attachImageLoader(record.target);
+          if (loaderScope.contains(record.target)) {
+            attachImageLoader(record.target);
+          }
         }
       });
     }
 
     function initLoaders() {
-      prepareSections(document);
-      prepareImages(document);
+      prepareSections(loaderScope);
+      prepareImages(loaderScope);
       window.addEventListener('load', () => {
         trackedSections.forEach(markSectionReady);
       }, { once: true });
-      if ('MutationObserver' in window && document.body) {
+      if ('MutationObserver' in window) {
         const observer = new MutationObserver(handleMutations);
-        observer.observe(document.body, {
+        observer.observe(loaderScope, {
           childList: true,
           subtree: true,
           attributes: true,
