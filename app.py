@@ -3023,35 +3023,6 @@ def get_inbox_preview(trainer: str, limit: int = 3):
         return {"preview": [], "unread_count": 0}
 
 
-@app.route("/api/nav-state")
-def api_nav_state():
-    """Return lightweight nav counts so the header can update without reloads."""
-    trainer = session.get("trainer")
-    if not trainer:
-        return jsonify({"error": "Not authenticated"}), 401
-
-    _, user = find_user(trainer)
-    nav_inbox = get_inbox_preview(trainer) or {}
-
-    try:
-        current_stamps = int((user or {}).get("stamps") or 0)
-    except (TypeError, ValueError):
-        current_stamps = 0
-
-    inbox_preview = nav_inbox.get("preview", []) if isinstance(nav_inbox, dict) else []
-    inbox_unread = nav_inbox.get("unread_count", 0) if isinstance(nav_inbox, dict) else 0
-
-    payload = {
-        "current_stamps": current_stamps,
-        "inbox_unread": inbox_unread,
-        "inbox_preview": inbox_preview,
-        "trainer": trainer,
-        "updated_at": datetime.now(timezone.utc).isoformat()
-    }
-    response = jsonify(payload)
-    response.headers["Cache-Control"] = "no-store"
-    return response
-
 NOTIFICATION_ALLOWED_TAGS = [
     "a",
     "b",

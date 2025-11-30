@@ -417,9 +417,6 @@
       font-weight: 700;
       box-shadow: 0 2px 4px rgba(0,0,0,0.2);
     }
-    .inbox-badge[hidden]{
-      display:none;
-    }
 
     /* Avatar dropdown */
     .avatar-wrapper{ position:relative; }
@@ -2113,127 +2110,6 @@
       }
       enhanceInboxPanel(document);
 
-      // Live nav badge + stamp updates
-      const navStampEl = document.querySelector("[data-nav-stamp-count]");
-      const navInboxEl = document.querySelector("[data-nav-inbox-count]");
-      if (navStampEl || navInboxEl) {
-        const NAV_ENDPOINT = "/api/nav-state";
-        const NAV_REFRESH_MS = 25000;
-        const navState = {
-          currentStamps: parseInt(navStampEl?.textContent || "0", 10) || 0,
-          inboxUnread: parseInt(navInboxEl?.textContent || "0", 10) || 0,
-        };
-        let navTimer = null;
-        let navPollingStopped = false;
-
-        const publishNavState = (extra = {}) => {
-          window.RDAB = window.RDAB || {};
-          const detail = {
-            currentStamps: navState.currentStamps,
-            inboxUnread: navState.inboxUnread,
-            ...extra,
-          };
-          window.RDAB.navState = detail;
-          if (typeof window.CustomEvent === "function") {
-            document.dispatchEvent(new CustomEvent("rdab-nav-state", { detail }));
-          }
-        };
-
-        const updateStampCount = (value) => {
-          if (!navStampEl || value == null) return;
-          const numeric = parseInt(String(value), 10);
-          if (Number.isNaN(numeric) || numeric === navState.currentStamps) return;
-          navState.currentStamps = numeric;
-          navStampEl.textContent = String(numeric);
-          navStampEl.setAttribute("aria-live", "polite");
-        };
-
-        const updateInboxBadge = (value) => {
-          if (!navInboxEl || value == null) return;
-          const numeric = Math.max(0, parseInt(String(value), 10) || 0);
-          navState.inboxUnread = numeric;
-          navInboxEl.textContent = String(numeric);
-          if (numeric <= 0) {
-            navInboxEl.setAttribute("hidden", "hidden");
-            navInboxEl.setAttribute("aria-hidden", "true");
-          } else {
-            navInboxEl.removeAttribute("hidden");
-            navInboxEl.setAttribute("aria-hidden", "false");
-          }
-        };
-
-        const applyNavResponse = (payload) => {
-          if (!payload || typeof payload !== "object") return;
-          if ("current_stamps" in payload) {
-            updateStampCount(payload.current_stamps);
-          }
-          if ("inbox_unread" in payload) {
-            updateInboxBadge(payload.inbox_unread);
-          }
-          publishNavState({
-            inboxPreview: Array.isArray(payload.inbox_preview) ? payload.inbox_preview : [],
-            updatedAt: payload.updated_at || new Date().toISOString(),
-          });
-        };
-
-        const fetchNavState = async () => {
-          if (navPollingStopped) return;
-          try {
-            const resp = await fetch(NAV_ENDPOINT, {
-              headers: {
-                "Accept": "application/json",
-                "X-Requested-With": "fetch",
-              },
-              credentials: "same-origin",
-              cache: "no-store",
-            });
-            if (resp.status === 401) {
-              navPollingStopped = true;
-              if (navTimer) {
-                clearTimeout(navTimer);
-              }
-              return;
-            }
-            if (!resp.ok) throw new Error(`nav-state ${resp.status}`);
-            const data = await resp.json();
-            applyNavResponse(data);
-          } catch (err) {
-            console.warn("Nav state update failed", err);
-          }
-        };
-
-        const scheduleNavPoll = () => {
-          if (navPollingStopped) return;
-          navTimer = window.setTimeout(async () => {
-            if (document.hidden) {
-              scheduleNavPoll();
-              return;
-            }
-            await fetchNavState();
-            scheduleNavPoll();
-          }, NAV_REFRESH_MS);
-        };
-
-        publishNavState({ inboxPreview: [], updatedAt: new Date().toISOString() });
-        fetchNavState();
-        scheduleNavPoll();
-        let navRefreshQueued = false;
-        const requestNavRefresh = () => {
-          if (navRefreshQueued || navPollingStopped) return;
-          navRefreshQueued = true;
-          window.setTimeout(() => {
-            navRefreshQueued = false;
-            fetchNavState();
-          }, 200);
-        };
-        document.addEventListener("visibilitychange", () => {
-          if (!document.hidden) {
-            requestNavRefresh();
-          }
-        });
-        window.addEventListener("focus", requestNavRefresh);
-      }
-
       // Avatar dropdown
       const ab=document.getElementById("avatarToggle");
       const ad=document.getElementById("avatarDropdown");
@@ -2697,7 +2573,7 @@
         <!-- Passport -->
         <a href="{{ url_for('passport') }}" class="stamp-container" title="Passport">
           <img src="{{ url_for('static', filename='nav/stamp-icon.png') }}" alt="Passport">
-          <span class="stamp-count" data-nav-stamp-count aria-live="polite">{{ current_stamps or 0 }}</span>
+          <span class="stamp-count">{{ current_stamps or 0 }}</span>
         </a>
 
         <!-- Inbox -->
@@ -2705,12 +2581,9 @@
           <button type="button" class="nav-item" id="inboxToggle" title="Inbox" aria-haspopup="dialog" aria-expanded="false">
             <img src="{{ url_for('static', filename='nav/mail-icon.png') }}" alt="Inbox" class="nav-icon">
           </button>
-          <span class="inbox-badge"
-                data-nav-inbox-count
-                aria-live="polite"
-                {% if not (inbox_unread and inbox_unread > 0) %}hidden{% endif %}>
-            {{ inbox_unread or 0 }}
-          </span>
+          {% if inbox_unread and inbox_unread > 0 %}
+            <span class="inbox-badge">{{ inbox_unread }}</span>
+          {% endif %}
         </div>
 
         <!-- Avatar (profile hub) -->
