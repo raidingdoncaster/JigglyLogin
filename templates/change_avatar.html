@@ -5,199 +5,237 @@
 {% endblock %}
 
 {% block content %}
-<section class="customizer-shell">
-  <form id="customizer-form" class="customizer-card" action="{{ url_for('change_avatar') }}" method="post" novalidate>
-    <div class="customizer-summary">
-      <header class="customizer-header">
-        <h1>RDAB Custom Lab</h1>
+<section class="lab-shell">
+  <form id="customizer-form" class="lab-frame" action="{{ url_for('change_avatar') }}" method="post" novalidate>
+    <div class="lab-hero">
+      <div class="lab-hero__header">
+        <span class="lab-hero__icon" aria-hidden="true">
+          <svg viewBox="0 0 48 48" role="img" aria-label="Customisation Hub icon">
+            <defs>
+              <linearGradient id="labIconGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#ffffff" stop-opacity="0.9"/>
+                <stop offset="100%" stop-color="#dbeafe" stop-opacity="0.7"/>
+              </linearGradient>
+            </defs>
+            <rect x="4" y="4" width="40" height="40" rx="20" fill="url(#labIconGradient)"/>
+            <path d="M16 19h16v2H16zm0 8h16v2H16zm6-12h4v18h-4z" fill="#2563eb"/>
+          </svg>
+        </span>
+        <h1>Customisation Hub</h1>
         <button type="button"
-                class="customizer-help-btn"
+                class="lab-help-btn"
                 id="customizer-help-button"
                 aria-haspopup="dialog"
                 aria-controls="customizer-help-dialog"
                 aria-expanded="false">
           <span class="sr-only">How does customisation work?</span>
           <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M12 2a10 10 0 1 0 10 10A10.012 10.012 0 0 0 12 2Zm0 15a1.25 1.25 0 1 1 1.25-1.25A1.25 1.25 0 0 1 12 17Zm1.66-5.81-.71.72A1.77 1.77 0 0 0 12.53 13H11v-.38a3.37 3.37 0 0 1 1-2.4l1-1a1.37 1.37 0 0 0 .42-1 1.42 1.42 0 0 0-2.84 0H8.86a3.14 3.14 0 0 1 6.28 0 3 3 0 0 1-.48 1.59Z"/>
+            <path d="M12 2a10 10 0 1 0 10 10A10.011 10.011 0 0 0 12 2Zm0 15a1.25 1.25 0 1 1 1.25-1.25A1.25 1.25 0 0 1 12 17Zm1.9-6.6-.91.92A2.2 2.2 0 0 0 12.6 13H11v-.5a3.66 3.66 0 0 1 1.1-2.6l.92-.93a1.51 1.51 0 0 0 .48-1.09 1.55 1.55 0 0 0-3.1 0H8.33A3.17 3.17 0 0 1 14.5 9a2.83 2.83 0 0 1-.6 1.4Z"/>
           </svg>
         </button>
-      </header>
-
-      <div class="trainer-card-preview">
-        <div class="trainer-card-canvas"
-             data-preview-background
-             style="background-image: url('{{ url_for('static', filename='backgrounds/' + current_background) }}');">
-          <div class="trainer-avatar-frame">
-            <img src="{{ url_for('static', filename='avatars/' + current_avatar) }}"
-                 alt="Current avatar"
-                 data-preview-avatar>
-          </div>
-          <span class="trainer-theme-pill" data-preview-theme>{{ current_passport_theme_data.label }}</span>
-        </div>
       </div>
-
-      <div class="customizer-status" data-customizer-status role="status" aria-live="polite">
-        Tap an option to save instantly.
+      <div class="lab-hero__canvas"
+           data-preview-background
+           style="background-image: url('{{ url_for('static', filename='backgrounds/' + current_background) }}');">
+        <p class="lab-hero__background-label">Current background</p>
+        <div class="lab-hero__avatar">
+          <img src="{{ url_for('static', filename='avatars/' + current_avatar) }}"
+               alt="Current avatar"
+               data-preview-avatar>
+        </div>
+        <div class="lab-hero__theme">
+          <span class="lab-hero__theme-icon" aria-hidden="true">
+            <svg viewBox="0 0 32 32" role="img">
+              <circle cx="16" cy="16" r="14" fill="#1d4ed8" opacity="0.15"/>
+              <path d="M10 22h12l-1.5-5h-9zM13 10a3 3 0 1 1 6 0c0 1.11-.58 1.96-1.31 2.86-.57.72-1.22 1.55-1.53 2.64h-2.28c.2-1.44.93-2.49 1.64-3.39.68-.86 1.13-1.43 1.13-2.11a1.65 1.65 0 1 0-3.29 0Z" fill="#1d4ed8"/>
+            </svg>
+          </span>
+          <span class="lab-hero__theme-name" data-preview-theme>{{ current_passport_theme_data.label }}</span>
+        </div>
       </div>
     </div>
 
-    <div class="customizer-controls">
-      <div class="customizer-tabs" role="tablist">
-        <button type="button"
-                class="customizer-tab is-active"
-                id="tab-avatars"
-                data-customizer-tab="avatars"
-                data-tab-index="0"
-                role="tab"
-                aria-controls="panel-avatars"
-                aria-selected="true">
-          Avatars
-        </button>
-        <button type="button"
-                class="customizer-tab"
-                id="tab-backgrounds"
-                data-customizer-tab="backgrounds"
-                data-tab-index="1"
-                role="tab"
-                aria-controls="panel-backgrounds"
-                aria-selected="false">
-          Backgrounds
-        </button>
-        <button type="button"
-                class="customizer-tab"
-                id="tab-themes"
-                data-customizer-tab="themes"
-                data-tab-index="2"
-                role="tab"
-                aria-controls="panel-themes"
-                aria-selected="false">
-          Passport Themes
-        </button>
-        <span class="customizer-tabs__glider" aria-hidden="true"></span>
-      </div>
+    <div class="lab-tabs" role="tablist">
+      <button type="button"
+              class="lab-tab is-active"
+              id="tab-avatars"
+              data-customizer-tab="avatars"
+              aria-controls="panel-avatars"
+              aria-selected="true">
+        <span class="lab-tab__icon" aria-hidden="true">
+          <svg viewBox="0 0 32 32">
+            <circle cx="16" cy="12" r="7" fill="#475569"/>
+            <path d="M6 28a10 10 0 0 1 20 0Z" fill="#94a3b8"/>
+          </svg>
+        </span>
+        Avatars
+      </button>
+      <button type="button"
+              class="lab-tab"
+              id="tab-backgrounds"
+              data-customizer-tab="backgrounds"
+              aria-controls="panel-backgrounds"
+              aria-selected="false">
+        <span class="lab-tab__icon" aria-hidden="true">
+          <svg viewBox="0 0 32 32">
+            <rect x="4" y="6" width="24" height="20" rx="4" fill="#94a3b8"/>
+            <path d="M8 22h16l-5-6-4 5-3-3Z" fill="#cbd5f5"/>
+          </svg>
+        </span>
+        Backgrounds
+      </button>
+      <button type="button"
+              class="lab-tab"
+              id="tab-themes"
+              data-customizer-tab="themes"
+              aria-controls="panel-themes"
+              aria-selected="false">
+        <span class="lab-tab__icon" aria-hidden="true">
+          <svg viewBox="0 0 32 32">
+            <path d="M6 16c0-5.52 4.48-10 10-10s10 4.48 10 10-4.48 10-10 10H6Z" fill="#cbd5f5"/>
+            <path d="M10 12h12v8H10z" fill="#64748b"/>
+          </svg>
+        </span>
+        Pass Themes
+      </button>
+    </div>
 
-    <div class="customizer-panels">
-      <section class="customizer-panel is-active"
+    <div class="lab-meta">
+      <div class="lab-meta__group">
+        <p class="lab-meta__label" data-active-tab-label>Avatars</p>
+        <p class="lab-meta__value" data-active-category-label>Default collection</p>
+      </div>
+      <div class="lab-meta__group lab-meta__select">
+        <label for="collection-select">Collection Selection:</label>
+        <select id="collection-select" name="collection_select" data-collection-select>
+          <option value="default" selected>Default collection</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="lab-inventory">
+      <section class="inventory-panel is-active"
                id="panel-avatars"
                role="tabpanel"
                aria-labelledby="tab-avatars"
-               data-customizer-panel="avatars">
-        <div class="panel-scroll" data-scrollable-panel>
-          <div class="option-grid option-grid--avatars">
-            {% for icon in avatars %}
-              {% if icon %}
-                {% set avatar_id = 'avatar-' ~ loop.index0 %}
-                <label class="option-card"
-                       for="{{ avatar_id }}">
-                  <input type="radio"
-                         id="{{ avatar_id }}"
-                         name="avatar_choice"
-                         value="{{ icon }}"
-                         {% if icon == current_avatar %}checked{% endif %}
-                         data-customizer-input>
-                  <span class="option-visual">
-                    <img src="{{ url_for('static', filename='avatars/' + icon) }}"
-                         alt="Select {{ icon|replace('.png','') }}">
-                  </span>
-                  <span class="option-label">{{ icon|replace('.png','')|replace('_',' ')|title }}</span>
-                </label>
-              {% endif %}
-            {% endfor %}
-          </div>
+               data-inventory-panel="avatars">
+        <div class="inventory-grid">
+          {% for icon in avatars %}
+            {% if icon %}
+              {% set avatar_id = 'avatar-' ~ loop.index0 %}
+              <label class="inventory-card"
+                     for="{{ avatar_id }}">
+                <input type="radio"
+                       id="{{ avatar_id }}"
+                       name="avatar_choice"
+                       value="{{ icon }}"
+                       {% if icon == current_avatar %}checked{% endif %}
+                       data-customizer-input>
+                <span class="inventory-card__visual">
+                  <img src="{{ url_for('static', filename='avatars/' + icon) }}"
+                       alt="Choose {{ icon|replace('.png','')|replace('_',' ')|title }}">
+                </span>
+              </label>
+            {% endif %}
+          {% endfor %}
         </div>
       </section>
 
-      <section class="customizer-panel"
+      <section class="inventory-panel"
                id="panel-backgrounds"
                role="tabpanel"
                aria-labelledby="tab-backgrounds"
-               data-customizer-panel="backgrounds"
+               data-inventory-panel="backgrounds"
                hidden>
-        <div class="panel-scroll" data-scrollable-panel>
-          <div class="option-grid option-grid--backgrounds">
-            {% for bg in backgrounds %}
-              {% if bg %}
-                {% set bg_id = 'bg-' ~ loop.index0 %}
-                <label class="option-card option-card--background"
-                       for="{{ bg_id }}">
-                  <input type="radio"
-                         id="{{ bg_id }}"
-                         name="background_choice"
-                         value="{{ bg }}"
-                         {% if bg == current_background %}checked{% endif %}
-                         data-customizer-input>
-                  <span class="option-visual"
-                        style="background-image: url('{{ url_for('static', filename='backgrounds/' + bg) }}');"
-                        aria-hidden="true"></span>
-                  <span class="option-label">{{ bg }}</span>
-                </label>
-              {% endif %}
-            {% endfor %}
-          </div>
+        <div class="inventory-grid">
+          {% for bg in backgrounds %}
+            {% if bg %}
+              {% set bg_id = 'bg-' ~ loop.index0 %}
+              <label class="inventory-card"
+                     for="{{ bg_id }}">
+                <input type="radio"
+                       id="{{ bg_id }}"
+                       name="background_choice"
+                       value="{{ bg }}"
+                       {% if bg == current_background %}checked{% endif %}
+                       data-customizer-input>
+                <span class="inventory-card__visual inventory-card__visual--background"
+                      style="background-image: url('{{ url_for('static', filename='backgrounds/' + bg) }}');"
+                      aria-hidden="true"></span>
+                <span class="sr-only">Choose background {{ bg }}</span>
+              </label>
+            {% endif %}
+          {% endfor %}
         </div>
       </section>
 
-      <section class="customizer-panel"
+      <section class="inventory-panel"
                id="panel-themes"
                role="tabpanel"
                aria-labelledby="tab-themes"
-               data-customizer-panel="themes"
+               data-inventory-panel="themes"
                hidden>
-        <div class="panel-scroll" data-scrollable-panel>
-          <div class="option-grid option-grid--themes">
-            {% for theme in passport_themes %}
-              {% if theme %}
-                <label class="option-card option-card--theme"
-                       for="theme-{{ theme.slug }}">
-                  <input type="radio"
-                         id="theme-{{ theme.slug }}"
-                         name="passport_theme_choice"
-                         value="{{ theme.slug }}"
-                         {% if theme.slug == current_passport_theme %}checked{% endif %}
-                         data-customizer-input>
-                  {% set colors = theme.preview_colors or [] %}
-                  {% if colors|length >= 2 %}
-                    {% set gradient = 'linear-gradient(135deg, ' ~ colors[0] ~ ', ' ~ colors[1] ~ ')' %}
-                  {% else %}
-                    {% set gradient = colors[0] if colors|length == 1 else '#475569' %}
-                  {% endif %}
-                  <span class="option-visual" style="background: {{ gradient }};"></span>
-                  <span class="option-label">
-                    <strong>{{ theme.label }}</strong>
-                    <small>{{ theme.description }}</small>
-                  </span>
-                </label>
-              {% endif %}
-            {% endfor %}
-          </div>
+        <div class="inventory-grid">
+          {% for theme in passport_themes %}
+            {% if theme %}
+              <label class="inventory-card"
+                     for="theme-{{ theme.slug }}">
+                <input type="radio"
+                       id="theme-{{ theme.slug }}"
+                       name="passport_theme_choice"
+                       value="{{ theme.slug }}"
+                       {% if theme.slug == current_passport_theme %}checked{% endif %}
+                       data-customizer-input>
+                {% set colors = theme.preview_colors or [] %}
+                {% if colors|length >= 2 %}
+                  {% set gradient = 'linear-gradient(135deg, ' ~ colors[0] ~ ', ' ~ colors[1] ~ ')' %}
+                {% else %}
+                  {% set gradient = colors[0] if colors|length == 1 else '#475569' %}
+                {% endif %}
+                <span class="inventory-card__visual inventory-card__visual--theme"
+                      style="background: {{ gradient }};">
+                  <span class="inventory-card__theme-label">{{ theme.label }}</span>
+                </span>
+              </label>
+            {% endif %}
+          {% endfor %}
         </div>
       </section>
     </div>
 
-      <noscript>
-        <div class="customizer-noscript">
-          <p>JavaScript is disabled. Make your selections and press save.</p>
-          <button type="submit" class="auth-btn auth-btn--primary">Save selections</button>
-        </div>
-      </noscript>
+    <div class="lab-status" data-customizer-status role="status" aria-live="polite">
+      Tap an option to save instantly.
     </div>
+
+    <noscript>
+      <div class="lab-noscript">
+        <p>JavaScript is disabled. Make your selections and press save.</p>
+        <button type="submit" class="auth-btn auth-btn--primary">Save selections</button>
+      </div>
+    </noscript>
   </form>
 </section>
 
-<div class="customizer-help-modal"
+<div class="lab-help-modal"
      id="customizer-help-dialog"
      role="dialog"
      aria-modal="true"
      aria-labelledby="customizer-help-title"
      hidden>
-  <div class="customizer-help-card" tabindex="-1">
-    <button type="button" class="customizer-help-close" data-close-help aria-label="Close help">✕</button>
+  <div class="lab-help-card" tabindex="-1">
+    <button type="button" class="lab-help-close" data-close-help aria-label="Close help">✕</button>
     <h3 id="customizer-help-title">Your customisation hub</h3>
-    <p>Here’s where you come to change your avatar icon, trainer card background, passport theme and more! Soon you’ll be able to unlock new customisation features by levelling up your community medals - stay tuned!</p>
+    <p>Choose avatars, backgrounds, and passport themes from this single card. Everything saves automatically as soon as you tap an option.</p>
   </div>
 </div>
 
 <style>
+:root {
+  --lab-surface:#f8fafc;
+  --lab-surface-dark:#e2e8f0;
+  --lab-primary:#3b82f6;
+  --lab-primary-dark:#2563eb;
+}
 .sr-only {
   position:absolute;
   width:1px;
@@ -206,346 +244,358 @@
   margin:-1px;
   overflow:hidden;
   clip:rect(0,0,0,0);
-  white-space:nowrap;
   border:0;
 }
 body.customizer-locked {
   overflow:hidden;
 }
-.customizer-shell {
-  padding:12px;
+.lab-shell {
   min-height:100vh;
-  display:flex;
-  align-items:flex-start;
-  justify-content:center;
-}
-.customizer-card {
-  background:#fdfdff;
-  border-radius:24px;
-  padding:20px;
-  box-shadow:0 16px 40px rgba(15,23,42,0.18);
-  width:min(960px, 95vw);
-  height:min(640px, calc(100vh - 24px));
-  display:grid;
-  grid-template-columns:minmax(260px, 0.95fr) minmax(360px, 1.05fr);
-  gap:20px;
-  overflow:hidden;
-}
-.customizer-summary {
-  display:grid;
-  grid-template-rows:auto minmax(0,1fr) auto;
-  gap:14px;
-  height:100%;
-  min-height:0;
-}
-.customizer-controls {
-  display:flex;
-  flex-direction:column;
-  gap:16px;
-  min-height:0;
-}
-.customizer-header {
+  padding:12px;
   display:flex;
   align-items:center;
-  justify-content:space-between;
+  justify-content:center;
+  background:radial-gradient(circle at top, #f1f5f9, #e2e8f0);
+}
+.lab-frame {
+  background:#fff;
+  border-radius:28px;
+  width:min(960px, 96vw);
+  height:min(720px, calc(100vh - 32px));
+  display:grid;
+  grid-template-rows:auto auto auto 1fr auto;
+  gap:14px;
+  padding:20px;
+  box-shadow:0 30px 60px rgba(15,23,42,0.18);
+  overflow:hidden;
+}
+.lab-hero {
+  background:#5bb5ff;
+  border-radius:24px;
+  padding:18px;
+  color:#fff;
+  display:flex;
+  flex-direction:column;
   gap:12px;
 }
-.customizer-header h1 {
+.lab-hero__header {
+  display:flex;
+  align-items:center;
+  gap:12px;
+}
+.lab-hero__icon {
+  width:42px;
+  height:42px;
+  border-radius:50%;
+  background:rgba(255,255,255,0.15);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.lab-hero__header h1 {
   margin:0;
   font-size:1.35rem;
-  color:#0f172a;
   font-weight:700;
 }
-.customizer-help-btn {
-  width:44px;
-  height:44px;
+.lab-help-btn {
+  margin-left:auto;
+  width:34px;
+  height:34px;
   border-radius:50%;
   border:none;
-  background:#e0ecff;
-  color:#1d4ed8;
+  background:rgba(255,255,255,0.3);
+  color:#0f172a;
   display:flex;
   align-items:center;
   justify-content:center;
   cursor:pointer;
-  box-shadow:0 10px 24px rgba(30,64,175,0.22);
-  transition:transform 0.2s ease, box-shadow 0.2s ease;
 }
-.customizer-help-btn:hover,
-.customizer-help-btn:focus-visible {
-  transform:translateY(-2px) scale(1.02);
-  box-shadow:0 16px 30px rgba(30,64,175,0.28);
-}
-.customizer-help-btn svg {
-  width:22px;
-  height:22px;
+.lab-help-btn svg {
+  width:18px;
+  height:18px;
   fill:currentColor;
 }
-.trainer-card-preview {
-  min-height:0;
-  display:flex;
-}
-.trainer-card-canvas {
-  width:100%;
-  aspect-ratio: 5 / 3;
+.lab-hero__canvas {
+  flex:1;
   border-radius:20px;
   background-size:cover;
   background-position:center;
-  border:1px solid rgba(148,163,184,0.4);
+  border:1px solid rgba(255,255,255,0.35);
   position:relative;
   padding:18px;
+  min-height:200px;
   display:flex;
-  align-items:flex-end;
-  justify-content:flex-start;
-  overflow:hidden;
-  box-shadow:0 24px 50px rgba(15,23,42,0.22) inset;
+  align-items:center;
+  justify-content:center;
 }
-.trainer-avatar-frame {
-  width:96px;
-  height:96px;
-  border-radius:50%;
-  border:4px solid rgba(255,255,255,0.8);
-  background:#fff;
-  padding:4px;
-  box-shadow:0 10px 30px rgba(15,23,42,0.3);
-}
-.trainer-avatar-frame img {
-  width:100%;
-  height:100%;
-  object-fit:cover;
-  border-radius:50%;
-}
-.trainer-theme-pill {
+.lab-hero__background-label {
   position:absolute;
-  left:18px;
-  bottom:16px;
-  background:rgba(15,23,42,0.9);
-  color:#e0f2ff;
-  border-radius:999px;
-  padding:6px 14px;
+  top:18px;
+  right:18px;
   font-size:0.85rem;
   font-weight:600;
-  box-shadow:0 12px 24px rgba(15,23,42,0.25);
+  letter-spacing:0.02em;
 }
-.customizer-status {
-  border-radius:14px;
-  padding:10px 14px;
-  background:#e0f2ff;
-  color:#0f172a;
-  font-weight:500;
-}
-.customizer-status.is-pending {
-  background:#fef3c7;
-  color:#92400e;
-}
-.customizer-status.is-error {
-  background:#fee2e2;
-  color:#991b1b;
-}
-.customizer-tabs {
-  position:relative;
+.lab-hero__avatar {
+  width:140px;
+  height:140px;
+  border-radius:50%;
+  border:6px solid rgba(255,255,255,0.85);
+  background:#fff;
   display:flex;
-  gap:10px;
-  border-radius:999px;
-  background:#f1f5f9;
-  padding:6px;
-  overflow:hidden;
-  justify-self:stretch;
+  align-items:center;
+  justify-content:center;
+  box-shadow:0 12px 35px rgba(15,23,42,0.35);
 }
-.customizer-tab {
+.lab-hero__avatar img {
+  width:100%;
+  height:100%;
+  border-radius:50%;
+  object-fit:cover;
+}
+.lab-hero__theme {
+  position:absolute;
+  left:18px;
+  bottom:18px;
+  background:rgba(15,23,42,0.85);
+  border-radius:999px;
+  padding:6px 14px;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  font-weight:600;
+  font-size:0.85rem;
+  box-shadow:0 18px 30px rgba(15,23,42,0.35);
+}
+.lab-hero__theme-icon {
+  width:22px;
+  height:22px;
+  display:inline-flex;
+}
+.lab-tabs {
+  background:#f4f4f6;
+  border-radius:999px;
+  padding:4px;
+  display:flex;
+  gap:6px;
+}
+.lab-tab {
   flex:1;
   border:none;
-  background:none;
+  background:transparent;
   border-radius:999px;
   padding:10px 12px;
   font-weight:600;
   color:#475569;
-  cursor:pointer;
-  position:relative;
-  transition:color 0.2s ease;
-}
-.customizer-tab.is-active {
-  color:#0f172a;
-}
-.customizer-tabs__glider {
-  position:absolute;
-  top:6px;
-  bottom:6px;
-  width:33%;
-  border-radius:999px;
-  background:#fff;
-  box-shadow:0 10px 30px rgba(15,23,42,0.12);
-  transition:transform 0.3s ease, width 0.3s ease;
-}
-.customizer-panels {
-  position:relative;
-  min-height:0;
-  flex:1;
-  display:block;
-}
-.customizer-panel {
-  transition:opacity 0.25s ease;
-  height:100%;
-}
-.customizer-panel[hidden] {
-  display:none;
-}
-.customizer-panel:not(.is-active) {
-  opacity:0;
-  pointer-events:none;
-}
-.panel-scroll {
-  height:100%;
-  overflow-y:auto;
-  padding:8px 4px 12px;
-}
-.panel-scroll::-webkit-scrollbar {
-  width:6px;
-}
-.panel-scroll::-webkit-scrollbar-track {
-  background:transparent;
-}
-.panel-scroll::-webkit-scrollbar-thumb {
-  background:rgba(148,163,184,0.7);
-  border-radius:999px;
-}
-.panel-scroll {
-  scrollbar-width:thin;
-  scrollbar-color:rgba(148,163,184,0.7) transparent;
-}
-.option-grid {
-  display:grid;
-  gap:14px;
-}
-.option-grid--avatars {
-  grid-template-columns:repeat(auto-fit,minmax(120px,1fr));
-}
-.option-grid--backgrounds {
-  grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
-}
-.option-grid--themes {
-  grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
-}
-.option-card {
-  position:relative;
-  border-radius:18px;
-  padding:14px;
-  background:#fff;
-  border:1px solid rgba(148,163,184,0.35);
-  box-shadow:0 16px 35px rgba(15,23,42,0.08);
-  cursor:pointer;
   display:flex;
-  flex-direction:column;
   align-items:center;
-  gap:10px;
-  transition:transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  justify-content:center;
+  gap:8px;
+  cursor:pointer;
+  transition:background 0.2s ease, color 0.2s ease;
 }
-.option-card input {
-  position:absolute;
-  opacity:0;
-  pointer-events:none;
+.lab-tab__icon {
+  width:26px;
+  height:26px;
+  display:inline-flex;
 }
-.option-card .option-visual img {
-  width:70px;
-  height:70px;
-  border-radius:50%;
-  object-fit:cover;
-  border:3px solid rgba(59,130,246,0.45);
-}
-.option-card--background .option-visual {
-  width:100%;
-  height:90px;
-  border-radius:12px;
-  background-size:cover;
-  background-position:center;
-  border:2px solid rgba(255,255,255,0.6);
-  box-shadow:inset 0 0 0 1px rgba(15,23,42,0.1);
-}
-.option-card--theme .option-visual {
-  width:100%;
-  height:80px;
-  border-radius:14px;
-  box-shadow:0 12px 20px rgba(15,23,42,0.12);
-}
-.option-label {
-  text-align:center;
-  font-weight:600;
+.lab-tab.is-active {
+  background:#fff;
   color:#0f172a;
-  font-size:0.9rem;
+  box-shadow:0 6px 16px rgba(15,23,42,0.15);
 }
-.option-card--theme .option-label {
+.lab-meta {
+  background:#f7f7f8;
+  border-radius:18px;
+  padding:12px 16px;
+  display:flex;
+  justify-content:space-between;
+  gap:24px;
+  align-items:center;
+}
+.lab-meta__group {
   display:flex;
   flex-direction:column;
   gap:4px;
 }
-.option-card--theme small {
-  font-weight:400;
+.lab-meta__label {
+  margin:0;
+  font-weight:700;
+  color:#0f172a;
+}
+.lab-meta__value {
+  margin:0;
+  font-size:0.9rem;
   color:#475569;
 }
-.option-card.is-selected {
-  border-color:#2563eb;
-  box-shadow:0 18px 40px rgba(37,99,235,0.25);
-  transform:translateY(-2px);
+.lab-meta__select {
+  flex:0 0 auto;
 }
-.customizer-noscript {
+.lab-meta__select label {
+  font-size:0.85rem;
+  color:#475569;
+  margin-bottom:2px;
+}
+.lab-meta__select select {
+  border-radius:999px;
+  border:1px solid #cbd5f5;
+  padding:6px 24px 6px 12px;
+  font-weight:600;
+  background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='%23647589' d='M4 6l4 4 4-4z'/%3E%3C/svg%3E") no-repeat right 8px center/12px;
+  appearance:none;
+}
+.lab-inventory {
+  background:#f1f1f1;
+  border-radius:28px;
+  padding:16px;
+  min-height:0;
+  display:flex;
+  flex-direction:column;
+  gap:0;
+}
+.inventory-panel {
+  flex:1;
+  min-height:0;
+  overflow:hidden;
+  transition:opacity 0.2s ease;
+}
+.inventory-panel[hidden] {
+  display:none;
+}
+.inventory-panel.is-active {
+  opacity:1;
+}
+.inventory-grid {
+  display:grid;
+  grid-template-columns:repeat(4, minmax(0, 1fr));
+  gap:14px;
+  height:100%;
+  overflow-y:auto;
+  padding-right:8px;
+}
+.inventory-grid::-webkit-scrollbar {
+  width:6px;
+}
+.inventory-grid::-webkit-scrollbar-thumb {
+  background:#94a3b8;
+  border-radius:999px;
+}
+.inventory-card {
+  position:relative;
+  display:block;
+  aspect-ratio:1/1;
+  border-radius:18px;
+  background:#fff;
+  border:2px solid transparent;
+  box-shadow:inset 0 0 0 1px rgba(148,163,184,0.4);
+  cursor:pointer;
+}
+.inventory-card input {
+  position:absolute;
+  opacity:0;
+  pointer-events:none;
+}
+.inventory-card__visual,
+.inventory-card__visual img {
+  width:100%;
+  height:100%;
+  border-radius:16px;
+  object-fit:cover;
+}
+.inventory-card__visual {
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:16px;
+  overflow:hidden;
+  background:#e2e8f0;
+}
+.inventory-card__visual--background {
+  background-size:cover;
+  background-position:center;
+}
+.inventory-card__visual--theme {
+  color:#fff;
+  font-weight:700;
+  font-size:0.85rem;
+  text-align:center;
+  padding:8px;
+}
+.inventory-card.is-selected {
+  border-color:var(--lab-primary);
+  box-shadow:0 0 0 3px rgba(59,130,246,0.3);
+}
+.inventory-card__theme-label {
+  text-shadow:0 2px 6px rgba(15,23,42,0.4);
+}
+.lab-status {
+  text-align:center;
+  font-weight:600;
+  background:#e0f2ff;
+  border-radius:14px;
+  padding:10px;
+  color:#0f172a;
+}
+.lab-status.is-pending {
+  background:#fef3c7;
+  color:#92400e;
+}
+.lab-status.is-error {
+  background:#fee2e2;
+  color:#991b1b;
+}
+.lab-noscript {
   margin-top:12px;
   padding:12px;
-  border-radius:12px;
-  background:#fff4de;
+  border-radius:16px;
+  background:#fff7ed;
   border:1px solid #fed7aa;
 }
-.customizer-help-modal {
+.lab-help-modal {
   position:fixed;
   inset:0;
-  background:rgba(15,23,42,0.6);
+  background:rgba(15,23,42,0.65);
   display:flex;
   align-items:center;
   justify-content:center;
   padding:20px;
-  z-index:1200;
+  z-index:1500;
 }
-.customizer-help-modal[hidden] {
+.lab-help-modal[hidden] {
   display:none;
 }
-.customizer-help-card {
-  max-width:420px;
-  width:100%;
+.lab-help-card {
   background:#fff;
   border-radius:20px;
   padding:24px;
-  box-shadow:0 24px 60px rgba(15,23,42,0.25);
+  width:min(420px, 90vw);
   position:relative;
-  border:1px solid rgba(148,163,184,0.35);
+  box-shadow:0 25px 60px rgba(15,23,42,0.3);
 }
-.customizer-help-card h3 {
-  margin-top:0;
-  color:#0f172a;
-}
-.customizer-help-card p {
-  margin-bottom:0;
-  color:#475569;
-}
-.customizer-help-close {
+.lab-help-close {
   position:absolute;
   top:12px;
   right:12px;
   border:none;
-  background:rgba(15,23,42,0.08);
+  background:rgba(148,163,184,0.2);
   border-radius:50%;
   width:32px;
   height:32px;
   cursor:pointer;
 }
-@media (max-width: 900px) {
-  .customizer-card {
-    padding:18px;
-    gap:14px;
-    grid-template-columns:minmax(200px, 0.95fr) minmax(260px, 1.05fr);
+@media (max-width: 820px) {
+  .lab-frame {
+    width:100%;
+    height:calc(100vh - 20px);
+    border-radius:0;
   }
-  .customizer-header {
-    flex-wrap:wrap;
+  .inventory-grid {
+    grid-template-columns:repeat(3, minmax(0,1fr));
   }
-  .customizer-help-btn {
-    flex-shrink:0;
+}
+@media (max-width: 600px) {
+  .inventory-grid {
+    grid-template-columns:repeat(2, minmax(0,1fr));
   }
 }
 </style>
@@ -559,12 +609,14 @@ document.addEventListener("DOMContentLoaded", () => {
   const previewTheme = document.querySelector("[data-preview-theme]");
   const statusBadge = document.querySelector("[data-customizer-status]");
   const tabs = document.querySelectorAll("[data-customizer-tab]");
-  const panels = document.querySelectorAll("[data-customizer-panel]");
-  const glider = document.querySelector(".customizer-tabs__glider");
+  const panels = document.querySelectorAll("[data-inventory-panel]");
+  const selectionInputs = document.querySelectorAll("[data-customizer-input]");
   const helpButton = document.getElementById("customizer-help-button");
   const helpDialog = document.getElementById("customizer-help-dialog");
   const helpClose = document.querySelector("[data-close-help]");
-  const selectionInputs = document.querySelectorAll("[data-customizer-input]");
+  const activeTabLabel = document.querySelector("[data-active-tab-label]");
+  const activeCategoryLabel = document.querySelector("[data-active-category-label]");
+  const collectionSelect = document.querySelector("[data-collection-select]");
 
   document.body.classList.add("customizer-locked");
   window.addEventListener("pagehide", () => document.body.classList.remove("customizer-locked"));
@@ -573,29 +625,25 @@ document.addEventListener("DOMContentLoaded", () => {
     "avatars": url_for('static', filename='avatars') + "/",
     "backgrounds": url_for('static', filename='backgrounds') + "/"
   } | tojson }};
-  const initialState = {{ {
-    "avatar": current_avatar,
-    "background": current_background,
-    "theme": current_passport_theme,
-    "themeLabel": current_passport_theme_data.label,
-  } | tojson }};
   const themeLookup = Object.fromEntries({{ passport_themes | tojson }}.map(theme => [theme.slug, theme.label]));
 
   let activeTab = "avatars";
   let saving = false;
   let pendingUpdate = null;
-  let lastActiveButton = tabs[0] || null;
 
-  form?.addEventListener("submit", (event) => {
-    event.preventDefault();
-  });
+  form?.addEventListener("submit", (event) => event.preventDefault());
 
-  function positionGlider(target) {
-    if (!glider || !target) return;
-    const rect = target.getBoundingClientRect();
-    const parentRect = target.parentElement.getBoundingClientRect();
-    glider.style.width = `${rect.width}px`;
-    glider.style.transform = `translateX(${rect.left - parentRect.left}px)`;
+  const tabMeta = {
+    avatars: { label: "Avatars" },
+    backgrounds: { label: "Backgrounds" },
+    themes: { label: "Pass Themes" }
+  };
+
+  function renderMeta() {
+    activeTabLabel.textContent = tabMeta[activeTab]?.label || "Avatars";
+    if (collectionSelect) {
+      activeCategoryLabel.textContent = collectionSelect.selectedOptions[0]?.text || "Default collection";
+    }
   }
 
   function activateTab(tabName) {
@@ -604,24 +652,21 @@ document.addEventListener("DOMContentLoaded", () => {
       const isActive = tab.dataset.customizerTab === tabName;
       tab.classList.toggle("is-active", isActive);
       tab.setAttribute("aria-selected", isActive ? "true" : "false");
-      if (isActive) {
-        lastActiveButton = tab;
-      }
     });
     panels.forEach((panel) => {
-      const isActive = panel.dataset.customizerPanel === tabName;
+      const isActive = panel.dataset.inventoryPanel === tabName;
       panel.classList.toggle("is-active", isActive);
       panel.hidden = !isActive;
     });
-    positionGlider(lastActiveButton);
+    renderMeta();
   }
 
   tabs.forEach((tab) => {
     tab.addEventListener("click", () => activateTab(tab.dataset.customizerTab));
   });
 
-  window.addEventListener("resize", () => positionGlider(lastActiveButton));
-  positionGlider(lastActiveButton);
+  collectionSelect?.addEventListener("change", renderMeta);
+  renderMeta();
 
   function updateStatus(message, variant = "info") {
     if (!statusBadge) return;
@@ -637,10 +682,8 @@ document.addEventListener("DOMContentLoaded", () => {
   function applyPreview(field, value) {
     if (field === "avatar_choice" && previewAvatar) {
       previewAvatar.src = assetRoots.avatars + value;
-    } else if (field === "background_choice") {
-      if (previewBackground) {
-        previewBackground.style.backgroundImage = `url(${assetRoots.backgrounds + value})`;
-      }
+    } else if (field === "background_choice" && previewBackground) {
+      previewBackground.style.backgroundImage = `url(${assetRoots.backgrounds + value})`;
     } else if (field === "passport_theme_choice" && previewTheme) {
       previewTheme.textContent = themeLookup[value] || previewTheme.textContent;
     }
@@ -654,7 +697,6 @@ document.addEventListener("DOMContentLoaded", () => {
       body: formData,
       headers: { "X-Requested-With": "XMLHttpRequest" },
     });
-
     if (!response.ok) {
       const errorPayload = await response.json().catch(() => ({}));
       throw new Error(errorPayload.error || "Unable to save your changes right now.");
@@ -702,7 +744,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function syncOptionStates() {
-    document.querySelectorAll(".option-card").forEach((card) => {
+    document.querySelectorAll(".inventory-card").forEach((card) => {
       const input = card.querySelector("input");
       card.classList.toggle("is-selected", Boolean(input?.checked));
     });
@@ -720,7 +762,7 @@ document.addEventListener("DOMContentLoaded", () => {
   function openHelp() {
     if (!helpDialog) return;
     helpDialog.hidden = false;
-    helpDialog.querySelector(".customizer-help-card")?.focus();
+    helpDialog.querySelector(".lab-help-card")?.focus();
     helpButton?.setAttribute("aria-expanded", "true");
   }
 
