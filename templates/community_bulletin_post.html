@@ -1673,7 +1673,7 @@ body.bp-modal-open {
 
   var scrollLock = window.__overlayLock || {
     lock: function () { document.body.style.overflow = "hidden"; },
-    unlock: function () { document.body.style.overflow = ""; },
+    unlock: function () { document.body.style.overflow = "auto"; },
   };
 
   var bar = document.querySelector("[data-engagement-bar]");

@@ -159,6 +159,7 @@
 .watchlist-count{margin:4px 0 0;font-weight:600;color:#1d4ed8;}
 .watchlist-note{margin:2px 0 0;color:#475569;font-size:0.85rem;}
 .watchlist-list{display:flex;flex-direction:column;gap:10px;max-height:60vh;overflow-y:auto;padding-right:4px;}
+.watchlist-list{-webkit-overflow-scrolling:touch;overscroll-behavior:contain;}
 .watchlist-list::-webkit-scrollbar{width:6px;}
 .watchlist-list::-webkit-scrollbar-thumb{background:rgba(29,78,216,0.3);border-radius:999px;}
 .watchlist-empty,.watchlist-loading{background:rgba(241,245,249,0.9);border-radius:16px;padding:18px;text-align:center;color:#475569;font-weight:600;line-height:1.5;}
@@ -186,6 +187,8 @@
   display:flex;align-items:flex-start;justify-content:center;z-index:130;
   padding:90px 14px 24px;
   overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior:contain;
   transition:opacity .25s ease;
   opacity:1;
   visibility:visible;
@@ -203,6 +206,8 @@
   flex-direction:column;
   gap:18px;
   overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior:contain;
   transform:scale(.95);
   opacity:0;
   transition:transform .3s ease, opacity .3s ease;
@@ -523,7 +528,7 @@ function syncBodyScrollLock() {
   const modalOpen =
     (watchlistModal && !watchlistModal.classList.contains("hidden")) ||
     (tutorialModal && !tutorialModal.classList.contains("hidden"));
-  document.body.style.overflow = modalOpen ? "hidden" : "";
+  document.body.style.overflow = modalOpen ? "hidden" : "auto";
 }
 
 function renderWatchlistMessage(message, count) {
