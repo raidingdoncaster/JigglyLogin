@@ -5,6 +5,8 @@ import json
 import requests
 import uuid
 import re
+import math
+import secrets
 from collections import Counter, defaultdict
 from flask import Flask, render_template, abort, request, redirect, url_for, session, flash, send_from_directory, jsonify, g, make_response, current_app
 from werkzeug.utils import secure_filename
@@ -68,6 +70,11 @@ TEAM_CONFIG = {
 }
 MAX_TRAINER_LEVEL = 80
 
+INBOX_PAGE_SIZE = 20
+INBOX_METADATA_READ_KEY = "read_by"
+INBOX_METADATA_HIDDEN_KEY = "hidden_for"
+DIGITAL_CODE_KEYWORDS = ("code",)
+
 # ====== Auth security settings ======
 LOGIN_MAX_ATTEMPTS = 5
 LOGIN_LOCKOUT_SECONDS = 1800
@@ -109,6 +116,8 @@ if _gate_ttl_env:
     except ValueError:
         print(f"⚠️ Invalid ADMIN_DASHBOARD_GATE_TTL_SECONDS value: {_gate_ttl_env!r}. Using default {ADMIN_DASHBOARD_GATE_TTL_SECONDS}.")
 
+TRAINER_DELETE_TOKEN_TTL_SECONDS = 300  # Seconds a delete confirmation token remains valid
+
 # ====== Dashboard feature visibility toggles ======
 SHOW_CATALOG_APP = True
 SHOW_CITY_PERKS_APP = True
@@ -137,6 +146,16 @@ app.config.setdefault("USE_SUPABASE", USE_SUPABASE)
 app.config.setdefault("USE_GEOCACHE_QUEST", USE_GEOCACHE_QUEST)
 
 CONTENT_FILTER = ContentFilter()
+
+SYSTEM_NOTIFICATION_TYPES = {
+    "system",
+    "alert",
+    "maintenance",
+    "security",
+    "policy",
+    "warning",
+}
+RECEIPT_NOTIFICATION_TYPES = {"receipt", "receipts"}
 
 @app.errorhandler(404)
 @app.errorhandler(500)
@@ -2285,7 +2304,12 @@ def get_public_trainer_profile(username: str) -> Optional[dict]:
     bio = (record.get("trainerbio") or "").strip()
     if len(bio) > 200:
         bio = bio[:200]
-    trainer_code = (record.get("trainer_code") or record.get("friend_code") or "").strip()
+    trainer_code = (
+        record.get("friendcode")
+        or record.get("trainer_code")
+        or record.get("friend_code")
+        or ""
+    ).strip()
     raw_meetups = (
         record.get("meetups_count")
         or record.get("meetups_total")
@@ -2305,7 +2329,9 @@ def get_public_trainer_profile(username: str) -> Optional[dict]:
         background_url = f"/static/backgrounds/{background_file}"
 
     team_info = _team_metadata(record.get("team"))
-    tlevel_raw = record.get("tlevel")
+    tlevel_raw = record.get("trainer_level")
+    if tlevel_raw in (None, ""):
+        tlevel_raw = record.get("tlevel")
     try:
         trainer_level = int(tlevel_raw)
     except (TypeError, ValueError):
@@ -2973,7 +2999,7 @@ def cover_from_event_name(event_name: str) -> str:
 def get_inbox_preview(trainer: str, limit: int = 3):
     """Fetch recent notifications + unread count."""
     if not supabase:
-        return []
+        return {"preview": [], "unread_count": 0}
     try:
         # Fetch ALL + user-targeted
         resp = (supabase.table("notifications")
@@ -2995,6 +3021,36 @@ def get_inbox_preview(trainer: str, limit: int = 3):
     except Exception as e:
         print("⚠️ Supabase inbox preview fetch failed:", e)
         return {"preview": [], "unread_count": 0}
+
+
+@app.route("/api/nav-state")
+def api_nav_state():
+    """Return lightweight nav counts so the header can update without reloads."""
+    trainer = session.get("trainer")
+    if not trainer:
+        return jsonify({"error": "Not authenticated"}), 401
+
+    _, user = find_user(trainer)
+    nav_inbox = get_inbox_preview(trainer) or {}
+
+    try:
+        current_stamps = int((user or {}).get("stamps") or 0)
+    except (TypeError, ValueError):
+        current_stamps = 0
+
+    inbox_preview = nav_inbox.get("preview", []) if isinstance(nav_inbox, dict) else []
+    inbox_unread = nav_inbox.get("unread_count", 0) if isinstance(nav_inbox, dict) else 0
+
+    payload = {
+        "current_stamps": current_stamps,
+        "inbox_unread": inbox_unread,
+        "inbox_preview": inbox_preview,
+        "trainer": trainer,
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    response = jsonify(payload)
+    response.headers["Cache-Control"] = "no-store"
+    return response
 
 NOTIFICATION_ALLOWED_TAGS = [
     "a",
@@ -3243,6 +3299,8 @@ def _reward_summary_for_category(category: str | None, custom_text: str | None) 
     slug = (category or "").strip().lower()
     if slug == "digital":
         return "Redeem this code for 1 Premium Battle Pass, 1 Star Piece, 1 Incubator, and 1 Lure Module."
+    if slug == "mp":
+        return "Redeem this code for 800 Max Particles and 1 Premium Battle Pass."
     if slug == "ca":
         return "Redeem this code for 2 Premium Battle Passes and 1 Star Piece."
     custom = (custom_text or "").strip()
@@ -3272,10 +3330,10 @@ def _build_digital_code_message(
         "<p><strong>How to redeem:</strong></p>"
         "<ol>"
         "<li><strong>Step 1.</strong> Tap the code above to open the Pokémon GO offer redemption site.</li>"
-        "<li><strong>Step 2.</strong> Sign in with the Pokémon GO account you use with RDAB.</li>"
+        "<li><strong>Step 2.</strong> Sign in with your Pokémon GO account.</li>"
         "<li><strong>Step 3.</strong> Redeem your code and enjoy the items!</li>"
         "</ol>"
-        "<p>If you have any issues, please reach out to us via RDAB Support.</p>"
+        "<p>Kids Accounts may require parental verification. If you have any issues, please reach out to us via RDAB Support.</p>"
     )
     return message, reward_sentence
 
@@ -3923,6 +3981,66 @@ def _panel_action_response(success: bool, message: str, username: str, *, status
     return jsonify(payload), status
 
 
+def _pending_delete_bucket() -> dict:
+    bucket = session.get("pending_trainer_deletes")
+    if not isinstance(bucket, dict):
+        bucket = {}
+    return bucket
+
+
+def _store_delete_bucket(bucket: dict) -> None:
+    session["pending_trainer_deletes"] = bucket
+    session.modified = True
+
+
+def _clear_trainer_delete_token(username: str) -> None:
+    normalized = (username or "").strip().lower()
+    if not normalized:
+        return
+    bucket = _pending_delete_bucket()
+    if normalized in bucket:
+        bucket.pop(normalized, None)
+        _store_delete_bucket(bucket)
+
+
+def _issue_trainer_delete_token(username: str) -> str:
+    normalized = (username or "").strip().lower()
+    token = secrets.token_urlsafe(32)
+    if not normalized:
+        return token
+    bucket = _pending_delete_bucket()
+    bucket[normalized] = {"token": token, "issued_at": time.time()}
+    _store_delete_bucket(bucket)
+    return token
+
+
+def _consume_trainer_delete_token(username: str, token: str) -> bool:
+    normalized = (username or "").strip().lower()
+    if not normalized or not token:
+        return False
+    bucket = _pending_delete_bucket()
+    entry = bucket.get(normalized)
+    if not isinstance(entry, dict):
+        return False
+    expected = entry.get("token")
+    issued_at = entry.get("issued_at")
+    try:
+        issued_ts = float(issued_at)
+    except (TypeError, ValueError):
+        issued_ts = None
+    now_ts = time.time()
+    is_fresh = issued_ts is not None and (now_ts - issued_ts) <= TRAINER_DELETE_TOKEN_TTL_SECONDS
+    matches = expected and secrets.compare_digest(str(expected), str(token))
+    if matches and is_fresh:
+        bucket.pop(normalized, None)
+        _store_delete_bucket(bucket)
+        return True
+    if not is_fresh:
+        bucket.pop(normalized, None)
+        _store_delete_bucket(bucket)
+    return False
+
+
 def _deny_admin_request(message: str = "Admins only."):
     """Abort with JSON when possible so the modal can handle errors gracefully."""
     if _is_trainer_panel_ajax():
@@ -4113,6 +4231,27 @@ def update_memorable_password(trainer_username: str, new_memorable: str, actor: 
         print("⚠️ update_memorable_password failed:", e)
         return False, "Failed to update memorable password."
 
+
+def delete_trainer_account_record(trainer_username: str, actor: str = "Admin"):
+    target = (trainer_username or "").strip()
+    if not target:
+        return False, "Trainer username is missing."
+    if not supabase:
+        return False, "Supabase is unavailable right now."
+    try:
+        resp = (supabase.table("sheet1")
+                .delete()
+                .eq("trainer_username", target)
+                .execute())
+        data = getattr(resp, "data", None)
+        # Supabase returns the deleted rows when RLS allows it; treat empty payload as success if no error raised.
+        if isinstance(data, list) and not data:
+            return True, f"Trainer “{target}” was removed."
+        return True, f"Trainer “{target}” was removed."
+    except Exception as e:
+        print("⚠️ delete_trainer_account_record failed:", e)
+        return False, "Failed to delete trainer account."
+
 # --- ADMIN: Change account type (supports underscore & hyphen URLs) ---
 @app.route("/admin/trainers/<username>/change-account-type", methods=["POST"], endpoint="admin_change_account_type_v2")
 @app.route("/admin/trainers/<username>/change_account_type", methods=["POST"], endpoint="admin_change_account_type_legacy")
@@ -4178,6 +4317,59 @@ def admin_change_memorable_password_route(username):
         return _panel_action_response(ok, msg, username)
     flash(msg, "success" if ok else "error")
     return redirect(url_for("admin_trainer_detail", username=username))
+
+
+@app.route("/admin/trainers/<username>/delete/verify", methods=["POST"])
+def admin_verify_trainer_delete(username):
+    _require_admin()
+    payload = request.get_json(silent=True) or {}
+    admin_password = payload.get("admin_password")
+    if admin_password is None:
+        admin_password = request.form.get("admin_password")
+    admin_password = (admin_password or "").strip()
+    if not admin_password:
+        return jsonify({"success": False, "message": "Enter the admin dashboard password."}), 400
+    if not _admin_dashboard_gate_check(admin_password):
+        return jsonify({"success": False, "message": "Incorrect admin dashboard password."}), 403
+    token = _issue_trainer_delete_token(username)
+    return jsonify({
+        "success": True,
+        "message": "Password verified. Confirm deletion to continue.",
+        "delete_token": token,
+        "expires_in": TRAINER_DELETE_TOKEN_TTL_SECONDS,
+    })
+
+
+@app.route("/admin/trainers/<username>/delete", methods=["POST"])
+def admin_delete_trainer_account(username):
+    _require_admin()
+    delete_token = request.form.get("delete_token")
+    if delete_token is None:
+        payload = request.get_json(silent=True) or {}
+        delete_token = payload.get("delete_token")
+    delete_token = (delete_token or "").strip()
+    if not delete_token:
+        return jsonify({"success": False, "message": "Delete confirmation expired. Start again."}), 400
+    if not _consume_trainer_delete_token(username, delete_token):
+        return jsonify({"success": False, "message": "Delete confirmation expired. Start again."}), 400
+
+    _, target_user = find_user(username)
+    if not target_user:
+        return jsonify({"success": False, "message": f"Trainer “{username}” was not found."}), 404
+
+    trainer_username = target_user.get("trainer_username") or username
+    actor = _current_actor()
+    ok, msg = delete_trainer_account_record(trainer_username, actor)
+    status_code = 200 if ok else 400
+    payload = {
+        "success": ok,
+        "message": msg,
+        "redirect_url": url_for("admin_trainers") if ok else None,
+        "deleted_trainer": trainer_username if ok else None,
+    }
+    if not ok:
+        payload["panel_url"] = url_for("admin_trainer_panel", username=trainer_username)
+    return jsonify(payload), status_code
 
 def admin_required(f):
     @wraps(f)
@@ -7293,6 +7485,80 @@ def _normalize_iso(dt_val):
     except Exception:
         return datetime.utcnow().replace(tzinfo=timezone.utc).isoformat()
 
+def _ensure_metadata_dict(record: dict | None) -> dict:
+    metadata = {}
+    if isinstance(record, dict):
+        metadata = record
+    if not isinstance(metadata, dict):
+        metadata = {}
+    return dict(metadata)
+
+
+def _normalize_user_list(values) -> list:
+    normalized = []
+    if not isinstance(values, list):
+        return normalized
+    seen = set()
+    for value in values:
+        if not value:
+            continue
+        key = str(value).strip()
+        if not key:
+            continue
+        lower = key.lower()
+        if lower in seen:
+            continue
+        seen.add(lower)
+        normalized.append(key)
+    return normalized
+
+
+def _append_username(values: list, trainer: str) -> list:
+    normalized = _normalize_user_list(values)
+    trainer_key = (trainer or "").strip()
+    if not trainer_key:
+        return normalized
+    lower = trainer_key.lower()
+    if all(entry.lower() != lower for entry in normalized):
+        normalized.append(trainer_key)
+    return normalized
+
+
+def _remove_username(values: list, trainer: str) -> list:
+    normalized = _normalize_user_list(values)
+    trainer_key = (trainer or "").strip().lower()
+    if not trainer_key:
+        return normalized
+    return [entry for entry in normalized if entry.lower() != trainer_key]
+
+
+def _message_is_hidden(record: dict, trainer: str) -> bool:
+    trainer_key = (trainer or "").strip().lower()
+    if not trainer_key:
+        return False
+    metadata = _ensure_metadata_dict(record.get("metadata"))
+    hidden_list = metadata.get(INBOX_METADATA_HIDDEN_KEY)
+    if not isinstance(hidden_list, list):
+        hidden_list = record.get("hidden_for") or record.get("hidden_by") or []
+    return any((str(value).lower() == trainer_key) for value in hidden_list or [])
+
+
+def _strip_html(value: str | None) -> str:
+    if not value:
+        return ""
+    return re.sub(r"<[^>]+>", " ", value)
+
+
+def _looks_like_digital_code(msg: dict) -> bool:
+    msg_type = (msg.get("type") or "").strip().lower()
+    if msg_type != "system":
+        return False
+    subject = (_strip_html(msg.get("subject")) or "").lower()
+    body = (_strip_html(msg.get("message")) or "").lower()
+    haystack = f"{subject} {body}"
+    return any(keyword in haystack for keyword in DIGITAL_CODE_KEYWORDS)
+
+
 def _build_receipt_message(trainer, rec):
     """Turn a redemption record into an inbox-style 'message' dict."""
     item = rec.get("item_snapshot") or {}
@@ -7305,6 +7571,19 @@ def _build_receipt_message(trainer, rec):
     meetup_stamp = " ".join(part for part in [meetup_name, meetup_location] if part).strip()
     meetup_when = " ".join(part for part in [meetup_date, meetup_time] if part).strip()
 
+    metadata = _ensure_metadata_dict(rec.get("metadata"))
+    read_by = _normalize_user_list(rec.get("read_by") or metadata.get(INBOX_METADATA_READ_KEY) or [])
+    hidden_for = _normalize_user_list(metadata.get(INBOX_METADATA_HIDDEN_KEY) or rec.get("hidden_for") or [])
+    metadata.update({
+        INBOX_METADATA_READ_KEY: read_by,
+        "url": f"/catalog/receipt/{rec['id']}",
+        "cta_label": "View receipt",
+        "status": rec.get("status"),
+        "meetup": meetup if meetup else None,
+    })
+    if hidden_for:
+        metadata[INBOX_METADATA_HIDDEN_KEY] = hidden_for
+
     return {
         "id": f"rec:{rec['id']}",
         "subject": f"🧾 Receipt: {item_name}",
@@ -7316,13 +7595,8 @@ def _build_receipt_message(trainer, rec):
         ),
         "sent_at": _normalize_iso(rec.get("created_at")),
         "type": "receipt",
-        "read_by": [],
-        "metadata": {
-            "url": f"/catalog/receipt/{rec['id']}",
-            "cta_label": "View receipt",
-            "status": rec.get("status"),
-            "meetup": meetup if meetup else None,
-            }
+        "read_by": read_by,
+        "metadata": metadata,
     }
 
 @app.route("/inbox")
@@ -7333,15 +7607,35 @@ def inbox():
         return redirect(url_for("home"))
 
     trainer = session["trainer"]
+    trainer_key = trainer.lower()
     panel_mode = request.args.get("panel") == "1"
-    tab = request.args.get("tab", "all").lower()           # all | notifications | receipts
+    tab = request.args.get("tab", "all").lower()           # all | announcements | system | receipts
     sort_by = request.args.get("sort", "newest")           # newest | oldest | unread | read | type
+    try:
+        page = int(request.args.get("page", 1))
+    except (TypeError, ValueError):
+        page = 1
+    page = max(page, 1)
+    per_page = INBOX_PAGE_SIZE
+    valid_tabs = {"all", "announcements", "system", "receipts"}
+    if tab not in valid_tabs:
+        tab = "all"
 
     messages = []
 
+    def notification_category(record: dict) -> str:
+        if not isinstance(record, dict):
+            return "announcements"
+        type_key = (record.get("type") or "").strip().lower()
+        if type_key in RECEIPT_NOTIFICATION_TYPES:
+            return "receipts"
+        if type_key in SYSTEM_NOTIFICATION_TYPES:
+            return "system"
+        return "announcements"
+
     # --- Pull notifications (audience = trainer or ALL) ---
     notif_rows = []
-    if USE_SUPABASE and supabase and tab in ("all", "notifications"):
+    if USE_SUPABASE and supabase and tab in ("all", "announcements", "system"):
         try:
             nq = (supabase.table("notifications")
                   .select("*")
@@ -7357,8 +7651,10 @@ def inbox():
             nq = nq.order("sent_at", desc=(sort_by != "oldest"))
             notif_rows = nq.execute().data or []
 
-            if tab == "notifications":
-                notif_rows = [n for n in notif_rows if (n.get("type") or "").lower() != "receipt"]
+            notif_rows = [n for n in notif_rows if notification_category(n) != "receipts"]
+            notif_rows = [n for n in notif_rows if not _message_is_hidden(n, trainer)]
+            if tab in ("announcements", "system"):
+                notif_rows = [n for n in notif_rows if notification_category(n) == tab]
         except Exception as e:
             print("⚠️ Supabase notifications fetch failed:", e)
 
@@ -7371,12 +7667,15 @@ def inbox():
                   .eq("trainer_username", trainer)
                   .order("created_at", desc=(sort_by != "oldest")))
             raw = rq.execute().data or []
-            receipt_rows = [_build_receipt_message(trainer, r) for r in raw]
+            receipt_rows = [
+                msg for msg in (_build_receipt_message(trainer, r) for r in raw)
+                if not _message_is_hidden(msg, trainer)
+            ]
         except Exception as e:
             print("⚠️ Supabase receipts fetch failed:", e)
 
     # --- Merge ---
-    if tab == "notifications":
+    if tab in ("announcements", "system"):
         messages = notif_rows
     elif tab == "receipts":
         messages = receipt_rows
@@ -7396,14 +7695,50 @@ def inbox():
     else:  # newest
         messages.sort(key=lambda m: parse_dt_safe(m.get("sent_at")), reverse=True)
 
+    for msg in messages:
+        msg["is_digital_code"] = _looks_like_digital_code(msg)
+
+    total_messages = len(messages)
+
     if not messages:
         messages = [{
+            "id": f"placeholder-{uuid.uuid4().hex}",
             "subject": "📭 No messages yet",
             "message": "Your inbox is empty. You’ll see updates, receipts, and announcements here.",
             "sent_at": datetime.utcnow().replace(tzinfo=timezone.utc).isoformat(),
             "type": "info",
-            "read_by": []
+            "read_by": [trainer],
+            "metadata": {"is_placeholder": True},
+            "is_placeholder": True,
         }]
+        total_messages = 1
+        messages[0]["is_digital_code"] = False
+
+    page_count = max(1, math.ceil(total_messages / per_page))
+    if page > page_count:
+        page = page_count
+    start = (page - 1) * per_page
+    end = start + per_page
+    messages = messages[start:end]
+
+    def _pagination_url(target_page: int) -> str:
+        params = {
+            "tab": tab,
+            "sort": sort_by,
+            "page": target_page,
+        }
+        if panel_mode:
+            params["panel"] = 1
+        return url_for("inbox", **params)
+
+    pagination = {
+        "page": page,
+        "pages": page_count,
+        "per_page": per_page,
+        "total": total_messages,
+        "prev_url": _pagination_url(page - 1) if page > 1 else None,
+        "next_url": _pagination_url(page + 1) if page < page_count else None,
+    }
 
     bulletin_posts = get_community_bulletin_posts()
     latest_bulletin_post = bulletin_posts[0] if bulletin_posts else None
@@ -7416,6 +7751,7 @@ def inbox():
         inbox=messages,
         sort_by=sort_by,
         tab=tab,
+        pagination=pagination,
         show_back=False,
         latest_bulletin_post=latest_bulletin_post,
         panel_mode=panel_mode
@@ -7449,6 +7785,21 @@ def inbox_message(message_id):
             if (rec.get("trainer_username") or "").lower() != trainer.lower():
                 abort(403)
             msg = _build_receipt_message(trainer, rec)
+            rec_metadata = _ensure_metadata_dict(rec.get("metadata"))
+            read_by = _normalize_user_list(rec.get("read_by") or rec_metadata.get(INBOX_METADATA_READ_KEY))
+            lower_trainer = trainer.lower()
+            updated = False
+            if all(entry.lower() != lower_trainer for entry in read_by):
+                new_list = _append_username(read_by, trainer)
+                rec_metadata[INBOX_METADATA_READ_KEY] = new_list
+                try:
+                    supabase.table("redemptions").update({"metadata": rec_metadata}).eq("id", rec_id).execute()
+                    updated = True
+                except Exception as exc:
+                    print("⚠️ Failed to mark receipt as read:", exc)
+                if updated:
+                    msg["read_by"] = new_list
+                    msg.setdefault("metadata", {})[INBOX_METADATA_READ_KEY] = new_list
         except Exception as e:
             print("⚠️ inbox_message (receipt) fetch failed:", e)
             abort(500)
@@ -7478,6 +7829,133 @@ def inbox_message(message_id):
 
     template = "partials/_inbox_message_panel.html" if panel_mode else "inbox_message.html"
     return render_template(template, msg=msg, show_back=False, panel_mode=panel_mode)
+
+
+def _handle_notification_bulk_action(message_id: str, trainer: str, action: str) -> bool:
+    if not supabase:
+        return False
+    try:
+        resp = (
+            supabase.table("notifications")
+            .select("id, read_by, metadata")
+            .eq("id", message_id)
+            .limit(1)
+            .execute()
+        )
+    except Exception as exc:
+        print("⚠️ Bulk notification fetch failed:", exc)
+        return False
+    rows = resp.data or []
+    if not rows:
+        return False
+    row = rows[0]
+    metadata = _ensure_metadata_dict(row.get("metadata"))
+    read_by = _normalize_user_list(row.get("read_by") or metadata.get(INBOX_METADATA_READ_KEY))
+    hidden_for = _normalize_user_list(metadata.get(INBOX_METADATA_HIDDEN_KEY))
+
+    updates: dict[str, Any] = {}
+    changed = False
+    if action == "read":
+        new_list = _append_username(read_by, trainer)
+        if new_list != read_by:
+            updates["read_by"] = new_list
+            metadata[INBOX_METADATA_READ_KEY] = new_list
+            changed = True
+    elif action == "unread":
+        new_list = _remove_username(read_by, trainer)
+        if new_list != read_by:
+            updates["read_by"] = new_list
+            metadata[INBOX_METADATA_READ_KEY] = new_list
+            changed = True
+    elif action == "delete":
+        new_list = _append_username(hidden_for, trainer)
+        if new_list != hidden_for:
+            metadata[INBOX_METADATA_HIDDEN_KEY] = new_list
+            changed = True
+    if not changed:
+        return True
+    updates["metadata"] = metadata
+    try:
+        supabase.table("notifications").update(updates).eq("id", message_id).execute()
+        return True
+    except Exception as exc:
+        print("⚠️ Bulk notification update failed:", exc)
+        return False
+
+
+def _handle_receipt_bulk_action(message_id: str, trainer: str, action: str) -> bool:
+    if not supabase:
+        return False
+    rec_id = message_id.split("rec:", 1)[1] if ":" in message_id else message_id
+    try:
+        resp = (
+            supabase.table("redemptions")
+            .select("id, trainer_username, metadata, read_by")
+            .eq("id", rec_id)
+            .eq("trainer_username", trainer)
+            .limit(1)
+            .execute()
+        )
+    except Exception as exc:
+        print("⚠️ Bulk receipt fetch failed:", exc)
+        return False
+    rows = resp.data or []
+    if not rows:
+        return False
+    row = rows[0]
+    metadata = _ensure_metadata_dict(row.get("metadata"))
+    read_by = _normalize_user_list(row.get("read_by") or metadata.get(INBOX_METADATA_READ_KEY))
+    hidden_for = _normalize_user_list(metadata.get(INBOX_METADATA_HIDDEN_KEY))
+
+    changed = False
+    if action == "read":
+        new_list = _append_username(read_by, trainer)
+        if new_list != read_by:
+            metadata[INBOX_METADATA_READ_KEY] = new_list
+            changed = True
+    elif action == "unread":
+        new_list = _remove_username(read_by, trainer)
+        if new_list != read_by:
+            metadata[INBOX_METADATA_READ_KEY] = new_list
+            changed = True
+    elif action == "delete":
+        new_list = _append_username(hidden_for, trainer)
+        if new_list != hidden_for:
+            metadata[INBOX_METADATA_HIDDEN_KEY] = new_list
+            changed = True
+    if not changed:
+        return True
+    try:
+        supabase.table("redemptions").update({"metadata": metadata}).eq("id", rec_id).execute()
+        return True
+    except Exception as exc:
+        print("⚠️ Bulk receipt update failed:", exc)
+        return False
+
+
+@app.post("/api/inbox/bulk")
+def api_inbox_bulk_actions():
+    if "trainer" not in session:
+        return jsonify({"success": False, "error": "Please log in."}), 401
+    payload = request.get_json(silent=True) or {}
+    action = (payload.get("action") or "").strip().lower()
+    message_ids = payload.get("message_ids") or []
+    if action not in {"read", "unread", "delete"}:
+        return jsonify({"success": False, "error": "Invalid action."}), 400
+    if not isinstance(message_ids, list) or not message_ids:
+        return jsonify({"success": False, "error": "No messages selected."}), 400
+    trainer = session["trainer"]
+    results = []
+    for raw_id in message_ids:
+        message_id = str(raw_id or "").strip()
+        if not message_id:
+            continue
+        if message_id.startswith("rec:"):
+            ok = _handle_receipt_bulk_action(message_id, trainer, action)
+        else:
+            ok = _handle_notification_bulk_action(message_id, trainer, action)
+        results.append({"id": message_id, "success": ok})
+    return jsonify({"success": True, "results": results})
 
 
 @app.route("/community-bulletin")

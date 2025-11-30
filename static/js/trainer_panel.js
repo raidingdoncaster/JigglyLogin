@@ -170,6 +170,12 @@
         return;
       }
 
+      const redirectUrl = payload.redirect_url || payload.redirect;
+      if (redirectUrl) {
+        window.location.href = redirectUrl;
+        return;
+      }
+
       const nextUrl = payload.panel_url || root.dataset.panelRefreshUrl || "";
       let refreshed = true;
       if (nextUrl) {
@@ -212,6 +218,153 @@
     });
   }
 
+  function initAccountDeleteFlow(root) {
+    const flow = root.querySelector("[data-delete-flow]");
+    if (!flow || flow.dataset.deleteInit === "true") return;
+    flow.dataset.deleteInit = "true";
+
+    const steps = {
+      intro: flow.querySelector('[data-delete-step="intro"]'),
+      password: flow.querySelector('[data-delete-step="password"]'),
+      confirm: flow.querySelector('[data-delete-step="confirm"]'),
+    };
+    const alertBox = flow.querySelector("[data-delete-alert]");
+    const continueBtn = flow.querySelector("[data-delete-continue]");
+    const verifyBtn = flow.querySelector("[data-delete-verify]");
+    const passwordInput = flow.querySelector("[data-delete-password]");
+    const tokenInput = flow.querySelector("[data-delete-token]");
+    const passwordForm = steps.password && steps.password.tagName === "FORM" ? steps.password : null;
+    const verifyUrl = flow.getAttribute("data-delete-verify-url");
+
+    const setStep = (target) => {
+      Object.entries(steps).forEach(([name, element]) => {
+        if (!element) return;
+        element.hidden = name !== target;
+      });
+    };
+
+    const setAlert = (tone, message) => {
+      if (!alertBox) return;
+      if (!message) {
+        alertBox.textContent = "";
+        alertBox.className = "delete-account-alert";
+        alertBox.setAttribute("hidden", "");
+        return;
+      }
+      alertBox.textContent = message;
+      alertBox.className = tone ? `delete-account-alert is-${tone}` : "delete-account-alert";
+      alertBox.removeAttribute("hidden");
+    };
+
+    const setButtonLoading = (button, loading) => {
+      if (!button) return;
+      if (!button.dataset.defaultLabel) {
+        button.dataset.defaultLabel = button.textContent || "";
+      }
+      if (loading) {
+        const loadingLabel = button.dataset.loadingLabel || "Working…";
+        button.disabled = true;
+        button.textContent = loadingLabel;
+      } else {
+        button.disabled = false;
+        button.textContent = button.dataset.defaultLabel || button.textContent;
+      }
+    };
+
+    setStep("intro");
+
+    if (continueBtn) {
+      continueBtn.addEventListener("click", () => {
+        setAlert("", "");
+        setStep("password");
+        if (passwordInput) {
+          passwordInput.focus();
+        }
+      });
+    }
+
+    const backButtons = flow.querySelectorAll("[data-delete-back]");
+    backButtons.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const target = btn.getAttribute("data-delete-back-step") || "intro";
+        if (target === "intro" && passwordInput) {
+          passwordInput.value = "";
+        }
+        if (target !== "confirm" && tokenInput) {
+          tokenInput.value = "";
+        }
+        setAlert("", "");
+        setStep(target);
+        if (target === "password" && passwordInput) {
+          passwordInput.focus();
+        }
+      });
+    });
+
+    if (passwordForm && verifyBtn) {
+      passwordForm.addEventListener("submit", (event) => {
+        event.preventDefault();
+        verifyBtn.click();
+      });
+    }
+
+    if (verifyBtn) {
+      verifyBtn.addEventListener("click", async () => {
+        if (!verifyUrl) {
+          setAlert("error", "Verification endpoint missing.");
+          return;
+        }
+        const passwordValue = (passwordInput ? passwordInput.value : "").trim();
+        if (!passwordValue) {
+          setAlert("error", "Enter the admin dashboard password.");
+          if (passwordInput) {
+            passwordInput.focus();
+          }
+          return;
+        }
+        setButtonLoading(verifyBtn, true);
+        setAlert("info", "Verifying admin password…");
+        try {
+          const response = await fetch(verifyUrl, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-Requested-With": "XMLHttpRequest",
+            },
+            body: JSON.stringify({ admin_password: passwordValue }),
+          });
+          let payload = {};
+          try {
+            payload = await response.json();
+          } catch (err) {
+            payload = {};
+          }
+          if (!response.ok || payload.success === false) {
+            const msg =
+              payload && payload.message
+                ? payload.message
+                : "Incorrect admin dashboard password.";
+            setAlert("error", msg);
+            return;
+          }
+          if (tokenInput) {
+            tokenInput.value = payload.delete_token || "";
+          }
+          if (passwordInput) {
+            passwordInput.value = "";
+          }
+          setAlert("success", "Password verified. Confirm deletion to continue.");
+          setStep("confirm");
+        } catch (err) {
+          console.error("Trainer delete verification failed:", err);
+          setAlert("error", "Unable to verify admin password right now.");
+        } finally {
+          setButtonLoading(verifyBtn, false);
+        }
+      });
+    }
+  }
+
   function initTrainerPanel(root) {
     if (!root) return;
     const boxes = root.querySelectorAll("[data-action-box]");
@@ -232,6 +385,7 @@
 
     initPassportDrawer(root);
     initModalForms(root);
+    initAccountDeleteFlow(root);
   }
 
   window.initTrainerPanel = initTrainerPanel;

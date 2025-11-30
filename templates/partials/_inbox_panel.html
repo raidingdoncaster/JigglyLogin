@@ -1,4 +1,7 @@
 {% set panel_mode = panel_mode | default(false) %}
+{% set search_id = 'inboxSearchPanel' if panel_mode else 'inboxSearchPage' %}
+{% set pagination = pagination or {'page': 1, 'pages': 1, 'per_page': inbox|length, 'total': inbox|length} %}
+{% set has_real_messages = inbox|length > 0 and not inbox[0].get('is_placeholder') %}
 <section class="inbox-panel {{ 'inbox-panel--modal' if panel_mode else 'inbox-panel--page' }}">
   <header class="inbox-panel__header">
     <div class="inbox-panel__title">
@@ -21,60 +24,164 @@
       <a class="pill {{ 'is-active' if tab == 'all' else '' }}"
          href="{{ url_for('inbox', tab='all', sort=sort_by, panel=1 if panel_mode else None) }}"
          {% if panel_mode %}data-inbox-panel-link="true"{% endif %}>All</a>
-      <a class="pill {{ 'is-active' if tab == 'notifications' else '' }}"
-         href="{{ url_for('inbox', tab='notifications', sort=sort_by, panel=1 if panel_mode else None) }}"
-         {% if panel_mode %}data-inbox-panel-link="true"{% endif %}>Notifications</a>
+      <a class="pill {{ 'is-active' if tab == 'announcements' else '' }}"
+         href="{{ url_for('inbox', tab='announcements', sort=sort_by, panel=1 if panel_mode else None) }}"
+         {% if panel_mode %}data-inbox-panel-link="true"{% endif %}>Announcements</a>
+      <a class="pill {{ 'is-active' if tab == 'system' else '' }}"
+         href="{{ url_for('inbox', tab='system', sort=sort_by, panel=1 if panel_mode else None) }}"
+         {% if panel_mode %}data-inbox-panel-link="true"{% endif %}>System</a>
       <a class="pill {{ 'is-active' if tab == 'receipts' else '' }}"
          href="{{ url_for('inbox', tab='receipts', sort=sort_by, panel=1 if panel_mode else None) }}"
          {% if panel_mode %}data-inbox-panel-link="true"{% endif %}>Receipts</a>
     </nav>
 
-    <form method="get"
-          class="inbox-panel__sort"
-          action="{{ url_for('inbox') }}"
-          {% if panel_mode %}data-inbox-panel-form="true"{% endif %}>
-      <input type="hidden" name="tab" value="{{ tab }}">
-      {% if panel_mode %}<input type="hidden" name="panel" value="1">{% endif %}
-      <label for="sort" class="sr-only">Sort by</label>
-      <select name="sort" id="sort" data-inbox-sort-select="true" onchange="this.form.submit()">
-        <option value="newest" {% if sort_by == 'newest' %}selected{% endif %}>Newest first</option>
-        <option value="oldest" {% if sort_by == 'oldest' %}selected{% endif %}>Oldest first</option>
-        <option value="unread" {% if sort_by == 'unread' %}selected{% endif %}>Unread only</option>
-        <option value="read" {% if sort_by == 'read' %}selected{% endif %}>Read only</option>
-        <option value="type" {% if sort_by == 'type' %}selected{% endif %}>By type</option>
-      </select>
-    </form>
+    <div class="inbox-panel__filters">
+      <form method="get"
+            class="inbox-panel__sort"
+            action="{{ url_for('inbox') }}"
+            {% if panel_mode %}data-inbox-panel-form="true"{% endif %}>
+        <input type="hidden" name="tab" value="{{ tab }}">
+        <input type="hidden" name="page" value="1">
+        {% if panel_mode %}<input type="hidden" name="panel" value="1">{% endif %}
+        <label for="sort" class="sr-only">Sort by</label>
+        <select name="sort" id="sort" data-inbox-autosubmit>
+          <option value="newest" {% if sort_by == 'newest' %}selected{% endif %}>Newest first</option>
+          <option value="oldest" {% if sort_by == 'oldest' %}selected{% endif %}>Oldest first</option>
+          <option value="unread" {% if sort_by == 'unread' %}selected{% endif %}>Unread only</option>
+          <option value="read" {% if sort_by == 'read' %}selected{% endif %}>Read only</option>
+          <option value="type" {% if sort_by == 'type' %}selected{% endif %}>By type</option>
+        </select>
+      </form>
+      <button type="button"
+              class="inbox-panel__search-toggle"
+              data-inbox-search-toggle
+              aria-controls="{{ search_id }}"
+              aria-expanded="false">
+        🔍
+        <span class="sr-only">Search inbox</span>
+      </button>
+      <button type="button"
+              class="inbox-panel__select-toggle"
+              data-inbox-select-toggle
+              aria-pressed="false"
+              {% if not has_real_messages %}disabled{% endif %}>
+        ☑
+        <span class="sr-only">Select messages</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="inbox-panel__search" id="{{ search_id }}" data-inbox-search hidden>
+    <div class="inbox-panel__search-bar">
+      <span aria-hidden="true">🔍</span>
+      <input type="search"
+             placeholder="Search your inbox"
+             autocomplete="off"
+             data-inbox-search-input>
+      <button type="button" data-inbox-search-clear>Clear</button>
+    </div>
+    <p class="inbox-panel__search-count" data-inbox-search-count></p>
+  </div>
+  <p class="inbox-panel__search-empty" data-inbox-search-empty hidden>No messages match your search.</p>
+
+  <div class="inbox-panel__bulk" data-inbox-bulk hidden>
+    <div class="inbox-panel__bulk-count">
+      <span data-inbox-bulk-count>0 selected</span>
+    </div>
+    <div class="inbox-panel__bulk-actions">
+      <button type="button" data-inbox-bulk-action="read">Mark read</button>
+      <button type="button" data-inbox-bulk-action="unread">Mark unread</button>
+      <button type="button" class="danger" data-inbox-bulk-action="delete">Delete</button>
+    </div>
   </div>
 
   <div class="inbox-list" role="list">
     {% for msg in inbox %}
       {% set read = trainer in (msg.read_by or []) %}
-      <a href="{{ url_for('inbox_message', message_id=msg.id, panel=1 if panel_mode else None) }}"
-         class="mail-card {{ 'is-read' if read else 'is-unread' }}"
-         style="--card-delay: {{ '%.2f'|format(loop.index0 * 0.07) }}s;"
-         {% if panel_mode %}data-inbox-panel-link="true"{% endif %}
-         role="listitem">
-        <div class="mail-card__head">
-          <div class="mail-card__subject">
-            <span class="mail-card__status-dot"></span>
-            <span>{{ msg.subject }}</span>
+      {% set is_placeholder = msg.get('is_placeholder') %}
+      {% set is_digital = msg.get('is_digital_code') %}
+      {% set message_url = url_for('inbox_message', message_id=msg.id) %}
+      <article class="mail-card {{ 'is-read' if read else 'is-unread' }} {{ 'mail-card--digital' if is_digital else '' }}"
+               data-message-id="{{ msg.id }}"
+               data-message-type="{{ (msg.type or '')|lower }}"
+               data-message-read="{{ 'true' if read else 'false' }}"
+               data-message-placeholder="{{ 'true' if is_placeholder else 'false' }}"
+               style="--card-delay: {{ '%.2f'|format(loop.index0 * 0.06) }}s;"
+               role="listitem">
+        {% if not is_placeholder %}
+        <label class="mail-card__select">
+          <input type="checkbox"
+                 value="{{ msg.id }}"
+                 data-inbox-select
+                 aria-label="Select message {{ msg.subject }}">
+          <span></span>
+        </label>
+        {% endif %}
+        {% if is_placeholder %}
+        <div class="mail-card__body is-placeholder">
+          <div class="mail-card__head">
+            <div class="mail-card__subject">
+              <span class="mail-card__status-dot"></span>
+              <span>{{ msg.subject }}</span>
+            </div>
+            <span class="mail-card__date">{{ msg.sent_at|to_date }}</span>
           </div>
-          <span class="mail-card__date">{{ msg.sent_at|to_date }}</span>
+          <div class="mail-card__meta"></div>
+          <p class="mail-card__snippet">{{ msg.message|striptags }}</p>
         </div>
-        <div class="mail-card__meta">
-          {% if msg.type %}
-            <span class="type-pill">{{ msg.type }}</span>
-          {% endif %}
-          {% if not read %}
-            <span class="mail-card__badge">New</span>
-          {% endif %}
-        </div>
-        <p class="mail-card__snippet">{{ msg.message|striptags|replace('\r\n', ' ')|replace('\n', ' ')|truncate(120) }}</p>
-      </a>
+        {% else %}
+        <a class="mail-card__body"
+           href="{{ message_url }}"
+           data-open-inbox-message>
+          <div class="mail-card__head">
+            <div class="mail-card__subject">
+              <span class="mail-card__status-dot"></span>
+              <span>{{ msg.subject }}</span>
+            </div>
+            <span class="mail-card__date">{{ msg.sent_at|to_date }}</span>
+          </div>
+          <div class="mail-card__meta">
+            {% if msg.type %}
+              <span class="type-pill">{{ msg.type }}</span>
+            {% endif %}
+            {% if is_digital %}
+              <span class="mail-card__badge mail-card__badge--digital">Digital reward</span>
+            {% elif not read %}
+              <span class="mail-card__badge" data-mail-new-badge>New</span>
+            {% endif %}
+          </div>
+          <p class="mail-card__snippet">
+            {{ msg.message|striptags|replace('\r\n', ' ')|replace('\n', ' ')|truncate(160) }}
+          </p>
+        </a>
+        {% endif %}
+      </article>
     {% else %}
-      <p class="empty-state">No messages yet.</p>
+      <p class="empty-state" data-empty-state>No messages yet.</p>
     {% endfor %}
   </div>
+
+  {% if pagination.pages > 1 %}
+  <nav class="inbox-pagination" aria-label="Inbox pages">
+    {% if pagination.prev_url %}
+      <a class="inbox-pagination__btn"
+         href="{{ pagination.prev_url }}"
+         {% if panel_mode %}data-inbox-panel-link="true"{% endif %}>← Previous</a>
+    {% else %}
+      <span class="inbox-pagination__btn is-disabled" aria-disabled="true">← Previous</span>
+    {% endif %}
+    <span class="inbox-pagination__info">
+      Page {{ pagination.page }} of {{ pagination.pages }}
+    </span>
+    {% if pagination.next_url %}
+      <a class="inbox-pagination__btn"
+         href="{{ pagination.next_url }}"
+         {% if panel_mode %}data-inbox-panel-link="true"{% endif %}>Next →</a>
+    {% else %}
+      <span class="inbox-pagination__btn is-disabled" aria-disabled="true">Next →</span>
+    {% endif %}
+  </nav>
+  {% endif %}
 
   {% if not panel_mode %}
   <div class="actions-row">
@@ -159,6 +266,11 @@
   align-items:center;
   padding:10px 0;
 }
+.inbox-panel__filters{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
 .pill-tabs{
   display:flex;
   gap:8px;
@@ -206,6 +318,163 @@
   transition:transform .5s cubic-bezier(.19,1,.22,1);
   transform-origin:center;
 }
+.inbox-panel__search-toggle{
+  width:42px;
+  height:42px;
+  border-radius:50%;
+  border:none;
+  background:rgba(15,23,42,0.08);
+  color:#0f172a;
+  font-size:1.1em;
+  cursor:pointer;
+  box-shadow:0 8px 18px rgba(15,23,42,0.15);
+  transition:transform .2s ease, background .2s ease, color .2s ease;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.inbox-panel__search-toggle:hover{
+  transform:translateY(-1px);
+}
+.inbox-panel__search-toggle.is-active{
+  background:linear-gradient(135deg,#3a8dde,#5eb8ff);
+  color:#fff;
+  box-shadow:0 10px 22px rgba(58,141,222,0.35);
+}
+.inbox-panel__select-toggle{
+  width:42px;
+  height:42px;
+  border-radius:50%;
+  border:none;
+  background:rgba(15,23,42,0.05);
+  color:#0f172a;
+  font-size:1em;
+  cursor:pointer;
+  box-shadow:0 8px 18px rgba(15,23,42,0.12);
+  transition:transform .2s ease, background .2s ease, color .2s ease;
+}
+.inbox-panel__select-toggle[disabled]{
+  opacity:0.5;
+  cursor:not-allowed;
+}
+.inbox-panel__select-toggle[aria-pressed="true"]{
+  background:linear-gradient(135deg,#22c55e,#4ade80);
+  color:#064e3b;
+}
+.inbox-panel__search{
+  border-radius:18px;
+  padding:14px;
+  background:rgba(15,23,42,0.04);
+  border:1px solid rgba(148,163,184,0.35);
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  animation:inboxSearchSlide .25s ease;
+}
+.inbox-panel__search[hidden]{
+  display:none;
+}
+.inbox-panel__search-bar{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:8px 12px;
+  background:#fff;
+  border-radius:12px;
+  border:1px solid rgba(148,163,184,0.5);
+  box-shadow:inset 0 1px 2px rgba(15,23,42,0.08);
+}
+.inbox-panel__search-bar span{
+  font-size:1.1em;
+}
+.inbox-panel__search-bar input{
+  flex:1;
+  border:none;
+  background:transparent;
+  font-size:0.95em;
+  color:#0f172a;
+}
+.inbox-panel__search-bar input:focus{
+  outline:none;
+}
+.inbox-panel__search-bar button{
+  border:none;
+  border-radius:999px;
+  padding:4px 12px;
+  background:rgba(15,23,42,0.08);
+  font-weight:600;
+  cursor:pointer;
+}
+.inbox-panel__search-count{
+  margin:0;
+  font-size:0.85em;
+  color:#475569;
+}
+.inbox-panel__search-empty{
+  margin:0;
+  padding:10px 14px;
+  border-radius:12px;
+  background:rgba(244,247,252,0.9);
+  color:#475569;
+  font-weight:600;
+}
+.inbox-panel__search-empty[hidden]{
+  display:none;
+}
+.inbox-panel__search.is-open .inbox-panel__search-bar{
+  outline:2px solid rgba(58,141,222,0.25);
+}
+.inbox-panel__search.is-open{
+  box-shadow:0 12px 26px rgba(15,23,42,0.12);
+}
+
+.inbox-panel__bulk{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:12px;
+  padding:10px 14px;
+  border-radius:14px;
+  background:rgba(15,23,42,0.05);
+  border:1px solid rgba(148,163,184,0.3);
+  animation:inboxSearchSlide .25s ease;
+}
+.inbox-panel__bulk[hidden]{ display:none; }
+.inbox-panel__bulk-count{
+  font-weight:600;
+  color:#0f172a;
+}
+.inbox-panel__bulk-actions{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+}
+.inbox-panel__bulk-actions button{
+  border:none;
+  border-radius:999px;
+  padding:6px 12px;
+  font-weight:600;
+  cursor:pointer;
+  background:#fff;
+  color:#0f172a;
+  box-shadow:0 6px 14px rgba(15,23,42,0.1);
+}
+.inbox-panel__bulk-actions button.danger{
+  background:#fee2e2;
+  color:#b91c1c;
+}
+.inbox-panel__bulk-actions button:disabled{
+  opacity:0.5;
+}
+.inbox-panel__filters,
+.inbox-panel__search-toggle,
+.inbox-panel__search,
+.inbox-panel__select-toggle{
+  flex-shrink:0;
+}
+.inbox-panel__filters{
+  flex-wrap:wrap;
+}
 .inbox-panel__sort select.is-flipping{
   transform:perspective(600px) rotateX(18deg) scale(1.02);
 }
@@ -216,33 +485,70 @@
 }
 .mail-card{
   display:flex;
-  flex-direction:column;
-  gap:10px;
-  padding:16px 18px;
-  border-radius:18px;
-  text-decoration:none;
-  background:rgba(255,255,255,0.9);
-  border:1px solid rgba(148,163,184,0.25);
-  box-shadow:0 12px 28px rgba(15,23,42,0.12);
+  align-items:stretch;
+  gap:12px;
+  padding:12px;
+  border-radius:16px;
+  background:#fff;
+  border:1px solid rgba(148,163,184,0.3);
+  box-shadow:0 8px 24px rgba(15,23,42,0.12);
   color:#0f172a;
-  transition:transform .2s ease, box-shadow .2s ease;
+  transition:transform .2s ease, box-shadow .2s ease, border-color .2s ease;
   position:relative;
+  overflow:hidden;
   opacity:0;
-  transform:translateY(14px) scale(0.98);
-  animation: mailCardEnter .55s var(--card-delay,0s) cubic-bezier(.2,.8,.2,1) forwards;
+  transform:translateY(12px) scale(0.98);
+  animation:mailCardEnter .5s var(--card-delay,0s) cubic-bezier(.2,.8,.2,1) forwards;
+}
+.mail-card__body{
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  text-decoration:none;
+  color:inherit;
+  position:relative;
+  z-index:1;
+}
+.mail-card__body.is-placeholder{
+  pointer-events:none;
 }
 .mail-card.is-unread{
-  border:1px solid rgba(58,141,222,0.4);
-  background:linear-gradient(135deg,rgba(58,141,222,0.12),rgba(255,255,255,0.95));
+  border-color:rgba(58,141,222,0.45);
+  box-shadow:0 12px 26px rgba(58,141,222,0.18);
+  background:linear-gradient(135deg,rgba(58,141,222,0.08),rgba(255,255,255,0.98));
+}
+.mail-card.selected{
+  border-color:#3a8dde;
+  box-shadow:0 12px 30px rgba(58,141,222,0.25);
 }
 .mail-card:hover{
-  transform:translateY(-4px);
-  box-shadow:0 18px 36px rgba(15,23,42,0.18);
+  transform:translateY(-3px);
+}
+.mail-card__select{
+  width:32px;
+  display:flex;
+  align-items:flex-start;
+  justify-content:center;
+  opacity:0;
+  pointer-events:none;
+  transition:opacity .2s ease;
+}
+.mail-card__select input{
+  width:18px;
+  height:18px;
+}
+.inbox-panel.is-selecting .mail-card__select{
+  opacity:1;
+  pointer-events:auto;
+}
+.inbox-panel.is-selecting .mail-card{
+  padding-left:8px;
 }
 .mail-card__head{
   display:flex;
   justify-content:space-between;
-  gap:12px;
+  gap:10px;
   align-items:flex-start;
 }
 .mail-card__subject{
@@ -251,6 +557,7 @@
   gap:8px;
   font-weight:700;
   font-size:1em;
+  line-height:1.3;
 }
 .mail-card__status-dot{
   width:10px;
@@ -258,6 +565,7 @@
   background:#3a8dde;
   border-radius:50%;
   box-shadow:0 0 0 4px rgba(58,141,222,0.15);
+  flex-shrink:0;
 }
 .mail-card.is-read .mail-card__status-dot{
   background:#cbd5f5;
@@ -267,7 +575,7 @@
   animation: unreadPulse 1.6s ease-in-out 2;
 }
 .mail-card__date{
-  font-size:.82em;
+  font-size:.8em;
   color:#64748b;
   flex-shrink:0;
 }
@@ -287,6 +595,11 @@
   border-radius:999px;
   font-weight:700;
 }
+.mail-card__badge--digital{
+  background:rgba(236,72,153,0.2);
+  color:#be185d;
+}
+.mail-card__badge[data-mail-new-badge][hidden]{ display:none; }
 .type-pill {
   font-size: 0.75em;
   padding: 2px 8px;
@@ -299,10 +612,59 @@
 .mail-card__snippet{
   margin:0;
   color:#475569;
-  font-size:.92em;
+  font-size:.9em;
   line-height:1.4;
+  display:-webkit-box;
+  -webkit-line-clamp:2;
+  -webkit-box-orient:vertical;
+  overflow:hidden;
+  min-height:2.4em;
+}
+.mail-card--digital{
+  background:linear-gradient(120deg,rgba(255,192,203,0.25),rgba(255,249,196,0.9));
+  border-color:rgba(249,168,212,0.8);
+  position:relative;
+  animation:digitalPulse 6s ease-in-out infinite;
+}
+.mail-card::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  z-index:0;
+  pointer-events:none;
+}
+.mail-card--digital::after{
+  background-image:url("data:image/svg+xml,%3Csvg width='180' height='120' viewBox='0 0 180 120' xmlns='http://www.w3.org/2000/svg'%3E%3Cg opacity='0.35' stroke='%23f472b6' stroke-width='4' fill='none'%3E%3Cpath d='M-20 30 L50 0 L120 30 L190 0 L260 30'/%3E%3C/g%3E%3C/svg%3E");
+  background-size:160px 110px;
+  opacity:0.45;
+  pointer-events:none;
 }
 .actions-row{margin-top:20px;text-align:center;}
+.inbox-pagination{
+  margin-top:18px;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  gap:16px;
+  font-weight:600;
+  color:#0f172a;
+}
+.inbox-pagination__btn{
+  text-decoration:none;
+  padding:8px 14px;
+  border-radius:999px;
+  background:#fff;
+  border:1px solid rgba(148,163,184,0.4);
+  box-shadow:0 6px 14px rgba(15,23,42,0.08);
+}
+.inbox-pagination__btn.is-disabled{
+  opacity:0.45;
+  pointer-events:none;
+}
+.inbox-pagination__info{
+  color:#475569;
+  font-weight:500;
+}
 .btn {
   display:inline-flex;
   align-items:center;
@@ -335,17 +697,41 @@
   60%{transform:scale(1.15) rotate(4deg); opacity:1;}
   100%{transform:scale(1) rotate(0);}
 }
+@keyframes inboxSearchSlide{
+  0%{opacity:0; transform:translateY(-6px);}
+  100%{opacity:1; transform:translateY(0);}
+}
+@keyframes digitalPulse{
+  0%{transform:scale(1);}
+  50%{transform:scale(1.01);}
+  100%{transform:scale(1);}
+}
 @media (max-width:540px){
   .inbox-panel__controls{
     flex-direction:column;
     align-items:flex-start;
   }
+  .inbox-panel__filters{
+    width:100%;
+    justify-content:space-between;
+  }
+  .inbox-panel__sort{
+    flex:1;
+  }
   .inbox-panel__sort select{
     width:100%;
   }
+  .inbox-panel__search-toggle{
+    width:38px;
+    height:38px;
+  }
+  .inbox-panel__bulk{
+    flex-direction:column;
+    align-items:flex-start;
+  }
   .mail-card{
     padding:14px 16px;
-  }
+    }
 }
 @media (prefers-reduced-motion: reduce){
   .mail-card,

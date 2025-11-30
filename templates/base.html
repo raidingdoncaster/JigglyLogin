@@ -66,6 +66,122 @@
       color:inherit;
     }
 
+    /* Gentle section shimmer + fade-in */
+    section[data-section-loader]{
+      position:relative;
+      min-height:32px;
+      opacity:0;
+      transform:translateY(6px);
+      transition:opacity .45s ease, transform .45s ease;
+      will-change:opacity, transform;
+    }
+    section[data-section-loader]::after{
+      content:"";
+      position:absolute;
+      inset:0;
+      border-radius:inherit;
+      background:linear-gradient(120deg,rgba(255,255,255,0.8),rgba(255,255,255,0.45) 35%,rgba(179,211,255,0.5) 60%,rgba(255,255,255,0.8));
+      background-size:220% 100%;
+      opacity:0;
+      pointer-events:none;
+      transition:opacity .35s ease;
+    }
+    section[data-section-loader]:not([data-section-ready])::after{
+      opacity:1;
+      animation:sectionShimmer 1.85s ease-in-out infinite;
+    }
+    section[data-section-ready]{
+      opacity:1;
+      transform:none;
+    }
+
+    /* Global image shell + spinner */
+    .img-shell{
+      position:relative;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      line-height:0;
+      border-radius:var(--img-shell-radius,14px);
+      isolation:isolate;
+    }
+    .img-shell[data-layout="block"]{
+      display:block;
+    }
+    .img-shell[data-loading="true"]{
+      overflow:hidden;
+    }
+    .img-shell[data-loading="true"]::before{
+      content:"";
+      position:absolute;
+      inset:0;
+      border-radius:inherit;
+      background:linear-gradient(130deg,rgba(15,23,42,0.04),rgba(58,141,222,0.1),rgba(15,23,42,0.04));
+      background-size:220% 100%;
+      animation:sectionShimmer 2.1s linear infinite;
+      opacity:1;
+      pointer-events:none;
+      z-index:1;
+    }
+    .img-shell::after{
+      content:"";
+      position:absolute;
+      width:34px;
+      height:34px;
+      border-radius:50%;
+      border:3px solid rgba(255,255,255,0.55);
+      border-top-color:var(--brand);
+      animation:spinGentle .95s linear infinite;
+      opacity:0;
+      pointer-events:none;
+      z-index:2;
+      box-shadow:0 4px 12px rgba(15,23,42,0.08);
+      background:rgba(255,255,255,0.8);
+    }
+    .img-shell[data-loading="true"]::after{
+      opacity:1;
+    }
+    [data-image-loader-target]{
+      opacity:0;
+      transform:translateY(6px) scale(.985);
+      transition:opacity .45s ease, transform .45s ease;
+    }
+    .img-shell.is-loaded[data-loading="false"]::before,
+    .img-shell.is-loaded[data-loading="false"]::after{
+      opacity:0;
+      animation-play-state:paused;
+    }
+    .img-shell.is-loaded [data-image-loader-target]{
+      opacity:1;
+      transform:none;
+    }
+    .img-shell[data-image-error="true"]::before{
+      background:linear-gradient(120deg,rgba(248,113,113,0.25),rgba(239,68,68,0.35));
+      animation:none;
+    }
+    .img-shell[data-image-error="true"]::after{
+      width:auto;
+      height:auto;
+      border:none;
+      padding:2px 10px;
+      border-radius:999px;
+      background:#ef4444;
+      color:#fff;
+      font-size:.85rem;
+      font-weight:600;
+      content:"Image unavailable";
+      animation:none;
+    }
+
+    @keyframes sectionShimmer{
+      0%{background-position:210% 0;}
+      100%{background-position:-210% 0;}
+    }
+    @keyframes spinGentle{
+      0%{transform:rotate(0deg);}
+      100%{transform:rotate(360deg);}
+    }
+
     /* Header */
     .site-header{
       position:fixed; top:0; left:0; right:0; z-index:6000;
@@ -208,6 +324,66 @@
       padding:30px 10px;
       color:#0f172a;
     }
+    .inbox-message-overlay,
+    .inbox-receipt-overlay{
+      position:fixed;
+      inset:0;
+      background:rgba(2,6,23,0.65);
+      display:flex;
+      align-items:flex-start;
+      justify-content:center;
+      padding:80px 16px 24px;
+      backdrop-filter:blur(4px);
+      z-index:7000;
+      opacity:0;
+      pointer-events:none;
+      transition:opacity .25s ease;
+    }
+    .inbox-message-overlay.is-visible,
+    .inbox-receipt-overlay.is-visible{
+      opacity:1;
+      pointer-events:auto;
+    }
+    .inbox-message-dialog,
+    .inbox-receipt-dialog{
+      position:relative;
+      width:min(540px,100%);
+      max-height:90vh;
+      background:#fff;
+      border-radius:24px;
+      box-shadow:0 30px 70px rgba(15,23,42,0.45);
+      padding:22px;
+      overflow:auto;
+      transform:translateY(20px);
+      transition:transform .25s ease;
+    }
+    .inbox-message-overlay.is-visible .inbox-message-dialog,
+    .inbox-receipt-overlay.is-visible .inbox-receipt-dialog{
+      transform:translateY(0);
+    }
+    .inbox-message-close,
+    .inbox-receipt-close{
+      position:absolute;
+      top:12px;
+      right:12px;
+      width:38px;
+      height:38px;
+      border-radius:50%;
+      border:none;
+      background:rgba(15,23,42,0.08);
+      font-size:1.1rem;
+      cursor:pointer;
+    }
+    #inboxMessageContent{
+      min-height:120px;
+    }
+    #inboxReceiptFrame{
+      width:100%;
+      height:70vh;
+      border:none;
+      border-radius:18px;
+      background:#f8fafc;
+    }
     .inbox-panel__error{ color:#b91c1c; }
     body.has-inbox-panel{
       overflow:hidden;
@@ -240,6 +416,9 @@
       font-size: 0.75em;
       font-weight: 700;
       box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+    .inbox-badge[hidden]{
+      display:none;
     }
 
     /* Avatar dropdown */
@@ -613,6 +792,23 @@
       font-weight: 600;
       cursor: not-allowed;
     }
+    .trainer-profile-card__copy-toast {
+      margin-top: 10px;
+      padding: 10px 14px;
+      border-radius: 14px;
+      background: #0f172a;
+      color: #fff;
+      font-weight: 600;
+      font-size: 0.85rem;
+      box-shadow: 0 12px 30px rgba(15, 23, 42, 0.35);
+      opacity: 0;
+      transform: translateY(6px);
+      transition: opacity 0.2s ease, transform 0.2s ease;
+    }
+    .trainer-profile-card__copy-toast.is-visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
     .trainer-profile-card__body {
       padding: 28px;
       display: flex;
@@ -848,6 +1044,322 @@
       }
     }
 
+    /* === Trainer profile concept overrides === */
+    .trainer-profile-card {
+      width: min(420px, calc(100vw - 32px));
+      align-self: center;
+    }
+    .trainer-profile-card__frame {
+      position: relative;
+      border-radius: 32px;
+      overflow: hidden;
+      background: #fff;
+      box-shadow: 0 30px 80px rgba(15, 23, 42, 0.35);
+      display: flex;
+      flex-direction: column;
+      max-height: min(680px, 85vh);
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(15,23,42,0.35) rgba(226,232,240,0.6);
+    }
+    .trainer-profile-card__frame::-webkit-scrollbar{
+      width:6px;
+    }
+    .trainer-profile-card__frame::-webkit-scrollbar-track{
+      background:rgba(226,232,240,0.6);
+    }
+    .trainer-profile-card__frame::-webkit-scrollbar-thumb{
+      background:rgba(15,23,42,0.35);
+      border-radius:999px;
+    }
+    .trainer-profile-card__frame::before,
+    .trainer-profile-card__frame::after{
+      content:"";
+      position:sticky;
+      left:0;
+      right:0;
+      height:28px;
+      pointer-events:none;
+      z-index:5;
+    }
+    .trainer-profile-card__frame::before{
+      top:0;
+      background:linear-gradient(180deg,rgba(8,15,37,0.12),rgba(8,15,37,0));
+    }
+    .trainer-profile-card__frame::after{
+      bottom:0;
+      background:linear-gradient(0deg,rgba(8,15,37,0.12),rgba(8,15,37,0));
+    }
+    .trainer-profile-card__hero {
+      background: linear-gradient(140deg, #6b0f1a, #b91372 55%, #f94a1e);
+      padding: 28px;
+      min-height: 260px;
+      position: relative;
+      color: #fff;
+      gap: 18px;
+    }
+    .trainer-profile-card__hero::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(180deg, rgba(8, 12, 28, 0.2), rgba(5, 8, 24, 0.85));
+      pointer-events: none;
+    }
+    .trainer-profile-card__hero > * {
+      position: relative;
+      z-index: 1;
+    }
+    .trainer-profile-card__eyebrow {
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      font-size: 0.75rem;
+      font-weight: 700;
+      margin: 0;
+      color: rgba(255,255,255,0.85);
+    }
+    .trainer-profile-card__identity {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+    }
+    .trainer-profile-card__avatar {
+      width: 86px;
+      height: 86px;
+      border-radius: 50%;
+      border: 3px solid rgba(255,255,255,0.85);
+      overflow: hidden;
+      box-shadow: 0 16px 32px rgba(0,0,0,0.45);
+      flex-shrink: 0;
+    }
+    .trainer-profile-card__avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .trainer-profile-card__account {
+      margin: 0;
+      text-transform: uppercase;
+      letter-spacing: 0.2em;
+      font-size: 0.75rem;
+      color: rgba(255,255,255,0.75);
+    }
+    .trainer-profile-card__hero h3 {
+      margin: 4px 0 0;
+      font-size: 2rem;
+      line-height: 1.1;
+    }
+    .trainer-profile-card__hero-stats dt {
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.75);
+      font-size: 0.7rem;
+      margin: 0;
+    }
+    .trainer-profile-card__hero-stats dd {
+      margin: 8px 0 0;
+      font-size: 1.5rem;
+      font-weight: 700;
+    }
+    .trainer-profile-card__code-row {
+      background: rgba(0,0,0,0.3);
+      border-radius: 18px;
+      padding: 14px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      font-family: var(--identity-font);
+    }
+    .trainer-profile-card__code-row span {
+      display: block;
+      font-size: 0.7rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.75);
+    }
+    .trainer-profile-card__code-row strong {
+      display: block;
+      margin-top: 4px;
+      font-size: 1.3rem;
+      letter-spacing: 0.3em;
+    }
+    .trainer-profile-card__copy {
+      border: none;
+      border-radius: 999px;
+      padding: 10px 16px;
+      background: rgba(255,255,255,0.2);
+      color: #fff;
+      font-weight: 600;
+      cursor: not-allowed;
+    }
+    .trainer-profile-card__hero-actions button {
+      background: rgba(255,255,255,0.2);
+      color: #fff;
+      cursor: not-allowed;
+    }
+    .trainer-profile-card__body {
+      background: #fff;
+      padding: 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 28px;
+    }
+    .trainer-profile-metric-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+    }
+    .trainer-profile-level,
+    .trainer-profile-team {
+      border-radius: 18px;
+      border: 1px solid #e2e8f0;
+      background: #f8fafc;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      align-items: center;
+      text-align: center;
+    }
+    .trainer-profile-level__circle {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      border: 8px solid rgba(15,23,42,0.9);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #0f172a;
+      color: #fff;
+      font-size: 1.6rem;
+      font-weight: 700;
+    }
+    .trainer-profile-team__badge {
+      width: 88px;
+      height: 88px;
+      border-radius: 20px;
+      border: 1px dashed #cbd5f5;
+      background: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 8px;
+      font-weight: 700;
+      color: #0f172a;
+    }
+    .trainer-profile-team__badge img {
+      max-width: 64px;
+      max-height: 64px;
+    }
+    .trainer-profile-team__badge strong {
+      display: block;
+      margin-top: 6px;
+      color: #0f172a;
+    }
+    .trainer-profile-stat {
+      border-radius: 16px;
+      border: 1px solid #e2e8f0;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .trainer-profile-stat strong {
+      font-size: 1.4rem;
+      color: #0f172a;
+    }
+    .trainer-profile-section__header {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .trainer-profile-pill {
+      border: none;
+      border-radius: 999px;
+      padding: 10px 18px;
+      background: #dbeafe;
+      color: #1d4ed8;
+      font-weight: 600;
+    }
+    .trainer-profile-featured-row {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+    .trainer-profile-featured-item {
+      border-radius: 28px;
+      background: #e0f2fe;
+      padding: 14px 10px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      align-items: center;
+    }
+    .trainer-profile-featured-item img {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      border: 4px solid #fff;
+      box-shadow: 0 18px 24px rgba(15,23,42,0.25);
+      object-fit: cover;
+      background: #fff;
+    }
+    .trainer-profile-featured-item span {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #0f172a;
+    }
+    .trainer-profile-featured-empty {
+      margin: 0;
+      text-align: center;
+      color: #94a3b8;
+      font-style: italic;
+    }
+    .trainer-profile-bio-pill {
+      border: 1px solid #e2e8f0;
+      border-radius: 999px;
+      padding: 4px 12px;
+      font-size: 0.7rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: #475569;
+    }
+    .trainer-profile-bio-text {
+      margin: 0;
+      color: #1f2937;
+      line-height: 1.5;
+      white-space: pre-wrap;
+    }
+    .trainer-profile-links {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .trainer-profile-links button {
+      border: none;
+      border-radius: 999px;
+      padding: 12px 18px;
+      background: #e0f2fe;
+      color: #0f172a;
+      font-weight: 600;
+      cursor: not-allowed;
+    }
+    .trainer-profile-popover__owner-actions {
+      border-radius: 30px;
+      background: #fff;
+      box-shadow: 0 20px 40px rgba(15,23,42,0.2);
+      padding: 18px;
+    }
+    .trainer-profile-edit-btn {
+      background: linear-gradient(135deg,#0f172a,#1e293b);
+      color: #fff;
+      border: none;
+      border-radius: 999px;
+      padding: 12px 32px;
+    }
+
     .content-filter-progress {
       display: flex;
       align-items: center;
@@ -1064,18 +1576,6 @@
       const inboxContent = document.getElementById("inboxPanelContent");
       let inboxLastUrl = "/inbox?panel=1";
 
-      const hydrateInboxPanelContent = () => {
-        if (!inboxContent) return;
-        const sortSelect = inboxContent.querySelector("[data-inbox-sort-select]");
-        if (sortSelect && !sortSelect.dataset.enhanced) {
-          sortSelect.dataset.enhanced = "true";
-          sortSelect.addEventListener("change", () => {
-            sortSelect.classList.add("is-flipping");
-            window.setTimeout(() => sortSelect.classList.remove("is-flipping"), 600);
-          });
-        }
-      };
-
       const setInboxButtonState = (isOpen) => {
         if (!inboxBtn) return;
         inboxBtn.setAttribute("aria-expanded", isOpen ? "true" : "false");
@@ -1096,6 +1596,279 @@
         return parsed.pathname + "?" + parsed.searchParams.toString();
       };
 
+      const enhanceInboxPanel = (root) => {
+        const scope = root instanceof HTMLElement ? root : document;
+        const panels = scope.querySelectorAll(".inbox-panel");
+        if (!panels.length) return;
+
+        panels.forEach((panel) => {
+          if (panel.dataset.inboxEnhanced === "true") return;
+          panel.dataset.inboxEnhanced = "true";
+
+          panel.querySelectorAll("[data-inbox-autosubmit]").forEach((select) => {
+            select.addEventListener("change", () => {
+              select.classList.add("is-flipping");
+              window.setTimeout(() => select.classList.remove("is-flipping"), 600);
+              const form = select.closest("form");
+              if (!form) return;
+              if (typeof form.requestSubmit === "function") {
+                form.requestSubmit();
+                return;
+              }
+              const submitEvent = new Event("submit", { cancelable: true, bubbles: true });
+              if (form.dispatchEvent(submitEvent)) {
+                form.submit();
+              }
+            });
+          });
+
+          const searchToggle = panel.querySelector("[data-inbox-search-toggle]");
+          const searchRegion = panel.querySelector("[data-inbox-search]");
+          const searchInput = panel.querySelector("[data-inbox-search-input]");
+          const searchClear = panel.querySelector("[data-inbox-search-clear]");
+          const searchCount = panel.querySelector("[data-inbox-search-count]");
+          const searchEmpty = panel.querySelector("[data-inbox-search-empty]");
+          const mailCards = Array.from(panel.querySelectorAll(".mail-card"));
+          const emptyState = panel.querySelector("[data-empty-state]");
+
+          if (searchToggle && searchRegion && searchInput) {
+            const ensureSearchText = (card) => {
+              if (!card.dataset.searchPrepared) {
+                card.dataset.searchText = (card.textContent || "").toLowerCase();
+                card.dataset.searchPrepared = "true";
+              }
+              return card.dataset.searchText || "";
+            };
+
+            const updateMatches = () => {
+              const term = (searchInput.value || "").trim().toLowerCase();
+              let matches = 0;
+              mailCards.forEach((card) => {
+                const haystack = ensureSearchText(card);
+                const match = !term || haystack.includes(term);
+                card.hidden = Boolean(term) && !match;
+                if (!card.hidden) {
+                  matches += 1;
+                }
+              });
+              if (searchCount) {
+                searchCount.textContent = term ? `${matches} match${matches === 1 ? "" : "es"}` : "";
+              }
+              if (searchEmpty) {
+                searchEmpty.hidden = matches !== 0 || !term;
+              }
+              if (emptyState) {
+                emptyState.hidden = Boolean(term);
+              }
+            };
+
+            const closeSearch = () => {
+              if (searchRegion.hidden) return;
+              searchRegion.hidden = true;
+              searchRegion.classList.remove("is-open");
+              searchToggle.classList.remove("is-active");
+              searchToggle.setAttribute("aria-expanded", "false");
+              if (searchInput.value) {
+                searchInput.value = "";
+                updateMatches();
+              } else if (searchCount) {
+                searchCount.textContent = "";
+              }
+              if (searchEmpty) searchEmpty.hidden = true;
+            };
+
+            const openSearch = () => {
+              if (!searchRegion.hidden) {
+                searchInput.focus();
+                searchInput.select();
+                updateMatches();
+                return;
+              }
+              searchRegion.hidden = false;
+              searchRegion.classList.add("is-open");
+              searchToggle.classList.add("is-active");
+              searchToggle.setAttribute("aria-expanded", "true");
+              requestAnimationFrame(() => {
+                searchInput.focus();
+                searchInput.select();
+              });
+              updateMatches();
+            };
+
+            searchToggle.addEventListener("click", () => {
+              if (searchRegion.hidden) {
+                openSearch();
+              } else {
+                closeSearch();
+              }
+            });
+
+            searchInput.addEventListener("input", updateMatches);
+            searchInput.addEventListener("keydown", (event) => {
+              if (event.key === "Escape") {
+                event.preventDefault();
+                closeSearch();
+                searchToggle.focus({ preventScroll: true });
+              }
+            });
+            searchClear?.addEventListener("click", () => {
+              searchInput.value = "";
+              updateMatches();
+              searchInput.focus();
+            });
+          }
+
+          const selectToggle = panel.querySelector("[data-inbox-select-toggle]");
+          const bulkBar = panel.querySelector("[data-inbox-bulk]");
+          const bulkCount = panel.querySelector("[data-inbox-bulk-count]");
+          const bulkButtons = panel.querySelectorAll("[data-inbox-bulk-action]");
+          const getSelectableCards = () => Array.from(panel.querySelectorAll(".mail-card:not([data-message-placeholder='true'])"));
+          const selectionState = { active: false, selected: new Set() };
+
+          const refreshSelectToggleState = () => {
+            if (!selectToggle) return;
+            const hasCards = getSelectableCards().length > 0;
+            selectToggle.disabled = !hasCards;
+          };
+
+          const updateSelectedCount = () => {
+            if (bulkCount) {
+              bulkCount.textContent = `${selectionState.selected.size} selected`;
+            }
+            bulkButtons.forEach((btn) => {
+              btn.disabled = selectionState.selected.size === 0;
+            });
+          };
+
+          const clearSelections = () => {
+            selectionState.selected.clear();
+            panel.querySelectorAll("[data-inbox-select]").forEach((checkbox) => {
+              checkbox.checked = false;
+              checkbox.closest(".mail-card")?.classList.remove("selected");
+            });
+            updateSelectedCount();
+          };
+
+          const setSelectionMode = (active) => {
+            selectionState.active = active;
+            panel.classList.toggle("is-selecting", active);
+            if (selectToggle) {
+              selectToggle.setAttribute("aria-pressed", active ? "true" : "false");
+            }
+            if (bulkBar) {
+              bulkBar.hidden = !active;
+            }
+            if (!active) {
+              clearSelections();
+            }
+          };
+
+          selectToggle?.addEventListener("click", () => {
+            setSelectionMode(!selectionState.active);
+          });
+
+          panel.addEventListener("change", (event) => {
+            const checkbox = event.target.closest("[data-inbox-select]");
+            if (!checkbox || !selectionState.active) return;
+            const messageId = checkbox.value;
+            const card = checkbox.closest(".mail-card");
+            if (!card || card.dataset.messagePlaceholder === "true") return;
+            if (checkbox.checked) {
+              selectionState.selected.add(messageId);
+              card.classList.add("selected");
+            } else {
+              selectionState.selected.delete(messageId);
+              card.classList.remove("selected");
+            }
+            updateSelectedCount();
+          });
+
+          const updateCardReadState = (card, isRead) => {
+            card.dataset.messageRead = isRead ? "true" : "false";
+            card.classList.toggle("is-read", isRead);
+            card.classList.toggle("is-unread", !isRead);
+            if (!card.classList.contains("mail-card--digital")) {
+              const badge = card.querySelector("[data-mail-new-badge]");
+              if (badge) {
+                badge.hidden = isRead;
+              } else if (!isRead) {
+                const meta = card.querySelector(".mail-card__meta");
+                if (meta) {
+                  const span = document.createElement("span");
+                  span.className = "mail-card__badge";
+                  span.dataset.mailNewBadge = "true";
+                  span.textContent = "New";
+                  meta.appendChild(span);
+                }
+              }
+            }
+          };
+
+          const performBulkAction = async (action) => {
+            if (!selectionState.selected.size) return;
+            if (action === "delete") {
+              const confirmed = window.confirm(`Delete ${selectionState.selected.size} message(s)? This cannot be undone.`);
+              if (!confirmed) return;
+            }
+            const payload = {
+              action,
+              message_ids: Array.from(selectionState.selected),
+            };
+            try {
+              const resp = await fetch("/api/inbox/bulk", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+              });
+              const data = await resp.json();
+              if (!data.success) {
+                alert(data.error || "Unable to update messages right now.");
+                return;
+              }
+              data.results?.forEach((result) => {
+                if (!result || !result.id) return;
+                const card = panel.querySelector(`.mail-card[data-message-id='${CSS.escape(result.id)}']`);
+                if (!card) return;
+                if (action === "delete" && result.success) {
+                  card.remove();
+                } else if (result.success && (action === "read" || action === "unread")) {
+                  updateCardReadState(card, action === "read");
+                }
+              });
+              clearSelections();
+              setSelectionMode(false);
+              refreshSelectToggleState();
+              if (!panel.querySelector(".mail-card")) {
+                const empty = panel.querySelector("[data-empty-state]");
+                if (empty) empty.hidden = false;
+              }
+            } catch (err) {
+              console.error("Inbox bulk action failed", err);
+              alert("Unable to update messages right now.");
+            }
+          };
+
+          bulkButtons.forEach((btn) => {
+            btn.addEventListener("click", () => performBulkAction(btn.dataset.inboxBulkAction));
+          });
+
+          panel.querySelectorAll("[data-open-inbox-message]").forEach((link) => {
+            link.addEventListener("click", (event) => {
+              if (link.closest(".mail-card")?.dataset.messagePlaceholder === "true") return;
+              event.preventDefault();
+              if (typeof window.RDAB?.openInboxMessage === "function") {
+                window.RDAB.openInboxMessage(link.getAttribute("href"));
+              } else {
+                window.location.href = link.getAttribute("href");
+              }
+            });
+          });
+
+          updateSelectedCount();
+          refreshSelectToggleState();
+        });
+      };
+
       const loadInboxPanel = async (url) => {
         if (!inboxContent) return;
         inboxLastUrl = url ? ensurePanelParam(url) : inboxLastUrl || "/inbox?panel=1";
@@ -1111,7 +1884,7 @@
           if (!resp.ok) throw new Error("Inbox load failed");
           const html = await resp.text();
           inboxContent.innerHTML = html;
-          hydrateInboxPanelContent();
+          enhanceInboxPanel(inboxContent);
           focusInboxPanel();
         } catch (err) {
           inboxContent.innerHTML = "<div class='inbox-panel__error'>Could not load your inbox. Please try again.</div>";
@@ -1143,6 +1916,143 @@
       window.RDAB.openInboxPanel = openInboxPanel;
       window.RDAB.closeInboxPanel = closeInboxPanel;
       window.RDAB.loadInboxPanel = loadInboxPanel;
+      window.RDAB.enhanceInboxPanel = enhanceInboxPanel;
+      const inboxMessageOverlay = document.getElementById("inboxMessageOverlay");
+      const inboxMessageContent = document.getElementById("inboxMessageContent");
+      const inboxMessageClose = document.querySelector("[data-inbox-message-close]");
+      let inboxMessageLastFocus = null;
+
+      const inboxReceiptOverlay = document.getElementById("inboxReceiptOverlay");
+      const inboxReceiptClose = document.querySelector("[data-inbox-receipt-close]");
+      const inboxReceiptFrame = document.getElementById("inboxReceiptFrame");
+      const inboxReceiptLoading = document.querySelector("[data-inbox-receipt-loading]");
+
+      const setInboxCardReadState = (messageId, isRead) => {
+        if (!messageId) return;
+        document.querySelectorAll(`.mail-card[data-message-id='${CSS.escape(messageId)}']`).forEach((card) => {
+          card.dataset.messageRead = isRead ? "true" : "false";
+          card.classList.toggle("is-read", isRead);
+          card.classList.toggle("is-unread", !isRead);
+          if (!card.classList.contains("mail-card--digital")) {
+            const badge = card.querySelector("[data-mail-new-badge]");
+            if (badge) {
+              badge.hidden = isRead;
+            }
+          }
+        });
+      };
+
+      const closeReceiptModal = () => {
+        if (!inboxReceiptOverlay) return;
+        inboxReceiptOverlay.classList.remove("is-visible");
+        inboxReceiptOverlay.setAttribute("aria-hidden", "true");
+        inboxReceiptFrame?.setAttribute("src", "");
+        inboxReceiptLoading?.classList.remove("hidden");
+        bodyScrollLock.unlock();
+      };
+
+      const openReceiptModal = (url) => {
+        if (!inboxReceiptOverlay || !inboxReceiptFrame) {
+          window.open(url, "_blank", "noopener");
+          return;
+        }
+        inboxReceiptOverlay.classList.add("is-visible");
+        inboxReceiptOverlay.setAttribute("aria-hidden", "false");
+        inboxReceiptLoading?.classList.remove("hidden");
+        inboxReceiptFrame.src = url;
+        bodyScrollLock.lock();
+      };
+
+      inboxReceiptFrame?.addEventListener("load", () => {
+        inboxReceiptLoading?.classList.add("hidden");
+      });
+
+      inboxReceiptOverlay?.addEventListener("click", (event) => {
+        if (event.target === inboxReceiptOverlay) {
+          closeReceiptModal();
+        }
+      });
+      inboxReceiptClose?.addEventListener("click", closeReceiptModal);
+
+      const hydrateMessageContent = () => {
+        if (!inboxMessageContent) return;
+        inboxMessageContent.querySelectorAll("[data-inbox-receipt-link]").forEach((link) => {
+          link.addEventListener("click", (event) => {
+            event.preventDefault();
+            openReceiptModal(link.getAttribute("href"));
+          });
+        });
+        const panel = inboxMessageContent.querySelector(".inbox-message-panel");
+        if (panel && panel.dataset.messageId) {
+          setInboxCardReadState(panel.dataset.messageId, true);
+        }
+      };
+
+      const loadInboxMessageContent = async (url) => {
+        if (!inboxMessageContent) return;
+        inboxMessageContent.innerHTML = "<div class='inbox-panel__loading'>Loading message…</div>";
+        try {
+          const resp = await fetch(ensurePanelParam(url), {
+            headers: { "X-Requested-With": "fetch" }
+          });
+          if (resp.redirected) {
+            window.location.href = resp.url;
+            return;
+          }
+          if (!resp.ok) throw new Error("Message load failed");
+          const html = await resp.text();
+          inboxMessageContent.innerHTML = html;
+          hydrateMessageContent();
+        } catch (err) {
+          inboxMessageContent.innerHTML = "<div class='inbox-panel__error'>Unable to load that message.</div>";
+        }
+      };
+
+      const openInboxMessage = (url) => {
+        if (!inboxMessageOverlay) {
+          window.location.href = url;
+          return;
+        }
+        inboxMessageLastFocus = document.activeElement;
+        inboxMessageOverlay.classList.add("is-visible");
+        inboxMessageOverlay.setAttribute("aria-hidden", "false");
+        bodyScrollLock.lock();
+        loadInboxMessageContent(url);
+      };
+
+      const closeInboxMessage = () => {
+        if (!inboxMessageOverlay) return;
+        inboxMessageOverlay.classList.remove("is-visible");
+        inboxMessageOverlay.setAttribute("aria-hidden", "true");
+        bodyScrollLock.unlock();
+        if (inboxMessageLastFocus && typeof inboxMessageLastFocus.focus === "function") {
+          inboxMessageLastFocus.focus({ preventScroll: true });
+        }
+      };
+
+      inboxMessageOverlay?.addEventListener("click", (event) => {
+        if (event.target === inboxMessageOverlay) {
+          closeInboxMessage();
+        }
+      });
+      inboxMessageClose?.addEventListener("click", closeInboxMessage);
+
+      window.RDAB.openInboxMessage = openInboxMessage;
+      window.RDAB.closeInboxMessage = closeInboxMessage;
+      window.RDAB.openReceiptModal = openReceiptModal;
+      window.RDAB.closeReceiptModal = closeReceiptModal;
+      document.addEventListener("click", (event) => {
+        const receiptLink = event.target.closest("[data-inbox-receipt-link]");
+        if (receiptLink) {
+          event.preventDefault();
+          openReceiptModal(receiptLink.getAttribute("href"));
+        }
+      });
+      document.querySelectorAll(".inbox-message-panel[data-message-id]").forEach((messagePanel) => {
+        if (!messagePanel.closest("#inboxMessageOverlay")) {
+          setInboxCardReadState(messagePanel.dataset.messageId, true);
+        }
+      });
 
       if (inboxBtn && inboxOverlay && inboxContent) {
         inboxBtn.addEventListener("click", (event) => {
@@ -1184,11 +2094,144 @@
         });
 
         document.addEventListener("keydown", (event) => {
-          if (event.key === "Escape" && inboxOverlay.classList.contains("is-visible")) {
+          if (event.key !== "Escape") return;
+          if (inboxReceiptOverlay && inboxReceiptOverlay.classList.contains("is-visible")) {
+            event.preventDefault();
+            closeReceiptModal();
+            return;
+          }
+          if (inboxMessageOverlay && inboxMessageOverlay.classList.contains("is-visible")) {
+            event.preventDefault();
+            closeInboxMessage();
+            return;
+          }
+          if (inboxOverlay.classList.contains("is-visible")) {
             event.preventDefault();
             closeInboxPanel();
           }
         });
+      }
+      enhanceInboxPanel(document);
+
+      // Live nav badge + stamp updates
+      const navStampEl = document.querySelector("[data-nav-stamp-count]");
+      const navInboxEl = document.querySelector("[data-nav-inbox-count]");
+      if (navStampEl || navInboxEl) {
+        const NAV_ENDPOINT = "/api/nav-state";
+        const NAV_REFRESH_MS = 25000;
+        const navState = {
+          currentStamps: parseInt(navStampEl?.textContent || "0", 10) || 0,
+          inboxUnread: parseInt(navInboxEl?.textContent || "0", 10) || 0,
+        };
+        let navTimer = null;
+        let navPollingStopped = false;
+
+        const publishNavState = (extra = {}) => {
+          window.RDAB = window.RDAB || {};
+          const detail = {
+            currentStamps: navState.currentStamps,
+            inboxUnread: navState.inboxUnread,
+            ...extra,
+          };
+          window.RDAB.navState = detail;
+          if (typeof window.CustomEvent === "function") {
+            document.dispatchEvent(new CustomEvent("rdab-nav-state", { detail }));
+          }
+        };
+
+        const updateStampCount = (value) => {
+          if (!navStampEl || value == null) return;
+          const numeric = parseInt(String(value), 10);
+          if (Number.isNaN(numeric) || numeric === navState.currentStamps) return;
+          navState.currentStamps = numeric;
+          navStampEl.textContent = String(numeric);
+          navStampEl.setAttribute("aria-live", "polite");
+        };
+
+        const updateInboxBadge = (value) => {
+          if (!navInboxEl || value == null) return;
+          const numeric = Math.max(0, parseInt(String(value), 10) || 0);
+          navState.inboxUnread = numeric;
+          navInboxEl.textContent = String(numeric);
+          if (numeric <= 0) {
+            navInboxEl.setAttribute("hidden", "hidden");
+            navInboxEl.setAttribute("aria-hidden", "true");
+          } else {
+            navInboxEl.removeAttribute("hidden");
+            navInboxEl.setAttribute("aria-hidden", "false");
+          }
+        };
+
+        const applyNavResponse = (payload) => {
+          if (!payload || typeof payload !== "object") return;
+          if ("current_stamps" in payload) {
+            updateStampCount(payload.current_stamps);
+          }
+          if ("inbox_unread" in payload) {
+            updateInboxBadge(payload.inbox_unread);
+          }
+          publishNavState({
+            inboxPreview: Array.isArray(payload.inbox_preview) ? payload.inbox_preview : [],
+            updatedAt: payload.updated_at || new Date().toISOString(),
+          });
+        };
+
+        const fetchNavState = async () => {
+          if (navPollingStopped) return;
+          try {
+            const resp = await fetch(NAV_ENDPOINT, {
+              headers: {
+                "Accept": "application/json",
+                "X-Requested-With": "fetch",
+              },
+              credentials: "same-origin",
+              cache: "no-store",
+            });
+            if (resp.status === 401) {
+              navPollingStopped = true;
+              if (navTimer) {
+                clearTimeout(navTimer);
+              }
+              return;
+            }
+            if (!resp.ok) throw new Error(`nav-state ${resp.status}`);
+            const data = await resp.json();
+            applyNavResponse(data);
+          } catch (err) {
+            console.warn("Nav state update failed", err);
+          }
+        };
+
+        const scheduleNavPoll = () => {
+          if (navPollingStopped) return;
+          navTimer = window.setTimeout(async () => {
+            if (document.hidden) {
+              scheduleNavPoll();
+              return;
+            }
+            await fetchNavState();
+            scheduleNavPoll();
+          }, NAV_REFRESH_MS);
+        };
+
+        publishNavState({ inboxPreview: [], updatedAt: new Date().toISOString() });
+        fetchNavState();
+        scheduleNavPoll();
+        let navRefreshQueued = false;
+        const requestNavRefresh = () => {
+          if (navRefreshQueued || navPollingStopped) return;
+          navRefreshQueued = true;
+          window.setTimeout(() => {
+            navRefreshQueued = false;
+            fetchNavState();
+          }, 200);
+        };
+        document.addEventListener("visibilitychange", () => {
+          if (!document.hidden) {
+            requestNavRefresh();
+          }
+        });
+        window.addEventListener("focus", requestNavRefresh);
       }
 
       // Avatar dropdown
@@ -1217,6 +2260,24 @@
       }
       window.closeAvatarDropdown=closeAvatarDropdown;
       window.openAvatarDropdown=openAvatarDropdown;
+      const navProfileButton=document.querySelector("[data-nav-view-profile]");
+      if(navProfileButton){
+        navProfileButton.addEventListener("click",(event)=>{
+          event.preventDefault();
+          closeAvatarDropdown();
+          const username=(navProfileButton.getAttribute("data-nav-profile-username") || CURRENT_TRAINER_USERNAME || "").trim();
+          if(!username || !window.TrainerProfilePopover || typeof window.TrainerProfilePopover.open!=="function"){
+            return;
+          }
+          const displayName=navProfileButton.textContent.trim() || username;
+          window.TrainerProfilePopover.open({
+            username,
+            url: `/api/trainers/${encodeURIComponent(username)}/profile`,
+            displayName,
+            editable:true,
+          });
+        });
+      }
 
       // Manage Account modal open/close
       const mm = document.getElementById('manageAccountModal');
@@ -1260,7 +2321,7 @@
         });
       }
 
-      const CURRENT_TRAINER_USERNAME = "{{ (_current_trainer_username or '')|lower }}";
+      const CURRENT_TRAINER_USERNAME = {{ (_current_trainer_username or '')|lower|tojson }};
       const DEFAULT_TRAINER_AVATAR = "{{ url_for('static', filename='avatars/avatar1.png') }}";
 
       
@@ -1280,9 +2341,14 @@
         const copyBtn=overlay.querySelector("[data-trainer-profile-copy]");
         const levelValueEl=overlay.querySelector("[data-trainer-profile-level-value]");
         const teamValueEl=overlay.querySelector("[data-trainer-profile-team-value]");
+        const levelRow=overlay.querySelector("[data-trainer-profile-level-row]");
+        const teamRow=overlay.querySelector("[data-trainer-profile-team-row]");
         const joinedEl=overlay.querySelector("[data-trainer-profile-joined]");
         const meetupsEl=overlay.querySelector("[data-trainer-profile-meetups]");
+        const featuredContainer=overlay.querySelector("[data-trainer-profile-featured]");
         const featuredList=overlay.querySelector("[data-trainer-profile-featured-list]");
+        const featuredEmpty=overlay.querySelector("[data-trainer-profile-featured-empty]");
+        const copyToast=overlay.querySelector("[data-trainer-profile-copy-toast]");
         const bodyLock=window.__overlayLock || {lock(){},unlock(){}};
         const cache={};
         const state={
@@ -1291,6 +2357,7 @@
           displayName:"Trainer"
         };
         let closeTimer=null;
+        let copyToastTimer=null;
 
         const escapeHtml=(value)=>{
           return (value || "").replace(/[&<>"']/g,(char)=>{
@@ -1352,11 +2419,13 @@
           }
           if(!info){
             teamValueEl.innerHTML="—";
+            if(teamRow) teamRow.hidden=true;
             return;
           }
           const icon=info.icon ? `<img src="${escapeHtml(info.icon)}" alt="${escapeHtml(info.label || "Team icon")}" />` : "";
           const label=escapeHtml(info.label || "Team");
-          teamValueEl.innerHTML = icon ? `${icon}<span>${label}</span>` : label;
+          teamValueEl.innerHTML = icon ? `${icon}<strong>${label}</strong>` : `<strong>${label}</strong>`;
+          if(teamRow) teamRow.hidden=false;
         };
 
         const renderLevel=(levelValue)=>{
@@ -1365,26 +2434,60 @@
           }
           if(levelValue === undefined || levelValue === null){
             levelValueEl.textContent="--";
+            if(levelRow) levelRow.hidden=true;
             return;
           }
           levelValueEl.textContent=String(levelValue).padStart(2,"0");
+          if(levelRow) levelRow.hidden=false;
         };
 
         const renderFeatured=(items)=>{
-          if(!featuredList){
-            return;
-          }
+          if(!featuredList) return;
           const stamps=Array.isArray(items) ? items.slice(0,3) : [];
           if(!stamps.length){
-            featuredList.innerHTML='<p class="trainer-profile-empty">No featured stamps yet.</p>';
+            featuredList.innerHTML="";
+            if(featuredContainer) featuredContainer.hidden=true;
+            if(featuredEmpty) featuredEmpty.hidden=false;
             return;
           }
           const html=stamps.map((stamp,idx)=>{
             const label=escapeHtml(stamp.label || `Featured stamp ${idx+1}`);
-            const icon=stamp.icon ? `<img src="${escapeHtml(stamp.icon)}" alt="${label}">` : `<span>${label}</span>`;
-            return `<button type="button" class="trainer-profile-stamp" disabled>${icon}</button>`;
+            const icon=stamp.icon ? `<img src="${escapeHtml(stamp.icon)}" alt="${label}">` : "";
+            return `<div class="trainer-profile-featured-item">${icon || `<span>${label}</span>`}${icon ? `<span>${label}</span>` : ""}</div>`;
           });
           featuredList.innerHTML=html.join("");
+          if(featuredContainer) featuredContainer.hidden=false;
+          if(featuredEmpty) featuredEmpty.hidden=true;
+        };
+
+        const showCopyToast=(message)=>{
+          if(!copyToast) return;
+          copyToast.textContent=message;
+          copyToast.hidden=false;
+          copyToast.classList.add("is-visible");
+          if(copyToastTimer) clearTimeout(copyToastTimer);
+          copyToastTimer=setTimeout(()=>{
+            copyToast.classList.remove("is-visible");
+            copyToast.hidden=true;
+          },2600);
+        };
+
+        const setTrainerCode=(rawValue, displayName)=>{
+          const formatted=formatTrainerCode(rawValue);
+          if(codeEl){
+            codeEl.textContent=formatted;
+          }
+          if(copyBtn){
+            const normalized=(rawValue || "").replace(/[^0-9]/g,"");
+            copyBtn.disabled=!normalized;
+            copyBtn.dataset.codeRaw=normalized;
+            copyBtn.dataset.codeFormatted=formatted;
+            copyBtn.dataset.copyName=displayName || state.displayName || "Trainer";
+          }
+          if(copyToast){
+            copyToast.hidden=true;
+            copyToast.classList.remove("is-visible");
+          }
         };
 
         const setView=(mode,message)=>{
@@ -1400,6 +2503,7 @@
 
         const hydrateProfile=(data,fallbackName)=>{
           const displayName = data && data.username ? data.username : (fallbackName || "Trainer");
+          state.displayName=displayName;
           if(nameEl) nameEl.textContent = displayName;
           if(accountEl){
             const accountLabel = data && data.account_type ? data.account_type : "Trainer Account";
@@ -1418,12 +2522,7 @@
             const stampValue = data && typeof data.stamps !== "undefined" ? data.stamps : 0;
             stampsEl.textContent = typeof stampValue === "number" ? stampValue.toLocaleString() : stampValue;
           }
-          if(codeEl){
-            codeEl.textContent = formatTrainerCode(data && data.trainer_code);
-          }
-          if(copyBtn){
-            copyBtn.disabled = true;
-          }
+          setTrainerCode(data && data.trainer_code, displayName);
           renderLevel(data && data.trainer_level);
           renderTeam(data && data.team);
           if(joinedEl){
@@ -1441,6 +2540,10 @@
           state.username=username;
           state.profileUrl=options.url || (username ? `/api/trainers/${encodeURIComponent(username)}/profile` : null);
           state.displayName=options.displayName || username || "Trainer";
+          if(copyToast){
+            copyToast.hidden=true;
+            copyToast.classList.remove("is-visible");
+          }
           overlay.hidden=false;
           requestAnimationFrame(()=>overlay.classList.add("is-visible"));
           bodyLock.lock();
@@ -1494,6 +2597,41 @@
             close();
           }
         });
+
+        if(copyBtn){
+          copyBtn.addEventListener("click",()=>{
+            if(copyBtn.disabled) return;
+            const rawCode=copyBtn.dataset.codeRaw || "";
+            if(!rawCode) return;
+            const formatted=copyBtn.dataset.codeFormatted || formatTrainerCode(rawCode);
+            const copyName=copyBtn.dataset.copyName || state.displayName || "Trainer";
+            const message=`Copied ${copyName}'s trainer code! Open Pokemon GO to add them as a friend!`;
+            const clipboardText=rawCode.replace(/\s+/g,"");
+            const fallbackCopy=()=>{
+              const temp=document.createElement("textarea");
+              temp.value=clipboardText;
+              temp.setAttribute("readonly","");
+              temp.style.position="absolute";
+              temp.style.left="-9999px";
+              document.body.appendChild(temp);
+              temp.select();
+              try{
+                document.execCommand("copy");
+              }catch(err){
+                console.warn("Trainer code copy failed:", err);
+              }
+              document.body.removeChild(temp);
+              showCopyToast(message);
+            };
+            if(navigator.clipboard && typeof navigator.clipboard.writeText==="function"){
+              navigator.clipboard.writeText(clipboardText)
+                .then(()=>showCopyToast(message))
+                .catch(()=>fallbackCopy());
+            }else{
+              fallbackCopy();
+            }
+          });
+        }
 
         return { open, close };
       })();
@@ -1559,7 +2697,7 @@
         <!-- Passport -->
         <a href="{{ url_for('passport') }}" class="stamp-container" title="Passport">
           <img src="{{ url_for('static', filename='nav/stamp-icon.png') }}" alt="Passport">
-          <span class="stamp-count">{{ current_stamps or 0 }}</span>
+          <span class="stamp-count" data-nav-stamp-count aria-live="polite">{{ current_stamps or 0 }}</span>
         </a>
 
         <!-- Inbox -->
@@ -1567,9 +2705,12 @@
           <button type="button" class="nav-item" id="inboxToggle" title="Inbox" aria-haspopup="dialog" aria-expanded="false">
             <img src="{{ url_for('static', filename='nav/mail-icon.png') }}" alt="Inbox" class="nav-icon">
           </button>
-          {% if inbox_unread and inbox_unread > 0 %}
-            <span class="inbox-badge">{{ inbox_unread }}</span>
-          {% endif %}
+          <span class="inbox-badge"
+                data-nav-inbox-count
+                aria-live="polite"
+                {% if not (inbox_unread and inbox_unread > 0) %}hidden{% endif %}>
+            {{ inbox_unread or 0 }}
+          </span>
         </div>
 
         <!-- Avatar (profile hub) -->
@@ -1593,7 +2734,9 @@
                     data-trainer-profile-own
                     data-trainer-profile-username="{{ nav_username }}"
                     data-trainer-profile-url="{{ url_for('api_public_trainer_profile', username=nav_username) }}"
-                    data-close-avatar>
+                    data-close-avatar
+                    data-nav-view-profile
+                    data-nav-profile-username="{{ nav_username }}">
               👀 View Profile
             </button>
             {% endif %}
@@ -1746,6 +2889,190 @@
       </div>
     </div>
   </div>
+
+  <!-- Global section + image loader helpers -->
+  <script>
+  (function () {
+    const SKIP_ATTR = 'data-skip-global-loader';
+    const SECTION_MIN_MS = 280;
+    const IMAGE_MIN_MS = 340;
+    const trackedSections = new Set();
+    const sectionStart = new WeakMap();
+    const skipSelector = `[${SKIP_ATTR}]`;
+
+    const now = () => (window.performance && typeof window.performance.now === 'function'
+      ? window.performance.now()
+      : Date.now());
+
+    let sectionObserver = null;
+    if ('IntersectionObserver' in window) {
+      sectionObserver = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          markSectionReady(entry.target);
+          sectionObserver.unobserve(entry.target);
+        });
+      }, { threshold: 0.2, rootMargin: '0px 0px -10% 0px' });
+    }
+
+    function shouldSkip(node) {
+      if (!node) return false;
+      if (node.hasAttribute && node.hasAttribute(SKIP_ATTR)) return true;
+      return Boolean(node.closest && node.closest(skipSelector));
+    }
+
+    function markSectionReady(section) {
+      if (!section || section.hasAttribute('data-section-ready')) return;
+      const started = sectionStart.get(section) || now();
+      const delay = Math.max(0, SECTION_MIN_MS - (now() - started));
+      window.setTimeout(() => {
+        section.setAttribute('data-section-ready', 'true');
+      }, delay);
+    }
+
+    function prepareSection(section) {
+      if (!section || section.tagName !== 'SECTION' || shouldSkip(section)) return;
+      if (section.dataset.sectionLoaderAttached === 'true') return;
+      section.dataset.sectionLoaderAttached = 'true';
+      section.setAttribute('data-section-loader', 'true');
+      sectionStart.set(section, now());
+      trackedSections.add(section);
+      if (sectionObserver) {
+        sectionObserver.observe(section);
+      } else {
+        markSectionReady(section);
+      }
+    }
+
+    function prepareSections(root) {
+      if (!root) return;
+      if (root.nodeType === 1 && root.tagName === 'SECTION') {
+        prepareSection(root);
+      }
+      if (root.querySelectorAll) {
+        root.querySelectorAll('section').forEach(prepareSection);
+      }
+    }
+
+    function wrapForLoader(target) {
+      if (!target || !target.parentNode) return null;
+      const shell = document.createElement('span');
+      shell.className = 'img-shell';
+      const computed = window.getComputedStyle(target);
+      if (['block', 'flex', 'grid'].includes(computed.display)) {
+        shell.dataset.layout = 'block';
+      }
+      target.parentNode.insertBefore(shell, target);
+      shell.appendChild(target);
+      return shell;
+    }
+
+    function finishShell(shell, state) {
+      if (!shell) return;
+      const started = parseFloat(shell.dataset.loaderStart) || now();
+      const delay = Math.max(0, IMAGE_MIN_MS - (now() - started));
+      window.setTimeout(() => {
+        shell.dataset.loading = 'false';
+        shell.removeAttribute('aria-busy');
+        if (state === 'error') {
+          shell.setAttribute('data-image-error', 'true');
+          shell.classList.remove('is-loaded');
+          return;
+        }
+        shell.classList.add('is-loaded');
+        shell.removeAttribute('data-image-error');
+      }, delay);
+    }
+
+    function attachImageLoader(img) {
+      if (!img || img.tagName !== 'IMG') return;
+      if (shouldSkip(img)) return;
+      const alreadyWrapped = img.closest('.img-shell');
+      const needsLoader = img.hasAttribute('data-force-image-loader')
+        || img.getAttribute('loading') === 'lazy'
+        || !(img.complete && img.naturalWidth > 0);
+      if (!needsLoader && !alreadyWrapped) return;
+      if (img.dataset.imageLoaderAttached === 'true' && !needsLoader) return;
+      img.dataset.imageLoaderAttached = 'true';
+
+      const host = img.closest('picture') || img;
+      const currentShell = host.parentElement && host.parentElement.classList
+        && host.parentElement.classList.contains('img-shell')
+        ? host.parentElement
+        : null;
+      const shell = currentShell || wrapForLoader(host);
+      if (!shell) return;
+
+      const radius = window.getComputedStyle(img).borderRadius;
+      if (radius && radius !== '0px') {
+        shell.style.setProperty('--img-shell-radius', radius);
+      }
+      shell.dataset.loading = 'true';
+      shell.dataset.loaderStart = String(now());
+      shell.setAttribute('aria-busy', 'true');
+      shell.classList.remove('is-loaded');
+      shell.removeAttribute('data-image-error');
+      img.setAttribute('data-image-loader-target', 'true');
+
+      const resolve = () => finishShell(shell, 'loaded');
+      const reject = () => finishShell(shell, 'error');
+
+      if (img.complete && img.naturalWidth > 0) {
+        resolve();
+      } else {
+        img.addEventListener('load', resolve, { once: true });
+        img.addEventListener('error', reject, { once: true });
+      }
+    }
+
+    function prepareImages(root) {
+      if (!root) return;
+      if (root.nodeType === 1 && root.tagName === 'IMG') {
+        attachImageLoader(root);
+      }
+      if (root.querySelectorAll) {
+        root.querySelectorAll('img').forEach(attachImageLoader);
+      }
+    }
+
+    function handleMutations(records) {
+      records.forEach((record) => {
+        if (record.type === 'childList') {
+          record.addedNodes.forEach((node) => {
+            if (node.nodeType !== 1) return;
+            prepareSections(node);
+            prepareImages(node);
+          });
+        } else if (record.type === 'attributes' && record.target && record.target.tagName === 'IMG') {
+          attachImageLoader(record.target);
+        }
+      });
+    }
+
+    function initLoaders() {
+      prepareSections(document);
+      prepareImages(document);
+      window.addEventListener('load', () => {
+        trackedSections.forEach(markSectionReady);
+      }, { once: true });
+      if ('MutationObserver' in window && document.body) {
+        const observer = new MutationObserver(handleMutations);
+        observer.observe(document.body, {
+          childList: true,
+          subtree: true,
+          attributes: true,
+          attributeFilter: ['src', 'srcset', 'data-src', 'data-image-src'],
+        });
+      }
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initLoaders, { once: true });
+    } else {
+      initLoaders();
+    }
+  })();
+  </script>
 
   <!-- Register Service Worker (single canonical URL) -->
   <script>
@@ -2291,6 +3618,23 @@
       <div id="inboxPanelContent" class="inbox-panel-dialog__body" tabindex="-1">
         <div class="inbox-panel__loading">Loading inbox…</div>
       </div>
+    </div>
+  </div>
+
+  <div id="inboxMessageOverlay" class="inbox-message-overlay" aria-hidden="true">
+    <div class="inbox-message-dialog" role="dialog" aria-modal="true" aria-label="Inbox message" tabindex="-1">
+      <button type="button" class="inbox-message-close" data-inbox-message-close aria-label="Close message">✕</button>
+      <div id="inboxMessageContent">
+        <div class="inbox-panel__loading">Loading message…</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="inboxReceiptOverlay" class="inbox-receipt-overlay" aria-hidden="true">
+    <div class="inbox-receipt-dialog" role="dialog" aria-modal="true" aria-label="Receipt details">
+      <button type="button" class="inbox-receipt-close" data-inbox-receipt-close aria-label="Close receipt">✕</button>
+      <div class="inbox-panel__loading" data-inbox-receipt-loading>Loading receipt…</div>
+      <iframe id="inboxReceiptFrame" title="Receipt preview" loading="lazy"></iframe>
     </div>
   </div>
 

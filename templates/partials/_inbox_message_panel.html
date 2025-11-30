@@ -1,6 +1,10 @@
 {% set panel_mode = panel_mode | default(false) %}
-<section class="inbox-message-panel {{ 'inbox-message-panel--modal' if panel_mode else '' }}">
-  <div class="msg-card">
+{% set is_digital = msg.is_digital_code if msg.is_digital_code is defined else ((msg.type or '')|lower == 'system' and 'code' in ((msg.subject or '')|lower ~ ' ' ~ (msg.message or '')|lower)) %}
+<section class="inbox-message-panel {{ 'inbox-message-panel--modal' if panel_mode else '' }}"
+         data-message-id="{{ msg.id }}"
+         data-message-type="{{ (msg.type or '')|lower }}"
+         data-message-digital="{{ 'true' if is_digital else 'false' }}">
+  <div class="msg-card {{ 'msg-card--digital' if is_digital else '' }}">
     <div class="head">
       <div class="left">
         <div class="subject">{{ msg.subject }}</div>
@@ -65,7 +69,11 @@
 
       {% if metadata.url and not comment_thread %}
       <div class="cta">
-        <a class="btn primary" href="{{ metadata.url }}">{{ metadata.cta_label or ( 'View receipt' if msg.type == 'receipt' else 'View details') }}</a>
+        <a class="btn primary"
+           href="{{ metadata.url }}"
+           {% if msg.type == 'receipt' %}data-inbox-receipt-link{% endif %}>
+          {{ metadata.cta_label or ( 'View receipt' if msg.type == 'receipt' else 'View details') }}
+        </a>
       </div>
       {% endif %}
     </div>
@@ -73,7 +81,38 @@
 </section>
 
 <style>
-.msg-card { background:#fff; border-radius:18px; padding:22px; box-shadow:0 12px 28px rgba(15,23,42,0.14); display:flex; flex-direction:column; gap:16px; }
+.msg-card { background:#fff; border-radius:18px; padding:22px; box-shadow:0 12px 28px rgba(15,23,42,0.14); display:flex; flex-direction:column; gap:16px; position:relative; overflow:hidden; }
+.msg-card--digital{
+  background:linear-gradient(130deg,#ffe4f7,#fff8d6);
+  box-shadow:0 20px 36px rgba(236,72,153,0.35);
+  animation:digitalPulse 6s ease-in-out infinite;
+}
+.msg-card--digital::before{
+  content:"";
+  position:absolute;
+  inset:-20% 0 0 0;
+  background-image:url("data:image/svg+xml,%3Csvg width='240' height='160' viewBox='0 0 240 160' xmlns='http://www.w3.org/2000/svg'%3E%3Cg opacity='0.3' stroke='%23fbbf24' stroke-width='8' fill='none'%3E%3Cpath d='M-20 40 L60 0 L140 40 L220 0 L300 40'/%3E%3C/g%3E%3C/svg%3E");
+  background-size:200px 140px;
+  mix-blend-mode:multiply;
+  opacity:0.6;
+  pointer-events:none;
+}
+.msg-card--digital .subject,
+.msg-card--digital .meta,
+.msg-card--digital .body{
+  color:#7c2d12;
+}
+.msg-card--digital .btn.primary{
+  background:#ec4899;
+  box-shadow:0 12px 26px rgba(236,72,153,0.35);
+}
+.msg-card--digital .btn.primary:hover{
+  background:#db2777;
+}
+.msg-card--digital .type-pill{
+  background:rgba(124,45,18,0.15);
+  color:#7c2d12;
+}
 .head { display:flex; justify-content:space-between; gap:12px; align-items:flex-start; flex-wrap:wrap; }
 .subject { font-weight:800; font-size:1.2em; color:#1f2937; }
 .meta { margin-top:4px; display:flex; gap:8px; align-items:center; color:#475569; font-size:.9em; flex-wrap:wrap; }
@@ -98,4 +137,13 @@
 .thread-bubble.reply { border-color:#bfdbfe; background:#f0f7ff; }
 .bubble-label { font-size:.8em; font-weight:700; color:#475569; margin-bottom:6px; text-transform:uppercase; letter-spacing:.04em; }
 .comment-text { margin:0; color:#0f172a; line-height:1.4; }
+.msg-card--digital .thread-card{
+  background:rgba(255,255,255,0.7);
+  border-color:rgba(124,45,18,0.25);
+}
+@keyframes digitalPulse{
+  0%{transform:translateY(0);}
+  50%{transform:translateY(-2px);}
+  100%{transform:translateY(0);}
+}
 </style>

@@ -8,23 +8,24 @@
       background: #020815 url("{{ url_for('static', filename='advent/advent25bg.png') }}") center top / cover fixed no-repeat;
       color: #fff;
     }
-    .advent-page {
-      --container-max: 1120px;
-      background: rgba(3, 8, 18, 0.82) url("{{ url_for('static', filename='advent/advent25bg.png') }}") center top / cover no-repeat;
-      border-radius: 32px;
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      box-shadow: 0 35px 80px rgba(0, 0, 0, 0.55);
-      padding: 26px clamp(18px, 4vw, 36px);
-      backdrop-filter: blur(6px);
-    }
-    @media (max-width: 720px) {
-      body {
-        background-attachment: scroll;
-      }
-      .advent-page {
-        border-radius: 22px;
-      }
-    }
+.advent-page {
+  --container-max: 1120px;
+  background: rgba(3, 8, 18, 0.82) url("{{ url_for('static', filename='advent/advent25bg.png') }}") center top / cover no-repeat;
+  border-radius: 32px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 35px 80px rgba(0, 0, 0, 0.55);
+  padding: 26px clamp(18px, 4vw, 36px) 90px;
+  backdrop-filter: blur(6px);
+}
+@media (max-width: 720px) {
+  body {
+    background-attachment: scroll;
+  }
+  .advent-page {
+    border-radius: 22px;
+    padding-bottom: 110px;
+  }
+}
   </style>
 {% endblock %}
 
@@ -121,14 +122,14 @@
       <div class="advent-quests-pill">
         <div>
           <p class="advent-pill-title">Advent Quests</p>
-          <p class="advent-pill-copy">Trainers can open one door per day to collect digital passport stamps — up to 25 can be claimed across the season.</p>
+          <p class="advent-pill-copy">Trainers can open one door per day to collect digital passport stamps — up to 25 can be claimed across the event period.</p>
         </div>
       </div>
     </div>
     <div class="advent-intro-sidecard">
-      <p class="sidecard-eyebrow">Season Window</p>
+      <p class="sidecard-eyebrow">Event Window</p>
       <p class="sidecard-heading">1 Dec → 26 Dec</p>
-      <p class="sidecard-copy">Doors open daily at 00:01 (UK). Unlock them before the next sunrise to stay on track.</p>
+      <p class="sidecard-copy">Doors open daily at 00:01 (UK). Unlock them before the next day to stay on track.</p>
     </div>
   </div>
 
@@ -159,7 +160,6 @@
     <div class="advent-quest-modal__backdrop" data-quest-modal-close></div>
     <div class="advent-quest-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="quest-modal-title">
       <button type="button" class="advent-quest-modal__close" data-quest-modal-close>&times;</button>
-      <img src="" alt="" data-quest-modal-image>
       <h3 id="quest-modal-title" data-quest-modal-title></h3>
       <p data-quest-modal-body></p>
     </div>
@@ -177,7 +177,7 @@
   </details>
 
   {% set opened_days = state.opened_days %}
-  {% set openable_day = state.openable_day %}
+  {% set openable_days = state.openable_days or [] %}
 
   <div
     class="advent-grid compact"
@@ -187,7 +187,7 @@
     {% for day in range(1, 26) %}
       {% set day_config = config.get(day) %}
       {% set opened = day in opened_days %}
-      {% set is_openable = day == openable_day %}
+      {% set is_openable = day in openable_days %}
       <div
         class="advent-cell{% if opened %} is-opened{% elif is_openable %} is-openable{% else %} is-locked{% endif %}"
         data-day="{{ day }}"
@@ -260,7 +260,7 @@
     <button class="advent-floating-bar__quests" type="button" data-advent-quests-toggle aria-expanded="false">
       Advent Quests
     </button>
-    <button class="advent-floating-bar__top" type="button" data-advent-scrolltop aria-label="Back to top">🎀</button>
+    <button class="advent-floating-bar__top" type="button" data-advent-scrolltop aria-label="Back to top">🎄</button>
   </div>
 
   <div class="advent-quests-drawer" data-advent-quests-drawer hidden>
@@ -1264,14 +1264,12 @@
 }
 @media (max-width: 720px) {
   .advent-floating-bar {
-    flex-direction: column;
-    border-radius: 24px;
-    padding: 12px;
-    gap: 12px;
+    width: min(420px, calc(100% - 24px));
+    padding: 10px;
+    gap: 10px;
   }
   .advent-floating-bar button {
-    width: 100%;
-    text-align: center;
+    width: auto;
   }
   .advent-quests-drawer__panel {
     border-radius: 24px 24px 0 0;
@@ -1313,7 +1311,6 @@
   const questModal = document.querySelector("[data-quest-modal]");
   const questModalTitle = questModal ? questModal.querySelector("[data-quest-modal-title]") : null;
   const questModalBody = questModal ? questModal.querySelector("[data-quest-modal-body]") : null;
-  const questModalImage = questModal ? questModal.querySelector("[data-quest-modal-image]") : null;
   const questModalClosers = questModal ? questModal.querySelectorAll("[data-quest-modal-close]") : [];
   const REVEAL_DELAY_MS = 3000;
   const MODAL_DELAY_AFTER_REVEAL_MS = 450;
@@ -1429,13 +1426,11 @@
   });
 
   function openQuestModal(card) {
-    if (!questModal || !questModalTitle || !questModalBody || !questModalImage) {
+    if (!questModal || !questModalTitle || !questModalBody) {
       return;
     }
     questModalTitle.textContent = card.dataset.questTitle || "Advent Quest";
     questModalBody.textContent = card.dataset.questBody || "";
-    questModalImage.src = card.dataset.questImage || "";
-    questModalImage.alt = card.dataset.questTitle || "";
     questModal.hidden = false;
   }
 
@@ -1521,7 +1516,7 @@
   function updateBadge(cell, symbol, highlight = false) {
     const badge = cell.querySelector(".advent-badge");
     if (!badge) return;
-    badge.textContent = symbol || "";
+    badge.textContent = symbol || "\u00A0";
     if (highlight) {
       badge.classList.add("is-today");
     } else {
@@ -1560,9 +1555,7 @@
     content.appendChild(status);
   }
 
-  function activateNextCell(day) {
-    if (!day) return;
-    const cell = document.querySelector(`.advent-cell[data-day="${day}"]`);
+  function renderOpenableCell(cell, day) {
     if (!cell) return;
     cell.classList.remove("is-locked");
     cell.classList.add("is-openable");
@@ -1592,6 +1585,44 @@
     content.appendChild(hint);
     updateBadge(cell, "★", true);
     bindOpenForm(form);
+  }
+
+  function renderLockedCell(cell) {
+    if (!cell || cell.classList.contains("is-opened")) {
+      return;
+    }
+    cell.classList.remove("is-openable", "unlocking");
+    cell.classList.add("is-locked");
+    const content = cell.querySelector(".advent-cell-content");
+    if (!content) return;
+    content.innerHTML = "";
+    const placeholder = document.createElement("div");
+    placeholder.className = "advent-placeholder";
+    placeholder.textContent = "🔒";
+    content.appendChild(placeholder);
+    const status = document.createElement("small");
+    status.className = "advent-status";
+    status.textContent = "Locked";
+    content.appendChild(status);
+    updateBadge(cell, "", false);
+  }
+
+  function refreshOpenableCells(openableDays) {
+    if (!Array.isArray(openableDays)) {
+      return;
+    }
+    const targets = new Set(openableDays.map((value) => Number(value)));
+    document.querySelectorAll(".advent-cell").forEach((cell) => {
+      const day = Number(cell.dataset.day);
+      if (!Number.isFinite(day) || cell.classList.contains("is-opened")) {
+        return;
+      }
+      if (targets.has(day)) {
+        renderOpenableCell(cell, day);
+      } else {
+        renderLockedCell(cell);
+      }
+    });
   }
 
   function handleOpenError(cell, button, message) {
@@ -1633,7 +1664,7 @@
           if (payload.status === "ok") {
             playDoorCelebration(cell).then(() => {
               convertCellToOpened(cell, payload);
-              activateNextCell(payload.next_openable_day);
+              refreshOpenableCells(payload.openable_days || []);
               updateStatsUI(payload);
               updateQuestUI(payload.quests || []);
               setTimeout(
@@ -1712,11 +1743,6 @@
   border: 1px solid rgba(255, 255, 255, 0.18);
   box-shadow: 0 30px 60px rgba(0, 0, 0, 0.6);
   z-index: 1;
-}
-.advent-quest-modal__dialog img {
-  width: 120px;
-  height: auto;
-  margin: 0 auto 12px;
 }
 .advent-quest-modal__close {
   position: absolute;

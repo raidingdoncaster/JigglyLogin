@@ -140,6 +140,66 @@
         <p class="action-note">Players use this during recovery. Keep it easy to remember.</p>
       </div>
     </div>
+
+    <div class="action-box action-box--danger" data-action-box>
+      <button type="button" class="action-toggle" data-action-toggle aria-expanded="false">
+        <span>⛔ Deactivate & Delete Account</span>
+        <span class="chevron" aria-hidden="true"></span>
+      </button>
+      <div class="action-box-body" data-action-body hidden>
+        <div class="delete-account-flow"
+             data-delete-flow
+             data-delete-trainer="{{ trainer.trainer_username }}"
+             data-delete-verify-url="{{ url_for('admin_verify_trainer_delete', username=trainer.trainer_username) }}">
+          <div class="delete-account-alert" data-delete-alert hidden></div>
+
+          <section class="delete-step" data-delete-step="intro">
+            <p class="delete-step__eyebrow">Permanent deletion</p>
+            <p class="delete-step__copy">
+              Deactivating this trainer PERMANENTLY DELETES THE ACCOUNT, STAMPS, HISTORY, MESSAGING AND ALL RELATED FUNCTIONS from the RDAB app and Lugia’s databases forever (!!).
+              Once completed, it can never be returned to the player and the data cannot be restored. This happens instantly after deletion.
+            </p>
+            <button type="button" class="btn btn-secondary delete-step__primary" data-delete-continue>I understand, continue</button>
+          </section>
+
+          <form class="delete-step" data-delete-step="password" novalidate hidden>
+            <p class="delete-step__eyebrow">Verify admin access</p>
+            <p class="delete-step__copy">
+              Confirm the admin dashboard password to continue this deletion. This ensures only authorised admins can wipe trainers.
+            </p>
+            <label for="deleteAdminPassword-{{ trainer.trainer_username }}">Admin dashboard password</label>
+            <input type="password"
+                   id="deleteAdminPassword-{{ trainer.trainer_username }}"
+                   name="admin_password"
+                   inputmode="text"
+                   autocomplete="current-password"
+                   placeholder="Enter admin dashboard password"
+                   data-delete-password
+                   required>
+            <div class="delete-step__actions">
+              <button type="button" class="btn btn-secondary" data-delete-back data-delete-back-step="intro">Back</button>
+              <button type="button" class="btn btn-danger" data-delete-verify data-loading-label="Verifying…">Verify password</button>
+            </div>
+          </form>
+
+          <form class="delete-step"
+                data-delete-step="confirm"
+                action="{{ url_for('admin_delete_trainer_account', username=trainer.trainer_username) }}"
+                method="post"
+                hidden>
+            <input type="hidden" name="delete_token" value="" data-delete-token>
+            <p class="delete-step__eyebrow">Final confirmation</p>
+            <p class="delete-step__copy delete-step__copy--strong">
+              You are deleting the account <strong class="identity-text">{{ trainer.trainer_username }}</strong> and all of its related data and assets, please tap to confirm this process.
+            </p>
+            <div class="delete-step__actions">
+              <button type="button" class="btn btn-secondary" data-delete-back data-delete-back-step="password">Back</button>
+              <button type="submit" class="btn btn-danger" data-delete-submit data-loading-label="Deleting…">Delete account now</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
   </div>
 
   {% if show_back_link %}
@@ -362,6 +422,70 @@
   font-size:0.78rem;
   color:#6b7280;
 }
+.action-box--danger {
+  border:1px solid #fecaca;
+}
+.action-box--danger .action-box-body {
+  background:#fff1f2;
+}
+.action-box--danger .action-toggle {
+  color:#991b1b;
+}
+.delete-account-alert {
+  margin:4px 0 8px;
+  padding:10px 14px;
+  border-radius:12px;
+  font-size:0.85rem;
+  border:1px solid transparent;
+}
+.delete-account-alert[hidden] {
+  display:none;
+}
+.delete-account-alert.is-success {
+  background:#ecfdf5;
+  border-color:#34d399;
+  color:#065f46;
+}
+.delete-account-alert.is-error {
+  background:#fef2f2;
+  border-color:#fecaca;
+  color:#991b1b;
+}
+.delete-account-alert.is-info {
+  background:#eef2ff;
+  border-color:#c7d2fe;
+  color:#4338ca;
+}
+.delete-step {
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  padding:6px 0;
+}
+.delete-step__eyebrow {
+  margin:0;
+  text-transform:uppercase;
+  letter-spacing:0.2em;
+  font-size:0.68rem;
+  color:#b91c1c;
+}
+.delete-step__copy {
+  margin:0;
+  font-size:0.9rem;
+  color:#4b5563;
+}
+.delete-step__copy--strong {
+  font-weight:600;
+  color:#991b1b;
+}
+.delete-step__actions {
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+}
+.delete-step__primary {
+  align-self:flex-start;
+}
 .panel-back-link {
   text-align:center;
 }
@@ -370,15 +494,37 @@
   align-items:center;
   gap:6px;
   padding:10px 18px;
-  background:#3a8dde;
-  color:#fff;
   border-radius:999px;
   text-decoration:none;
   font-weight:600;
+}
+.trainer-panel .btn:not(.btn-danger):not(.btn-secondary) {
+  background:#3a8dde;
+  color:#fff;
   box-shadow:0 8px 20px rgba(58,141,222,0.25);
 }
-.trainer-panel .btn:hover {
-  filter:brightness(1.05);
+.trainer-panel .btn:not(.btn-danger):not(.btn-secondary):hover {
+  transform:translateY(-1px);
+  box-shadow:0 8px 26px rgba(58,141,222,0.3);
+}
+.trainer-panel .btn-secondary {
+  background:#fff;
+  color:#1f2937;
+  border:1px solid #cbd5f5;
+  box-shadow:none;
+}
+.trainer-panel .btn-secondary:hover {
+  background:#eef2ff;
+  box-shadow:0 4px 12px rgba(99,102,241,0.15);
+}
+.trainer-panel .btn-danger {
+  background:#dc2626;
+  color:#fff;
+  box-shadow:0 8px 20px rgba(220,38,38,0.25);
+}
+.trainer-panel .btn-danger:hover {
+  transform:translateY(-1px);
+  box-shadow:0 10px 28px rgba(220,38,38,0.32);
 }
 
 @media(max-width:640px) {

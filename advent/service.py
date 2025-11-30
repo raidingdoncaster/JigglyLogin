@@ -84,25 +84,34 @@ def get_user_opened_days(user_id: int) -> List[int]:
     return _get_user_opened_days_sql(user_id)
 
 
-def get_advent_state_for_user(user_id: int, today_day: int) -> Dict[str, Optional[int] | List[int]]:
-    """Compute which day the user can open today alongside opened/locked lists."""
+def get_advent_state_for_user(
+    user_id: int,
+    today_day: int,
+    allow_previous_day: bool = False,
+) -> Dict[str, Optional[int] | List[int]]:
+    """Compute which day(s) the user can open today alongside opened/locked lists."""
     today_day = _clamp_day(today_day)
     opened_days = get_user_opened_days(user_id)
     opened_lookup = set(opened_days)
 
-    openable_day: Optional[int] = None
-    for day in range(1, today_day + 1):
-        if day not in opened_lookup:
-            openable_day = day
-            break
+    if allow_previous_day:
+        candidates = sorted({today_day, max(1, today_day - 1)})
+    else:
+        candidates = list(range(1, today_day + 1))
+
+    openable_days = [day for day in candidates if day not in opened_lookup]
+    openable_day: Optional[int] = openable_days[0] if openable_days else None
 
     locked_days = [
-        day for day in range(1, 26) if day not in opened_lookup and day != openable_day
+        day
+        for day in range(1, 26)
+        if day not in opened_lookup and day not in openable_days
     ]
 
     return {
         "opened_days": opened_days,
         "openable_day": openable_day,
+        "openable_days": openable_days,
         "locked_days": locked_days,
     }
 

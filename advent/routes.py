@@ -37,6 +37,7 @@ def create_advent_blueprint(current_admin_provider: AdminProvider) -> Blueprint:
         dashboard_endpoint="admin_dashboard",
         success_flash_template="Day {day} unlocked!",
         award_stamps=False,
+        allow_previous_day_catchup=False,
     )
 
 
@@ -58,6 +59,7 @@ def create_player_advent_blueprint(current_trainer_provider: AdminProvider) -> B
         dashboard_endpoint="dashboard",
         success_flash_template=None,
         award_stamps=True,
+        allow_previous_day_catchup=True,
     )
 
 
@@ -77,6 +79,7 @@ def _create_shared_advent_blueprint(
     dashboard_endpoint: str,
     success_flash_template: Optional[str],
     award_stamps: bool,
+    allow_previous_day_catchup: bool,
 ) -> Blueprint:
     bp = Blueprint(blueprint_name, __name__, url_prefix=url_prefix)
 
@@ -194,7 +197,11 @@ def _create_shared_advent_blueprint(
             flash(str(exc), "error")
             return redirect(url_for(dashboard_endpoint))
 
-        state = get_advent_state_for_user(user_id, today_day)
+        state = get_advent_state_for_user(
+            user_id,
+            today_day,
+            allow_previous_day=allow_previous_day_catchup,
+        )
         opened_count = len(state.get("opened_days") or [])
         quests = _build_quest_progress(opened_count)
 
@@ -252,19 +259,31 @@ def _create_shared_advent_blueprint(
             flash(str(exc), "error")
             return _redirect_back(raw_override)
 
-        state = get_advent_state_for_user(user_id, today_day)
-        openable_day = state.get("openable_day")
+        state = get_advent_state_for_user(
+            user_id,
+            today_day,
+            allow_previous_day=allow_previous_day_catchup,
+        )
+        openable_days = state.get("openable_days") or []
         trainer_username = _extract_trainer_username(user) if isinstance(user, dict) else None
 
-        if openable_day != day:
-            msg = "You can only open the next available Advent day."
+        if day not in openable_days:
+            msg = (
+                "You can only open today's door or yesterday's catch-up door."
+                if allow_previous_day_catchup
+                else "You can only open the next available Advent day."
+            )
             if json_mode:
                 return jsonify({"status": "error", "reason": msg}), 400
             flash(msg, "error")
             return _redirect_back(raw_override)
 
         if open_advent_day(user_id, day, trainer_username):
-            state = get_advent_state_for_user(user_id, today_day)
+            state = get_advent_state_for_user(
+                user_id,
+                today_day,
+                allow_previous_day=allow_previous_day_catchup,
+            )
             opened_count = len(state.get("opened_days") or [])
             quests = _build_quest_progress(opened_count)
             award_result: Optional[Tuple[bool, Optional[str]]] = None
@@ -277,6 +296,8 @@ def _create_shared_advent_blueprint(
                 "message": (config.get(day) or {}).get("message", ""),
                 "stamp_png": (config.get(day) or {}).get("stamp_png", ""),
                 "next_openable_day": state.get("openable_day"),
+                "openable_days": state.get("openable_days"),
+                "opened_days": state.get("opened_days"),
                 "stamp_awarded": award_result[0] if award_result else None,
                 "opened_count": opened_count,
                 "total_days": TOTAL_ADVENT_DAYS,

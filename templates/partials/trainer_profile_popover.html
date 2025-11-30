@@ -4,106 +4,205 @@
     <button type="button" class="trainer-profile-popover__close" data-trainer-profile-close aria-label="Close trainer profile">✕</button>
     <div class="trainer-profile-popover__loading" data-trainer-profile-loading>Loading trainer profile…</div>
     <div class="trainer-profile-popover__error" data-trainer-profile-error hidden></div>
-    <article class="trainer-profile-card" data-trainer-profile-card hidden>
-      <header class="trainer-profile-card__hero" data-trainer-profile-hero>
-        <div class="trainer-profile-card__badge">Trainer Spotlight</div>
-        <div class="trainer-profile-card__identity">
-          <div class="trainer-profile-card__avatar">
-            <img src="{{ url_for('static', filename='avatars/avatar1.png') }}"
-                 alt="Trainer avatar"
-                 data-trainer-profile-avatar>
-          </div>
-          <div>
-            <p class="trainer-profile-card__account" data-trainer-profile-account>Standard Account</p>
-            <h3 data-trainer-profile-name>Trainer Name</h3>
-          </div>
-        </div>
-        <dl class="trainer-profile-card__hero-stats">
-          <div>
-            <dt>Campfire</dt>
-            <dd data-trainer-profile-campfire>@Trainer</dd>
-          </div>
-          <div>
-            <dt>Passport Stamps</dt>
-            <dd data-trainer-profile-stamps>0</dd>
-          </div>
-        </dl>
-        <div class="trainer-profile-card__code-row">
-          <div>
-            <span>Trainer Code</span>
-            <strong data-trainer-profile-code>0000 0000 0000</strong>
-          </div>
-          <button type="button"
-                  class="trainer-profile-card__copy"
-                  data-trainer-profile-copy
-                  disabled>Copy code (coming soon)</button>
-        </div>
-        <div class="trainer-profile-card__hero-actions">
-          <button type="button" disabled>Send Message (coming soon)</button>
-          <button type="button" disabled>Report Abuse (coming soon)</button>
-        </div>
-      </header>
 
-      <div class="trainer-profile-card__body">
-        <section class="trainer-profile-section">
-          <div class="trainer-profile-section__grid">
-            <div class="trainer-profile-badge" data-trainer-profile-level>
-              <span>Trainer Level</span>
-              <strong data-trainer-profile-level-value>--</strong>
+    <div class="trainer-profile-popover__viewer" data-trainer-profile-viewer>
+      <article class="trainer-profile-card" data-trainer-profile-card hidden>
+        <section class="trainer-profile-card__frame">
+          <div class="trainer-profile-card__hero" data-trainer-profile-hero>
+            <p class="trainer-profile-card__eyebrow">Trainer spotlight</p>
+            <div class="trainer-profile-card__identity">
+              <div class="trainer-profile-card__avatar">
+                <img src="{{ url_for('static', filename='avatars/avatar1.png') }}"
+                     alt="Trainer avatar"
+                     data-trainer-profile-avatar>
+              </div>
+              <div>
+                <h3 data-trainer-profile-name>Trainer Name</h3>
+                <p class="trainer-profile-card__account" data-trainer-profile-account>Standard Account</p>
+              </div>
             </div>
-            <div class="trainer-profile-badge" data-trainer-profile-team>
-              <span>Team</span>
-              <div data-trainer-profile-team-value>—</div>
+            <dl class="trainer-profile-card__hero-stats">
+              <div>
+                <dt>Campfire</dt>
+                <dd data-trainer-profile-campfire>—</dd>
+              </div>
+              <div>
+                <dt>Passport Stamps</dt>
+                <dd data-trainer-profile-stamps>0</dd>
+              </div>
+            </dl>
+            <div class="trainer-profile-card__code-row">
+              <div>
+                <span>Trainer Code</span>
+                <strong data-trainer-profile-code>0000 0000 0000</strong>
+              </div>
+              <button type="button"
+                      class="trainer-profile-card__copy"
+                      data-trainer-profile-copy
+                      disabled>Copy code</button>
             </div>
-            <div class="trainer-profile-stat">
-              <span>Joined</span>
-              <strong data-trainer-profile-joined>DD/MM/YY</strong>
+            <div class="trainer-profile-card__copy-toast"
+                 data-trainer-profile-copy-toast
+                 hidden>
+              Copied trainer code!
             </div>
-            <div class="trainer-profile-stat">
-              <span>Meetups</span>
-              <strong data-trainer-profile-meetups>0000</strong>
-              <small>Total meet-ups attended</small>
+            <div class="trainer-profile-card__hero-actions">
+              <button type="button" disabled>Send Message (coming soon)</button>
+              <button type="button" disabled>Report Abuse (coming soon)</button>
+            </div>
+          </div>
+
+          <div class="trainer-profile-card__body">
+            <div class="trainer-profile-metric-grid">
+              <div class="trainer-profile-level" data-trainer-profile-level-row hidden>
+                <span>Trainer Level</span>
+                <div class="trainer-profile-level__circle">
+                  <strong data-trainer-profile-level-value>--</strong>
+                </div>
+              </div>
+              <div class="trainer-profile-team" data-trainer-profile-team-row hidden>
+                <span>Team</span>
+                <div class="trainer-profile-team__badge" data-trainer-profile-team-value>—</div>
+              </div>
+              <div class="trainer-profile-stat">
+                <span>Joined</span>
+                <strong data-trainer-profile-joined>DD/MM/YY</strong>
+                <small>Date account was made</small>
+              </div>
+              <div class="trainer-profile-stat">
+                <span>Meetups</span>
+                <strong data-trainer-profile-meetups>0000</strong>
+                <small>Total meet-ups attended</small>
+              </div>
+            </div>
+
+            <section class="trainer-profile-section">
+              <div class="trainer-profile-section__header">
+                <div>
+                  <p class="trainer-profile-eyebrow">Community Medals</p>
+                  <p class="trainer-profile-subtext">Community medals coming soon — this is all placeholder data.</p>
+                </div>
+                <button type="button" class="trainer-profile-pill" disabled>View All</button>
+              </div>
+              <div class="trainer-profile-medals">
+                {% for idx in range(1, 5) %}
+                <div class="trainer-profile-medal">Featured Medal {{ idx }}</div>
+                {% endfor %}
+                <div class="trainer-profile-medal trainer-profile-medal--cta">View All</div>
+              </div>
+            </section>
+
+            <section class="trainer-profile-section">
+              <div class="trainer-profile-section__header">
+                <div>
+                  <p class="trainer-profile-eyebrow">Featured Stamps</p>
+                  <p class="trainer-profile-subtext">Tap a stamp to open its passport entry.</p>
+                </div>
+              </div>
+              <div class="trainer-profile-featured" data-trainer-profile-featured hidden>
+                <div class="trainer-profile-featured-row" data-trainer-profile-featured-list></div>
+              </div>
+              <p class="trainer-profile-featured-empty" data-trainer-profile-featured-empty>No featured stamps yet.</p>
+            </section>
+
+            <section class="trainer-profile-section" data-trainer-profile-bio-block>
+              <div class="trainer-profile-section__header">
+                <p class="trainer-profile-eyebrow">Trainer Bio</p>
+                <span class="trainer-profile-bio-pill" data-trainer-profile-bio-pill>Public</span>
+              </div>
+              <p class="trainer-profile-bio-text"
+                 data-trainer-profile-bio-text
+                 hidden></p>
+              <p class="trainer-profile-bio-empty"
+                 data-trainer-profile-bio-empty>No bio added yet.</p>
+            </section>
+
+            <div class="trainer-profile-links">
+              <button type="button" disabled>View Leaderboards / Leagues Profile (coming soon)</button>
+              <button type="button" disabled>View Comments (coming soon)</button>
             </div>
           </div>
         </section>
+      </article>
 
-        <section class="trainer-profile-section">
-          <div class="trainer-profile-section__header">
-            <div>
-              <p class="trainer-profile-eyebrow">Community Medals</p>
-              <p class="trainer-profile-subtext">Community medals coming soon — this is all placeholder data.</p>
-            </div>
-            <button type="button" disabled>View All</button>
-          </div>
-          <div class="trainer-profile-medals">
-            {% for idx in range(1, 6) %}
-            <div class="trainer-profile-medal">Featured Medal {{ idx }}</div>
-            {% endfor %}
-            <div class="trainer-profile-medal trainer-profile-medal--cta">View All</div>
-          </div>
-        </section>
-
-        <section class="trainer-profile-section">
-          <div class="trainer-profile-section__header">
-            <div>
-              <p class="trainer-profile-eyebrow">Featured Stamps</p>
-              <p class="trainer-profile-subtext">Tap a featured stamp to learn how it was earned.</p>
-            </div>
-          </div>
-          <div class="trainer-profile-stamps" data-trainer-profile-featured-list>
-            <p class="trainer-profile-empty">No featured stamps yet.</p>
-          </div>
-          <div class="trainer-profile-section__actions">
-            <button type="button" disabled>View Leaderboards / Leagues (coming soon)</button>
-            <button type="button" disabled>View Comments (coming soon)</button>
-          </div>
-        </section>
+      <div class="trainer-profile-popover__owner-actions" data-trainer-profile-owner hidden>
+        <p class="trainer-profile-owner-hint">This is exactly how other players see your profile.</p>
+        <button type="button"
+                class="trainer-profile-edit-btn"
+                data-trainer-profile-edit-open>✏️ Edit Profile</button>
       </div>
+    </div>
 
-      <footer class="trainer-profile-footer">
-        <button type="button" class="trainer-profile-edit" disabled>Edit Profile</button>
-        <button type="button" class="trainer-profile-close" data-trainer-profile-close aria-label="Close profile">✕</button>
-      </footer>
-    </article>
+    <div class="trainer-profile-popover__editor" data-trainer-profile-editor hidden>
+      <div class="trainer-profile-editor__header">
+        <div>
+          <p class="trainer-profile-editor__eyebrow">My settings</p>
+          <h4>Edit trainer profile</h4>
+        </div>
+        <button type="button"
+                class="trainer-profile-editor__close"
+                data-trainer-profile-editor-close>← Back to profile</button>
+      </div>
+      <a href="{{ url_for('change_avatar') }}" class="trainer-profile-popover__action-btn" data-trainer-profile-customize>✏️ Customise Trainer Card</a>
+      <div class="trainer-profile-meta" data-trainer-profile-meta>
+        <form data-trainer-profile-meta-form>
+          <label for="trainerTeamSelect">Team</label>
+          <select id="trainerTeamSelect"
+                  data-trainer-team-select>
+            <option value="">Select your team</option>
+          </select>
+          <label for="trainerLevelSelect">Trainer Level</label>
+          <select id="trainerLevelSelect"
+                  data-trainer-level-select>
+            <option value="">Select level</option>
+          </select>
+          <button type="submit">Save Team & Level</button>
+        </form>
+        <div class="trainer-profile-meta-status" data-trainer-profile-meta-status hidden></div>
+      </div>
+      <div class="trainer-profile-featured-editor" data-trainer-profile-featured-editor>
+        <div class="trainer-profile-featured-editor__header">
+          <label>Featured Stamps</label>
+          <span data-trainer-profile-featured-count>0/3</span>
+        </div>
+        <div class="trainer-profile-featured-selected" data-trainer-profile-featured-selected>
+          <p class="trainer-profile-featured-empty">No featured stamps yet.</p>
+        </div>
+        <button type="button"
+                class="trainer-profile-featured-toggle"
+                data-trainer-profile-featured-load>Manage featured stamps</button>
+        <div class="trainer-profile-featured-catalog" data-trainer-profile-featured-catalog hidden>
+          <p class="trainer-profile-featured-hint">Pick up to three stamps to highlight on your public card.</p>
+          <div class="trainer-profile-featured-grid" data-trainer-profile-featured-grid></div>
+          <button type="button"
+                  class="trainer-profile-featured-save"
+                  data-trainer-profile-featured-save>Save Featured Stamps</button>
+        </div>
+        <div class="trainer-profile-featured-status" data-trainer-profile-featured-status hidden></div>
+      </div>
+      <form class="trainer-profile-bio" data-trainer-profile-bio-form>
+        <label for="trainerBioInput">Trainer Bio</label>
+        <textarea id="trainerBioInput"
+                  name="trainerbio"
+                  rows="3"
+                  maxlength="200"
+                  data-trainer-profile-bio-input
+                  placeholder="Share a short intro, achievements, or your favourite raid role."></textarea>
+        <div class="trainer-profile-bio__meta">
+          <span data-trainer-profile-bio-count>0/200</span>
+          <button type="submit">Save Bio</button>
+        </div>
+        <p class="trainer-profile-bio__hint">Players will see this on your public profile. Keep it friendly and spoiler free.</p>
+        <div class="content-filter-progress"
+             data-content-filter-progress
+             role="status"
+             aria-live="polite"
+             hidden>
+          <span class="content-filter-progress__spinner" aria-hidden="true"></span>
+          <span>Give us just a second, we're checking this to keep the community safe.</span>
+        </div>
+        <div class="trainer-profile-bio__status" data-trainer-profile-bio-status hidden></div>
+      </form>
+    </div>
   </div>
 </div>

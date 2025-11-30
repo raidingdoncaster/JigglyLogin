@@ -1038,13 +1038,23 @@ button.stamp-slot:focus-visible {
 
 @media (prefers-reduced-motion: no-preference) {
   .passport-card {
-    position:relative;
-    animation:passportCardFade 0.6s ease both;
+    opacity:0;
+    transform:translateY(26px) scale(0.96);
+    transition:opacity 0.75s cubic-bezier(0.22, 0.68, 0.24, 0.98), transform 0.75s cubic-bezier(0.22, 0.68, 0.24, 0.98);
   }
-  .passport-card:nth-of-type(2) { animation-delay:0.08s; }
-  .passport-card:nth-of-type(3) { animation-delay:0.12s; }
-  .passport-card:nth-of-type(4) { animation-delay:0.16s; }
-
+  .passport-card.is-visible {
+    opacity:1;
+    transform:translateY(0) scale(1);
+  }
+  .stamp-slot.filled {
+    opacity:0;
+    transform:translateY(18px) scale(0.95);
+    transition:opacity 0.6s ease, transform 0.6s ease;
+  }
+  .stamp-slot.filled.is-visible {
+    opacity:1;
+    transform:translateY(0) scale(1);
+  }
   .stamp-slot.filled img {
     transform-origin:center 70%;
   }
@@ -1073,7 +1083,8 @@ button.stamp-slot:focus-visible {
     inset:-25%;
     background:conic-gradient(from 0deg, transparent, rgba(255,255,255,0.25), transparent 45%);
     opacity:0.35;
-    animation:slotEmptyPulse 2.6s linear infinite;
+    animation:slotEmptyPulse 3.8s linear infinite;
+    pointer-events:none;
   }
 }
 
@@ -1432,6 +1443,24 @@ document.addEventListener("DOMContentLoaded", function(){
         }
       }
     });
+  }
+
+  const passportCards = document.querySelectorAll(".passport-card");
+  const filledSlots = document.querySelectorAll(".stamp-slot.filled");
+  if ("IntersectionObserver" in window && (passportCards.length || filledSlots.length)) {
+    const revealObserver = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add("is-visible");
+          revealObserver.unobserve(entry.target);
+        }
+      });
+    }, { threshold:0.35, rootMargin:"0px 0px -10% 0px" });
+    passportCards.forEach(card => revealObserver.observe(card));
+    filledSlots.forEach(slot => revealObserver.observe(slot));
+  } else {
+    passportCards.forEach(card => card.classList.add("is-visible"));
+    filledSlots.forEach(slot => slot.classList.add("is-visible"));
   }
 
   const infoButton = document.querySelector(".stat-info-button");
@@ -1928,7 +1957,7 @@ document.addEventListener("DOMContentLoaded", function(){
           .then(image => {
             const src = image.src;
             this.bindTextureFromImage(this.textures.front, image);
-            if (src?.startsWith("blob:")) {
+            if (src && src.startsWith("blob:")) {
               URL.revokeObjectURL(src);
             }
           })
@@ -1944,11 +1973,22 @@ document.addEventListener("DOMContentLoaded", function(){
     }
 
     loadTextureImage(url) {
-      return this.fetchTexture(url).catch(() => this.loadImageElement(url));
+      const normalized = this.normalizeAssetUrl(url);
+      return this.fetchTexture(normalized)
+        .catch(() => this.loadImageElement(normalized, true));
+    }
+
+    normalizeAssetUrl(url) {
+      if (!url) return null;
+      try {
+        return new URL(url, window.location.origin).toString();
+      } catch (_err) {
+        return url;
+      }
     }
 
     fetchTexture(url) {
-      return fetch(url, { mode: "cors", credentials: "omit" })
+      return fetch(url, { mode: "cors", credentials: "omit", cache: "force-cache" })
         .then(resp => {
           if (!resp.ok) {
             throw new Error("Texture load failed");
@@ -1957,17 +1997,26 @@ document.addEventListener("DOMContentLoaded", function(){
         })
         .then(blob => new Promise((resolve, reject) => {
           const img = new Image();
-          img.onload = () => resolve(img);
-          img.onerror = () => reject(new Error("Texture decode failed"));
-          img.src = URL.createObjectURL(blob);
+          const objectURL = URL.createObjectURL(blob);
+          img.onload = () => {
+            img.dataset.objectUrl = objectURL;
+            resolve(img);
+          };
+          img.onerror = () => {
+            URL.revokeObjectURL(objectURL);
+            reject(new Error("Texture decode failed"));
+          };
+          img.src = objectURL;
         }));
     }
 
-    loadImageElement(url) {
+    loadImageElement(url, allowCors = false) {
       return new Promise((resolve, reject) => {
         const img = new Image();
-        img.crossOrigin = "anonymous";
-        img.referrerPolicy = "no-referrer";
+        if (allowCors) {
+          img.crossOrigin = "anonymous";
+          img.referrerPolicy = "no-referrer";
+        }
         img.onload = () => resolve(img);
         img.onerror = () => reject(new Error("Image load failed"));
         img.src = url;
@@ -1984,6 +2033,10 @@ document.addEventListener("DOMContentLoaded", function(){
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      if (image.dataset && image.dataset.objectUrl) {
+        URL.revokeObjectURL(image.dataset.objectUrl);
+        delete image.dataset.objectUrl;
+      }
     }
 
     bindTextureFromColor(texture, color) {

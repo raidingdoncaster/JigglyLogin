@@ -14,7 +14,7 @@
     <div>
       <p class="digital-codes-eyebrow">Admin tool</p>
       <h1>Digital Codes</h1>
-      <p>Upload comma-separated codes, bucket them, and deliver guided inbox drops with one click.</p>
+      <p>Upload comma-separated codes or distribute them.</p>
     </div>
     {% if digital_codes.supported %}
       <div class="digital-codes-actions">
@@ -414,7 +414,7 @@
       <p>Hello ${trainer || 'Trainer'},</p>
       <p>${reasonText || 'You received a digital reward from RDAB.'}</p>
       ${rewardText ? `<p>${rewardText}</p>` : ""}
-      <p>Includes a link to redeem the code and instructions on how to use it, plus an RDAB Support reminder.</p>
+      <p>Includes a link to redeem the code and instructions on how to use it.</p>
     `;
   }
 
