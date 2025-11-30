@@ -437,12 +437,12 @@
     .trainer-profile-popover__backdrop {
       position: absolute;
       inset: 0;
-      background: rgba(8, 15, 37, 0.75);
+      background: rgba(8, 15, 37, 0.8);
     }
     .trainer-profile-popover__modal {
       position: relative;
-      width: min(440px, 100%);
-      max-height: min(600px, 90vh);
+      width: min(520px, 100%);
+      max-height: min(720px, 92vh);
       overflow-y: auto;
       background: transparent;
       z-index: 1;
@@ -453,10 +453,10 @@
     .trainer-profile-popover__close {
       align-self: flex-end;
       border: none;
-      width: 40px;
-      height: 40px;
+      width: 44px;
+      height: 44px;
       border-radius: 50%;
-      background: rgba(15,23,42,0.75);
+      background: rgba(15, 23, 42, 0.85);
       color: #fff;
       font-size: 1.1rem;
       cursor: pointer;
@@ -464,8 +464,8 @@
     .trainer-profile-popover__loading,
     .trainer-profile-popover__error {
       background: #fff;
-      border-radius: 16px;
-      padding: 18px;
+      border-radius: 20px;
+      padding: 20px;
       text-align: center;
       font-weight: 600;
       color: #0f172a;
@@ -478,547 +478,374 @@
     }
     .trainer-profile-card {
       background: #fff;
-      border-radius: 24px;
-      box-shadow: 0 25px 70px rgba(15, 23, 42, 0.25);
+      border-radius: 28px;
+      box-shadow: 0 26px 70px rgba(15, 23, 42, 0.3);
       overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .trainer-profile-card__hero {
+      position: relative;
+      padding: 28px;
+      background: linear-gradient(140deg, #5c0b1c, #9d0d37 55%, #c81e1e);
+      color: #fff;
+      min-height: 260px;
       display: flex;
       flex-direction: column;
       gap: 18px;
     }
-    .trainer-profile-card__hero {
-      position: relative;
-      padding: 24px;
-      background-size: cover;
-      background-position: center;
-      min-height: 220px;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-    }
-    .trainer-profile-card__overlay {
+    .trainer-profile-card__hero::after {
+      content: "";
       position: absolute;
       inset: 0;
-      background: linear-gradient(180deg, rgba(9, 14, 35, 0.15), rgba(9, 14, 35, 0.8));
+      background: linear-gradient(180deg, rgba(7, 11, 30, 0.2), rgba(5, 9, 24, 0.75));
+      pointer-events: none;
     }
-    .trainer-profile-card__head,
-    .trainer-profile-card__stats {
+    .trainer-profile-card__hero > * {
       position: relative;
       z-index: 1;
     }
-    .trainer-profile-card__head {
+    .trainer-profile-card__badge {
+      align-self: flex-start;
+      padding: 4px 12px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.15);
+      font-size: 0.75rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      font-weight: 700;
+    }
+    .trainer-profile-card__identity {
       display: flex;
       gap: 16px;
       align-items: center;
     }
-    .trainer-profile-card__head img {
-      width: 72px;
-      height: 72px;
+    .trainer-profile-card__avatar {
+      width: 86px;
+      height: 86px;
       border-radius: 50%;
       border: 3px solid rgba(255, 255, 255, 0.9);
-      box-shadow: 0 12px 24px rgba(15, 23, 42, 0.55);
+      box-shadow: 0 14px 35px rgba(0, 0, 0, 0.4);
+      background: rgba(0, 0, 0, 0.15);
+      overflow: hidden;
+      flex-shrink: 0;
     }
-    .trainer-profile-card__eyebrow {
-      margin: 0;
-      font-size: 0.75rem;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
-      color: rgba(255, 255, 255, 0.8);
-    }
-    .trainer-profile-card__head h3 {
-      margin: 2px 0;
-      color: #fff;
-      font-size: 1.6rem;
+    .trainer-profile-card__avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
     }
     .trainer-profile-card__account {
       margin: 0;
+      text-transform: uppercase;
+      letter-spacing: 0.2em;
+      font-size: 0.75rem;
       color: rgba(255, 255, 255, 0.8);
-      font-weight: 600;
     }
-    .trainer-profile-card__stats {
+    .trainer-profile-card__hero h3 {
+      margin: 4px 0 0;
+      font-size: 2rem;
+      line-height: 1.1;
+      color: #fff;
+    }
+    .trainer-profile-card__hero-stats {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 12px;
+      gap: 18px;
     }
-    .trainer-profile-card__stats dt {
+    .trainer-profile-card__hero-stats dt {
       margin: 0;
+      font-size: 0.7rem;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.8);
+    }
+    .trainer-profile-card__hero-stats dd {
+      margin: 6px 0 0;
+      font-size: 1.4rem;
+      font-weight: 700;
+    }
+    .trainer-profile-card__code-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 14px 18px;
+      border-radius: 18px;
+      background: rgba(0, 0, 0, 0.25);
+      font-family: var(--identity-font);
+    }
+    .trainer-profile-card__code-row span {
+      display: block;
       font-size: 0.75rem;
       letter-spacing: 0.18em;
       text-transform: uppercase;
       color: rgba(255, 255, 255, 0.75);
     }
-    .trainer-profile-card__stats dd {
-      margin: 4px 0 0 0;
-      color: #fff;
-      font-size: 1.2rem;
-      font-weight: 700;
-    }
-    .trainer-profile-card__details {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 16px;
-      padding: 0 24px 12px 24px;
-    }
-    .trainer-profile-card__details span {
+    .trainer-profile-card__code-row strong {
       display: block;
-      font-size: 0.75rem;
-      text-transform: uppercase;
-      letter-spacing: 0.15em;
-      color: #94a3b8;
-    }
-    .trainer-profile-card__details strong {
-      display: block;
-      font-size: 1.1rem;
-      color: #0f172a;
       margin-top: 4px;
+      font-size: 1.2rem;
+      letter-spacing: 0.3em;
     }
-    .trainer-profile-card__team {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      font-weight: 700;
+    .trainer-profile-card__copy {
+      border: none;
+      border-radius: 999px;
+      padding: 10px 16px;
+      background: rgba(255, 255, 255, 0.15);
+      color: #fff;
+      font-weight: 600;
+      cursor: not-allowed;
+    }
+    .trainer-profile-card__hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .trainer-profile-card__hero-actions button {
+      flex: 1;
+      min-width: 180px;
+      border: none;
+      border-radius: 16px;
+      padding: 12px;
+      background: rgba(255, 255, 255, 0.15);
+      color: #fff;
+      font-weight: 600;
+      cursor: not-allowed;
+    }
+    .trainer-profile-card__body {
+      padding: 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 28px;
+    }
+    .trainer-profile-section {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+    .trainer-profile-section__grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 14px;
+    }
+    .trainer-profile-badge {
+      border-radius: 16px;
+      padding: 18px 16px;
+      background: #f1f5f9;
+      border: 1px solid #e2e8f0;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      text-align: center;
+    }
+    .trainer-profile-badge img {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      margin: 0 auto 6px;
+      object-fit: cover;
+      box-shadow: 0 6px 18px rgba(15, 23, 42, 0.2);
+    }
+    .trainer-profile-badge span {
+      font-size: 0.75rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: #475569;
+    }
+    .trainer-profile-badge strong {
+      font-size: 1.6rem;
       color: #0f172a;
     }
-    .trainer-profile-card__team img {
-      width: 32px;
-      height: 32px;
-      border-radius: 50%;
-      background: #fff;
-      padding: 4px;
-      box-shadow: 0 4px 12px rgba(15,23,42,0.18);
-    }
-    .trainer-profile-card__level-value {
-      display: inline-flex;
+    .trainer-profile-badge[data-trainer-profile-team] {
+      padding: 18px;
       align-items: center;
       justify-content: center;
-      min-width: 60px;
-      border-radius: 999px;
-      padding: 6px 12px;
-      background: #e2e8f0;
+    }
+    .trainer-profile-badge[data-trainer-profile-team] div {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #0f172a;
+    }
+    .trainer-profile-stat {
+      border-radius: 16px;
+      padding: 18px;
+      border: 1px solid #e2e8f0;
+      background: #fff;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .trainer-profile-stat span {
+      font-size: 0.75rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: #94a3b8;
+    }
+    .trainer-profile-stat strong {
+      font-size: 1.3rem;
+      color: #0f172a;
+    }
+    .trainer-profile-stat small {
+      font-size: 0.75rem;
+      color: #94a3b8;
+    }
+    .trainer-profile-section__header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    .trainer-profile-eyebrow {
+      margin: 0;
+      text-transform: uppercase;
+      letter-spacing: 0.28em;
+      font-size: 0.75rem;
       color: #0f172a;
       font-weight: 700;
     }
-    .trainer-profile-card__level-value.is-max-level {
-      background: linear-gradient(135deg, #f97316, #facc15);
-      color: #fff;
-      box-shadow: 0 0 12px rgba(250, 204, 21, 0.8);
-    }
-    .trainer-profile-card__future {
-      padding: 0 24px 24px 24px;
-      border-top: 1px solid #e2e8f0;
-    }
-    .trainer-profile-card__future h4 {
-      margin: 0 0 6px 0;
-      font-size: 1rem;
-    }
-    .trainer-profile-card__future p {
-      margin: 0;
+    .trainer-profile-subtext {
+      margin: 4px 0 0;
       color: #475569;
+      max-width: 360px;
       font-size: 0.9rem;
     }
-    .trainer-profile-card__featured {
-      padding: 0 24px 10px 24px;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-    .trainer-profile-card__featured-title {
-      margin: 0;
-      font-size: 0.95rem;
-      color: #0f172a;
-      font-weight: 700;
-    }
-    .trainer-profile-card__featured-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-    }
-    .trainer-profile-card__featured-item {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 6px 10px;
-      border-radius: 999px;
-      background: #eef2ff;
-      font-size: 0.85rem;
-      font-weight: 600;
-      color: #1d4ed8;
-    }
-    .trainer-profile-card__featured-item img {
-      width: 28px;
-      height: 28px;
-      border-radius: 50%;
-      border: 2px solid #fff;
-      box-shadow: 0 4px 8px rgba(15,23,42,0.22);
-    }
-    .trainer-profile-card__bio {
-      padding: 0 24px 24px 24px;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-    .trainer-profile-card__bio-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-    }
-    .trainer-profile-card__bio-header h4 {
-      margin: 0;
-      font-size: 1rem;
-      color: #0f172a;
-    }
-    .trainer-profile-card__bio-header span {
-      font-size: 0.75rem;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      color: #475569;
-      border: 1px solid #e2e8f0;
-      border-radius: 999px;
-      padding: 4px 10px;
-    }
-    .trainer-profile-card__bio-text {
-      margin: 0;
-      color: #1e293b;
-      line-height: 1.5;
-      white-space: pre-wrap;
-    }
-    .trainer-profile-card__bio-empty {
-      margin: 0;
-      color: #94a3b8;
-      font-style: italic;
-    }
-    .trainer-profile-popover__viewer {
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-    }
-    .trainer-profile-popover__owner-actions {
-      padding: 16px;
-      border-radius: 16px;
-      background: #f8fafc;
-      text-align: center;
-      box-shadow: inset 0 0 0 1px rgba(15,23,42,0.06);
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      align-items: center;
-    }
-    .trainer-profile-owner-hint {
-      margin: 0;
-      font-size: 0.85rem;
-      color: #475569;
-    }
-    .trainer-profile-edit-btn {
+    .trainer-profile-section__header button {
       border: none;
       border-radius: 999px;
-      padding: 10px 26px;
-      font-weight: 600;
-      font-size: 0.95rem;
-      color: #fff;
-      background: #0f172a;
-      cursor: pointer;
-    }
-    .trainer-profile-popover__editor {
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
-      background: #fff;
-      border-radius: 18px;
-      padding: 18px;
-      box-shadow: 0 18px 50px rgba(15,23,42,0.18);
-    }
-    .trainer-profile-editor__header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-    }
-    .trainer-profile-editor__eyebrow {
-      margin: 0;
-      text-transform: uppercase;
-      letter-spacing: 0.2em;
-      font-size: 0.7rem;
-      color: #94a3b8;
-      font-weight: 700;
-    }
-    .trainer-profile-editor__header h4 {
-      margin: 2px 0 0;
-      font-size: 1.1rem;
-      color: #0f172a;
-    }
-    .trainer-profile-editor__close {
-      border: none;
-      background: transparent;
-      font-weight: 600;
-      color: #2563eb;
-      cursor: pointer;
-    }
-    .trainer-profile-popover__action-btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      padding: 10px 16px;
-      border-radius: 12px;
-      background: #0f172a;
-      color: #fff;
-      font-weight: 600;
-      text-decoration: none;
-      text-align: center;
-    }
-    .trainer-profile-bio {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-    .trainer-profile-bio label {
-      font-size: 0.85rem;
-      font-weight: 600;
-      color: #0f172a;
-    }
-    .trainer-profile-bio textarea {
-      border-radius: 12px;
-      border: 1px solid #cbd5f5;
-      padding: 10px;
-      resize: none;
-      font-family: inherit;
-      min-height: 90px;
-    }
-    .trainer-profile-bio__meta {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      font-size: 0.85rem;
-      color: #475569;
-      gap: 8px;
-    }
-    .trainer-profile-bio__meta button {
-      border: none;
-      border-radius: 999px;
-      padding: 8px 16px;
-      background: var(--brand);
-      color: #fff;
-      font-weight: 600;
-      cursor: pointer;
-    }
-    .trainer-profile-bio__hint {
-      margin: 0;
-      font-size: 0.75rem;
-      color: #94a3b8;
-    }
-    .trainer-profile-bio__status {
-      font-size: 0.85rem;
-      font-weight: 600;
-      padding: 8px 12px;
-      border-radius: 10px;
-    }
-    .trainer-profile-bio__status.is-error {
-      background: #fef2f2;
-      color: #b91c1c;
-      border: 1px solid #fecaca;
-    }
-    .trainer-profile-bio__status.is-success {
-      background: #ecfdf5;
-      color: #065f46;
-      border: 1px solid #a7f3d0;
-    }
-    .trainer-profile-bio__status.is-info {
-      background: #eff6ff;
-      color: #1d4ed8;
-      border: 1px solid #bfdbfe;
-    }
-    .trainer-profile-featured-editor {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      padding: 16px;
-      border: 1px solid #e2e8f0;
-      border-radius: 16px;
-    }
-    .trainer-profile-featured-editor__header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-    }
-    .trainer-profile-featured-editor__header label {
-      font-weight: 600;
-      color: #0f172a;
-    }
-    .trainer-profile-featured-editor__header span {
-      font-size: 0.8rem;
-      color: #475569;
-    }
-    .trainer-profile-featured-selected {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-    }
-    .trainer-profile-featured-chip {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      border-radius: 999px;
-      background: #f1f5f9;
-      padding: 6px 10px;
-      font-size: 0.85rem;
-      color: #0f172a;
-    }
-    .trainer-profile-featured-chip img {
-      width: 26px;
-      height: 26px;
-      border-radius: 50%;
-    }
-    .trainer-profile-featured-chip button {
-      border: none;
-      background: transparent;
-      color: #475569;
-      font-size: 1rem;
-      cursor: pointer;
-    }
-    .trainer-profile-featured-empty {
-      margin: 0;
-      font-size: 0.85rem;
-      color: #94a3b8;
-    }
-    .trainer-profile-featured-toggle,
-    .trainer-profile-featured-save {
-      border: none;
-      border-radius: 999px;
-      padding: 8px 14px;
-      font-weight: 600;
-      cursor: pointer;
-    }
-    .trainer-profile-featured-toggle {
+      padding: 10px 18px;
       background: #e0f2fe;
       color: #0369a1;
+      font-weight: 600;
+      cursor: not-allowed;
     }
-    .trainer-profile-featured-save {
-      align-self: flex-start;
-      background: var(--brand);
-      color: #fff;
-      margin-top: 8px;
-    }
-    .trainer-profile-featured-catalog {
-      border: 1px solid #e2e8f0;
-      border-radius: 12px;
-      padding: 12px;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-    .trainer-profile-featured-grid {
+    .trainer-profile-medals {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-      gap: 8px;
-      max-height: 220px;
-      overflow-y: auto;
-      padding-right: 4px;
-    }
-    .trainer-profile-featured-option {
-      border: 1px solid #e2e8f0;
-      border-radius: 12px;
-      padding: 8px;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      cursor: pointer;
-      background: #fff;
-      text-align: left;
-      font-family: inherit;
-    }
-    .trainer-profile-featured-option img {
-      width: 36px;
-      height: 36px;
-      border-radius: 50%;
-    }
-    .trainer-profile-featured-option strong {
-      font-size: 0.9rem;
-      color: #0f172a;
-    }
-    .trainer-profile-featured-option span {
-      font-size: 0.75rem;
-      color: #475569;
-    }
-    .trainer-profile-featured-option.is-selected {
-      border-color: var(--brand);
-      box-shadow: 0 0 0 2px rgba(58,141,222,0.2);
-    }
-    .trainer-profile-featured-status {
-      font-size: 0.85rem;
-      font-weight: 600;
-      padding: 8px 12px;
-      border-radius: 10px;
-    }
-    .trainer-profile-featured-status.is-error {
-      background: #fef2f2;
-      color: #b91c1c;
-      border: 1px solid #fecaca;
-    }
-    .trainer-profile-featured-status.is-success {
-      background: #ecfdf5;
-      color: #065f46;
-      border: 1px solid #a7f3d0;
-    }
-    .trainer-profile-featured-status.is-info {
-      background: #eff6ff;
-      color: #1d4ed8;
-      border: 1px solid #bfdbfe;
-    }
-    .trainer-profile-meta {
-      display: flex;
-      flex-direction: column;
       gap: 10px;
-      padding: 16px;
-      border: 1px solid #e2e8f0;
-      border-radius: 16px;
     }
-    .trainer-profile-meta form {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-    .trainer-profile-meta label {
+    .trainer-profile-medal {
+      border-radius: 999px;
+      padding: 10px 14px;
+      background: #e2e8f0;
+      text-align: center;
       font-weight: 600;
+      color: #334155;
       font-size: 0.85rem;
+    }
+    .trainer-profile-medal--cta {
+      background: #2563eb;
+      color: #fff;
+    }
+    .trainer-profile-stamps {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      min-height: 64px;
+    }
+    .trainer-profile-stamp {
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      background: #e0f2fe;
+      border: 2px dashed #38bdf8;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 10px;
+      font-size: 0.85rem;
+      font-weight: 600;
       color: #0f172a;
     }
-    .trainer-profile-meta select {
-      border-radius: 12px;
-      border: 1px solid #cbd5f5;
-      padding: 8px 10px;
-      font-family: inherit;
-      background: #fff;
+    .trainer-profile-stamp img {
+      width: 68px;
+      height: 68px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid #fff;
+      box-shadow: 0 6px 14px rgba(15, 23, 42, 0.18);
     }
-    .trainer-profile-meta button {
+    .trainer-profile-empty {
+      margin: 0;
+      color: #94a3b8;
+      font-size: 0.9rem;
+    }
+    .trainer-profile-section__actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .trainer-profile-section__actions button {
+      flex: 1;
+      min-width: 220px;
+      border: none;
+      border-radius: 16px;
+      padding: 12px;
+      background: #dbeafe;
+      color: #1d4ed8;
+      font-weight: 600;
+      cursor: not-allowed;
+    }
+    .trainer-profile-footer {
+      padding: 20px 28px 28px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 20px;
+      border-top: 1px solid #e2e8f0;
+    }
+    .trainer-profile-edit {
+      flex: 1;
       border: none;
       border-radius: 999px;
-      padding: 10px 16px;
+      padding: 14px 18px;
       background: #0f172a;
       color: #fff;
-      font-weight: 600;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: not-allowed;
+    }
+    .trainer-profile-close {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      border: none;
+      background: #e2e8f0;
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: #0f172a;
       cursor: pointer;
-      margin-top: 4px;
     }
-    .trainer-profile-meta-status {
-      font-size: 0.85rem;
-      font-weight: 600;
-      padding: 8px 12px;
-      border-radius: 10px;
-    }
-    .trainer-profile-meta-status.is-error {
-      background: #fef2f2;
-      color: #b91c1c;
-      border: 1px solid #fecaca;
-    }
-    .trainer-profile-meta-status.is-success {
-      background: #ecfdf5;
-      color: #065f46;
-      border: 1px solid #a7f3d0;
-    }
-    .trainer-profile-meta-status.is-info {
-      background: #eff6ff;
-      color: #1d4ed8;
-      border: 1px solid #bfdbfe;
+    @media(max-width:640px){
+      .trainer-profile-popover {
+        padding: 12px;
+      }
+      .trainer-profile-card__hero {
+        padding: 22px;
+      }
+      .trainer-profile-card__body {
+        padding: 22px;
+      }
+      .trainer-profile-section__actions button {
+        min-width: unset;
+      }
+      .trainer-profile-card__hero-actions {
+        flex-direction: column;
+      }
+      .trainer-profile-card__code-row {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      .trainer-profile-footer {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .trainer-profile-close {
+        width: 48px;
+        height: 48px;
+      }
     }
 
     .content-filter-progress {
@@ -1208,9 +1035,6 @@
         };
       })();
       window.__overlayLock=bodyScrollLock;
-
-      const TRAINER_TEAM_OPTIONS = {{ (trainer_team_options or []) | tojson }};
-      const MAX_TRAINER_LEVEL = 80;
 
       const headerEl=document.querySelector(".site-header");
       const setHeaderOffset=()=>{
@@ -1438,74 +1262,35 @@
 
       const CURRENT_TRAINER_USERNAME = "{{ (_current_trainer_username or '')|lower }}";
       const DEFAULT_TRAINER_AVATAR = "{{ url_for('static', filename='avatars/avatar1.png') }}";
-      const DEFAULT_TRAINER_BACKGROUND = "{{ url_for('static', filename='backgrounds/standard.png') }}";
 
+      
       const trainerProfileModule = (()=>{
         const overlay=document.querySelector("[data-trainer-profile]");
         if(!overlay) return null;
         const loadingEl=overlay.querySelector("[data-trainer-profile-loading]");
         const errorEl=overlay.querySelector("[data-trainer-profile-error]");
         const cardEl=overlay.querySelector("[data-trainer-profile-card]");
-        const viewerPanel=overlay.querySelector("[data-trainer-profile-viewer]");
         const heroEl=overlay.querySelector("[data-trainer-profile-hero]");
         const avatarEl=overlay.querySelector("[data-trainer-profile-avatar]");
         const nameEl=overlay.querySelector("[data-trainer-profile-name]");
         const accountEl=overlay.querySelector("[data-trainer-profile-account]");
         const campfireEl=overlay.querySelector("[data-trainer-profile-campfire]");
         const stampsEl=overlay.querySelector("[data-trainer-profile-stamps]");
-        const joinedEl=overlay.querySelector("[data-trainer-profile-joined]");
-        const teamRow=overlay.querySelector("[data-trainer-profile-team-row]");
-        const teamValueEl=overlay.querySelector("[data-trainer-profile-team-value]");
-        const levelRow=overlay.querySelector("[data-trainer-profile-level-row]");
+        const codeEl=overlay.querySelector("[data-trainer-profile-code]");
+        const copyBtn=overlay.querySelector("[data-trainer-profile-copy]");
         const levelValueEl=overlay.querySelector("[data-trainer-profile-level-value]");
-        const ownerPanel=overlay.querySelector("[data-trainer-profile-owner]");
-        const editOpenBtn=overlay.querySelector("[data-trainer-profile-edit-open]");
-        const editorPanel=overlay.querySelector("[data-trainer-profile-editor]");
-        const editorCloseBtn=overlay.querySelector("[data-trainer-profile-editor-close]");
-        const customizeLink=overlay.querySelector("[data-trainer-profile-customize]");
-        const metaPanel=overlay.querySelector("[data-trainer-profile-meta]");
-        const metaForm=overlay.querySelector("[data-trainer-profile-meta-form]");
-        const teamSelect=overlay.querySelector("[data-trainer-team-select]");
-        const levelSelect=overlay.querySelector("[data-trainer-level-select]");
-        const metaStatus=overlay.querySelector("[data-trainer-profile-meta-status]");
-        const bioForm=overlay.querySelector("[data-trainer-profile-bio-form]");
-        const bioInput=overlay.querySelector("[data-trainer-profile-bio-input]");
-        const bioCount=overlay.querySelector("[data-trainer-profile-bio-count]");
-        const bioStatus=overlay.querySelector("[data-trainer-profile-bio-status]");
-        const bioFilterProgress=overlay.querySelector("[data-content-filter-progress]");
-        const bioBlock=overlay.querySelector("[data-trainer-profile-bio-block]");
-        const bioText=overlay.querySelector("[data-trainer-profile-bio-text]");
-        const bioEmpty=overlay.querySelector("[data-trainer-profile-bio-empty]");
-        const bioPill=overlay.querySelector("[data-trainer-profile-bio-pill]");
-        const featuredRow=overlay.querySelector("[data-trainer-profile-featured]");
+        const teamValueEl=overlay.querySelector("[data-trainer-profile-team-value]");
+        const joinedEl=overlay.querySelector("[data-trainer-profile-joined]");
+        const meetupsEl=overlay.querySelector("[data-trainer-profile-meetups]");
         const featuredList=overlay.querySelector("[data-trainer-profile-featured-list]");
-        const featuredEditor=overlay.querySelector("[data-trainer-profile-featured-editor]");
-        const featuredSelected=overlay.querySelector("[data-trainer-profile-featured-selected]");
-        const featuredCount=overlay.querySelector("[data-trainer-profile-featured-count]");
-        const featuredCatalogPanel=overlay.querySelector("[data-trainer-profile-featured-catalog]");
-        const featuredGrid=overlay.querySelector("[data-trainer-profile-featured-grid]");
-        const featuredLoadBtn=overlay.querySelector("[data-trainer-profile-featured-load]");
-        const featuredSaveBtn=overlay.querySelector("[data-trainer-profile-featured-save]");
-        const featuredStatus=overlay.querySelector("[data-trainer-profile-featured-status]");
         const bodyLock=window.__overlayLock || {lock(){},unlock(){}};
         const cache={};
         const state={
           username:"",
           profileUrl:null,
-          isOwner:false,
-          mode:"public",
-          viewState:"loading",
-          displayName:"Trainer",
-          featuredSelection:[],
-          featuredCatalog:[],
-          featuredCatalogLoaded:false,
-          featuredCatalogLoading:false,
-          catalogPromise:null,
-          teamValue:"",
-          levelValue:"",
+          displayName:"Trainer"
         };
         let closeTimer=null;
-        let metaSelectsInitialized=false;
 
         const escapeHtml=(value)=>{
           return (value || "").replace(/[&<>"']/g,(char)=>{
@@ -1513,7 +1298,7 @@
               case "&": return "&amp;";
               case "<": return "&lt;";
               case ">": return "&gt;";
-              case "\"": return "&quot;";
+              case '"': return "&quot;";
               case "'": return "&#039;";
               default: return char;
             }
@@ -1521,17 +1306,88 @@
         };
 
         const formatDate=(value)=>{
-          if(!value) return "—";
+          if(!value) return "DD/MM/YY";
           try{
             const date=new Date(value);
-            return date.toLocaleDateString(undefined,{ month:"short", day:"numeric", year:"numeric" });
+            return date.toLocaleDateString(undefined,{ day:"2-digit", month:"2-digit", year:"2-digit" });
           }catch(err){
             return value;
           }
         };
 
+        const formatCounter=(value)=>{
+          if(typeof value==="number"){
+            return value.toString().padStart(4,"0");
+          }
+          if(!value) return "0000";
+          return String(value).padStart(4,"0");
+        };
+
+        const formatTrainerCode=(value)=>{
+          const digits=(value || "").replace(/[^0-9]/g,"");
+          if(!digits){
+            return "0000 0000 0000";
+          }
+          const parts=[];
+          for(let i=0;i<digits.length;i+=4){
+            parts.push(digits.slice(i,i+4));
+          }
+          return parts.join(" ").trim();
+        };
+
+        const setHeroBackground=(url)=>{
+          if(!heroEl) return;
+          if(url){
+            heroEl.style.backgroundImage=`linear-gradient(180deg,rgba(7,11,30,0.2),rgba(5,9,24,0.75)), url('${url}')`;
+            heroEl.style.backgroundSize="cover";
+            heroEl.style.backgroundPosition="center";
+          }else{
+            heroEl.style.backgroundImage="linear-gradient(140deg,#5c0b1c,#9d0d37 55%,#c81e1e)";
+          }
+        };
+
+        const renderTeam=(info)=>{
+          if(!teamValueEl){
+            return;
+          }
+          if(!info){
+            teamValueEl.innerHTML="—";
+            return;
+          }
+          const icon=info.icon ? `<img src="${escapeHtml(info.icon)}" alt="${escapeHtml(info.label || "Team icon")}" />` : "";
+          const label=escapeHtml(info.label || "Team");
+          teamValueEl.innerHTML = icon ? `${icon}<span>${label}</span>` : label;
+        };
+
+        const renderLevel=(levelValue)=>{
+          if(!levelValueEl){
+            return;
+          }
+          if(levelValue === undefined || levelValue === null){
+            levelValueEl.textContent="--";
+            return;
+          }
+          levelValueEl.textContent=String(levelValue).padStart(2,"0");
+        };
+
+        const renderFeatured=(items)=>{
+          if(!featuredList){
+            return;
+          }
+          const stamps=Array.isArray(items) ? items.slice(0,3) : [];
+          if(!stamps.length){
+            featuredList.innerHTML='<p class="trainer-profile-empty">No featured stamps yet.</p>';
+            return;
+          }
+          const html=stamps.map((stamp,idx)=>{
+            const label=escapeHtml(stamp.label || `Featured stamp ${idx+1}`);
+            const icon=stamp.icon ? `<img src="${escapeHtml(stamp.icon)}" alt="${label}">` : `<span>${label}</span>`;
+            return `<button type="button" class="trainer-profile-stamp" disabled>${icon}</button>`;
+          });
+          featuredList.innerHTML=html.join("");
+        };
+
         const setView=(mode,message)=>{
-          state.viewState=mode;
           if(loadingEl) loadingEl.hidden = mode!=="loading";
           if(cardEl) cardEl.hidden = mode!=="ready";
           if(errorEl){
@@ -1540,417 +1396,56 @@
               errorEl.textContent = message || "Unable to load trainer profile right now.";
             }
           }
-          updateModeVisibility();
-        };
-
-        const resetStatus=()=>{
-          if(!bioStatus) return;
-          bioStatus.hidden=true;
-          bioStatus.textContent="";
-          bioStatus.classList.remove("is-error","is-success","is-info");
-        };
-
-        const setBioStatus=(message,tone)=>{
-          if(!bioStatus) return;
-          bioStatus.hidden=false;
-          bioStatus.textContent=message;
-          bioStatus.classList.remove("is-error","is-success","is-info");
-          if(tone==="error") bioStatus.classList.add("is-error");
-          else if(tone==="success") bioStatus.classList.add("is-success");
-          else bioStatus.classList.add("is-info");
-        };
-
-        const clearMetaStatus=()=>{
-          if(!metaStatus) return;
-          metaStatus.hidden=true;
-          metaStatus.textContent="";
-          metaStatus.classList.remove("is-error","is-success","is-info");
-        };
-
-        const setMetaStatus=(message,tone)=>{
-          if(!metaStatus) return;
-          metaStatus.hidden=false;
-          metaStatus.textContent=message;
-          metaStatus.classList.remove("is-error","is-success","is-info");
-          if(tone==="error") metaStatus.classList.add("is-error");
-          else if(tone==="success") metaStatus.classList.add("is-success");
-          else metaStatus.classList.add("is-info");
-        };
-
-        const ensureMetaSelects=()=>{
-          if(metaSelectsInitialized) return;
-          if(teamSelect){
-            let options='<option value=\"\">Select your team</option>';
-            TRAINER_TEAM_OPTIONS.forEach(function(opt){
-              options += `<option value=\"${opt.value}\">${opt.label}</option>`;
-            });
-            teamSelect.innerHTML = options;
-          }
-          if(levelSelect){
-            let options='<option value=\"\">Select level</option>';
-            for(let lvl=1; lvl<=MAX_TRAINER_LEVEL; lvl++){
-              options += `<option value=\"${lvl}\">Level ${lvl}</option>`;
-            }
-            levelSelect.innerHTML = options;
-          }
-          metaSelectsInitialized=true;
-        };
-
-        const populateMetaForm=()=>{
-          if(!metaForm || !state.isOwner) return;
-          ensureMetaSelects();
-          if(teamSelect){
-            teamSelect.value = state.teamValue || "";
-          }
-          if(levelSelect){
-            levelSelect.value = state.levelValue ? String(state.levelValue) : "";
-          }
-          clearMetaStatus();
-        };
-
-        const toggleBioFilterProgress=(active)=>{
-          if(!bioFilterProgress) return;
-          bioFilterProgress.hidden = !active;
-        };
-
-        const runBioFilterCheck=(value)=>{
-          const filter=window.RDABContentFilter;
-          if(!filter || typeof filter.scan!=="function"){
-            return Promise.resolve({ allowed:true });
-          }
-          toggleBioFilterProgress(true);
-          return filter.scan(value)
-            .then(result=>{
-              toggleBioFilterProgress(false);
-              return result;
-            })
-            .catch(err=>{
-              console.warn("Content filter error:", err);
-              toggleBioFilterProgress(false);
-              return { allowed:true };
-            });
-        };
-
-        const updateBioCount=()=>{
-          if(!bioInput || !bioCount) return;
-          const len=bioInput.value.length;
-          bioCount.textContent=`${len}/200`;
-        };
-
-        const setBioText=(value)=>{
-          const text=(value || "").trim();
-          if(bioText){
-            bioText.textContent=text;
-            bioText.hidden=!text;
-          }
-          if(bioEmpty){
-            bioEmpty.hidden=!!text;
-          }
-        };
-
-        const populateBio=(data)=>{
-          if(!bioInput) return;
-          const value = data && typeof data.bio === "string" ? data.bio : "";
-          bioInput.value=value;
-          updateBioCount();
-        };
-
-        const updateModeVisibility=()=>{
-          const isOwner=state.isOwner;
-          const isEditor=state.mode==="editor";
-          const canShowOwnerCta=isOwner && state.mode==="owner" && state.viewState==="ready";
-          if(viewerPanel) viewerPanel.hidden = isEditor;
-          if(ownerPanel) ownerPanel.hidden = !canShowOwnerCta;
-          if(editOpenBtn) editOpenBtn.disabled = !canShowOwnerCta;
-          if(editorPanel) editorPanel.hidden = !isEditor;
-          if(customizeLink) customizeLink.hidden = !isEditor;
-          if(metaPanel) metaPanel.hidden = !isEditor;
-          if(featuredEditor) featuredEditor.hidden = !isEditor;
-          if(bioForm) bioForm.hidden = !isEditor;
-          if(bioPill){
-            if(state.mode==="public"){
-              bioPill.textContent="Public Profile";
-            }else if(state.mode==="owner"){
-              bioPill.textContent="Player View";
-            }else{
-              bioPill.textContent="Edit Mode";
-            }
-          }
-          if(!isEditor && featuredCatalogPanel){
-            featuredCatalogPanel.hidden=true;
-          }
-          if(isEditor){
-            populateMetaForm();
-          }else{
-            resetStatus();
-            clearFeaturedStatus();
-            clearMetaStatus();
-          }
-        };
-
-        const renderTeamRow=(info)=>{
-          if(!teamRow || !teamValueEl){
-            return;
-          }
-          if(!info){
-            teamRow.hidden=true;
-            teamValueEl.innerHTML="—";
-            return;
-          }
-          const icon=info.icon ? escapeHtml(info.icon) : "";
-          const label=escapeHtml(info.label || "Trainer Team");
-          teamRow.hidden=false;
-          if(icon){
-            teamValueEl.innerHTML=`<img src="${icon}" alt="${label} icon"><span>${label}</span>`;
-          }else{
-            teamValueEl.textContent=label;
-          }
-        };
-
-        const renderLevelRow=(levelValue,isMax)=>{
-          if(!levelRow || !levelValueEl){
-            return;
-          }
-          if(!levelValue){
-            levelRow.hidden=true;
-            levelValueEl.textContent="—";
-            levelValueEl.classList.remove("is-max-level");
-            return;
-          }
-          levelRow.hidden=false;
-          levelValueEl.textContent = `Lv. ${levelValue}`;
-          levelValueEl.classList.toggle("is-max-level", !!isMax);
-        };
-
-        const renderFeaturedRow=(items)=>{
-          if(!featuredRow || !featuredList){
-            return;
-          }
-          if(!items || !items.length){
-            featuredRow.hidden=true;
-            featuredList.innerHTML="";
-            return;
-          }
-          featuredRow.hidden=false;
-          featuredList.innerHTML=items.map((item)=>{
-            const icon=escapeHtml(item.icon || "");
-            const label=escapeHtml(item.label || "Featured stamp");
-            return `
-              <div class="trainer-profile-card__featured-item">
-                <img src="${icon}" alt="${label}">
-                <span>${label}</span>
-              </div>
-            `;
-          }).join("");
-        };
-
-        const renderFeaturedSelection=()=>{
-          if(!featuredSelected) return;
-          if(!state.featuredSelection.length){
-            featuredSelected.innerHTML='<p class="trainer-profile-featured-empty">No featured stamps yet.</p>';
-          }else{
-            featuredSelected.innerHTML=state.featuredSelection.map((item, index)=>{
-              const icon=escapeHtml(item.icon || "");
-              const label=escapeHtml(item.label || "Featured stamp");
-              return `
-                <span class="trainer-profile-featured-chip">
-                  <img src="${icon}" alt="${label}">
-                  <span>${label}</span>
-                  <button type="button" data-featured-remove="${index}" aria-label="Remove featured stamp">×</button>
-                </span>
-              `;
-            }).join("");
-          }
-          if(featuredCount){
-            featuredCount.textContent = `${state.featuredSelection.length}/3`;
-          }
-          updateCatalogSelectionState();
-        };
-
-        const clearFeaturedStatus=()=>{
-          if(!featuredStatus) return;
-          featuredStatus.hidden=true;
-          featuredStatus.textContent="";
-          featuredStatus.classList.remove("is-error","is-success","is-info");
-        };
-
-        const setFeaturedStatus=(message,tone)=>{
-          if(!featuredStatus) return;
-          featuredStatus.hidden=false;
-          featuredStatus.textContent=message;
-          featuredStatus.classList.remove("is-error","is-success","is-info");
-          if(tone==="error") featuredStatus.classList.add("is-error");
-          else if(tone==="success") featuredStatus.classList.add("is-success");
-          else featuredStatus.classList.add("is-info");
-        };
-
-        const syncSelectionTokensWithCatalog=()=>{
-          if(!state.featuredCatalog.length) return;
-          state.featuredSelection=state.featuredSelection.map((item)=>{
-            if(item.token) return item;
-            const match=state.featuredCatalog.find(stamp =>
-              stamp.icon===item.icon && stamp.label===item.label
-            );
-            if(match){
-              return { ...item, token: match.token };
-            }
-            return item;
-          });
-        };
-
-        const updateCatalogSelectionState=()=>{
-          if(!featuredGrid) return;
-          featuredGrid.querySelectorAll("[data-featured-token]").forEach(btn=>{
-            const token=btn.getAttribute("data-featured-token");
-            const isSelected=state.featuredSelection.some(item=>item.token && item.token===token);
-            btn.classList.toggle("is-selected", isSelected);
-          });
-        };
-
-        const renderFeaturedCatalog=()=>{
-          if(!featuredGrid) return;
-          if(!state.featuredCatalog.length){
-            featuredGrid.innerHTML='<p class="trainer-profile-featured-empty" style="grid-column:1/-1;">No stamps to show yet. Earn stamps to start featuring them!</p>';
-          }else{
-            featuredGrid.innerHTML=state.featuredCatalog.map((stamp)=>{
-              const icon=escapeHtml(stamp.icon || "");
-              const label=escapeHtml(stamp.label || "Stamp");
-              const awarded=escapeHtml(stamp.awarded_at || "");
-              return `
-                <button type="button"
-                        class="trainer-profile-featured-option"
-                        data-featured-token="${stamp.token}"
-                        data-featured-icon="${icon}"
-                        data-featured-label="${label}">
-                  <img src="${icon}" alt="${label}">
-                  <strong>${label}</strong>
-                  <span>${awarded || "Recently earned"}</span>
-                </button>
-              `;
-            }).join("");
-          }
-          updateCatalogSelectionState();
-        };
-
-        const ensureCatalogLoaded=()=>{
-          if(state.featuredCatalogLoaded){
-            return Promise.resolve(state.featuredCatalog);
-          }
-          if(state.featuredCatalogLoading && state.catalogPromise){
-            return state.catalogPromise;
-          }
-          state.featuredCatalogLoading=true;
-          state.catalogPromise=fetch("/api/profile/featured-stamps")
-            .then(resp=>resp.json().then(body=>({ ok:resp.ok, body })))
-            .then(({ok,body})=>{
-              if(!ok) throw new Error(body && body.error ? body.error : "Unable to load stamps.");
-              const catalog=Array.isArray(body && body.stamps) ? body.stamps : [];
-              state.featuredCatalog=catalog;
-              state.featuredCatalogLoaded=true;
-              state.featuredCatalogLoading=false;
-              state.catalogPromise=null;
-              syncSelectionTokensWithCatalog();
-              renderFeaturedCatalog();
-              renderFeaturedSelection();
-              clearFeaturedStatus();
-              return catalog;
-            })
-            .catch(err=>{
-              state.featuredCatalogLoading=false;
-              state.catalogPromise=null;
-              setFeaturedStatus(err && err.message ? err.message : "Unable to load stamps.", "error");
-              throw err;
-            });
-          return state.catalogPromise;
-        };
-
-        const toggleCatalogVisibility=()=>{
-          if(!featuredCatalogPanel) return;
-          featuredCatalogPanel.hidden = !featuredCatalogPanel.hidden;
         };
 
         const hydrateProfile=(data,fallbackName)=>{
           const displayName = data && data.username ? data.username : (fallbackName || "Trainer");
           if(nameEl) nameEl.textContent = displayName;
           if(accountEl){
-            const title = data && data.trainer_title;
-            const accountLabel = title || (data && data.account_type ? `${data.account_type} Account` : "Trainer Account");
+            const accountLabel = data && data.account_type ? data.account_type : "Trainer Account";
             accountEl.textContent = accountLabel;
           }
           if(avatarEl){
             avatarEl.src = data && data.avatar_url ? data.avatar_url : DEFAULT_TRAINER_AVATAR;
             avatarEl.alt = `${displayName} avatar`;
           }
-          if(heroEl){
-            const heroBg = data && data.background_url ? `url('${data.background_url}')` : `url('${DEFAULT_TRAINER_BACKGROUND}')`;
-            heroEl.style.backgroundImage = heroBg;
-          }
+          setHeroBackground(data && data.background_url);
           if(campfireEl){
-            campfireEl.textContent = data && data.campfire_username ? `@${data.campfire_username}` : "—";
+            const campfire=(data && data.campfire_username) ? `@${data.campfire_username.replace(/^@/,"")}` : "—";
+            campfireEl.textContent = campfire;
           }
           if(stampsEl){
-            const stampValue = data && typeof data.stamps !== "undefined" ? data.stamps : "—";
-            stampsEl.textContent = typeof stampValue === "number" ? stampValue.toLocaleString() : (stampValue || "—");
+            const stampValue = data && typeof data.stamps !== "undefined" ? data.stamps : 0;
+            stampsEl.textContent = typeof stampValue === "number" ? stampValue.toLocaleString() : stampValue;
           }
-          if(joinedEl) joinedEl.textContent = data && data.joined_at ? formatDate(data.joined_at) : "—";
-          const teamInfo = data && data.team ? data.team : null;
-          renderTeamRow(teamInfo);
-          state.teamValue = teamInfo && teamInfo.value ? teamInfo.value : "";
-          const trainerLevel = (data && typeof data.trainer_level === "number") ? data.trainer_level : null;
-          state.levelValue = trainerLevel ? String(trainerLevel) : "";
-          renderLevelRow(trainerLevel, data && data.is_max_level);
-          setBioText(data && typeof data.bio === "string" ? data.bio : "");
-          const featuredItems = Array.isArray(data && data.featured_stamps) ? data.featured_stamps : [];
-          renderFeaturedRow(featuredItems);
-          state.featuredSelection = featuredItems.map(item=>({
-            icon: item.icon || "",
-            label: item.label || "Featured stamp",
-            token: item.token || null,
-          }));
-          renderFeaturedSelection();
-          if(state.featuredCatalogLoaded){
-            syncSelectionTokensWithCatalog();
-            updateCatalogSelectionState();
+          if(codeEl){
+            codeEl.textContent = formatTrainerCode(data && data.trainer_code);
           }
-          if(state.isOwner){
-            populateBio(data);
-            populateMetaForm();
+          if(copyBtn){
+            copyBtn.disabled = true;
           }
+          renderLevel(data && data.trainer_level);
+          renderTeam(data && data.team);
+          if(joinedEl){
+            joinedEl.textContent = formatDate(data && data.joined_at);
+          }
+          if(meetupsEl){
+            meetupsEl.textContent = formatCounter(data && data.meetups_count);
+          }
+          renderFeatured(data && data.featured_stamps);
         };
 
         const open=(options)=>{
           if(!overlay) return;
           const username=(options.username || "").trim();
-          const normalizedUsername=username ? username.toLowerCase() : "";
           state.username=username;
           state.profileUrl=options.url || (username ? `/api/trainers/${encodeURIComponent(username)}/profile` : null);
-          const isCurrentUser=Boolean(CURRENT_TRAINER_USERNAME && normalizedUsername && normalizedUsername === CURRENT_TRAINER_USERNAME);
-          state.isOwner=Boolean(options.editable && isCurrentUser);
-          state.mode=state.isOwner ? "owner" : "public";
           state.displayName=options.displayName || username || "Trainer";
-          state.teamValue="";
-          state.levelValue="";
-          state.featuredSelection=[];
-          state.featuredCatalog=[];
-          state.featuredCatalogLoaded=false;
-          state.featuredCatalogLoading=false;
-          state.catalogPromise=null;
-          state.viewState="loading";
-          updateModeVisibility();
-          if(!state.isOwner && bioInput){
-            bioInput.value="";
-            updateBioCount();
-          }
-          setBioText("");
-          renderTeamRow(null);
-          renderLevelRow(null,false);
-          renderFeaturedRow([]);
-          renderFeaturedSelection();
           overlay.hidden=false;
           requestAnimationFrame(()=>overlay.classList.add("is-visible"));
           bodyLock.lock();
           setView("loading");
-          const cacheKey=normalizedUsername;
+          const cacheKey=username.toLowerCase();
           if(cacheKey && cache[cacheKey]){
             hydrateProfile(cache[cacheKey], state.displayName);
             setView("ready");
@@ -1978,8 +1473,6 @@
 
         const close=()=>{
           if(!overlay || overlay.hidden) return;
-          state.mode = state.isOwner ? "owner" : "public";
-          updateModeVisibility();
           overlay.classList.remove("is-visible");
           if(closeTimer) clearTimeout(closeTimer);
           closeTimer=setTimeout(()=>{
@@ -1989,232 +1482,12 @@
           },220);
         };
 
-        const submitBio=(evt)=>{
-          evt.preventDefault();
-          if(!state.isOwner || state.mode!=="editor" || !bioForm || !bioInput) return;
-          let bioValue=(bioInput.value || "").trim();
-          if(bioValue.length>200){
-            bioValue=bioValue.slice(0,200);
-            bioInput.value=bioValue;
-          }
-          updateBioCount();
-          const submitBtn=bioForm.querySelector("button[type='submit']");
-          if(submitBtn) submitBtn.disabled=true;
-          runBioFilterCheck(bioValue).then(result=>{
-            if(!result.allowed){
-              setBioStatus("Community filter blocked that update. Please adjust your wording.","error");
-              if(window.RDABContentFilter && typeof window.RDABContentFilter.showWarning==="function"){
-                window.RDABContentFilter.showWarning(result);
-              }
-              if(submitBtn) submitBtn.disabled=false;
-              return;
-            }
-            setBioStatus("Saving bio…","info");
-            fetch("/api/profile/bio",{
-              method:"POST",
-              headers:{ "Content-Type":"application/json" },
-              body:JSON.stringify({ bio: bioValue })
-            })
-              .then(resp=>resp.json().then(body=>({ ok:resp.ok, body })))
-              .then(({ok,body})=>{
-                if(!ok){
-                  const error=new Error(body && body.error ? body.error : "Unable to update bio.");
-                  if(body && body.filter){
-                    error.isFilter=true;
-                    error.filter=body.filter;
-                  }
-                  throw error;
-                }
-                setBioStatus("Bio updated!","success");
-                const trainer=body && body.trainer;
-                if(trainer && state.username){
-                  cache[state.username.toLowerCase()]=trainer;
-                  hydrateProfile(trainer, state.displayName);
-                }
-              })
-              .catch(err=>{
-                console.warn(err);
-                if(err && err.isFilter && err.filter && window.RDABContentFilter && typeof window.RDABContentFilter.showWarning==="function"){
-                  window.RDABContentFilter.showWarning(err.filter);
-                  setBioStatus("Community filter blocked that update. Please adjust your wording.","error");
-                }else{
-                  setBioStatus(err && err.message ? err.message : "Unable to update bio.","error");
-                }
-              })
-              .finally(()=>{
-                if(submitBtn) submitBtn.disabled=false;
-              });
-          });
-        };
-
         overlay.querySelectorAll("[data-trainer-profile-close]").forEach(btn=>{
           btn.addEventListener("click",(evt)=>{
             evt.preventDefault();
             close();
           });
         });
-        if(bioForm){
-          bioForm.addEventListener("submit", submitBio);
-        }
-        if(bioInput){
-          bioInput.addEventListener("input", updateBioCount);
-        }
-        if(featuredLoadBtn){
-          featuredLoadBtn.addEventListener("click",()=>{
-            if(!state.isOwner || state.mode!=="editor"){
-              return;
-            }
-            ensureCatalogLoaded().then(()=>{
-              toggleCatalogVisibility();
-            }).catch(()=>{});
-          });
-        }
-        if(featuredGrid){
-          featuredGrid.addEventListener("click",(event)=>{
-            const btn=event.target.closest("[data-featured-token]");
-            if(!btn || !state.isOwner || state.mode!=="editor") return;
-            const token=btn.getAttribute("data-featured-token");
-            const icon=btn.getAttribute("data-featured-icon") || "";
-            const label=btn.getAttribute("data-featured-label") || "";
-            if(state.featuredSelection.some(item=>item.token===token)){
-              state.featuredSelection=state.featuredSelection.filter(item=>item.token!==token);
-              renderFeaturedSelection();
-              clearFeaturedStatus();
-              return;
-            }
-            if(state.featuredSelection.length >= 3){
-              setFeaturedStatus("You can only feature up to three stamps.", "error");
-              return;
-            }
-            state.featuredSelection.push({ token, icon, label });
-            renderFeaturedSelection();
-            clearFeaturedStatus();
-          });
-        }
-        if(featuredSelected){
-          featuredSelected.addEventListener("click",(event)=>{
-            const btn=event.target.closest("[data-featured-remove]");
-            if(!btn || state.mode!=="editor" || !state.isOwner) return;
-            const index=parseInt(btn.getAttribute("data-featured-remove") || "-1", 10);
-            if(isNaN(index) || index < 0 || index >= state.featuredSelection.length) return;
-            state.featuredSelection.splice(index,1);
-            renderFeaturedSelection();
-            clearFeaturedStatus();
-          });
-        }
-        if(editOpenBtn){
-          editOpenBtn.addEventListener("click",()=>{
-            if(!state.isOwner || state.mode!=="owner" || state.viewState!=="ready") return;
-            state.mode="editor";
-            updateModeVisibility();
-          });
-        }
-        if(editorCloseBtn){
-          editorCloseBtn.addEventListener("click",(evt)=>{
-            evt.preventDefault();
-            if(!state.isOwner) return;
-            state.mode="owner";
-            updateModeVisibility();
-          });
-        }
-        if(featuredSaveBtn){
-          featuredSaveBtn.addEventListener("click",()=>{
-            if(!state.isOwner || state.mode!=="editor") return;
-            ensureCatalogLoaded().then(()=>{
-              const tokens=state.featuredSelection.map(item=>item.token).filter(Boolean);
-              if(state.featuredSelection.length && !tokens.length){
-                setFeaturedStatus("Please pick stamps from the list to save them.", "error");
-                return;
-              }
-              setFeaturedStatus("Saving featured stamps…","info");
-              featuredSaveBtn.disabled=true;
-              return fetch("/api/profile/featured-stamps",{
-                method:"POST",
-                headers:{ "Content-Type":"application/json" },
-                body:JSON.stringify({ tokens })
-              })
-                .then(resp=>resp.json().then(body=>({ ok:resp.ok, body })))
-                .then(({ok,body})=>{
-                  if(!ok) throw new Error(body && body.error ? body.error : "Unable to update featured stamps.");
-                  const trainer=body && body.trainer;
-                  if(trainer && state.username){
-                    cache[state.username.toLowerCase()]=trainer;
-                    hydrateProfile(trainer, state.displayName);
-                  }
-                  setFeaturedStatus("Featured stamps updated!", "success");
-                })
-                .catch(err=>{
-                  console.warn(err);
-                  setFeaturedStatus(err && err.message ? err.message : "Unable to update featured stamps.", "error");
-                })
-                .finally(()=>{
-                  featuredSaveBtn.disabled=false;
-                });
-            }).catch(()=>{});
-          });
-        }
-        if(teamSelect){
-          teamSelect.addEventListener("change", clearMetaStatus);
-        }
-        if(levelSelect){
-          levelSelect.addEventListener("change", clearMetaStatus);
-        }
-        if(metaForm){
-          metaForm.addEventListener("submit",(evt)=>{
-            evt.preventDefault();
-            if(!state.isOwner || state.mode!=="editor") return;
-            ensureMetaSelects();
-            const desiredTeam=(teamSelect ? (teamSelect.value || "").toLowerCase() : "");
-            const currentTeam=state.teamValue || "";
-            const desiredLevelRaw=levelSelect ? (levelSelect.value || "") : "";
-            const currentLevelRaw=state.levelValue ? String(state.levelValue) : "";
-            const payload={};
-            if(desiredTeam !== currentTeam){
-              payload.team = desiredTeam;
-            }
-            if(desiredLevelRaw !== currentLevelRaw){
-              if(!desiredLevelRaw){
-                payload.trainer_level = null;
-              }else{
-                const levelInt=parseInt(desiredLevelRaw,10);
-                if(isNaN(levelInt) || levelInt < 1 || levelInt > MAX_TRAINER_LEVEL){
-                  setMetaStatus(`Level must be between 1 and ${MAX_TRAINER_LEVEL}.`,"error");
-                  return;
-                }
-                payload.trainer_level = levelInt;
-              }
-            }
-            if(!("team" in payload) && !("trainer_level" in payload)){
-              setMetaStatus("No changes to save.","info");
-              return;
-            }
-            setMetaStatus("Saving profile…","info");
-            const submitBtn=metaForm.querySelector("button[type='submit']");
-            if(submitBtn) submitBtn.disabled=true;
-            fetch("/api/profile/meta",{
-              method:"POST",
-              headers:{ "Content-Type":"application/json" },
-              body:JSON.stringify(payload)
-            })
-              .then(resp=>resp.json().then(body=>({ ok:resp.ok, body })))
-              .then(({ok,body})=>{
-                if(!ok) throw new Error(body && body.error ? body.error : "Unable to update profile.");
-                setMetaStatus("Profile updated!","success");
-                const trainer=body && body.trainer;
-                if(trainer && state.username){
-                  cache[state.username.toLowerCase()]=trainer;
-                  hydrateProfile(trainer, state.displayName);
-                }
-              })
-              .catch(err=>{
-                console.warn(err);
-                setMetaStatus(err && err.message ? err.message : "Unable to update profile.","error");
-              })
-              .finally(()=>{
-                if(submitBtn) submitBtn.disabled=false;
-              });
-          });
-        }
 
         document.addEventListener("keydown",(evt)=>{
           if(evt.key==="Escape" && !overlay.hidden){
@@ -2224,6 +1497,7 @@
 
         return { open, close };
       })();
+
       window.TrainerProfilePopover=trainerProfileModule;
 
       document.addEventListener("click",(event)=>{

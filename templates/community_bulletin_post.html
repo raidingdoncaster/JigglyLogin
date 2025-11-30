@@ -997,11 +997,25 @@
   box-shadow: 0 0 0 2px rgba(58, 141, 222, 0.25);
 }
 
-.bp-comment-avatar img {
+.bp-comment-avatar img,
+.bp-comment-avatar-btn img {
   width: 44px;
   height: 44px;
   border-radius: 999px;
   object-fit: cover;
+}
+.bp-comment-avatar-btn {
+  border: none;
+  padding: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+}
+.bp-comment-avatar-btn:focus-visible {
+  outline: 2px solid #94a3b8;
+  outline-offset: 2px;
 }
 
 .bp-comment-body {
@@ -1899,6 +1913,10 @@ body.bp-modal-open {
     var trainerButton = (trainerProfileUrl
       ? '<button type="button" class="bp-comment-trainer" data-trainer-profile-trigger data-trainer-profile-username="' + escapeHtml(trainerUsername) + '" data-trainer-profile-url="' + escapeHtml(trainerProfileUrl) + '" data-trainer-display="' + authorLabel + '"' + (isOwnComment ? " data-trainer-profile-own" : "") + ">" + authorLabel + "</button>"
       : "<strong>" + authorLabel + "</strong>");
+    var avatarSrc = escapeHtml(resolveAvatar(comment.avatar));
+    var avatarMarkup = (trainerProfileUrl
+      ? '<button type="button" class="bp-comment-avatar-btn" data-trainer-profile-trigger data-trainer-profile-username="' + escapeHtml(trainerUsername) + '" data-trainer-profile-url="' + escapeHtml(trainerProfileUrl) + '" data-trainer-display="' + authorLabel + '"' + (isOwnComment ? " data-trainer-profile-own" : "") + '><img src="' + avatarSrc + '" alt="' + authorLabel + '"></button>'
+      : '<img src="' + avatarSrc + '" alt="' + authorLabel + '">');
     var commentId = escapeHtml(comment.id || "");
     var replies = Array.isArray(comment.replies) ? comment.replies : [];
     var repliesMarkup = "";
@@ -1923,7 +1941,7 @@ body.bp-modal-open {
     return (
       '<article class="' + classes + '" data-comment-id="' + commentId + '">' +
         '<div class="bp-comment-avatar">' +
-          '<img src="' + escapeHtml(resolveAvatar(comment.avatar)) + '" alt="' + authorLabel + '">' +
+          avatarMarkup +
         "</div>" +
         '<div class="bp-comment-body">' +
           '<div class="bp-comment-meta">' +

@@ -2285,6 +2285,18 @@ def get_public_trainer_profile(username: str) -> Optional[dict]:
     bio = (record.get("trainerbio") or "").strip()
     if len(bio) > 200:
         bio = bio[:200]
+    trainer_code = (record.get("trainer_code") or record.get("friend_code") or "").strip()
+    raw_meetups = (
+        record.get("meetups_count")
+        or record.get("meetups_total")
+        or record.get("meetups_attended")
+        or record.get("meetups")
+        or 0
+    )
+    try:
+        meetups_count = int(raw_meetups)
+    except (TypeError, ValueError):
+        meetups_count = 0
     try:
         avatar_url = url_for("static", filename=f"avatars/{avatar_file}")
         background_url = url_for("static", filename=f"backgrounds/{background_file}")
@@ -2311,6 +2323,8 @@ def get_public_trainer_profile(username: str) -> Optional[dict]:
         "trainer_team": record.get("trainer_team"),
         "bio": bio,
         "featured_stamps": _record_featured_stamps(record),
+        "trainer_code": trainer_code,
+        "meetups_count": meetups_count,
         "team": team_info,
         "trainer_level": trainer_level,
         "is_max_level": bool(trainer_level and trainer_level >= MAX_TRAINER_LEVEL),
