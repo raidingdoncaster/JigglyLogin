@@ -52,7 +52,7 @@ USE_GEOCACHE_QUEST = _env_flag("USE_GEOCACHE_QUEST", False)  # 🧭 Toggle Geoca
 LIVE_EVENT_FLAGS = {
     "holidays_advent_2025": {
         "label": "Holidays Advent 2025",
-        "enabled": _env_flag("LIVE_EVENT_HOLIDAYS_ADVENT_2025", False),
+        "enabled": _env_flag("LIVE_EVENT_HOLIDAYS_ADVENT_2025", True),
     },
 }
 
@@ -3661,7 +3661,7 @@ def assign_digital_code_to_trainer(
         resolved_trainer,
         subject_value,
         message_with_code,
-        notif_type="prize",
+        notif_type="system",
         metadata=metadata,
         returning=True,
     )

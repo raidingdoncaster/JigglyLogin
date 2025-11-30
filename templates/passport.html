@@ -1036,6 +1036,47 @@ button.stamp-slot:focus-visible {
   display:none;
 }
 
+@media (prefers-reduced-motion: no-preference) {
+  .passport-card {
+    position:relative;
+    animation:passportCardFade 0.6s ease both;
+  }
+  .passport-card:nth-of-type(2) { animation-delay:0.08s; }
+  .passport-card:nth-of-type(3) { animation-delay:0.12s; }
+  .passport-card:nth-of-type(4) { animation-delay:0.16s; }
+
+  .stamp-slot.filled img {
+    transform-origin:center 70%;
+  }
+  button.stamp-slot:hover .stamp-slot.filled img,
+  button.stamp-slot:focus-visible .stamp-slot.filled img {
+    transform:translateY(-6px) scale(1.05);
+    filter:drop-shadow(0 12px 22px rgba(3,6,23,0.55));
+  }
+  .stamp-slot.filled::before {
+    content:"";
+    position:absolute;
+    inset:6px;
+    border-radius:50%;
+    border:2px solid rgba(255,255,255,0.35);
+    opacity:0;
+    transition:opacity 0.25s ease, transform 0.25s ease;
+  }
+  button.stamp-slot:hover .stamp-slot.filled::before,
+  button.stamp-slot:focus-visible .stamp-slot.filled::before {
+    opacity:1;
+    transform:scale(1.1);
+  }
+  .stamp-slot.empty::after {
+    content:"";
+    position:absolute;
+    inset:-25%;
+    background:conic-gradient(from 0deg, transparent, rgba(255,255,255,0.25), transparent 45%);
+    opacity:0.35;
+    animation:slotEmptyPulse 2.6s linear infinite;
+  }
+}
+
 .no-stamps {
   color:var(--passport-content-color);
   font-weight:600;
@@ -1069,9 +1110,21 @@ button.stamp-slot:focus-visible {
   padding:20px;
   z-index:1000;
   overflow:hidden;
+  opacity:0;
+  transform:translateY(24px);
+  transition:opacity 0.32s ease, transform 0.32s ease;
 }
 .stamp-detail-modal[hidden] {
   display:none;
+}
+.stamp-detail-modal.is-visible {
+  opacity:1;
+  transform:translateY(0);
+}
+.stamp-detail-modal.is-closing {
+  opacity:0;
+  transform:translateY(24px);
+  pointer-events:none;
 }
 .stamp-modal-overlay,
 .stamp-modal-bokeh,
@@ -1100,6 +1153,12 @@ button.stamp-slot:focus-visible {
 .stamp-modal-effects {
   z-index:2;
 }
+.stamp-detail-modal.is-visible .stamp-modal-overlay {
+  opacity:1;
+}
+.stamp-detail-modal.is-visible .stamp-modal-bokeh {
+  opacity:1;
+}
 .stamp-detail-modal__dialog {
   background:
     linear-gradient(145deg, rgba(255,255,255,0.18), rgba(255,255,255,0.02)),
@@ -1116,6 +1175,13 @@ button.stamp-slot:focus-visible {
   text-align:center;
   backdrop-filter:blur(24px) saturate(160%);
   -webkit-backdrop-filter:blur(24px) saturate(160%);
+  opacity:0;
+  transform:translateY(18px);
+  transition:opacity 0.32s ease, transform 0.32s ease;
+}
+.stamp-detail-modal.is-visible .stamp-detail-modal__dialog {
+  opacity:1;
+  transform:translateY(0);
 }
 .stamp-detail-modal__media {
   width:140px;
@@ -1204,8 +1270,27 @@ button.stamp-slot:focus-visible {
   color:var(--passport-modal-text, #f8fafc);
 }
 .stamp-detail-modal__chip,
-.stamp-detail-modal__description {
+.stamp-detail-modal__description,
+.stamp-detail-modal__date {
   will-change:transform;
+  opacity:0;
+  transform:translateY(10px);
+  transition:opacity 0.28s ease, transform 0.28s ease;
+}
+.stamp-detail-modal.is-visible .stamp-detail-modal__chip {
+  opacity:1;
+  transform:translateY(0);
+  transition-delay:0.12s;
+}
+.stamp-detail-modal.is-visible .stamp-detail-modal__date {
+  opacity:1;
+  transform:translateY(0);
+  transition-delay:0.16s;
+}
+.stamp-detail-modal.is-visible .stamp-detail-modal__description {
+  opacity:1;
+  transform:translateY(0);
+  transition-delay:0.2s;
 }
 @keyframes stampBokehDrift {
   0% {
@@ -1249,6 +1334,30 @@ button.stamp-slot:focus-visible {
   --particle-scale-mid: 0.95;
   --particle-scale-end: 1.35;
 }
+@keyframes passportCardFade {
+  0% {
+    opacity:0;
+    transform:translateY(18px) scale(0.97);
+  }
+  100% {
+    opacity:1;
+    transform:translateY(0) scale(1);
+  }
+}
+
+@keyframes slotEmptyPulse {
+  0% {
+    transform:rotate(0deg);
+    opacity:0.25;
+  }
+  50% {
+    opacity:0.55;
+  }
+  100% {
+    transform:rotate(360deg);
+    opacity:0.25;
+  }
+}
 @keyframes shineDrift {
   0% {
     opacity:0.9;
@@ -1265,14 +1374,20 @@ button.stamp-slot:focus-visible {
 }
 @media (prefers-reduced-motion: reduce) {
   .stamp-coin3d,
-  .stamp-coin3d.is-awakening {
+  .stamp-coin3d.is-awakening,
+  .passport-card,
+  .stamp-slot.empty::after {
     animation:none !important;
     transition:none !important;
   }
   .stamp-detail-modal,
-  .stamp-detail-modal__dialog {
+  .stamp-detail-modal__dialog,
+  .stamp-detail-modal__chip,
+  .stamp-detail-modal__date,
+  .stamp-detail-modal__description {
     backdrop-filter:none;
     -webkit-backdrop-filter:none;
+    transition:none !important;
   }
 }
 .stamp-detail-modal__close {
@@ -1809,12 +1924,12 @@ document.addEventListener("DOMContentLoaded", function(){
         return;
       }
       if (frontImage) {
-        this.fetchTexture(frontImage)
+        this.loadTextureImage(frontImage)
           .then(image => {
-            const assetSrc = image.src;
+            const src = image.src;
             this.bindTextureFromImage(this.textures.front, image);
-            if (assetSrc?.startsWith("blob:")) {
-              URL.revokeObjectURL(assetSrc);
+            if (src?.startsWith("blob:")) {
+              URL.revokeObjectURL(src);
             }
           })
           .catch(() => {
@@ -1826,6 +1941,10 @@ document.addEventListener("DOMContentLoaded", function(){
         this.triggerEntrance();
       }
       this.updateBackTexture(topLabel, bottomLabel);
+    }
+
+    loadTextureImage(url) {
+      return this.fetchTexture(url).catch(() => this.loadImageElement(url));
     }
 
     fetchTexture(url) {
@@ -1844,10 +1963,22 @@ document.addEventListener("DOMContentLoaded", function(){
         }));
     }
 
+    loadImageElement(url) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.referrerPolicy = "no-referrer";
+        img.onload = () => resolve(img);
+        img.onerror = () => reject(new Error("Image load failed"));
+        img.src = url;
+      });
+    }
+
     bindTextureFromImage(texture, image) {
       if (!this.gl || !texture) return;
       const gl = this.gl;
       gl.bindTexture(gl.TEXTURE_2D, texture);
+      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
@@ -1993,10 +2124,12 @@ document.addEventListener("DOMContentLoaded", function(){
     };
     stampModal.addEventListener("touchmove", preventScroll, { passive: false });
     stampModal.addEventListener("wheel", preventScroll, { passive: false });
+    const MODAL_ANIM_DURATION = 340;
     let immersiveMode = false;
     let lastShineTime = 0;
     let lockedScrollY = null;
     let lastTrigger = null;
+    let closeTimer = null;
 
     function setImmersiveMode(enabled) {
       immersiveMode = Boolean(enabled);
@@ -2070,6 +2203,10 @@ document.addEventListener("DOMContentLoaded", function(){
 
     function openStampModal(trigger) {
       lastTrigger = trigger;
+      if (closeTimer) {
+        clearTimeout(closeTimer);
+        closeTimer = null;
+      }
       const stampName = trigger.dataset.stampName || "Passport stamp";
       const stampIcon = trigger.dataset.stampIcon || "";
       const stampReason = trigger.dataset.stampReason || "Passport stamp";
@@ -2123,23 +2260,32 @@ document.addEventListener("DOMContentLoaded", function(){
       stampModal.setAttribute("aria-hidden", "false");
       lockScroll();
       setImmersiveMode(false);
+      requestAnimationFrame(() => {
+        stampModal.classList.remove("is-closing");
+        stampModal.classList.add("is-visible");
+      });
       if (closeBtn) {
         closeBtn.focus();
       }
     }
 
     function closeStampModal() {
-      if (stampModal.hidden) {
+      if (stampModal.hidden || stampModal.classList.contains("is-closing")) {
         return;
       }
-      stampModal.hidden = true;
-      stampModal.setAttribute("aria-hidden", "true");
-      unlockScroll();
-      setImmersiveMode(false);
-      if (lastTrigger && typeof lastTrigger.focus === "function") {
-        lastTrigger.focus();
-      }
-      lastTrigger = null;
+      stampModal.classList.add("is-closing");
+      stampModal.classList.remove("is-visible");
+      closeTimer = window.setTimeout(() => {
+        stampModal.hidden = true;
+        stampModal.setAttribute("aria-hidden", "true");
+        stampModal.classList.remove("is-closing");
+        unlockScroll();
+        setImmersiveMode(false);
+        if (lastTrigger && typeof lastTrigger.focus === "function") {
+          lastTrigger.focus();
+        }
+        lastTrigger = null;
+      }, MODAL_ANIM_DURATION);
     }
 
     stampButtons.forEach(btn => {

@@ -76,12 +76,13 @@
     </div>
   </form>
 </div>
+<div class="perks-search-backdrop{% if filters_active %} is-visible{% endif %}" id="perks-search-backdrop" aria-hidden="true"></div>
 
 {% if perks %}
   <div class="perks-grid">
     {% for perk in perks %}
       {% set perk_payload = perk.to_public_dict() %}
-      <article class="perk-card" data-perk='{{ perk_payload | tojson | safe }}'>
+      <article class="perk-card" data-perk-card data-perk='{{ perk_payload | tojson | safe }}' style="--card-index: {{ loop.index0 }}">
         <div class="perk-cover">
           {% if perk.cover_image_url %}
             <img src="{{ perk.cover_image_url }}" alt="{{ perk.name }} cover image">
@@ -193,6 +194,25 @@
   gap:20px;
   flex-wrap:wrap;
   align-items:center;
+  position:relative;
+  overflow:hidden;
+  padding:20px;
+  border-radius:24px;
+  background:linear-gradient(135deg,#ffffff,#f8fbff);
+  box-shadow:0 25px 60px rgba(15,23,42,0.08);
+}
+.city-perks-hero::before {
+  content:"";
+  position:absolute;
+  inset:-20%;
+  background:radial-gradient(circle at 30% 30%,rgba(58,141,222,0.35),transparent 60%),
+             radial-gradient(circle at 80% 20%,rgba(16,185,129,0.25),transparent 55%);
+  animation:heroGlowDrift 18s ease-in-out infinite alternate;
+  z-index:0;
+}
+.city-perks-hero > * {
+  position:relative;
+  z-index:1;
 }
 .city-perks-page {
   padding-bottom:180px;
@@ -236,12 +256,17 @@
   font-size:1.8rem;
   line-height:1;
 }
+@keyframes heroGlowDrift {
+  0% { transform:translate3d(-5%, -5%, 0) scale(1); }
+  50% { transform:translate3d(5%, 3%, 0) scale(1.05); }
+  100% { transform:translate3d(-3%, 6%, 0) scale(1.08); }
+}
 
 .perks-floating-bar {
   position:fixed;
   bottom:24px;
   left:50%;
-  transform:translateX(-50%);
+  transform:translateX(-50%) translateY(18px) scale(0.98);
   display:flex;
   gap:12px;
   background:#0f172a;
@@ -250,6 +275,14 @@
   box-shadow:0 24px 60px rgba(15,23,42,0.35);
   z-index:2800;
   width:min(420px, 90%);
+  opacity:0;
+  transition:transform .6s cubic-bezier(0.16, 1, 0.3, 1), opacity .6s ease;
+  pointer-events:none;
+}
+.city-perks-ready .perks-floating-bar {
+  opacity:1;
+  transform:translateX(-50%) translateY(0) scale(1);
+  pointer-events:auto;
 }
 .floating-bar__btn {
   flex:1;
@@ -276,7 +309,7 @@
   position:fixed;
   bottom:110px;
   left:50%;
-  transform:translateX(-50%) translateY(10px);
+  transform:translateX(-50%) translateY(24px) scale(0.98);
   width:min(600px,90%);
   background:#fff;
   border-radius:28px;
@@ -286,13 +319,27 @@
   opacity:0;
   pointer-events:none;
   visibility:hidden;
-  transition:opacity .2s ease, transform .2s ease;
+  transition:opacity .35s ease, transform .55s cubic-bezier(0.22, 1, 0.36, 1);
 }
 .perks-search-drawer.is-open {
   opacity:1;
-  transform:translateX(-50%) translateY(0);
+  transform:translateX(-50%) translateY(0) scale(1);
   pointer-events:auto;
   visibility:visible;
+}
+.perks-search-backdrop {
+  position:fixed;
+  inset:0;
+  background:rgba(8,15,37,0.4);
+  backdrop-filter:blur(4px);
+  opacity:0;
+  pointer-events:none;
+  transition:opacity .25s ease;
+  z-index:3100;
+}
+.perks-search-backdrop.is-visible {
+  opacity:1;
+  pointer-events:auto;
 }
 .perks-search-drawer__header {
   display:flex;
@@ -371,11 +418,21 @@
   display:flex;
   flex-direction:column;
   min-height:100%;
-  transition:transform .2s ease, box-shadow .2s ease;
+  opacity:0;
+  transform:translateY(24px) scale(0.98);
+  transition:
+    transform .45s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow .3s ease,
+    opacity .4s ease;
+  transition-delay:calc(var(--card-index, 0) * 60ms);
+}
+.perk-card.is-visible {
+  opacity:1;
+  transform:translateY(0) scale(1);
 }
 .perk-card:hover {
-  transform:translateY(-3px);
-  box-shadow:0 24px 46px rgba(15,23,42,0.18);
+  transform:translateY(-3px) scale(1.01);
+  box-shadow:0 24px 60px rgba(15,23,42,0.2);
 }
 .perk-cover {
   position:relative;
@@ -805,12 +862,19 @@
 
 <script>
 (function () {
+  if (document && document.body) {
+    window.requestAnimationFrame(() => {
+      document.body.classList.add("city-perks-ready");
+    });
+  }
+
   const filterForm = document.getElementById("perks-filter-form");
   const searchToggle = document.querySelector("[data-action='toggle-search']");
   const mapButton = document.querySelector("[data-action='open-map']");
   const mapPanel = document.getElementById("perks-map-panel");
   const mapCloseButtons = mapPanel ? mapPanel.querySelectorAll("[data-action='close-map']") : [];
   const searchDrawer = document.getElementById("perks-search-drawer");
+  const searchBackdrop = document.getElementById("perks-search-backdrop");
   const searchCloseButtons = document.querySelectorAll("[data-action='close-search']");
   const clearFiltersButton = document.querySelector("[data-action='clear-filters']");
   const helpModal = document.getElementById("perks-help-modal");
@@ -830,12 +894,18 @@
     if (!searchDrawer) return;
     searchDrawer.classList.add("is-open");
     searchDrawer.setAttribute("aria-hidden", "false");
+    if (searchBackdrop) {
+      searchBackdrop.classList.add("is-visible");
+    }
   }
 
   function closeSearchDrawer() {
     if (!searchDrawer) return;
     searchDrawer.classList.remove("is-open");
     searchDrawer.setAttribute("aria-hidden", "true");
+    if (searchBackdrop) {
+      searchBackdrop.classList.remove("is-visible");
+    }
   }
 
   function toggleSearchDrawer() {
@@ -939,10 +1009,13 @@
       if (!searchDrawer.classList.contains("is-open")) return;
       const toggleTarget = event.target.closest("[data-action='toggle-search']");
       if (toggleTarget) return;
-      if (!searchDrawer.contains(event.target)) {
+      if (!searchDrawer.contains(event.target) && event.target !== searchBackdrop) {
         closeSearchDrawer();
       }
     });
+  }
+  if (searchBackdrop) {
+    searchBackdrop.addEventListener("click", closeSearchDrawer);
   }
 
   if (mapButton) {
@@ -1073,6 +1146,26 @@
 
     mapInstance.invalidateSize();
     return true;
+  }
+
+  const perkCards = document.querySelectorAll("[data-perk-card]");
+  if (perkCards.length) {
+    if ("IntersectionObserver" in window) {
+      const observer = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              entry.target.classList.add("is-visible");
+              observer.unobserve(entry.target);
+            }
+          });
+        },
+        { rootMargin: "0px 0px -10% 0px", threshold: 0.2 }
+      );
+      perkCards.forEach((card) => observer.observe(card));
+    } else {
+      perkCards.forEach((card) => card.classList.add("is-visible"));
+    }
   }
 
   document.querySelectorAll(".perk-expand").forEach((btn) => {

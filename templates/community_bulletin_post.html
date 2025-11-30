@@ -478,6 +478,9 @@
   margin: 12px 0;
   font-size: 2.4rem;
   color: #0f172a;
+  line-height: 1.2;
+  word-break: break-word;
+  hyphens: auto;
 }
 
 .bp-hero-meta {
@@ -986,6 +989,7 @@
   gap: 12px;
   align-items: flex-start;
   width: 100%;
+  min-width: 0;
 }
 
 .bp-comment--highlight .bp-comment-body {
@@ -1005,6 +1009,9 @@
   border-radius: 16px;
   padding: 12px 14px;
   flex: 1;
+  min-width: 0;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .bp-comment-empty {
@@ -1327,7 +1334,8 @@ body.bp-modal-open {
   position: relative;
   background: #fff;
   border-radius: 24px;
-  width: min(520px, 100%);
+  width: min(520px, calc(100% - 32px));
+  max-width: 100%;
   max-height: calc(100% - 56px);
   display: flex;
   flex-direction: column;
@@ -1488,6 +1496,33 @@ body.bp-modal-open {
     border-radius: 16px;
     width: 100%;
     max-height: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .bp-hero,
+  .bp-section,
+  .bp-card {
+    padding: 16px;
+    border-radius: 20px;
+  }
+
+  .bp-hero-copy h1 {
+    font-size: 1.85rem;
+  }
+
+  .bp-hero-meta {
+    grid-template-columns: 1fr;
+  }
+
+  .bp-comment-replies {
+    margin-left: 0;
+    padding-left: 12px;
+  }
+
+  .bp-thread-view__dialog {
+    width: 100%;
+    max-height: calc(100% - 32px);
   }
 }
 @media (max-width: 1024px) {

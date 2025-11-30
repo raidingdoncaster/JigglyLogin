@@ -7,8 +7,10 @@
 {% block content %}
 
 <!-- Trainer Card -->
-<div class="trainer-card" style="background-image: url('{{ url_for('static', filename='backgrounds/' ~ background) }}');">
+<div class="trainer-card" data-parallax-card style="background-image: url('{{ url_for('static', filename='backgrounds/' ~ background) }}');">
   <div class="trainer-card-overlay"></div>
+  <div class="trainer-card-mesh" aria-hidden="true"></div>
+  <div class="trainer-card-rings" aria-hidden="true"></div>
   <div class="trainer-card-content">
     <div style="display:flex; align-items:center; gap:15px;">
       <img src="{{ url_for('static', filename='avatars/' ~ avatar) }}"
@@ -45,10 +47,28 @@
 {% endif %}
 <style>
 .trainer-card { position: relative; background-size: cover; background-position: center;
-  border-radius: 16px; overflow: hidden; margin-bottom: 12px; box-shadow: 0 8px 24px rgba(15,23,42,0.22); color: white; }
+  border-radius: 16px; overflow: hidden; margin-bottom: 12px; box-shadow: 0 8px 24px rgba(15,23,42,0.22); color: white;
+  perspective: 1200px; transform-style: preserve-3d; --parallax-x: 0px; --parallax-y: 0px; }
 .trainer-card-overlay { position: absolute; inset:0;
   background: linear-gradient(180deg, rgba(9,14,35,0.62) 0%, rgba(9,14,35,0.18) 100%); z-index: 0; }
-.trainer-card-content { position: relative; z-index: 1; padding: 22px; display:flex; flex-direction:column; gap:12px; }
+.trainer-card-mesh,
+.trainer-card-rings { position:absolute; inset:-40px; pointer-events:none; z-index:0; mix-blend-mode:screen; opacity:0.55; }
+.trainer-card-mesh { background:radial-gradient(circle at 20% 20%, rgba(255,255,255,0.55), transparent 50%),
+  radial-gradient(circle at 70% 30%, rgba(56,189,248,0.35), transparent 45%),
+  radial-gradient(circle at 40% 70%, rgba(248,113,113,0.4), transparent 50%); filter:blur(0px);
+  transform:translate3d(0,0,0) scale(1.1); transition:transform 0.25s ease-out; animation:trainerMeshFloat 14s ease-in-out infinite; }
+.trainer-card-rings { background:
+  conic-gradient(from 0deg, rgba(255,255,255,0.25), rgba(59,130,246,0.15), rgba(14,165,233,0.25), rgba(255,255,255,0.1));
+  mask:radial-gradient(circle, rgba(255,255,255,0.8) 35%, transparent 70%);
+  animation:trainerRingPulse 18s linear infinite; opacity:0.28; }
+.trainer-card[data-parallax-active="true"] .trainer-card-mesh {
+  transform: translate3d(calc(var(--parallax-x) * -0.5), calc(var(--parallax-y) * -0.5), 0) scale(1.15);
+}
+.trainer-card-content { position: relative; z-index: 1; padding: 22px; display:flex; flex-direction:column; gap:12px;
+  transform:translate3d(0,0,50px); transition:transform 0.25s ease; }
+.trainer-card[data-parallax-active="true"] .trainer-card-content {
+  transform:translate3d(calc(var(--parallax-x) * 0.7), calc(var(--parallax-y) * 0.7), 80px);
+}
 .welcome-back { margin: 0; font-size: 0.9em; font-weight: 500; color: rgba(255,255,255,0.9); letter-spacing:0.04em; text-transform:uppercase; }
 .trainer-name { margin: 2px 0 6px 0; font-size: 1.6em; font-weight: 700; text-shadow: 0 2px 4px rgba(0,0,0,0.6); }
 .trainer-card p { margin: 4px 0; font-size: 0.95em; text-shadow: 0 1px 3px rgba(0,0,0,0.6); }
@@ -116,25 +136,25 @@
   <h3>🔍 Explore</h3>
   <div class="explore-grid">
     {% if show_catalog_app %}
-      <a class="explore-card" href="{{ url_for('catalog') }}">
+      <a class="explore-card" data-explore-card href="{{ url_for('catalog') }}">
         <img src="{{ url_for('static', filename='icons/catalog-app.png') }}" alt="Catalog">
         <span>Catalog</span>
       </a>
     {% endif %}
     {% if show_city_perks_app %}
-      <a class="explore-card" href="{{ url_for('city_perks_page') }}">
+      <a class="explore-card" data-explore-card href="{{ url_for('city_perks_page') }}">
         <img src="{{ url_for('static', filename='icons/perks-app.png') }}" alt="City Perks">
         <span>City Perks</span>
       </a>
     {% endif %}
     {% if show_city_guides_app %}
-      <div class="explore-card" onclick="alert('City Guides are Under Construction')">
+      <div class="explore-card" data-explore-card role="button" tabindex="0" onclick="alert('City Guides are Under Construction')">
         <img src="{{ url_for('static', filename='icons/guides-app.png') }}" alt="City Guides">
         <span>City Guides</span>
       </div>
     {% endif %}
     {% if show_leagues_app %}
-      <a class="explore-card" href="{{ url_for('leagues') }}">
+      <a class="explore-card" data-explore-card href="{{ url_for('leagues') }}">
         <img src="{{ url_for('static', filename='icons/leagues-app.png') }}" alt="Leagues">
         <span>Leagues</span>
       </a>
@@ -159,7 +179,7 @@
     <div class="dashboard-bulletin__grid">
       {% if bulletin_latest_posts %}
         {% for post in bulletin_latest_posts %}
-        <a class="dashboard-bulletin__card" href="{{ url_for('community_bulletin_post', slug=post.slug) }}">
+        <a class="dashboard-bulletin__card" data-bulletin-card href="{{ url_for('community_bulletin_post', slug=post.slug) }}">
           <div class="dashboard-bulletin__thumb">
             <img src="{{ post.header_image|bulletin_media }}" alt="{{ post.title }}">
           </div>
@@ -202,9 +222,24 @@
 .explore { display:flex; flex-direction:column; gap:10px; margin-top:8px; }
 .explore h3 { margin:0; }
 .explore-grid { display:grid; grid-template-columns:repeat(4,minmax(80px,1fr)); gap:12px; }
-.explore-card { background:transparent; display:flex; flex-direction:column; align-items:center; justify-content:center; text-decoration:none; padding:10px 0; transition:transform .18s ease; }
-.explore-card:hover { transform:translateY(-2px); }
-.explore-card img { width:clamp(48px,14vw,80px); height:clamp(48px,14vw,80px); filter:drop-shadow(0 10px 18px rgba(15,23,42,0.18)); }
+.explore-card { position:relative; background:transparent; border-radius:18px; display:flex; flex-direction:column; align-items:center;
+  justify-content:center; text-decoration:none; padding:12px 4px; transition:transform .2s ease, box-shadow .2s ease;
+  overflow:hidden; isolation:isolate; --hover-x:0px; --hover-y:0px; }
+.explore-card::before,
+.explore-card::after{content:""; position:absolute; inset:12%; border-radius:20px; opacity:0; pointer-events:none; transition:opacity .2s ease;}
+.explore-card::before{background:radial-gradient(circle at var(--pointer-x, 50%) var(--pointer-y, 50%), rgba(255,255,255,0.85), rgba(255,255,255,0)); filter:blur(8px);}
+.explore-card::after{background-image:radial-gradient(circle, rgba(59,130,246,0.45) 0, transparent 55%), radial-gradient(circle, rgba(236,72,153,0.4) 0, transparent 60%);
+  mix-blend-mode:screen; animation:exploreSparkle 2.8s linear infinite; opacity:0; transform:scale(0.8);}
+.explore-card:focus-visible { outline:none; box-shadow:0 0 0 3px rgba(58,141,222,0.35); border-radius:22px; }
+.explore-card:hover,
+.explore-card:focus-visible { transform:translate3d(calc(var(--hover-x)), calc(var(--hover-y)), 0) scale(1.03); box-shadow:0 15px 28px rgba(15,23,42,0.16); }
+.explore-card:hover::before,
+.explore-card:hover::after,
+.explore-card:focus-visible::before,
+.explore-card:focus-visible::after { opacity:1; }
+.explore-card img { width:clamp(48px,14vw,80px); height:clamp(48px,14vw,80px); filter:drop-shadow(0 10px 18px rgba(15,23,42,0.18)); transition:transform .25s ease; }
+.explore-card:hover img,
+.explore-card:focus-visible img { transform:translateY(-4px) scale(1.04); }
 .explore-card span { margin-top:8px; font-size:0.9em; font-weight:600; color:#333; text-shadow:0 6px 12px rgba(15,23,42,0.12); }
 .dashboard-bulletin { margin-top:16px; background:#fff; border-radius:20px; padding:18px; box-shadow:0 14px 28px rgba(15,23,42,0.12); display:flex; flex-direction:column; gap:14px; }
 .dashboard-bulletin__header { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; }
@@ -214,8 +249,14 @@
 .dashboard-bulletin__latest { display:flex; flex-direction:column; gap:10px; }
 .dashboard-bulletin__label { font-weight:700; color:#0f172a; font-size:0.95rem; }
 .dashboard-bulletin__grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; }
-.dashboard-bulletin__card { text-decoration:none; border-radius:16px; background:#f8fafc; padding:10px; display:flex; flex-direction:column; gap:8px; box-shadow:0 10px 18px rgba(15,23,42,0.08); transition:transform 0.2s ease; color:#0f172a; }
-.dashboard-bulletin__card:hover { transform:translateY(-2px); }
+.dashboard-bulletin__card { position:relative; text-decoration:none; border-radius:16px; background:#f8fafc; padding:10px; display:flex; flex-direction:column; gap:8px;
+  box-shadow:0 10px 18px rgba(15,23,42,0.08); color:#0f172a; opacity:0; transform:translateY(12px); transition:transform 0.35s ease, opacity 0.35s ease;
+  will-change:transform, opacity; }
+.dashboard-bulletin__card::after { content:""; position:absolute; inset:0; border-radius:inherit; background:linear-gradient(120deg, transparent 35%, rgba(255,255,255,0.45) 50%, transparent 65%);
+  transform:translateX(-100%); opacity:0; }
+.dashboard-bulletin__card.is-visible { opacity:1; transform:translateY(0); animation:bulletinPop .65s cubic-bezier(.22,1,.36,1) var(--card-delay, 0ms); }
+.dashboard-bulletin__card.is-visible:hover { transform:translateY(-2px); }
+.dashboard-bulletin__card.is-visible:hover::after { animation:bulletinShimmer 1.1s ease forwards; opacity:1; }
 .dashboard-bulletin__thumb { position:relative; width:100%; padding-top:62%; border-radius:12px; overflow:hidden; background:linear-gradient(135deg,#0f172a,#1d4ed8); }
 .dashboard-bulletin__thumb img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
 .dashboard-bulletin__tag { margin:0; font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:#475569; }
@@ -232,6 +273,114 @@
   .explore-grid { grid-template-columns:repeat(4,minmax(60px,1fr)); gap:10px; }
   .dashboard-bulletin__header { flex-direction:column; align-items:flex-start; }
 }
+
+@keyframes trainerMeshFloat{
+  0%{transform:translate3d(-12px,-8px,0) scale(1.08);}
+  50%{transform:translate3d(12px,8px,0) scale(1.15);}
+  100%{transform:translate3d(-12px,-8px,0) scale(1.08);}
+}
+@keyframes trainerRingPulse{
+  0%{transform:rotate(0deg) scale(1);}
+  50%{transform:rotate(180deg) scale(1.05);}
+  100%{transform:rotate(360deg) scale(1);}
+}
+@keyframes exploreSparkle{
+  0%{transform:scale(0.8) rotate(0deg);}
+  50%{transform:scale(1.02) rotate(180deg);}
+  100%{transform:scale(0.8) rotate(360deg);}
+}
+@keyframes bulletinPop{
+  0%{opacity:0; transform:translateY(16px) scale(0.96);}
+  60%{opacity:1; transform:translateY(-2px) scale(1.02);}
+  100%{opacity:1; transform:translateY(0) scale(1);}
+}
+@keyframes bulletinShimmer{
+  0%{transform:translateX(-100%);}
+  100%{transform:translateX(120%);}
+}
 </style>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const trainerCard = document.querySelector('[data-parallax-card]');
+  if (trainerCard) {
+    const updateTilt = (event) => {
+      const rect = trainerCard.getBoundingClientRect();
+      const percentX = (event.clientX - rect.left) / rect.width - 0.5;
+      const percentY = (event.clientY - rect.top) / rect.height - 0.5;
+      const tiltX = percentX * 16;
+      const tiltY = percentY * 16;
+      trainerCard.style.setProperty('--parallax-x', `${tiltX}px`);
+      trainerCard.style.setProperty('--parallax-y', `${tiltY}px`);
+    };
+
+    const resetTilt = () => {
+      trainerCard.style.setProperty('--parallax-x', '0px');
+      trainerCard.style.setProperty('--parallax-y', '0px');
+      trainerCard.setAttribute('data-parallax-active', 'false');
+    };
+
+    trainerCard.addEventListener('pointerenter', () => {
+      trainerCard.setAttribute('data-parallax-active', 'true');
+    });
+    trainerCard.addEventListener('pointermove', updateTilt);
+    trainerCard.addEventListener('pointerleave', resetTilt);
+  }
+
+  const exploreCards = document.querySelectorAll('[data-explore-card]');
+  exploreCards.forEach((card) => {
+    const setVals = (x = 0, y = 0) => {
+      card.style.setProperty('--hover-x', `${x}px`);
+      card.style.setProperty('--hover-y', `${y}px`);
+    };
+    card.addEventListener('pointermove', (event) => {
+      const rect = card.getBoundingClientRect();
+      const relX = (event.clientX - rect.left) / rect.width;
+      const relY = (event.clientY - rect.top) / rect.height;
+      const offsetX = (relX - 0.5) * 10;
+      const offsetY = (relY - 0.5) * 10;
+      setVals(offsetX, offsetY);
+      card.style.setProperty('--pointer-x', `${relX * 100}%`);
+      card.style.setProperty('--pointer-y', `${relY * 100}%`);
+    });
+    card.addEventListener('pointerleave', () => {
+      setVals(0, 0);
+      card.style.removeProperty('--pointer-x');
+      card.style.removeProperty('--pointer-y');
+    });
+    card.addEventListener('focus', () => {
+      setVals(0, -4);
+      card.style.setProperty('--pointer-x', '50%');
+      card.style.setProperty('--pointer-y', '0%');
+    });
+    card.addEventListener('blur', () => {
+      setVals(0, 0);
+      card.style.removeProperty('--pointer-x');
+      card.style.removeProperty('--pointer-y');
+    });
+  });
+
+  const bulletinCards = document.querySelectorAll('[data-bulletin-card]');
+  if (bulletinCards.length) {
+    if ('IntersectionObserver' in window) {
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('is-visible');
+            observer.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.35 });
+
+      bulletinCards.forEach((card, index) => {
+        card.style.setProperty('--card-delay', `${index * 90}ms`);
+        observer.observe(card);
+      });
+    } else {
+      bulletinCards.forEach((card) => card.classList.add('is-visible'));
+    }
+  }
+});
+</script>
 
 {% endblock %}

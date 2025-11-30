@@ -1,63 +1,75 @@
 {% set panel_mode = panel_mode | default(false) %}
 <section class="inbox-panel {{ 'inbox-panel--modal' if panel_mode else 'inbox-panel--page' }}">
-  <div class="inbox-panel__header">
-    <h2>📨 Inbox</h2>
+  <header class="inbox-panel__header">
+    <div class="inbox-panel__title">
+      <span class="inbox-panel__badge">📬</span>
+      <div>
+        <h2>Inbox</h2>
+        <p>Stay in the loop without leaving your flow.</p>
+      </div>
+    </div>
     {% if panel_mode %}
       <button type="button"
               class="inbox-panel__close"
               data-inbox-panel-close
               aria-label="Close inbox panel">✕</button>
     {% endif %}
-  </div>
+  </header>
 
-  <div class="tabs" role="tablist">
-    <a class="tab {{ 'active' if tab == 'all' else '' }}"
-       href="{{ url_for('inbox', tab='all', sort=sort_by, panel=1 if panel_mode else None) }}"
-       {% if panel_mode %}data-inbox-panel-link="true"{% endif %}>All</a>
-    <a class="tab {{ 'active' if tab == 'notifications' else '' }}"
-       href="{{ url_for('inbox', tab='notifications', sort=sort_by, panel=1 if panel_mode else None) }}"
-       {% if panel_mode %}data-inbox-panel-link="true"{% endif %}>Notifications</a>
-    <a class="tab {{ 'active' if tab == 'receipts' else '' }}"
-       href="{{ url_for('inbox', tab='receipts', sort=sort_by, panel=1 if panel_mode else None) }}"
-       {% if panel_mode %}data-inbox-panel-link="true"{% endif %}>Receipts</a>
-  </div>
+  <div class="inbox-panel__controls">
+    <nav class="pill-tabs" role="tablist" aria-label="Inbox filters">
+      <a class="pill {{ 'is-active' if tab == 'all' else '' }}"
+         href="{{ url_for('inbox', tab='all', sort=sort_by, panel=1 if panel_mode else None) }}"
+         {% if panel_mode %}data-inbox-panel-link="true"{% endif %}>All</a>
+      <a class="pill {{ 'is-active' if tab == 'notifications' else '' }}"
+         href="{{ url_for('inbox', tab='notifications', sort=sort_by, panel=1 if panel_mode else None) }}"
+         {% if panel_mode %}data-inbox-panel-link="true"{% endif %}>Notifications</a>
+      <a class="pill {{ 'is-active' if tab == 'receipts' else '' }}"
+         href="{{ url_for('inbox', tab='receipts', sort=sort_by, panel=1 if panel_mode else None) }}"
+         {% if panel_mode %}data-inbox-panel-link="true"{% endif %}>Receipts</a>
+    </nav>
 
-  <div class="inbox-filters">
     <form method="get"
+          class="inbox-panel__sort"
           action="{{ url_for('inbox') }}"
           {% if panel_mode %}data-inbox-panel-form="true"{% endif %}>
       <input type="hidden" name="tab" value="{{ tab }}">
-      {% if panel_mode %}
-        <input type="hidden" name="panel" value="1">
-      {% endif %}
-      <label for="sort">Sort by:</label>
-      <select name="sort" id="sort" onchange="this.form.submit()">
-        <option value="newest" {% if sort_by == 'newest' %}selected{% endif %}>Newest First</option>
-        <option value="oldest" {% if sort_by == 'oldest' %}selected{% endif %}>Oldest First</option>
-        <option value="unread" {% if sort_by == 'unread' %}selected{% endif %}>Unread Only</option>
-        <option value="read" {% if sort_by == 'read' %}selected{% endif %}>Read Only</option>
-        <option value="type" {% if sort_by == 'type' %}selected{% endif %}>By Type</option>
+      {% if panel_mode %}<input type="hidden" name="panel" value="1">{% endif %}
+      <label for="sort" class="sr-only">Sort by</label>
+      <select name="sort" id="sort" data-inbox-sort-select="true" onchange="this.form.submit()">
+        <option value="newest" {% if sort_by == 'newest' %}selected{% endif %}>Newest first</option>
+        <option value="oldest" {% if sort_by == 'oldest' %}selected{% endif %}>Oldest first</option>
+        <option value="unread" {% if sort_by == 'unread' %}selected{% endif %}>Unread only</option>
+        <option value="read" {% if sort_by == 'read' %}selected{% endif %}>Read only</option>
+        <option value="type" {% if sort_by == 'type' %}selected{% endif %}>By type</option>
       </select>
     </form>
   </div>
 
-  <div class="inbox-container" role="list">
+  <div class="inbox-list" role="list">
     {% for msg in inbox %}
       {% set read = trainer in (msg.read_by or []) %}
       <a href="{{ url_for('inbox_message', message_id=msg.id, panel=1 if panel_mode else None) }}"
-         class="inbox-card-link"
+         class="mail-card {{ 'is-read' if read else 'is-unread' }}"
+         style="--card-delay: {{ '%.2f'|format(loop.index0 * 0.07) }}s;"
          {% if panel_mode %}data-inbox-panel-link="true"{% endif %}
          role="listitem">
-        <div class="inbox-card {{ 'read' if read else 'unread' }}">
-          <div class="inbox-row1">
-            <h3>{{ msg.subject }}</h3>
-            {% if msg.type %}
-              <span class="type-pill">{{ msg.type }}</span>
-            {% endif %}
+        <div class="mail-card__head">
+          <div class="mail-card__subject">
+            <span class="mail-card__status-dot"></span>
+            <span>{{ msg.subject }}</span>
           </div>
-          <p class="inbox-date">{{ msg.sent_at|to_date }}</p>
-          <p class="snippet">{{ msg.message|striptags|replace('\r\n', ' ')|replace('\n', ' ')|truncate(110) }}</p>
+          <span class="mail-card__date">{{ msg.sent_at|to_date }}</span>
         </div>
+        <div class="mail-card__meta">
+          {% if msg.type %}
+            <span class="type-pill">{{ msg.type }}</span>
+          {% endif %}
+          {% if not read %}
+            <span class="mail-card__badge">New</span>
+          {% endif %}
+        </div>
+        <p class="mail-card__snippet">{{ msg.message|striptags|replace('\r\n', ' ')|replace('\n', ' ')|truncate(120) }}</p>
       </a>
     {% else %}
       <p class="empty-state">No messages yet.</p>
@@ -72,108 +84,223 @@
 </section>
 
 <style>
+.sr-only{
+  position:absolute;
+  width:1px;
+  height:1px;
+  padding:0;
+  margin:-1px;
+  overflow:hidden;
+  clip:rect(0,0,0,0);
+  border:0;
+}
 .inbox-panel{
+  display:flex;
+  flex-direction:column;
+  gap:16px;
+}
+.inbox-panel__header{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:14px;
+  padding-bottom:8px;
+}
+.inbox-panel__title{
+  display:flex;
+  align-items:center;
+  gap:14px;
+}
+.inbox-panel__title h2{
+  margin:0;
+  font-size:1.35em;
+  color:#0f172a;
+}
+.inbox-panel__title p{
+  margin:2px 0 0 0;
+  color:#475569;
+  font-size:.9em;
+}
+.inbox-panel__badge{
+  width:52px;
+  height:52px;
+  border-radius:16px;
+  background:linear-gradient(135deg,#f8fbff,#eef2ff);
+  box-shadow:0 10px 30px rgba(15,23,42,0.18);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:1.8em;
+  animation: badgePop .55s ease .25s both;
+}
+.inbox-panel__close{
+  width:42px;
+  height:42px;
+  border-radius:50%;
+  border:0;
+  background:rgba(255,255,255,0.65);
+  color:#0f172a;
+  font-size:1.2em;
+  cursor:pointer;
+  box-shadow:0 12px 32px rgba(15,23,42,0.25);
+  backdrop-filter:blur(8px);
+  transition:transform .25s ease, box-shadow .25s ease;
+}
+.inbox-panel__close:hover,
+.inbox-panel__close:focus-visible{
+  transform:rotate(5deg) scale(1.05);
+  box-shadow:0 18px 34px rgba(15,23,42,0.35);
+}
+.inbox-panel__controls{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+  justify-content:space-between;
+  align-items:center;
+  padding:10px 0;
+}
+.pill-tabs{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+}
+.pill{
+  text-decoration:none;
+  padding:8px 16px;
+  border-radius:999px;
+  font-weight:600;
+  font-size:0.9em;
+  color:#3b4c65;
+  background:rgba(15,23,42,0.05);
+  transition:color .25s ease;
+  position:relative;
+  overflow:hidden;
+}
+.pill::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:linear-gradient(135deg,#3a8dde,#5eb8ff);
+  transform-origin:left center;
+  transform:scaleX(0);
+  transition:transform .35s cubic-bezier(.19,1,.22,1);
+  border-radius:inherit;
+  z-index:-1;
+}
+.pill.is-active{
+  color:#fff;
+  box-shadow:0 10px 20px rgba(58,141,222,0.35);
+}
+.pill.is-active::after{
+  transform:scaleX(1);
+}
+
+.inbox-panel__sort select{
+  border-radius:999px;
+  border:1px solid rgba(15,23,42,0.12);
+  padding:8px 14px;
+  font-weight:600;
+  color:#0f172a;
+  background:#fff;
+  box-shadow:0 8px 18px rgba(15,23,42,0.08);
+  transition:transform .5s cubic-bezier(.19,1,.22,1);
+  transform-origin:center;
+}
+.inbox-panel__sort select.is-flipping{
+  transform:perspective(600px) rotateX(18deg) scale(1.02);
+}
+.inbox-list{
   display:flex;
   flex-direction:column;
   gap:12px;
 }
-.inbox-panel__header{
+.mail-card{
   display:flex;
-  align-items:center;
+  flex-direction:column;
+  gap:10px;
+  padding:16px 18px;
+  border-radius:18px;
+  text-decoration:none;
+  background:rgba(255,255,255,0.9);
+  border:1px solid rgba(148,163,184,0.25);
+  box-shadow:0 12px 28px rgba(15,23,42,0.12);
+  color:#0f172a;
+  transition:transform .2s ease, box-shadow .2s ease;
+  position:relative;
+  opacity:0;
+  transform:translateY(14px) scale(0.98);
+  animation: mailCardEnter .55s var(--card-delay,0s) cubic-bezier(.2,.8,.2,1) forwards;
+}
+.mail-card.is-unread{
+  border:1px solid rgba(58,141,222,0.4);
+  background:linear-gradient(135deg,rgba(58,141,222,0.12),rgba(255,255,255,0.95));
+}
+.mail-card:hover{
+  transform:translateY(-4px);
+  box-shadow:0 18px 36px rgba(15,23,42,0.18);
+}
+.mail-card__head{
+  display:flex;
   justify-content:space-between;
   gap:12px;
+  align-items:flex-start;
 }
-.inbox-panel__close{
-  width:36px;
-  height:36px;
-  border-radius:50%;
-  border:0;
-  background:#eef2ff;
-  color:#0f172a;
-  font-size:1.2em;
-  cursor:pointer;
-  box-shadow:0 6px 16px rgba(15,23,42,0.12);
-}
-.tabs {
+.mail-card__subject{
   display:flex;
-  gap:8px;
-  margin:8px 0 10px 0;
-}
-.tab {
-  text-decoration:none;
-  padding:6px 10px;
-  border-radius:999px;
-  background:#eef2ff;
-  color:#334155;
-  font-weight:700;
-  font-size:.9em;
-}
-.tab.active { background:#3a8dde; color:#fff; }
-
-.inbox-filters {
-  margin-top: 6px;
-  margin-bottom: 12px;
-  text-align: right;
-}
-.inbox-filters select {
-  padding: 6px 10px;
-  border-radius: 6px;
-  border: 1px solid #ccc;
-  font-size: 0.9em;
-}
-.inbox-container {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-  margin-top: 10px;
-}
-.inbox-card-link {
-  text-decoration: none;
-  color: inherit;
-}
-.inbox-card {
-  background: #fff;
-  border-radius: 16px;
-  padding: 18px;
-  box-shadow: 0 12px 28px rgba(15,23,42,0.12);
-  transition: background 0.3s ease, transform 0.2s ease;
-}
-.inbox-card.unread {
-  border-left: 5px solid #3a8dde;
-  background: #f0f8ff;
-}
-.inbox-card.read {
-  border-left: 5px solid #aaa;
-  opacity: 0.85;
-}
-.inbox-card:hover{transform:translateY(-2px);}
-.inbox-row1 {
-  display:flex;
-  justify-content:space-between;
   align-items:center;
   gap:8px;
+  font-weight:700;
+  font-size:1em;
 }
-.inbox-card h3 {
-  margin: 0;
-  font-size: 1.05em;
-  color: #3a8dde;
+.mail-card__status-dot{
+  width:10px;
+  height:10px;
+  background:#3a8dde;
+  border-radius:50%;
+  box-shadow:0 0 0 4px rgba(58,141,222,0.15);
+}
+.mail-card.is-read .mail-card__status-dot{
+  background:#cbd5f5;
+  box-shadow:none;
+}
+.mail-card.is-unread .mail-card__status-dot{
+  animation: unreadPulse 1.6s ease-in-out 2;
+}
+.mail-card__date{
+  font-size:.82em;
+  color:#64748b;
+  flex-shrink:0;
+}
+.mail-card__meta{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-wrap:wrap;
+}
+.mail-card__badge{
+  font-size:.7em;
+  text-transform:uppercase;
+  letter-spacing:.1em;
+  color:#1d4ed8;
+  background:rgba(59,130,246,0.16);
+  padding:2px 10px;
+  border-radius:999px;
+  font-weight:700;
 }
 .type-pill {
   font-size: 0.75em;
   padding: 2px 8px;
   border-radius: 999px;
-  background: #eef2ff;
-  color: #334155;
+  background: rgba(15,23,42,0.08);
+  color: #1e293b;
   text-transform: uppercase;
+  font-weight:700;
 }
-.inbox-date {
-  font-size: 0.8em;
-  color: #777;
-  margin: 5px 0;
-}
-.snippet {
-  color: #555;
-  font-size: 0.9em;
+.mail-card__snippet{
+  margin:0;
+  color:#475569;
+  font-size:.92em;
+  line-height:1.4;
 }
 .actions-row{margin-top:20px;text-align:center;}
 .btn {
@@ -188,5 +315,48 @@
   font-weight:600;
   box-shadow:0 8px 20px rgba(58,141,222,0.25);
 }
-.empty-state{text-align:center;color:#64748b;font-weight:600;}
+.empty-state{
+  text-align:center;
+  color:#64748b;
+  font-weight:600;
+}
+@keyframes mailCardEnter{
+  0%{opacity:0; transform:translateY(30px) scale(0.96);}
+  60%{opacity:1; transform:translateY(-4px) scale(1.01);}
+  100%{opacity:1; transform:translateY(0) scale(1);}
+}
+@keyframes unreadPulse{
+  0%{box-shadow:0 0 0 0 rgba(58,141,222,0.15); transform:scale(1);}
+  70%{box-shadow:0 0 0 8px rgba(58,141,222,0); transform:scale(1.3);}
+  100%{box-shadow:0 0 0 0 rgba(58,141,222,0); transform:scale(1);}
+}
+@keyframes badgePop{
+  0%{transform:scale(.4) rotate(-12deg); opacity:0;}
+  60%{transform:scale(1.15) rotate(4deg); opacity:1;}
+  100%{transform:scale(1) rotate(0);}
+}
+@media (max-width:540px){
+  .inbox-panel__controls{
+    flex-direction:column;
+    align-items:flex-start;
+  }
+  .inbox-panel__sort select{
+    width:100%;
+  }
+  .mail-card{
+    padding:14px 16px;
+  }
+}
+@media (prefers-reduced-motion: reduce){
+  .mail-card,
+  .inbox-panel__badge,
+  .pill::after,
+  .mail-card__status-dot,
+  .inbox-panel-dialog,
+  .inbox-panel-dialog::before{
+    animation:none!important;
+    transition:none!important;
+    transform:none!important;
+  }
+}
 </style>

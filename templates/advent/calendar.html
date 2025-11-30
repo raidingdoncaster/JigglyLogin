@@ -2,15 +2,27 @@
 {# Edit advent/config/advent_2025.json to change stamps/messages, then reuse this template for player routes later. #}
 
 {% block page_settings %}
-  {% set container_class = 'is-wide' %}
+  {% set container_class = 'is-wide advent-page' %}
   <style>
     body {
       background: #020815 url("{{ url_for('static', filename='advent/advent25bg.png') }}") center top / cover fixed no-repeat;
       color: #fff;
     }
+    .advent-page {
+      --container-max: 1120px;
+      background: rgba(3, 8, 18, 0.82) url("{{ url_for('static', filename='advent/advent25bg.png') }}") center top / cover no-repeat;
+      border-radius: 32px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 35px 80px rgba(0, 0, 0, 0.55);
+      padding: 26px clamp(18px, 4vw, 36px);
+      backdrop-filter: blur(6px);
+    }
     @media (max-width: 720px) {
       body {
         background-attachment: scroll;
+      }
+      .advent-page {
+        border-radius: 22px;
       }
     }
   </style>
@@ -56,9 +68,6 @@
   {% endif -%}
 {%- endmacro %}
 <div class="advent-scene">
-  <div class="advent-back-link">
-    <a href="{{ url_for('dashboard') }}">← Back to Dashboard</a>
-  </div>
   <div class="advent-hero-logo">
     <img src="{{ url_for('static', filename='advent/advent25logo.png') }}" alt="Advent Calendar 2025">
   </div>
@@ -93,11 +102,22 @@
     </div>
   </div>
 
+  <div class="advent-back-link">
+    <a href="{{ url_for('dashboard') }}">← Back to Dashboard</a>
+  </div>
+
+  <div class="advent-progress-card">
+    <div>
+      <p class="progress-label">Doors opened</p>
+      <p class="progress-value" data-advent-progress-text><strong>{{ opened_count }}</strong> / {{ total_days }} doors</p>
+    </div>
+    <div class="advent-progress-bar">
+      <div data-advent-progress-fill style="width: {{ stats_percent }}%"></div>
+    </div>
+  </div>
+
   <div class="advent-intro-grid">
     <div class="advent-intro-copy">
-      <p class="advent-intro-lede">
-        Unlock a fresh quote, festival-ready stamp, and seasonal surprise each day of December. Keep pace with RDAB to earn digital codes and a shot at the Charizard plushie.
-      </p>
       <div class="advent-quests-pill">
         <div>
           <p class="advent-pill-title">Advent Quests</p>
@@ -113,26 +133,36 @@
   </div>
 
   <div class="advent-feature-widgets">
-    <article class="advent-feature-card">
-      <img src="{{ url_for('static', filename='advent/digitalcode.png') }}" alt="Digital Code Quest illustration">
-      <div>
-        <p class="feature-eyebrow">Complete the Digital Code Quest</p>
-        <h3>Open 12 doors</h3>
-        <p class="feature-body">
-          Collect stamps on any 12 Advent days to receive a digital code worth 1× Premium Battle Pass, 1× Star Piece, 1× Incubator, and 1× Lure Module in your RDAB inbox.
-        </p>
-      </div>
+    <article
+      class="advent-feature-card"
+      data-quest-trigger="digital"
+      data-quest-title="Digital Code Quest"
+      data-quest-image="{{ url_for('static', filename='advent/digitalcode.png') }}"
+      data-quest-body="Open any 12 Advent doors to receive a digital code containing 1× Premium Battle Pass, 1× Star Piece, 1× Incubator, and 1× Lure Module."
+    >
+      <img src="{{ url_for('static', filename='advent/digitalcode.png') }}" alt="Digital code quest">
+      <p>Digital Code Quest</p>
     </article>
-    <article class="advent-feature-card">
-      <img src="{{ url_for('static', filename='advent/charizardplush.png') }}" alt="Christmas Charizard Quest illustration">
-      <div>
-        <p class="feature-eyebrow">Christmas Charizard Quest</p>
-        <h3>Open all 25 days</h3>
-        <p class="feature-body">
-          Finish every door to enter the Holiday Charizard plushie raffle. Qualifiers unlock the Advent 25 Community Medal inside the RDAB app when the feature ships.
-        </p>
-      </div>
+    <article
+      class="advent-feature-card"
+      data-quest-trigger="charizard"
+      data-quest-title="Christmas Charizard Quest"
+      data-quest-image="{{ url_for('static', filename='advent/charizardplush.png') }}"
+      data-quest-body="Open all 25 doors to enter the Holiday Charizard plushie raffle. Every finisher also unlocks the Advent 25 community medal once it is released."
+    >
+      <img src="{{ url_for('static', filename='advent/charizardplush.png') }}" alt="Christmas Charizard quest">
+      <p>Christmas Charizard Quest</p>
     </article>
+  </div>
+
+  <div class="advent-quest-modal" data-quest-modal hidden>
+    <div class="advent-quest-modal__backdrop" data-quest-modal-close></div>
+    <div class="advent-quest-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="quest-modal-title">
+      <button type="button" class="advent-quest-modal__close" data-quest-modal-close>&times;</button>
+      <img src="" alt="" data-quest-modal-image>
+      <h3 id="quest-modal-title" data-quest-modal-title></h3>
+      <p data-quest-modal-body></p>
+    </div>
   </div>
 
   <details class="advent-rules">
@@ -227,22 +257,10 @@
 
 {% if not is_test_mode %}
   <div class="advent-floating-bar" data-advent-floating-bar>
-    <button class="advent-floating-bar__help" type="button" data-advent-help-toggle aria-expanded="false">
-      <span>Help</span>
-    </button>
-    <div class="advent-floating-bar__stats" aria-label="Advent progress">
-      <p data-advent-progress-text><strong>{{ opened_count }}</strong> / {{ total_days }} doors opened</p>
-      <div class="advent-floating-bar__progress">
-        <div data-advent-progress-fill style="width: {{ stats_percent }}%"></div>
-      </div>
-    </div>
     <button class="advent-floating-bar__quests" type="button" data-advent-quests-toggle aria-expanded="false">
       Advent Quests
     </button>
-  </div>
-
-  <div class="advent-help-popover" data-advent-help-panel hidden>
-    <p>Need help unlocking today's door? Check the RDAB Discord announcements or contact your event host for hints.</p>
+    <button class="advent-floating-bar__top" type="button" data-advent-scrolltop aria-label="Back to top">🎀</button>
   </div>
 
   <div class="advent-quests-drawer" data-advent-quests-drawer hidden>
@@ -257,7 +275,7 @@
         {% for quest in quests %}
           <article class="advent-quest-card{% if quest.completed %} is-complete{% endif %}" data-quest-id="{{ quest.id }}">
             <div class="advent-quest-card__icon" aria-hidden="true">
-              {{ advent_quest_icon(quest.icon) }}
+              <img src="{% if quest.id == 'quest_12_doors' %}{{ url_for('static', filename='advent/digitalcode.png') }}{% else %}{{ url_for('static', filename='advent/charizardplush.png') }}{% endif %}" alt="">
             </div>
             <div class="advent-quest-card__meta">
               <p class="advent-quest-card__title">{{ quest.title }}</p>
@@ -318,13 +336,13 @@
 .advent-back-link {
   display: flex;
   justify-content: flex-end;
-  margin-bottom: 12px;
+  margin: 12px 0 18px;
 }
 .advent-back-link a {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 18px;
+  padding: 10px 22px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.16);
   color: #fff;
@@ -340,13 +358,50 @@
   transform: translateY(-2px);
 }
 .advent-hero-logo {
-  display: flex;
-  justify-content: center;
-  margin-bottom: 18px;
+  width: 100%;
+  border-radius: 28px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  margin-bottom: 24px;
+  background: rgba(6, 12, 28, 0.65);
+  box-shadow: inset 0 0 120px rgba(255, 255, 255, 0.05), 0 25px 60px rgba(0, 0, 0, 0.45);
 }
 .advent-hero-logo img {
-  width: min(540px, 100%);
+  width: 100%;
   height: auto;
+  display: block;
+}
+.advent-progress-card {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  padding: 16px 18px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.progress-label {
+  margin: 0;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  font-size: 0.74rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+.progress-value {
+  margin: 0;
+  font-size: 1.1rem;
+}
+.advent-progress-bar {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18);
+  overflow: hidden;
+}
+.advent-progress-bar div {
+  height: 100%;
+  background: linear-gradient(120deg, #0fd58a, #7af7d0);
+  border-radius: inherit;
 }
 .advent-intro-grid {
   display: grid;
@@ -361,12 +416,6 @@
   padding: 18px 20px;
   border: 1px solid rgba(255, 255, 255, 0.18);
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.25);
-}
-.advent-intro-lede {
-  margin: 0 0 12px;
-  font-size: 1.05rem;
-  line-height: 1.5;
-  color: rgba(255, 255, 255, 0.92);
 }
 .advent-quests-pill {
   display: flex;
@@ -413,48 +462,36 @@
   line-height: 1.4;
 }
 .advent-feature-widgets {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
   margin-bottom: 18px;
-  flex-wrap: nowrap;
-  overflow-x: auto;
-  padding-bottom: 6px;
-  scroll-snap-type: x proximity;
 }
 .advent-feature-card {
-  flex: 0 0 calc(50% - 8px);
-  display: flex;
-  align-items: center;
-  gap: 16px;
   border-radius: 20px;
-  padding: 16px;
+  padding: 18px;
   border: 1px solid rgba(255, 255, 255, 0.18);
   background: rgba(1, 7, 14, 0.55);
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
-  scroll-snap-align: center;
+  text-align: center;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.advent-feature-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.45);
 }
 .advent-feature-card img {
-  width: 88px;
-  height: 88px;
-  object-fit: contain;
-  flex: 0 0 auto;
+  width: 100%;
+  max-width: 140px;
+  height: auto;
+  margin: 0 auto 12px;
+  display: block;
 }
-.feature-eyebrow {
+.advent-feature-card p {
   margin: 0;
-  font-size: 0.78rem;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.6);
-}
-.advent-feature-card h3 {
-  margin: 4px 0;
-  font-size: 1.1rem;
-}
-.feature-body {
-  margin: 0;
-  font-size: 0.92rem;
-  color: rgba(255, 255, 255, 0.88);
-  line-height: 1.4;
+  font-size: 1rem;
+  font-weight: 600;
 }
 .advent-rules {
   margin: 0 0 20px;
@@ -513,6 +550,11 @@
   width: 160px;
   height: 140px;
   flex: 0 0 auto;
+}
+.header-text {
+  position: relative;
+  z-index: 2;
+  text-shadow: 0 6px 18px rgba(0, 0, 0, 0.65);
 }
 .tree {
   width: 0;
@@ -857,8 +899,13 @@
   box-shadow: 0 8px 18px rgba(0, 0, 0, 0.35);
 }
 .advent-quest-card__icon svg {
-  width: 38px;
-  height: 38px;
+  display: none;
+}
+.advent-quest-card__icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 14px;
 }
 .advent-quest-card__meta {
   padding-left: 4px;
@@ -1044,78 +1091,65 @@
 .advent-floating-bar {
   position: fixed;
   left: 50%;
-  bottom: 32px;
+  bottom: 24px;
   transform: translateX(-50%);
-  width: min(720px, calc(100% - 32px));
-  background: rgba(2, 23, 30, 0.92);
+  width: min(540px, calc(100% - 32px));
+  background: rgba(6, 20, 28, 0.92);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 999px;
-  padding: 12px 18px;
+  padding: 8px 12px;
   display: flex;
   align-items: center;
-  gap: 16px;
+  justify-content: center;
+  gap: 10px;
   box-shadow: 0 18px 35px rgba(0, 0, 0, 0.55);
   z-index: 10;
-  backdrop-filter: blur(6px);
+  backdrop-filter: blur(4px);
+}
+.advent-floating-bar::before {
+  content: "";
+  position: absolute;
+  inset: -8px 18px auto;
+  height: 12px;
+  border-radius: 999px;
+  background: radial-gradient(circle at 15% 50%, #ffe066, transparent 45%), radial-gradient(circle at 45% 50%, #ff6bcb, transparent 40%), radial-gradient(circle at 75% 50%, #7af7d0, transparent 35%);
+  box-shadow: 0 0 25px rgba(255, 255, 255, 0.2);
+}
+.advent-floating-bar::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  border: 2px dotted rgba(255, 255, 255, 0.15);
+  pointer-events: none;
 }
 .advent-floating-bar button {
   border: none;
-  background: none;
+  background: rgba(255, 255, 255, 0.12);
   color: #fff;
   font-weight: 600;
   cursor: pointer;
-}
-.advent-floating-bar__help,
-.advent-floating-bar__quests {
-  padding: 10px 18px;
   border-radius: 999px;
-  transition: background 0.2s ease, color 0.2s ease;
+  padding: 8px 18px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: transform 0.2s ease, background 0.2s ease;
 }
-.advent-floating-bar__help {
-  background: rgba(255, 255, 255, 0.12);
-}
-.advent-floating-bar__help:hover,
-.advent-floating-bar__quests:hover {
-  background: rgba(255, 255, 255, 0.2);
+.advent-floating-bar button:hover {
+  background: rgba(255, 255, 255, 0.24);
+  transform: translateY(-2px);
 }
 .advent-floating-bar__quests {
   background: linear-gradient(120deg, #ff8a00, #ff3d3d);
   color: #1a0808;
 }
-.advent-floating-bar__stats {
-  flex: 1;
-}
-.advent-floating-bar__stats p {
-  margin: 0;
-  font-size: 0.95rem;
-}
-.advent-floating-bar__progress {
-  width: 100%;
-  height: 6px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.15);
-  margin-top: 6px;
-  overflow: hidden;
-}
-.advent-floating-bar__progress div {
-  height: 100%;
-  border-radius: 999px;
-  background: linear-gradient(120deg, #0fd58a, #1aff9c);
-}
-.advent-help-popover {
-  position: fixed;
-  bottom: 98px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: min(600px, calc(100% - 48px));
-  background: rgba(1, 23, 33, 0.95);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 18px;
-  padding: 16px 20px;
-  color: #e6f7ff;
-  font-size: 0.95rem;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
-  z-index: 9;
+.advent-floating-bar__top {
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  justify-content: center;
+  font-size: 1.3rem;
 }
 .advent-quests-drawer {
   position: fixed;
@@ -1232,19 +1266,12 @@
   .advent-floating-bar {
     flex-direction: column;
     border-radius: 24px;
-    padding: 16px;
+    padding: 12px;
     gap: 12px;
   }
-  .advent-floating-bar__stats {
-    width: 100%;
-  }
-  .advent-floating-bar__help,
-  .advent-floating-bar__quests {
+  .advent-floating-bar button {
     width: 100%;
     text-align: center;
-  }
-  .advent-help-popover {
-    width: calc(100% - 32px);
   }
   .advent-quests-drawer__panel {
     border-radius: 24px 24px 0 0;
@@ -1258,7 +1285,6 @@
 }
 @media (max-width: 640px) {
   .advent-grid.compact { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .advent-feature-card { flex: 0 0 80%; }
 }
 @media (max-width: 420px) {
   .advent-grid.compact { grid-template-columns: repeat(1, minmax(0, 1fr)); }
@@ -1279,11 +1305,16 @@
   const closeButtons = modal.querySelectorAll(".advent-modal__close, .advent-modal__backdrop");
   const statsText = document.querySelector("[data-advent-progress-text]");
   const statsFill = document.querySelector("[data-advent-progress-fill]");
-  const helpButton = document.querySelector("[data-advent-help-toggle]");
-  const helpPanel = document.querySelector("[data-advent-help-panel]");
   const questsDrawer = document.querySelector("[data-advent-quests-drawer]");
   const questToggles = document.querySelectorAll("[data-advent-quests-toggle]");
   const questClosers = document.querySelectorAll("[data-advent-quests-close]");
+  const scrollTopButton = document.querySelector("[data-advent-scrolltop]");
+  const questCards = document.querySelectorAll("[data-quest-trigger]");
+  const questModal = document.querySelector("[data-quest-modal]");
+  const questModalTitle = questModal ? questModal.querySelector("[data-quest-modal-title]") : null;
+  const questModalBody = questModal ? questModal.querySelector("[data-quest-modal-body]") : null;
+  const questModalImage = questModal ? questModal.querySelector("[data-quest-modal-image]") : null;
+  const questModalClosers = questModal ? questModal.querySelectorAll("[data-quest-modal-close]") : [];
   const REVEAL_DELAY_MS = 3000;
   const MODAL_DELAY_AFTER_REVEAL_MS = 450;
   let snowResizeTimer = null;
@@ -1314,17 +1345,6 @@
     setTimeout(() => {
       modal.hidden = true;
     }, 250);
-  }
-
-  function toggleHelp(forceState) {
-    if (!helpPanel || !helpButton) return;
-    const shouldOpen = typeof forceState === "boolean" ? forceState : helpPanel.hasAttribute("hidden");
-    if (shouldOpen) {
-      helpPanel.hidden = false;
-    } else {
-      helpPanel.hidden = true;
-    }
-    helpButton.setAttribute("aria-expanded", String(shouldOpen));
   }
 
   function setDrawerState(open) {
@@ -1395,16 +1415,46 @@
   closeButtons.forEach((btn) => btn.addEventListener("click", closeModal));
   questToggles.forEach((btn) => btn.addEventListener("click", () => setDrawerState(true)));
   questClosers.forEach((btn) => btn.addEventListener("click", () => setDrawerState(false)));
-  if (helpButton) {
-    helpButton.addEventListener("click", () => toggleHelp());
+  if (scrollTopButton) {
+    scrollTopButton.addEventListener("click", () => window.scrollTo({ top: 0, behavior: "smooth" }));
   }
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") {
       setDrawerState(false);
-      toggleHelp(false);
       closeModal();
+      if (questModal && !questModal.hasAttribute("hidden")) {
+        closeQuestModal();
+      }
     }
   });
+
+  function openQuestModal(card) {
+    if (!questModal || !questModalTitle || !questModalBody || !questModalImage) {
+      return;
+    }
+    questModalTitle.textContent = card.dataset.questTitle || "Advent Quest";
+    questModalBody.textContent = card.dataset.questBody || "";
+    questModalImage.src = card.dataset.questImage || "";
+    questModalImage.alt = card.dataset.questTitle || "";
+    questModal.hidden = false;
+  }
+
+  function closeQuestModal() {
+    if (!questModal) return;
+    questModal.hidden = true;
+  }
+
+  questCards.forEach((card) => {
+    card.addEventListener("click", () => openQuestModal(card));
+  });
+  questModalClosers.forEach((btn) => btn.addEventListener("click", closeQuestModal));
+  if (questModal) {
+    questModal.addEventListener("click", (event) => {
+      if (event.target === questModal) {
+        closeQuestModal();
+      }
+    });
+  }
 
   const createMagicBurst = (cell) => {
     const burst = document.createElement("div");
@@ -1636,3 +1686,53 @@
 </script>
 
 {% endblock %}
+.advent-quest-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.advent-quest-modal[hidden] {
+  display: none;
+}
+.advent-quest-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+}
+.advent-quest-modal__dialog {
+  position: relative;
+  width: min(420px, 90%);
+  background: #031017;
+  border-radius: 24px;
+  padding: 26px 24px 30px;
+  text-align: center;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.6);
+  z-index: 1;
+}
+.advent-quest-modal__dialog img {
+  width: 120px;
+  height: auto;
+  margin: 0 auto 12px;
+}
+.advent-quest-modal__close {
+  position: absolute;
+  top: 12px;
+  right: 16px;
+  border: none;
+  background: none;
+  color: #fff;
+  font-size: 1.6rem;
+  cursor: pointer;
+}
+.advent-quest-modal__dialog h3 {
+  margin: 4px 0 8px;
+}
+.advent-quest-modal__dialog p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.8);
+  line-height: 1.5;
+}
