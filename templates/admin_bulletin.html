@@ -519,6 +519,7 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  min-height: 0;
   box-shadow: 0 30px 80px rgba(2, 6, 23, 0.35);
 }
 .bulletin-modal__dialog.is-wide {
@@ -535,6 +536,9 @@
 .bulletin-modal__body {
   padding: 24px;
   overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+  -webkit-overflow-scrolling: touch;
 }
 body.modal-open {
   overflow: hidden;
