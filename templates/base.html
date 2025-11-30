@@ -1408,6 +1408,10 @@
 
   <script>
     window.addEventListener("DOMContentLoaded",()=>{
+      if (document.body) {
+        document.body.style.overflow="";
+        delete document.body.dataset.scrollLocked;
+      }
       const bodyScrollLock=(()=>{
         let locks=0;
         return{
