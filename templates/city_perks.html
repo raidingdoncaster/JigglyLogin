@@ -6,24 +6,18 @@
 
 {% block content %}
 <div class="city-perks-hero">
+  <button
+    type="button"
+    class="city-perks-help-btn"
+    data-action="open-perks-help"
+    aria-label="Learn about City Perks"
+  >
+    ℹ️
+  </button>
   <div>
     <p class="hero-eyebrow">City perks</p>
     <div class="hero-title-row">
       <h1>Unlock local bonuses while you explore</h1>
-      <button
-        type="button"
-        class="city-perks-help-btn"
-        data-action="open-perks-help"
-        aria-label="Learn about City Perks"
-      >
-        ?
-      </button>
-    </div>
-  </div>
-  <div class="hero-meta">
-    <div>
-      <strong>{{ perks_count }}</strong>
-      <span>Live perks</span>
     </div>
   </div>
 </div>
@@ -226,8 +220,11 @@
   gap:10px;
 }
 .city-perks-help-btn {
-  width:36px;
-  height:36px;
+  position:absolute;
+  top:14px;
+  right:14px;
+  width:32px;
+  height:32px;
   border-radius:50%;
   border:1px solid #cbd5f5;
   background:#fff;
@@ -235,26 +232,11 @@
   font-weight:700;
   color:#1d4ed8;
   cursor:pointer;
+  display:grid;
+  place-items:center;
 }
 .city-perks-help-btn:hover {
   background:#f1f5f9;
-}
-.hero-meta {
-  display:flex;
-  gap:16px;
-  background:#111827;
-  color:#fff;
-  padding:16px 20px;
-  border-radius:16px;
-}
-.hero-meta div {
-  display:flex;
-  flex-direction:column;
-  align-items:flex-start;
-}
-.hero-meta strong {
-  font-size:1.8rem;
-  line-height:1;
 }
 @keyframes heroGlowDrift {
   0% { transform:translate3d(-5%, -5%, 0) scale(1); }
