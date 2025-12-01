@@ -449,17 +449,17 @@
   </section>
 </div>
 
-<div class="auth-modal" role="dialog" aria-modal="true" aria-labelledby="help-dialog-title" data-help-modal>
+<div class="auth-modal" role="dialog" aria-modal="true" aria-labelledby="help-dialog-title" data-help-modal hidden data-modal-root="login-help" data-modal-open-class="is-visible" data-modal-lock-scroll="true">
   <div class="auth-modal__dialog">
-    <button type="button" class="auth-modal__close" data-help-close aria-label="Close help">✕</button>
+    <button type="button" class="auth-modal__close" data-help-close data-modal-close aria-label="Close help">✕</button>
     <h3 id="help-dialog-title" style="margin-top:0;">Need a hand?</h3>
     <p>Sign up to stay synced with Doncaster’s Pokémon GO community, unlock your passport, interact with the community, earn stamps and trade them in for merch and in-game rewards!</p>
   </div>
 </div>
 
-<div class="auth-modal" role="dialog" aria-modal="true" aria-labelledby="login-dialog-title" data-login-modal>
+<div class="auth-modal" role="dialog" aria-modal="true" aria-labelledby="login-dialog-title" data-login-modal hidden data-modal-root="login-panel" data-modal-open-class="is-visible" data-modal-lock-scroll="true">
   <div class="auth-modal__dialog">
-    <button type="button" class="auth-modal__close" data-login-close aria-label="Close login">✕</button>
+    <button type="button" class="auth-modal__close" data-login-close data-modal-close aria-label="Close login">✕</button>
     <h3 id="login-dialog-title" style="margin-top:0;">Log in</h3>
     <p class="auth-subtitle" style="margin-top:0;">Enter your Pokemon GO Trainer Name and the PIN you set up during sign-up.</p>
     <form action="{{ url_for('login') }}" method="post" class="auth-form">
@@ -575,7 +575,16 @@
       if (!trigger || !modal || !closeBtn) return;
 
       const toggleModal = (open) => {
-        modal.classList.toggle('is-visible', open);
+        if (window.ModalHub && modal.dataset.modalRoot) {
+          const id = modal.dataset.modalRoot;
+          if (open) {
+            window.ModalHub.open(id);
+          } else {
+            window.ModalHub.close(id);
+          }
+        } else {
+          modal.classList.toggle('is-visible', open);
+        }
         trigger.setAttribute('aria-expanded', open ? 'true' : 'false');
       };
 
