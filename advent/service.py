@@ -97,9 +97,14 @@ def get_advent_state_for_user(
     if today_day <= 0:
         candidates: List[int] = []
     elif allow_previous_day:
-        candidates = sorted({today_day, max(1, today_day - 1)})
+        current_day = today_day
+        previous_day = current_day - 1 if current_day > 1 else None
+        candidates = [current_day]
+        if previous_day:
+            candidates.append(previous_day)
+        candidates = sorted(candidates)
     else:
-        candidates = list(range(1, today_day + 1))
+        candidates = [today_day]
 
     openable_days = [day for day in candidates if day not in opened_lookup]
     openable_day: Optional[int] = openable_days[0] if openable_days else None
