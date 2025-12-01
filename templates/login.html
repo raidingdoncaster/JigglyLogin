@@ -28,11 +28,12 @@
   </div>
 </div>
 
-<section class="login-banner">
+<section class="login-hero" aria-labelledby="login-banner-title">
   <img src="{{ url_for('static', filename='banner.jpg') }}" alt="Raiding Doncaster and Beyond" class="login-banner__image">
   <div class="login-banner__overlay">
-    <p>Sign up to stay synced with Doncaster’s Pokémon GO community, unlock your passport, interact with the community, earn stamps and trade them in for merch and in-game rewards!</p>
+    <p id="login-banner-title">Sign up to stay synced with Doncaster’s Pokémon GO community, unlock your passport, interact with the community, earn stamps and trade them in for merch and in-game rewards!</p>
   </div>
+  <button class="help-button" type="button" data-help-trigger aria-haspopup="dialog" aria-expanded="false">Help</button>
 </section>
 
 <div class="auth-shell auth-shell--aurora auth-shell--snowfall">
@@ -46,7 +47,11 @@
         linear-gradient(180deg, #010513, #020617 50%, #030814);
       min-height:100vh;
       color:#f8fafc;
+      padding-top:0;
     }
+    body.login-aurora .site-header{display:none !important;}
+    body.login-aurora main{padding-top:0;}
+    body.login-aurora #global-loader{top:0;}
     body.login-aurora::before{
       content:"";
       position:fixed;
@@ -58,102 +63,56 @@
       z-index:0;
     }
 
-    .login-banner{
-      margin-bottom:clamp(16px,4vw,28px);
-      border-radius:26px;
+    .login-hero{
+      margin:clamp(12px,4vw,20px) 0 clamp(14px,4vw,26px);
+      border-radius:28px;
       overflow:hidden;
       position:relative;
       box-shadow:0 25px 60px rgba(2,6,23,0.55);
       border:1px solid rgba(255,255,255,0.08);
+      min-height:220px;
+      display:flex;
+      align-items:flex-end;
+      isolation:isolate;
     }
     .login-banner__image{
       display:block;
       width:100%;
-      height:auto;
+      height:100%;
       object-fit:cover;
+      position:absolute;
+      inset:0;
+      z-index:0;
     }
     .login-banner__overlay{
-      position:absolute;
-      inset:auto 0 0 0;
+      position:relative;
       background:linear-gradient(180deg,rgba(2,6,23,0) 0%,rgba(2,6,23,0.85) 65%);
       padding:clamp(14px,4vw,24px);
       color:#f8fafc;
       font-weight:600;
       letter-spacing:0.01em;
+      width:100%;
+      z-index:1;
     }
-
-    .login-launcher{
-      position:fixed;
-      inset:0;
-      background:radial-gradient(circle at top,#0f172a,#020617 70%);
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      z-index:9000;
-      overflow:hidden;
-      transition:opacity .6s ease, visibility .6s ease;
-    }
-    .login-launcher.is-hidden{
-      opacity:0;
-      visibility:hidden;
-      pointer-events:none;
-    }
-    .login-launcher__halo{
+    .help-button{
       position:absolute;
-      width:120vmax;
-      height:120vmax;
-      background:conic-gradient(from 90deg,#38bdf8,#a855f7,#ec4899,#38bdf8);
-      filter:blur(140px);
-      animation:launcherSpin 18s linear infinite;
-      opacity:0.35;
-    }
-    @keyframes launcherSpin{
-      to{transform:rotate(360deg);}
-    }
-    .login-launcher__card{
-      position:relative;
-      padding:32px clamp(28px,5vw,42px);
-      border-radius:32px;
-      background:rgba(2,6,23,0.8);
-      border:1px solid rgba(255,255,255,0.12);
-      backdrop-filter:blur(24px);
-      text-align:center;
-      display:flex;
-      flex-direction:column;
-      gap:18px;
-      box-shadow:0 35px 80px rgba(2,6,23,0.65);
-      color:#f8fafc;
-      max-width:min(480px,90vw);
-    }
-    .login-launcher__logo{
-      width:96px;
-      height:96px;
-      object-fit:contain;
-      align-self:center;
-    }
-    .login-launcher__text{
-      margin:0;
-      font-size:1rem;
-      color:rgba(248,250,252,0.85);
-    }
-    .login-launcher__meter{
-      width:100%;
-      height:8px;
+      top:14px;
+      right:14px;
+      z-index:2;
+      border:none;
       border-radius:999px;
-      background:rgba(255,255,255,0.15);
-      overflow:hidden;
-      position:relative;
+      padding:8px 12px;
+      background:rgba(15,23,42,0.85);
+      color:#f8fafc;
+      font-weight:600;
+      box-shadow:0 12px 30px rgba(2,6,23,0.45);
+      border:1px solid rgba(255,255,255,0.2);
+      cursor:pointer;
+      transition:transform .2s ease, box-shadow .2s ease;
     }
-    .login-launcher__meter-fill{
-      width:100%;
-      height:100%;
-      background:linear-gradient(90deg,#38bdf8,#a855f7,#ec4899,#38bdf8);
-      animation:launcherMeter 2.6s ease-in-out infinite;
-    }
-    @keyframes launcherMeter{
-      0%{transform:translateX(-100%);}
-      50%{transform:translateX(0);}
-      100%{transform:translateX(100%);}
+    .help-button:hover{
+      transform:translateY(-1px);
+      box-shadow:0 15px 36px rgba(2,6,23,0.55);
     }
 
     .auth-shell--snowfall{ position:relative; }
@@ -236,17 +195,100 @@
       backdrop-filter:blur(24px);
       color:#f8fafc;
       max-width:520px;
+      margin:0 auto;
+      text-align:center;
     }
     .auth-card h2{
-      margin:0 0 6px;
-      font-size:1.5rem;
+      margin:0 0 8px;
+      font-size:1.65rem;
       color:#ffffff;
     }
     .auth-card .auth-subtitle{
       margin:0 0 18px;
       color:rgba(248,250,252,0.85);
-      font-size:0.95rem;
+      font-size:1rem;
     }
+    .auth-actions{
+      display:flex;
+      gap:14px;
+      justify-content:center;
+      flex-wrap:wrap;
+    }
+    .auth-btn{
+      border-radius:999px;
+      font-weight:700;
+      letter-spacing:0.01em;
+      padding:12px 20px;
+      cursor:pointer;
+      transition:transform .2s ease, box-shadow .2s ease, background .2s ease;
+    }
+    .auth-btn--primary{
+      background:linear-gradient(120deg,#38bdf8,#a855f7);
+      border:none;
+      box-shadow:0 20px 35px rgba(56,189,248,0.25);
+      color:#0b1224;
+    }
+    .auth-btn--secondary{
+      border:1px solid rgba(255,255,255,0.22);
+      background:rgba(248,250,252,0.08);
+      color:#f8fafc;
+    }
+    .auth-btn--primary:hover,
+    .auth-btn--secondary:hover{
+      transform:translateY(-1px);
+      box-shadow:0 18px 38px rgba(15,23,42,0.35);
+    }
+    .auth-btn--ghost{
+      border-color:rgba(248,250,252,0.6);
+      color:#f8fafc;
+      background:rgba(248,250,252,0.04);
+      padding:10px 14px;
+    }
+    .auth-btn--outline{
+      color:#0f172a;
+      background:#f8fafc;
+      border-color:transparent;
+      padding:10px 14px;
+    }
+    .auth-btn--full{width:100%;}
+
+    .auth-modal{
+      position:fixed;
+      inset:0;
+      background:radial-gradient(circle at top,rgba(1,5,19,0.75),rgba(1,5,19,0.95));
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:clamp(14px,4vw,24px);
+      z-index:8500;
+      opacity:0;
+      pointer-events:none;
+      transition:opacity .35s ease;
+    }
+    .auth-modal.is-visible{opacity:1; pointer-events:auto;}
+    .auth-modal__dialog{
+      width:min(520px,100%);
+      background:rgba(3,7,30,0.92);
+      border:1px solid rgba(255,255,255,0.16);
+      border-radius:24px;
+      padding:clamp(20px,4vw,28px);
+      box-shadow:0 35px 90px rgba(2,6,23,0.65);
+      backdrop-filter:blur(18px);
+      position:relative;
+    }
+    .auth-modal__close{
+      position:absolute;
+      top:12px;
+      right:12px;
+      width:36px;
+      height:36px;
+      border-radius:50%;
+      border:1px solid rgba(255,255,255,0.24);
+      background:rgba(248,250,252,0.08);
+      color:#f8fafc;
+      cursor:pointer;
+    }
+
     .auth-label{
       color:#f8fafc;
       font-weight:600;
@@ -261,33 +303,8 @@
     .auth-input::placeholder{
       color:rgba(226,232,240,0.6);
     }
-    .auth-input-row{
-      gap:10px;
-    }
-    .auth-btn{
-      border-radius:999px;
-      font-weight:600;
-    }
-    .auth-btn--primary{
-      background:linear-gradient(120deg,#38bdf8,#a855f7);
-      border:none;
-      box-shadow:0 20px 35px rgba(56,189,248,0.25);
-    }
-    .auth-btn--secondary{
-      border-color:transparent;
-      background:rgba(248,250,252,0.08);
-      color:#f8fafc;
-    }
-    .auth-btn--ghost{
-      border-color:rgba(248,250,252,0.6);
-      color:#f8fafc;
-      background:rgba(248,250,252,0.04);
-    }
-    .auth-btn--outline{
-      color:#0f172a;
-      background:#f8fafc;
-      border-color:transparent;
-    }
+    .auth-input-row{gap:10px;}
+
     .auth-links{
       display:grid;
       grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
@@ -307,9 +324,7 @@
       padding:12px 16px;
       margin-top:18px;
     }
-    #reminder-text{
-      transition:opacity 0.35s ease;
-    }
+    #reminder-text{transition:opacity 0.35s ease;}
     #pokeball-loader{
       width:26px;
       height:26px;
@@ -318,9 +333,7 @@
       border-top-color:#f472b6;
       animation:spin 1.1s linear infinite;
     }
-    @keyframes spin{
-      to{transform:rotate(360deg);}
-    }
+    @keyframes spin{to{transform:rotate(360deg);}}
 
     .policy-cta{
       border-radius:22px;
@@ -334,35 +347,121 @@
       justify-content:space-between;
       gap:16px;
     }
-    .policy-cta h3{
-      margin:0;
-    }
+    .policy-cta h3{margin:0;}
     .policy-cta p{
       margin:0;
       max-width:440px;
       color:rgba(226,232,240,0.9);
     }
 
+    .gallery-section{
+      background:rgba(15,23,42,0.45);
+      border:1px solid rgba(255,255,255,0.08);
+      border-radius:22px;
+      padding:16px;
+      box-shadow:0 25px 55px rgba(2,6,23,0.4);
+    }
+    .gallery-header{display:flex;align-items:center;justify-content:space-between;gap:12px; margin-bottom:12px;}
+    .gallery-header h3{margin:0;}
+    .gallery-track{
+      position:relative;
+      overflow:hidden;
+      border-radius:18px;
+    }
+    .gallery-strip{
+      display:flex;
+      transition:transform .4s ease;
+    }
+    .gallery-slide{
+      min-width:100%;
+      flex:0 0 100%;
+      position:relative;
+    }
+    .gallery-slide img{
+      width:100%;
+      display:block;
+      border-radius:18px;
+      object-fit:cover;
+      aspect-ratio:16/9;
+      background:linear-gradient(135deg,rgba(56,189,248,0.25),rgba(168,85,247,0.25));
+      border:1px solid rgba(255,255,255,0.12);
+    }
+    .gallery-controls{
+      display:flex;
+      justify-content:flex-end;
+      gap:8px;
+      margin-top:10px;
+    }
+    .gallery-btn{
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,0.2);
+      background:rgba(248,250,252,0.08);
+      color:#f8fafc;
+      padding:8px 12px;
+      cursor:pointer;
+    }
+
     @media(max-width:720px){
-      .auth-shell--aurora{
-        border-radius:0;
-        padding:16px 14px 32px;
-      }
-      .auth-hero--login{
-        flex-direction:column;
-      }
-      .aurora-preview{
-        width:100%;
-      }
-      .auth-card{
-        width:100%;
-      }
+      .auth-shell--aurora{border-radius:0; padding:16px 14px 32px;}
+      .auth-card{width:100%;}
+      .help-button{top:10px; right:10px;}
     }
   </style>
 
   <section class="auth-card">
     <h2>Welcome back</h2>
-    <p class="auth-subtitle">Enter your Pokemon GO Trainer Name and the PIN you set up during sign-up.</p>
+    <p class="auth-subtitle">Choose how you want to get started.</p>
+    <div class="auth-actions">
+      <button type="button" class="auth-btn auth-btn--primary" data-login-trigger>Log in</button>
+      <a href="{{ url_for('signup') }}" class="auth-btn auth-btn--secondary">Create account</a>
+    </div>
+
+    <div class="auth-tip" id="reminder-carousel">
+      <span id="reminder-text">🔑 Never share your PIN or memorable password with anyone – admins will never ask for it.</span>
+      <div id="pokeball-loader"></div>
+    </div>
+  </section>
+
+  <section class="gallery-section">
+    <div class="gallery-header">
+      <h3>Community moments</h3>
+      <p style="margin:0; color:rgba(226,232,240,0.85); font-size:0.95rem;">Swipe through highlights from the RDAB trainers.</p>
+    </div>
+    <div class="gallery-track" data-gallery>
+      <div class="gallery-strip" data-gallery-strip>
+        <div class="gallery-slide"><img src="{{ url_for('static', filename='gallery/placeholder1.svg') }}" alt="Gallery placeholder 1"></div>
+        <div class="gallery-slide"><img src="{{ url_for('static', filename='gallery/placeholder2.svg') }}" alt="Gallery placeholder 2"></div>
+        <div class="gallery-slide"><img src="{{ url_for('static', filename='gallery/placeholder3.svg') }}" alt="Gallery placeholder 3"></div>
+        <div class="gallery-slide"><img src="{{ url_for('static', filename='gallery/placeholder4.svg') }}" alt="Gallery placeholder 4"></div>
+        <div class="gallery-slide"><img src="{{ url_for('static', filename='gallery/placeholder5.svg') }}" alt="Gallery placeholder 5"></div>
+      </div>
+    </div>
+    <div class="gallery-controls">
+      <button type="button" class="gallery-btn" data-gallery-prev aria-label="Previous image">‹</button>
+      <button type="button" class="gallery-btn" data-gallery-next aria-label="Next image">›</button>
+    </div>
+  </section>
+
+  <section class="policy-cta">
+    <h3>Need the details?</h3>
+    <p>Read how we protect trainers, manage prizes, and keep the RDAB app running safely.</p>
+    <a href="{{ url_for('policies_index') }}?pwa=1&amp;source=login" class="auth-btn auth-btn--primary">View policies</a>
+  </section>
+</div>
+
+<div class="auth-modal" role="dialog" aria-modal="true" aria-labelledby="help-dialog-title" data-help-modal>
+  <div class="auth-modal__dialog">
+    <button type="button" class="auth-modal__close" data-help-close aria-label="Close help">✕</button>
+    <h3 id="help-dialog-title" style="margin-top:0;">Need a hand?</h3>
+    <p>Sign up to stay synced with Doncaster’s Pokémon GO community, unlock your passport, interact with the community, earn stamps and trade them in for merch and in-game rewards!</p>
+  </div>
+</div>
+
+<div class="auth-modal" role="dialog" aria-modal="true" aria-labelledby="login-dialog-title" data-login-modal>
+  <div class="auth-modal__dialog">
+    <button type="button" class="auth-modal__close" data-login-close aria-label="Close login">✕</button>
+    <h3 id="login-dialog-title" style="margin-top:0;">Log in</h3>
+    <p class="auth-subtitle" style="margin-top:0;">Enter your Pokemon GO Trainer Name and the PIN you set up during sign-up.</p>
     <form action="{{ url_for('login') }}" method="post" class="auth-form">
       <label class="auth-label" for="login-username">Trainer Name</label>
       <input id="login-username" class="auth-input" type="text" name="username" placeholder="Exact Trainer Name" required>
@@ -373,25 +472,13 @@
         <button type="button" class="auth-btn auth-btn--outline" onclick="togglePin('login-pin', this)">Show</button>
       </div>
 
-      <button type="submit" class="auth-btn auth-btn--primary auth-btn--full">Log in</button>
+      <button type="submit" class="auth-btn auth-btn--primary auth-btn--full" style="margin-top:12px;">Log in</button>
     </form>
 
-    <div class="auth-tip" id="reminder-carousel">
-      <span id="reminder-text">🔑 Never share your PIN or memorable password with anyone – admins will never ask for it.</span>
-      <div id="pokeball-loader"></div>
-    </div>
-
     <div class="auth-links">
-      <a href="{{ url_for('signup') }}" class="auth-btn auth-btn--secondary">Create account</a>
       <a href="{{ url_for('recover') }}" class="auth-btn auth-btn--ghost">Forgot PIN?</a>
     </div>
-  </section>
-
-  <section class="policy-cta">
-    <h3>Need the details?</h3>
-    <p>Read how we protect trainers, manage prizes, and keep the RDAB app running safely.</p>
-    <a href="{{ url_for('policies_index') }}?pwa=1&amp;source=login" class="auth-btn auth-btn--primary">View policies</a>
-  </section>
+  </div>
 </div>
 
 <script>
@@ -417,7 +504,7 @@
       } else {
         window.addEventListener('load', settleLauncher, { once: true });
       }
-      setTimeout(() => settleLauncher(), MIN_DURATION + 4000); // Fallback if load never fires
+      setTimeout(() => settleLauncher(), MIN_DURATION + 4000);
     }
 
     const loginShell = document.querySelector('.auth-shell--snowfall');
@@ -479,6 +566,55 @@
           reminderElement.style.opacity = 1;
         }, 1000);
       }, 7000);
+    }
+
+    function bindModal(triggerSelector, modalSelector, closeSelector) {
+      const trigger = document.querySelector(triggerSelector);
+      const modal = document.querySelector(modalSelector);
+      const closeBtn = modal ? modal.querySelector(closeSelector) : null;
+      if (!trigger || !modal || !closeBtn) return;
+
+      const toggleModal = (open) => {
+        modal.classList.toggle('is-visible', open);
+        trigger.setAttribute('aria-expanded', open ? 'true' : 'false');
+      };
+
+      trigger.addEventListener('click', () => toggleModal(true));
+      closeBtn.addEventListener('click', () => toggleModal(false));
+      modal.addEventListener('click', (event) => {
+        if (event.target === modal) toggleModal(false);
+      });
+      document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') toggleModal(false);
+      });
+    }
+
+    bindModal('[data-help-trigger]', '[data-help-modal]', '[data-help-close]');
+    bindModal('[data-login-trigger]', '[data-login-modal]', '[data-login-close]');
+
+    const gallery = document.querySelector('[data-gallery]');
+    if (gallery) {
+      const strip = gallery.querySelector('[data-gallery-strip]');
+      const slides = strip ? Array.from(strip.children) : [];
+      const prev = document.querySelector('[data-gallery-prev]');
+      const next = document.querySelector('[data-gallery-next]');
+      let index = 0;
+
+      const updateGallery = () => {
+        if (!strip) return;
+        const offset = index * -100;
+        strip.style.transform = `translateX(${offset}%)`;
+      };
+
+      const move = (step) => {
+        if (!slides.length) return;
+        index = (index + step + slides.length) % slides.length;
+        updateGallery();
+      };
+
+      prev && prev.addEventListener('click', () => move(-1));
+      next && next.addEventListener('click', () => move(1));
+      updateGallery();
     }
   });
 </script>
