@@ -1,630 +1,434 @@
-{% extends "base.html" %}
-
-{% block page_csettings %}
-  {% set container_class = 'is-cozy login-layout' %}
-  <script>
-    (function () {
-      document.documentElement.classList.add('login-aurora');
-      if (document.body) {
-        document.body.classList.add('login-aurora');
-      } else {
-        document.addEventListener('DOMContentLoaded', function handleLoginBody() {
-          document.body.classList.add('login-aurora');
-        }, { once: true });
-      }
-    })();
-  </script>
-{% endblock %}
-
-{% block content %}
-<div class="login-launcher" data-login-launcher aria-live="polite" aria-busy="true">
-  <div class="login-launcher__halo"></div>
-  <div class="login-launcher__card">
-    <img src="{{ url_for('static', filename='logo.png') }}" alt="RDAB logo" class="login-launcher__logo">
-    <p class="login-launcher__text">Loading RDAB…</p>
-    <div class="login-launcher__meter">
-      <div class="login-launcher__meter-fill"></div>
-    </div>
-  </div>
-</div>
-
-<section class="login-hero" aria-labelledby="login-banner-title">
-  <img src="{{ url_for('static', filename='banner.jpg') }}" alt="Raiding Doncaster and Beyond" class="login-banner__image">
-  <div class="login-banner__overlay">
-    <p id="login-banner-title">Sign up to stay synced with Doncaster’s Pokémon GO community, unlock your passport, interact with the community, earn stamps and trade them in for merch and in-game rewards!</p>
-  </div>
-  <button class="help-button" type="button" data-help-trigger aria-haspopup="dialog" aria-expanded="false">Help</button>
-</section>
-
-<div class="auth-shell auth-shell--aurora auth-shell--snowfall">
-
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#4aa7dc">
+  <link rel="manifest" href="{{ url_for('manifest') }}">
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+  <title>{{ title if title else "RDAB Login" }}</title>
   <style>
-    body.login-aurora{
-      background:#010513;
-      background-image:
-        radial-gradient(circle at 20% 20%, rgba(59,130,246,0.35), transparent 45%),
-        radial-gradient(circle at 80% 0%, rgba(217,70,239,0.35), transparent 50%),
-        linear-gradient(180deg, #010513, #020617 50%, #030814);
-      min-height:100vh;
-      color:#f8fafc;
-      padding-top:0;
-    }
-    body.login-aurora .site-header{display:none !important;}
-    body.login-aurora main{padding-top:0;}
-    body.login-aurora #global-loader{top:0;}
-    body.login-aurora::before{
-      content:"";
-      position:fixed;
-      inset:-20%;
-      background:radial-gradient(circle at 50% 0,#38bdf8,transparent 55%);
-      opacity:0.15;
-      filter:blur(80px);
-      pointer-events:none;
-      z-index:0;
+    :root {
+      --bg-top: #7dd8ff;
+      --bg-bottom: #4aa7dc;
+      --panel: rgba(255, 255, 255, 0.14);
+      --panel-border: rgba(255, 255, 255, 0.32);
+      --text-main: #f7fbff;
+      --text-muted: #e5f1ff;
+      --button: rgba(255, 255, 255, 0.86);
+      --button-text: #16314f;
+      --button-alt: rgba(255, 255, 255, 0.18);
     }
 
-    .login-hero{
-      margin:clamp(12px,4vw,20px) 0 clamp(14px,4vw,26px);
-      border-radius:28px;
-      overflow:hidden;
-      position:relative;
-      box-shadow:0 25px 60px rgba(2,6,23,0.55);
-      border:1px solid rgba(255,255,255,0.08);
-      min-height:220px;
-      display:flex;
-      align-items:flex-end;
-      isolation:isolate;
-    }
-    .login-banner__image{
-      display:block;
-      width:100%;
-      height:100%;
-      object-fit:cover;
-      position:absolute;
-      inset:0;
-      z-index:0;
-    }
-    .login-banner__overlay{
-      position:relative;
-      background:linear-gradient(180deg,rgba(2,6,23,0) 0%,rgba(2,6,23,0.85) 65%);
-      padding:clamp(14px,4vw,24px);
-      color:#f8fafc;
-      font-weight:600;
-      letter-spacing:0.01em;
-      width:100%;
-      z-index:1;
-    }
-    .help-button{
-      position:absolute;
-      top:14px;
-      right:14px;
-      z-index:2;
-      border:none;
-      border-radius:999px;
-      padding:8px 12px;
-      background:rgba(15,23,42,0.85);
-      color:#f8fafc;
-      font-weight:600;
-      box-shadow:0 12px 30px rgba(2,6,23,0.45);
-      border:1px solid rgba(255,255,255,0.2);
-      cursor:pointer;
-      transition:transform .2s ease, box-shadow .2s ease;
-    }
-    .help-button:hover{
-      transform:translateY(-1px);
-      box-shadow:0 15px 36px rgba(2,6,23,0.55);
+    *, *::before, *::after { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--text-main);
+      font-family: 'Montserrat', system-ui, -apple-system, sans-serif;
+      background: linear-gradient(180deg, var(--bg-top), var(--bg-bottom));
+      position: relative;
+      overflow-x: hidden;
     }
 
-    .auth-shell--snowfall{ position:relative; }
-    .auth-shell--aurora{
-      position:relative;
-      padding:clamp(18px,4vw,42px);
-      border-radius:32px;
-      background:rgba(2,7,29,0.8);
-      border:1px solid rgba(255,255,255,0.08);
-      overflow:hidden;
-      display:flex;
-      flex-direction:column;
-      gap:clamp(18px,4vw,32px);
-      box-shadow:0 30px 80px rgba(2,6,23,0.55);
-    }
-    .auth-shell--aurora::before,
-    .auth-shell--aurora::after{
-      content:"";
-      position:absolute;
-      inset:-30% -20%;
-      background:linear-gradient(120deg,#0f172a,#1e3a8a,#22d3ee,#f472b6 70%,#a855f7);
-      opacity:0.35;
-      filter:blur(70px);
-      animation:auroraFlow 22s ease-in-out infinite;
-      transform:translate3d(0,0,0);
-      z-index:0;
-    }
-    @keyframes auroraFlow{
-      0%{transform:translate3d(0,0,0) rotate(0deg); background-position:0% 50%;}
-      50%{transform:translate3d(3%, -3%,0) rotate(5deg); background-position:100% 50%;}
-      100%{transform:translate3d(0,0,0) rotate(0deg); background-position:0% 50%;}
-    }
-    .auth-shell--aurora::after{
-      animation-delay:-8s;
-      opacity:0.25;
-      mix-blend-mode:screen;
-    }
-    .auth-shell--aurora > *{
-      position:relative;
-      z-index:1;
+    body::before {
+      content: "";
+      position: fixed;
+      inset: -10% -10% 0;
+      background: radial-gradient(circle at 20% 20%, rgba(255,255,255,0.4), transparent 40%),
+                  radial-gradient(circle at 80% 10%, rgba(255,255,255,0.28), transparent 36%),
+                  radial-gradient(circle at 40% 80%, rgba(255,255,255,0.32), transparent 40%);
+      opacity: 0.9;
+      filter: blur(40px);
+      pointer-events: none;
+      z-index: 0;
     }
 
-    .snowfall-layer{
-      position:fixed;
-      inset:0;
-      pointer-events:none;
-      z-index:1200;
-      overflow:hidden;
-      mix-blend-mode:screen;
-      opacity:0.85;
-    }
-    .snowflake{
-      position:absolute;
-      top:-10%;
-      width:var(--size,8px);
-      height:var(--size,8px);
-      border-radius:50%;
-      background:radial-gradient(circle,rgba(255,255,255,0.95) 0%,rgba(255,255,255,0.4) 60%,rgba(255,255,255,0) 100%);
-      box-shadow:0 0 12px rgba(148,197,255,0.45);
-      opacity:var(--opacity,0.6);
-      animation:snowDrift var(--duration,14s) linear infinite;
-      transform:translate3d(0,-10%,0) scale(var(--scale,1));
-    }
-    @keyframes snowDrift{
-      0%{transform:translate3d(0,-10%,0) scale(var(--scale,1));}
-      100%{transform:translate3d(var(--drift, 24px),110vh,0) scale(var(--scale,1));}
-    }
-    @media (prefers-reduced-motion: reduce){
-      .snowfall-layer{display:none !important;}
-      .auth-shell--aurora::before,
-      .auth-shell--aurora::after{animation:none;}
+    .orb-layer {
+      position: fixed;
+      inset: -10% 0 0 0;
+      overflow: hidden;
+      z-index: 0;
     }
 
-    .auth-card{
-      border-radius:28px;
-      padding:clamp(20px,4vw,30px);
-      background:rgba(3,7,30,0.75);
-      border:1px solid rgba(255,255,255,0.1);
-      box-shadow:0 25px 55px rgba(2,6,23,0.45);
-      backdrop-filter:blur(24px);
-      color:#f8fafc;
-      max-width:520px;
-      margin:0 auto;
-      text-align:center;
-    }
-    .auth-card h2{
-      margin:0 0 8px;
-      font-size:1.65rem;
-      color:#ffffff;
-    }
-    .auth-card .auth-subtitle{
-      margin:0 0 18px;
-      color:rgba(248,250,252,0.85);
-      font-size:1rem;
-    }
-    .auth-actions{
-      display:flex;
-      gap:14px;
-      justify-content:center;
-      flex-wrap:wrap;
-    }
-    .auth-btn{
-      border-radius:999px;
-      font-weight:700;
-      letter-spacing:0.01em;
-      padding:12px 20px;
-      cursor:pointer;
-      transition:transform .2s ease, box-shadow .2s ease, background .2s ease;
-    }
-    .auth-btn--primary{
-      background:linear-gradient(120deg,#38bdf8,#a855f7);
-      border:none;
-      box-shadow:0 20px 35px rgba(56,189,248,0.25);
-      color:#0b1224;
-    }
-    .auth-btn--secondary{
-      border:1px solid rgba(255,255,255,0.22);
-      background:rgba(248,250,252,0.08);
-      color:#f8fafc;
-    }
-    .auth-btn--primary:hover,
-    .auth-btn--secondary:hover{
-      transform:translateY(-1px);
-      box-shadow:0 18px 38px rgba(15,23,42,0.35);
-    }
-    .auth-btn--ghost{
-      border-color:rgba(248,250,252,0.6);
-      color:#f8fafc;
-      background:rgba(248,250,252,0.04);
-      padding:10px 14px;
-    }
-    .auth-btn--outline{
-      color:#0f172a;
-      background:#f8fafc;
-      border-color:transparent;
-      padding:10px 14px;
-    }
-    .auth-btn--full{width:100%;}
-
-    .auth-modal{
-      position:fixed;
-      inset:0;
-      background:radial-gradient(circle at top,rgba(1,5,19,0.75),rgba(1,5,19,0.95));
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      padding:clamp(14px,4vw,24px);
-      z-index:8500;
-      opacity:0;
-      pointer-events:none;
-      transition:opacity .35s ease;
-    }
-    .auth-modal.is-visible{opacity:1; pointer-events:auto;}
-    .auth-modal__dialog{
-      width:min(520px,100%);
-      background:rgba(3,7,30,0.92);
-      border:1px solid rgba(255,255,255,0.16);
-      border-radius:24px;
-      padding:clamp(20px,4vw,28px);
-      box-shadow:0 35px 90px rgba(2,6,23,0.65);
-      backdrop-filter:blur(18px);
-      position:relative;
-    }
-    .auth-modal__close{
-      position:absolute;
-      top:12px;
-      right:12px;
-      width:36px;
-      height:36px;
-      border-radius:50%;
-      border:1px solid rgba(255,255,255,0.24);
-      background:rgba(248,250,252,0.08);
-      color:#f8fafc;
-      cursor:pointer;
+    .orb {
+      position: absolute;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0.05) 70%);
+      animation: floatY 18s ease-in-out infinite;
+      filter: blur(2px);
     }
 
-    .auth-label{
-      color:#f8fafc;
-      font-weight:600;
-    }
-    .auth-input{
-      border-radius:16px;
-      border:1px solid rgba(148,163,184,0.35);
-      background:rgba(15,23,42,0.45);
-      color:#f8fafc;
-      box-shadow:none;
-    }
-    .auth-input::placeholder{
-      color:rgba(226,232,240,0.6);
-    }
-    .auth-input-row{gap:10px;}
+    .orb:nth-child(1) { width: 240px; height: 240px; left: 6%; top: -6%; animation-duration: 24s; }
+    .orb:nth-child(2) { width: 180px; height: 180px; right: 12%; top: 12%; animation-duration: 19s; animation-delay: 4s; }
+    .orb:nth-child(3) { width: 320px; height: 320px; right: -6%; bottom: 8%; animation-duration: 26s; animation-delay: 2s; }
+    .orb:nth-child(4) { width: 160px; height: 160px; left: 18%; bottom: 4%; animation-duration: 17s; animation-delay: 6s; }
 
-    .auth-links{
-      display:grid;
-      grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
-      gap:12px;
-      margin-top:18px;
+    @keyframes floatY {
+      0%, 100% { transform: translateY(0) translateX(0); }
+      50% { transform: translateY(18px) translateX(-6px); }
     }
 
-    .auth-tip{
-      border-radius:18px;
-      background:rgba(15,23,42,0.45);
-      border:1px solid rgba(59,130,246,0.35);
-      color:#e2e8f0;
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:12px;
-      padding:12px 16px;
-      margin-top:18px;
-    }
-    #reminder-text{transition:opacity 0.35s ease;}
-    #pokeball-loader{
-      width:26px;
-      height:26px;
-      border-radius:50%;
-      border:3px solid rgba(248,250,252,0.4);
-      border-top-color:#f472b6;
-      animation:spin 1.1s linear infinite;
-    }
-    @keyframes spin{to{transform:rotate(360deg);}}
-
-    .policy-cta{
-      border-radius:22px;
-      padding:20px 22px;
-      background:rgba(15,23,42,0.4);
-      border:1px solid rgba(255,255,255,0.12);
-      color:#f8fafc;
-      display:flex;
-      flex-wrap:wrap;
-      align-items:center;
-      justify-content:space-between;
-      gap:16px;
-    }
-    .policy-cta h3{margin:0;}
-    .policy-cta p{
-      margin:0;
-      max-width:440px;
-      color:rgba(226,232,240,0.9);
+    .page-shell {
+      position: relative;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: clamp(18px, 4vw, 36px);
+      padding-top: calc(clamp(18px, 4vw, 36px) + env(safe-area-inset-top));
+      padding-bottom: calc(clamp(18px, 4vw, 36px) + env(safe-area-inset-bottom));
+      isolation: isolate;
+      z-index: 1;
     }
 
-    .gallery-section{
-      background:rgba(15,23,42,0.45);
-      border:1px solid rgba(255,255,255,0.08);
-      border-radius:22px;
-      padding:16px;
-      box-shadow:0 25px 55px rgba(2,6,23,0.4);
-    }
-    .gallery-header{display:flex;align-items:center;justify-content:space-between;gap:12px; margin-bottom:12px;}
-    .gallery-header h3{margin:0;}
-    .gallery-track{
-      position:relative;
-      overflow:hidden;
-      border-radius:18px;
-    }
-    .gallery-strip{
-      display:flex;
-      transition:transform .4s ease;
-    }
-    .gallery-slide{
-      min-width:100%;
-      flex:0 0 100%;
-      position:relative;
-    }
-    .gallery-slide img{
-      width:100%;
-      display:block;
-      border-radius:18px;
-      object-fit:cover;
-      aspect-ratio:16/9;
-      background:linear-gradient(135deg,rgba(56,189,248,0.25),rgba(168,85,247,0.25));
-      border:1px solid rgba(255,255,255,0.12);
-    }
-    .gallery-controls{
-      display:flex;
-      justify-content:flex-end;
-      gap:8px;
-      margin-top:10px;
-    }
-    .gallery-btn{
-      border-radius:12px;
-      border:1px solid rgba(255,255,255,0.2);
-      background:rgba(248,250,252,0.08);
-      color:#f8fafc;
-      padding:8px 12px;
-      cursor:pointer;
+    .login-panel {
+      width: min(540px, 100%);
+      background: var(--panel);
+      border: 1px solid var(--panel-border);
+      border-radius: 32px;
+      padding: clamp(20px, 5vw, 32px);
+      box-shadow: 0 30px 80px rgba(22, 49, 79, 0.35);
+      backdrop-filter: blur(18px);
+      text-align: center;
+      display: grid;
+      gap: clamp(18px, 3vw, 26px);
     }
 
-    @media(max-width:720px){
-      .auth-shell--aurora{border-radius:0; padding:16px 14px 32px;}
-      .auth-card{width:100%;}
-      .help-button{top:10px; right:10px;}
+    .logo {
+      width: 120px;
+      height: 120px;
+      margin: 0 auto;
+      background: url('{{ url_for('static', filename='logo.png') }}') center/contain no-repeat;
+      border-radius: 28px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(1.6rem, 2vw, 1.9rem);
+      letter-spacing: 0.01em;
+    }
+
+    .cta-stack {
+      display: grid;
+      gap: 12px;
+    }
+
+    .btn {
+      border: none;
+      border-radius: 16px;
+      padding: 14px 16px;
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+      cursor: pointer;
+      transition: transform .2s ease, box-shadow .2s ease, background .2s ease;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--button-text);
+      background: var(--button);
+      box-shadow: 0 16px 38px rgba(22, 49, 79, 0.28);
+    }
+
+    .btn:hover { transform: translateY(-1px); box-shadow: 0 18px 42px rgba(22, 49, 79, 0.35); }
+    .btn:active { transform: translateY(0); }
+
+    .btn--ghost {
+      background: var(--button-alt);
+      color: var(--text-main);
+      border: 1px solid rgba(255, 255, 255, 0.5);
+      box-shadow: none;
+    }
+
+    .carousel {
+      position: relative;
+      overflow: hidden;
+      border-radius: 22px;
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.35);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.05), 0 16px 40px rgba(22, 49, 79, 0.25);
+      height: clamp(220px, 40vw, 260px);
+    }
+
+    .carousel-track {
+      display: flex;
+      height: 100%;
+      transition: transform .6s ease;
+    }
+
+    .carousel-slide {
+      flex: 0 0 100%;
+      height: 100%;
+      display: flex;
+    }
+
+    .carousel-slide img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .tips-card {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 16px;
+      padding: 18px;
+      border-radius: 22px;
+      background: rgba(0, 29, 61, 0.25);
+      border: 1px solid rgba(255,255,255,0.28);
+      box-shadow: 0 14px 30px rgba(22, 49, 79, 0.24);
+      text-align: left;
+    }
+
+    .tips-card h3 {
+      margin: 0 0 6px;
+      font-size: 1.05rem;
+    }
+
+    .tips-card p { margin: 0; color: var(--text-muted); line-height: 1.5; }
+
+    .spinner {
+      position: relative;
+      width: 58px;
+      height: 58px;
+      border-radius: 50%;
+      background: linear-gradient(180deg, #f44336 0 50%, #fff 50% 100%);
+      border: 4px solid #0f1c2d;
+      overflow: hidden;
+      animation: spin 1s linear infinite;
+      box-shadow: 0 0 0 4px rgba(255,255,255,0.35), 0 18px 30px rgba(22,49,79,0.35);
+    }
+
+    .spinner::after {
+      content: "";
+      position: absolute;
+      inset: 45% -4px 45% -4px;
+      background: #0f1c2d;
+    }
+
+    .spinner::before {
+      content: "";
+      position: absolute;
+      inset: 22px;
+      border-radius: 50%;
+      background: #f7fbff;
+      border: 4px solid #0f1c2d;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .footer-actions {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 10px;
+    }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(2, 14, 29, 0.7);
+      backdrop-filter: blur(10px);
+      display: grid;
+      place-items: center;
+      padding: 18px;
+      z-index: 20;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .25s ease;
+    }
+
+    .modal-backdrop.is-visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal-card {
+      width: min(500px, 100%);
+      background: rgba(0, 25, 54, 0.9);
+      border: 1px solid rgba(255,255,255,0.25);
+      border-radius: 20px;
+      padding: 20px 18px;
+      color: var(--text-main);
+      box-shadow: 0 24px 60px rgba(0,0,0,0.45);
+      position: relative;
+    }
+
+    .modal-close {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: 1px solid rgba(255,255,255,0.4);
+      background: rgba(255,255,255,0.14);
+      color: var(--text-main);
+      cursor: pointer;
+    }
+
+    .modal-card h2 { margin-top: 0; margin-bottom: 8px; }
+    .modal-card p { margin: 0 0 14px; color: var(--text-muted); }
+
+    form.auth-form { display: grid; gap: 10px; text-align: left; }
+    label { font-weight: 700; font-size: 0.95rem; }
+    input {
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.35);
+      background: rgba(255,255,255,0.08);
+      color: var(--text-main);
+      font-size: 1rem;
+    }
+
+    .pin-row { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+
+    .policy-link { display: inline-block; }
+
+    @media (max-width: 640px) {
+      .login-panel { border-radius: 0; box-shadow: none; padding: 22px 18px; }
+      .carousel { height: 48vw; min-height: 200px; }
+      .tips-card { grid-template-columns: 1fr; text-align: center; justify-items: center; }
+      .tips-card p { text-align: center; }
     }
   </style>
-
-  <section class="auth-card">
-    <h2>Welcome back</h2>
-    <p class="auth-subtitle">Choose how you want to get started.</p>
-    <div class="auth-actions">
-      <button type="button" class="auth-btn auth-btn--primary" data-login-trigger>Log in</button>
-      <a href="{{ url_for('signup') }}" class="auth-btn auth-btn--secondary">Create account</a>
-    </div>
-
-    <div class="auth-tip" id="reminder-carousel">
-      <span id="reminder-text">🔑 Never share your PIN or memorable password with anyone – admins will never ask for it.</span>
-      <div id="pokeball-loader"></div>
-    </div>
-  </section>
-
-  <section class="gallery-section">
-    <div class="gallery-header">
-      <h3>Community moments</h3>
-      <p style="margin:0; color:rgba(226,232,240,0.85); font-size:0.95rem;">Swipe through highlights from the RDAB trainers.</p>
-    </div>
-    <div class="gallery-track" data-gallery>
-      <div class="gallery-strip" data-gallery-strip>
-        <div class="gallery-slide"><img src="{{ url_for('static', filename='gallery/placeholder1.svg') }}" alt="Gallery placeholder 1"></div>
-        <div class="gallery-slide"><img src="{{ url_for('static', filename='gallery/placeholder2.svg') }}" alt="Gallery placeholder 2"></div>
-        <div class="gallery-slide"><img src="{{ url_for('static', filename='gallery/placeholder3.svg') }}" alt="Gallery placeholder 3"></div>
-        <div class="gallery-slide"><img src="{{ url_for('static', filename='gallery/placeholder4.svg') }}" alt="Gallery placeholder 4"></div>
-        <div class="gallery-slide"><img src="{{ url_for('static', filename='gallery/placeholder5.svg') }}" alt="Gallery placeholder 5"></div>
-      </div>
-    </div>
-    <div class="gallery-controls">
-      <button type="button" class="gallery-btn" data-gallery-prev aria-label="Previous image">‹</button>
-      <button type="button" class="gallery-btn" data-gallery-next aria-label="Next image">›</button>
-    </div>
-  </section>
-
-  <section class="policy-cta">
-    <h3>Need the details?</h3>
-    <p>Read how we protect trainers, manage prizes, and keep the RDAB app running safely.</p>
-    <a href="{{ url_for('policies_index') }}?pwa=1&amp;source=login" class="auth-btn auth-btn--primary">View policies</a>
-  </section>
-</div>
-
-<div class="auth-modal" role="dialog" aria-modal="true" aria-labelledby="help-dialog-title" data-help-modal hidden data-modal-root="login-help" data-modal-open-class="is-visible" data-modal-lock-scroll="true">
-  <div class="auth-modal__dialog">
-    <button type="button" class="auth-modal__close" data-help-close data-modal-close aria-label="Close help">✕</button>
-    <h3 id="help-dialog-title" style="margin-top:0;">Need a hand?</h3>
-    <p>Sign up to stay synced with Doncaster’s Pokémon GO community, unlock your passport, interact with the community, earn stamps and trade them in for merch and in-game rewards!</p>
+</head>
+<body>
+  <div class="orb-layer" aria-hidden="true">
+    <span class="orb"></span>
+    <span class="orb"></span>
+    <span class="orb"></span>
+    <span class="orb"></span>
   </div>
-</div>
 
-<div class="auth-modal" role="dialog" aria-modal="true" aria-labelledby="login-dialog-title" data-login-modal hidden data-modal-root="login-panel" data-modal-open-class="is-visible" data-modal-lock-scroll="true">
-  <div class="auth-modal__dialog">
-    <button type="button" class="auth-modal__close" data-login-close data-modal-close aria-label="Close login">✕</button>
-    <h3 id="login-dialog-title" style="margin-top:0;">Log in</h3>
-    <p class="auth-subtitle" style="margin-top:0;">Enter your Pokemon GO Trainer Name and the PIN you set up during sign-up.</p>
-    <form action="{{ url_for('login') }}" method="post" class="auth-form">
-      <label class="auth-label" for="login-username">Trainer Name</label>
-      <input id="login-username" class="auth-input" type="text" name="username" placeholder="Exact Trainer Name" required>
+  <main class="page-shell">
+    <div class="login-panel">
+      <div class="logo" role="img" aria-label="RDAB logo"></div>
+      <h1>Welcome back!</h1>
 
-      <label class="auth-label" for="login-pin">4-digit PIN</label>
-      <div class="auth-input-row">
-        <input id="login-pin" class="auth-input" type="password" name="pin" placeholder="Enter your PIN" pattern="\d{4}" maxlength="4" required>
-        <button type="button" class="auth-btn auth-btn--outline" onclick="togglePin('login-pin', this)">Show</button>
+      <div class="cta-stack">
+        <button type="button" class="btn" data-login-trigger aria-haspopup="dialog" aria-expanded="false">Login</button>
+        <a class="btn btn--ghost" href="{{ url_for('signup') }}">Create Account</a>
       </div>
 
-      <button type="submit" class="auth-btn auth-btn--primary auth-btn--full" style="margin-top:12px;">Log in</button>
-    </form>
+      <div class="carousel" data-gallery aria-label="Community moments">
+        <div class="carousel-track" data-gallery-strip>
+          <div class="carousel-slide"><img src="{{ url_for('static', filename='gallery/placeholder1.svg') }}" alt="Community moment 1"></div>
+          <div class="carousel-slide"><img src="{{ url_for('static', filename='gallery/placeholder2.svg') }}" alt="Community moment 2"></div>
+          <div class="carousel-slide"><img src="{{ url_for('static', filename='gallery/placeholder3.svg') }}" alt="Community moment 3"></div>
+          <div class="carousel-slide"><img src="{{ url_for('static', filename='gallery/placeholder4.svg') }}" alt="Community moment 4"></div>
+          <div class="carousel-slide"><img src="{{ url_for('static', filename='gallery/placeholder5.svg') }}" alt="Community moment 5"></div>
+        </div>
+      </div>
 
-    <div class="auth-links">
-      <a href="{{ url_for('recover') }}" class="auth-btn auth-btn--ghost">Forgot PIN?</a>
+      <div class="tips-card">
+        <div>
+          <h3>Tips</h3>
+          <p>Keep your Trainer Name and PIN handy so you can hop into raids, track stamps, and redeem prizes smoothly.</p>
+        </div>
+        <div class="spinner" aria-hidden="true"></div>
+      </div>
+
+      <div class="footer-actions">
+        <button type="button" class="btn btn--ghost" data-help-trigger aria-haspopup="dialog" aria-expanded="false">Need Help?</button>
+        <a class="btn btn--ghost policy-link" href="{{ url_for('policies_index') }}?pwa=1&amp;source=login">View Policies</a>
+      </div>
+    </div>
+  </main>
+
+  <div class="modal-backdrop" data-help-modal role="dialog" aria-modal="true" aria-labelledby="help-dialog-title" hidden>
+    <div class="modal-card">
+      <button type="button" class="modal-close" data-help-close aria-label="Close help">✕</button>
+      <h2 id="help-dialog-title">Need Help?</h2>
+      <p>RDAB in-app support is coming soon! Until then please DM one of the Community Ambassadors or RDAB Admins on the Campfire app!</p>
     </div>
   </div>
-</div>
 
-<script>
-  document.addEventListener('DOMContentLoaded', () => {
-    const loginLauncher = document.querySelector('[data-login-launcher]');
-    if (loginLauncher) {
-      const MIN_DURATION = 3000;
-      const startTime = performance && performance.now ? performance.now() : Date.now();
-      let launcherSettled = false;
-      const settleLauncher = () => {
-        if (launcherSettled) return;
-        launcherSettled = true;
-        const now = performance && performance.now ? performance.now() : Date.now();
-        const elapsed = now - startTime;
-        const delay = Math.max(0, MIN_DURATION - elapsed);
-        setTimeout(() => {
-          loginLauncher.classList.add('is-hidden');
-          setTimeout(() => loginLauncher.remove(), 700);
-        }, delay);
-      };
-      if (document.readyState === 'complete') {
-        settleLauncher();
-      } else {
-        window.addEventListener('load', settleLauncher, { once: true });
-      }
-      setTimeout(() => settleLauncher(), MIN_DURATION + 4000);
+  <div class="modal-backdrop" data-login-modal role="dialog" aria-modal="true" aria-labelledby="login-dialog-title" hidden>
+    <div class="modal-card">
+      <button type="button" class="modal-close" data-login-close aria-label="Close login">✕</button>
+      <h2 id="login-dialog-title">Login</h2>
+      <p>Enter your Pokémon GO Trainer Name and the PIN you set up during sign-up.</p>
+      <form action="{{ url_for('login') }}" method="post" class="auth-form">
+        <label for="login-username">Trainer Name</label>
+        <input id="login-username" type="text" name="username" placeholder="Exact Trainer Name" required>
+
+        <label for="login-pin">4-digit PIN</label>
+        <div class="pin-row">
+          <input id="login-pin" type="password" name="pin" placeholder="Enter your PIN" pattern="\d{4}" maxlength="4" required>
+          <button type="button" class="btn btn--ghost" onclick="togglePin('login-pin', this)">Show</button>
+        </div>
+
+        <button type="submit" class="btn">Login</button>
+      </form>
+      <div style="margin-top:10px;">
+        <a href="{{ url_for('recover') }}" class="btn btn--ghost" style="width:100%;">Forgot PIN?</a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function togglePin(id, btn) {
+      const input = document.getElementById(id);
+      if (!input) return;
+      const isHidden = input.type === 'password';
+      input.type = isHidden ? 'text' : 'password';
+      btn.textContent = isHidden ? 'Hide' : 'Show';
     }
 
-    const loginShell = document.querySelector('.auth-shell--snowfall');
-    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+    document.addEventListener('DOMContentLoaded', () => {
+      const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    if (loginShell && !prefersReducedMotion.matches) {
-      const layerId = 'login-snowfall-layer';
-      let snowLayer = document.getElementById(layerId);
+      function bindModal(triggerSelector, modalSelector, closeSelector) {
+        const trigger = document.querySelector(triggerSelector);
+        const modal = document.querySelector(modalSelector);
+        const closeBtn = modal ? modal.querySelector(closeSelector) : null;
+        if (!trigger || !modal || !closeBtn) return;
 
-      if (!snowLayer) {
-        snowLayer = document.createElement('div');
-        snowLayer.id = layerId;
-        snowLayer.className = 'snowfall-layer';
-        snowLayer.setAttribute('aria-hidden', 'true');
-        document.body.appendChild(snowLayer);
-      } else {
-        snowLayer.innerHTML = '';
-      }
-
-      const flakeTarget = window.matchMedia('(max-width: 640px)').matches ? 28 : 60;
-
-      for (let i = 0; i < flakeTarget; i++) {
-        const flake = document.createElement('span');
-        flake.className = 'snowflake';
-        flake.style.left = `${Math.random() * 100}%`;
-        flake.style.animationDelay = `${Math.random() * 12}s`;
-        flake.style.setProperty('--size', `${4 + Math.random() * 12}px`);
-        flake.style.setProperty('--duration', `${10 + Math.random() * 10}s`);
-        flake.style.setProperty('--opacity', (0.25 + Math.random() * 0.55).toFixed(2));
-        flake.style.setProperty('--scale', (0.55 + Math.random() * 1).toFixed(2));
-        flake.style.setProperty('--drift', `${(Math.random() - 0.5) * 180}px`);
-        snowLayer.appendChild(flake);
-      }
-    }
-
-    let reminders = [
-      "📱 Add the Raiding Doncaster and Beyond app to your homescreen! Just press the share button, then add to home!",
-      "🎉 Every check-in brings you closer to rewards – don’t miss out!",
-      "🔄 Forgot your PIN? Use the recovery option with your memorable password.",
-      "✍️ Write down your memorable password somewhere safe so you don’t lose access.",
-      "🎮 Remember: signing in here helps track your Passport stamps, check-ins, and prizes!"
-    ];
-
-    reminders = reminders
-      .map(value => ({ value, sort: Math.random() }))
-      .sort((a, b) => a.sort - b.sort)
-      .map(({ value }) => value);
-
-    let currentIndex = 0;
-    const reminderElement = document.getElementById("reminder-text");
-    const pokeball = document.getElementById("pokeball-loader");
-
-    if (reminderElement && pokeball) {
-      setInterval(() => {
-        reminderElement.style.opacity = 0;
-        setTimeout(() => {
-          currentIndex = (currentIndex + 1) % reminders.length;
-          reminderElement.textContent = reminders[currentIndex];
-          reminderElement.style.opacity = 1;
-        }, 1000);
-      }, 7000);
-    }
-
-    function bindModal(triggerSelector, modalSelector, closeSelector) {
-      const trigger = document.querySelector(triggerSelector);
-      const modal = document.querySelector(modalSelector);
-      const closeBtn = modal ? modal.querySelector(closeSelector) : null;
-      if (!trigger || !modal || !closeBtn) return;
-
-      const toggleModal = (open) => {
-        if (window.ModalHub && modal.dataset.modalRoot) {
-          const id = modal.dataset.modalRoot;
-          if (open) {
-            window.ModalHub.open(id);
-          } else {
-            window.ModalHub.close(id);
-          }
-        } else {
+        const setOpen = (open) => {
           modal.classList.toggle('is-visible', open);
+          modal.toggleAttribute('hidden', !open);
+          trigger.setAttribute('aria-expanded', open ? 'true' : 'false');
+        };
+
+        trigger.addEventListener('click', () => setOpen(true));
+        closeBtn.addEventListener('click', () => setOpen(false));
+        modal.addEventListener('click', (event) => {
+          if (event.target === modal) setOpen(false);
+        });
+        document.addEventListener('keydown', (event) => {
+          if (event.key === 'Escape') setOpen(false);
+        });
+      }
+
+      bindModal('[data-help-trigger]', '[data-help-modal]', '[data-help-close]');
+      bindModal('[data-login-trigger]', '[data-login-modal]', '[data-login-close]');
+
+      const gallery = document.querySelector('[data-gallery]');
+      if (gallery) {
+        const strip = gallery.querySelector('[data-gallery-strip]');
+        const slides = strip ? Array.from(strip.children) : [];
+        let index = 0;
+
+        const advance = () => {
+          if (!strip || !slides.length) return;
+          index = (index + 1) % slides.length;
+          strip.style.transform = `translateX(-${index * 100}%)`;
+        };
+
+        if (slides.length) {
+          strip.style.width = `${slides.length * 100}%`;
+          if (!prefersReducedMotion) {
+            setInterval(advance, 4000);
+          }
         }
-        trigger.setAttribute('aria-expanded', open ? 'true' : 'false');
-      };
-
-      trigger.addEventListener('click', () => toggleModal(true));
-      closeBtn.addEventListener('click', () => toggleModal(false));
-      modal.addEventListener('click', (event) => {
-        if (event.target === modal) toggleModal(false);
-      });
-      document.addEventListener('keydown', (event) => {
-        if (event.key === 'Escape') toggleModal(false);
-      });
-    }
-
-    bindModal('[data-help-trigger]', '[data-help-modal]', '[data-help-close]');
-    bindModal('[data-login-trigger]', '[data-login-modal]', '[data-login-close]');
-
-    const gallery = document.querySelector('[data-gallery]');
-    if (gallery) {
-      const strip = gallery.querySelector('[data-gallery-strip]');
-      const slides = strip ? Array.from(strip.children) : [];
-      const prev = document.querySelector('[data-gallery-prev]');
-      const next = document.querySelector('[data-gallery-next]');
-      let index = 0;
-
-      const updateGallery = () => {
-        if (!strip) return;
-        const offset = index * -100;
-        strip.style.transform = `translateX(${offset}%)`;
-      };
-
-      const move = (step) => {
-        if (!slides.length) return;
-        index = (index + step + slides.length) % slides.length;
-        updateGallery();
-      };
-
-      prev && prev.addEventListener('click', () => move(-1));
-      next && next.addEventListener('click', () => move(1));
-      updateGallery();
-    }
-  });
-</script>
-{% endblock %}
+      }
+    });
+  </script>
+</body>
+</html>
