@@ -537,6 +537,10 @@
 .bulletin-modal__body {
   padding: 24px;
   overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
 }
 body.modal-open {
   overflow: hidden;
