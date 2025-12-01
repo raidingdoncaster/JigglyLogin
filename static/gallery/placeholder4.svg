@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="675" viewBox="0 0 1200 675" fill="none">
+  <defs>
+    <linearGradient id="grad4" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#4f46e5" stop-opacity="0.88"/>
+      <stop offset="100%" stop-color="#06b6d4" stop-opacity="0.9"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="675" rx="36" fill="url(#grad4)"/>
+  <text x="50%" y="52%" text-anchor="middle" font-family="'Space Grotesk', 'Montserrat', sans-serif" font-size="64" fill="white" opacity="0.9">Gallery Placeholder 4</text>
+</svg>
