@@ -209,8 +209,41 @@
       <button type="button" class="calendar-modal__close" data-calendar-close aria-label="Close calendar panel">&times;</button>
     </div>
     <div class="calendar-modal__body">
-      <div class="calendar-modal__loading" data-calendar-loading>Summoning events…</div>
-      <iframe title="Upcoming meet-ups" loading="lazy" data-calendar-frame hidden></iframe>
+      {% if calendar_events %}
+        <div class="calendar-modal__list" role="list">
+          {% for ev in calendar_events %}
+            <article class="calendar-modal__card" role="listitem">
+              {% if ev.cover_photo_url %}
+                <div class="calendar-modal__media">
+                  <img src="{{ ev.cover_photo_url }}" alt="{{ ev.title }}">
+                </div>
+              {% endif %}
+              <div class="calendar-modal__card-body">
+                <p class="calendar-modal__date">{{ ev.start_local_date }} · {{ ev.start_local_time }} – {{ ev.end_local_time }} (UK)</p>
+                {% if ev.location %}
+                  <p class="calendar-modal__location">📍 {{ ev.location }}</p>
+                {% endif %}
+                <h5 class="calendar-modal__title">{{ ev.title }}</h5>
+                <div class="calendar-modal__actions">
+                  {% if ev.campfire_url %}
+                    <a class="btn btn-secondary" href="{{ ev.campfire_url }}" target="_blank" rel="noopener">Campfire</a>
+                  {% endif %}
+                  <a class="btn btn-light" href="{{ ev.google_calendar_url }}" target="_blank" rel="noopener">Google</a>
+                  <a class="btn btn-light" href="{{ ev.ics_url }}">iOS</a>
+                </div>
+              </div>
+            </article>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="calendar-modal__empty">
+          <h5>No upcoming meetups yet</h5>
+          <p>We’re planning the next adventures — check back soon.</p>
+        </div>
+      {% endif %}
+      <div class="calendar-modal__footer">
+        <a class="calendar-modal__footer-link" href="{{ calendar_url }}">Open full calendar page →</a>
+      </div>
     </div>
   </div>
 </div>
@@ -295,9 +328,20 @@
 .calendar-modal__close { background:rgba(248,250,252,0.08); border:0; color:#fff; width:38px; height:38px; border-radius:50%; font-size:1.3rem; cursor:pointer; transition:background .2s ease, transform .2s ease; }
 .calendar-modal__close:hover { background:rgba(248,250,252,0.22); transform:rotate(6deg); }
 .calendar-modal__body { position:relative; padding:0; flex:1; background:#fff; border-radius:26px 26px 0 0; overflow:hidden; }
-.calendar-modal__loading { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; gap:10px; font-weight:600; color:#2563eb; background:linear-gradient(135deg,rgba(219,234,254,0.85),rgba(255,255,255,0.95)); z-index:2; animation:calendarPulse 2s ease-in-out infinite; }
-.calendar-modal__body iframe { width:100%; height:100%; border:0; background:#fff; }
-.calendar-modal__body iframe[hidden] { display:none; }
+.calendar-modal__list { display:flex; flex-direction:column; gap:12px; padding:14px; overflow-y:auto; max-height:55vh; }
+.calendar-modal__card { display:flex; gap:12px; background:#f8fafc; border-radius:18px; overflow:hidden; box-shadow:0 10px 20px rgba(15,23,42,0.18); border:1px solid rgba(226,232,240,0.9); }
+.calendar-modal__media { width:110px; flex:0 0 110px; background:#e2e8f0; }
+.calendar-modal__media img { width:100%; height:100%; object-fit:cover; display:block; }
+.calendar-modal__card-body { padding:12px; display:flex; flex-direction:column; gap:8px; flex:1; }
+.calendar-modal__date { margin:0; font-size:0.82rem; color:#0f172a; font-weight:700; }
+.calendar-modal__location { margin:0; color:#475569; font-weight:600; }
+.calendar-modal__title { margin:0; font-size:1rem; color:#0f172a; }
+.calendar-modal__actions { display:flex; flex-wrap:wrap; gap:8px; }
+.calendar-modal__empty { padding:24px; text-align:center; color:#475569; display:flex; flex-direction:column; gap:8px; justify-content:center; align-items:center; min-height:240px; }
+.calendar-modal__empty h5 { margin:0; color:#0f172a; }
+.calendar-modal__footer { padding:10px 14px; border-top:1px solid rgba(226,232,240,0.9); background:#fff; }
+.calendar-modal__footer-link { color:#0ea5e9; font-weight:700; text-decoration:none; }
+.calendar-modal__footer-link:hover { text-decoration:underline; }
 
 @media(max-width:520px){
   .trainer-card-content{padding:18px;}
@@ -425,9 +469,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const overlay = calendarModal.querySelector('[data-calendar-overlay]');
     const closeBtn = calendarModal.querySelector('[data-calendar-close]');
     const dialog = calendarModal.querySelector('.calendar-modal__dialog');
-    const iframe = calendarModal.querySelector('[data-calendar-frame]');
-    const loading = calendarModal.querySelector('[data-calendar-loading]');
-    let iframeLoaded = false;
 
     const toggleBodyLock = (shouldLock) => {
       document.body.classList.toggle('calendar-modal-open', shouldLock);
@@ -438,14 +479,6 @@ document.addEventListener('DOMContentLoaded', () => {
       calendarModal.setAttribute('aria-hidden', 'false');
       toggleBodyLock(true);
       if (dialog) dialog.focus({ preventScroll: true });
-      if (!iframeLoaded) {
-        const url = calendarLauncher.getAttribute('data-calendar-url');
-        if (url && iframe) {
-          if (loading) loading.hidden = false;
-          iframe.hidden = true;
-          iframe.src = url;
-        }
-      }
     };
 
     const hideModal = () => {
@@ -473,12 +506,6 @@ document.addEventListener('DOMContentLoaded', () => {
         hideModal();
         document.removeEventListener('keydown', handleKeydown);
       });
-    });
-
-    iframe?.addEventListener('load', () => {
-      iframeLoaded = true;
-      iframe.hidden = false;
-      if (loading) loading.hidden = true;
     });
   }
 });
