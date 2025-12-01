@@ -635,6 +635,35 @@
   flex:1;
   min-height:520px;
 }
+.perk-label {
+  background:transparent;
+  border:none;
+}
+.perk-label__bubble {
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  background:#0f172a;
+  color:#fff;
+  padding:8px 12px;
+  border-radius:999px;
+  box-shadow:0 10px 25px rgba(15,23,42,0.35);
+  font-size:0.9rem;
+  white-space:nowrap;
+}
+.perk-label__dot {
+  width:14px;
+  height:14px;
+  border-radius:50%;
+  background:#38bdf8;
+  border:3px solid #0ea5e9;
+  box-shadow:0 0 0 4px rgba(14,165,233,0.18);
+}
+.perk-label__subtitle {
+  display:block;
+  font-size:0.8rem;
+  color:#cbd5e1;
+}
 .perks-map__fallback {
   min-height:320px;
   display:flex;
@@ -1123,10 +1152,30 @@
     }).addTo(mapInstance);
 
     const markerBounds = [];
-    mapPerksData.forEach((perk) => {
-      const lat = Number(perk.location && perk.location.latitude);
-      const lng = Number(perk.location && perk.location.longitude);
-      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+    const mapPerks = mapPerksData
+      .map((perk) => {
+        const lat = Number(perk.location && perk.location.latitude);
+        const lng = Number(perk.location && perk.location.longitude);
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+        return { ...perk, lat, lng };
+      })
+      .filter(Boolean);
+
+    mapPerks.forEach((perk) => {
+      const label = L.divIcon({
+        className: "perk-label",
+        html: `
+          <div class="perk-label__bubble">
+            <span class="perk-label__dot"></span>
+            <div>
+              <strong>${perk.partner_name || ""}</strong>
+              ${perk.name ? `<span class="perk-label__subtitle">${perk.name}</span>` : ""}
+            </div>
+          </div>
+        `,
+      });
+
+      const marker = L.marker([perk.lat, perk.lng], { icon: label }).addTo(mapInstance);
       const popup = `
         <div class="map-popup">
           <strong>${perk.partner_name || ""}</strong><br>
@@ -1134,8 +1183,8 @@
           ${perk.short_tagline ? `<p>${perk.short_tagline}</p>` : ""}
           ${perk.location && perk.location.address ? `<small>${perk.location.address}</small>` : ""}
         </div>`;
-      L.marker([lat, lng]).addTo(mapInstance).bindPopup(popup);
-      markerBounds.push([lat, lng]);
+      marker.bindPopup(popup);
+      markerBounds.push([perk.lat, perk.lng]);
     });
 
     if (markerBounds.length > 0) {
