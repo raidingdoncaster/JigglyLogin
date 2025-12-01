@@ -435,6 +435,8 @@
       position:fixed; inset:0; background:rgba(0,0,0,.45);
       display:none; align-items:flex-end; justify-content:center; z-index:3000;
     }
+    .modal-backdrop.is-open{display:flex;}
+    .modal-backdrop[hidden]{display:none;}
     .modal-card{
       width:100%; max-width:520px; background:#fff; border-radius:16px 16px 0 0;
       box-shadow:0 -8px 24px rgba(0,0,0,.25); padding:14px 14px 18px; max-height:92vh; overflow:auto;
@@ -2065,34 +2067,9 @@
         });
       }
 
-      // Manage Account modal open/close
-      const mm = document.getElementById('manageAccountModal');
-      const openBtns = document.querySelectorAll('[data-open-account-modal]');
-      openBtns.forEach(b=>b.addEventListener('click',()=>{
-        closeAvatarDropdown();
-        if(!mm) return;
-        mm.style.display='flex';
-        bodyScrollLock.lock();
-      }));
-      const closeAccountBtn = document.getElementById('closeAccountModal');
-      if(closeAccountBtn){
-        closeAccountBtn.addEventListener('click', closeAccountModal);
-      }
-      if(mm){
-        mm.addEventListener('click',(e)=>{
-          if(e.target === mm){
-            closeAccountModal();
-          }
-        });
-      }
-      document.addEventListener('keydown', (e)=>{ if(e.key==='Escape' && mm && mm.style.display==='flex') closeAccountModal(); });
-
-      function closeAccountModal(){
-        if(!mm) return;
-        mm.style.display='none';
-        bodyScrollLock.unlock();
-      }
-      window._closeAccountModal = closeAccountModal; // expose if needed
+      document.querySelectorAll('[data-modal-open="manage-account"]').forEach((btn)=>{
+        btn.addEventListener('click', closeAvatarDropdown);
+      });
 
       const logoutLink=document.querySelector('[data-confirm-logout]');
       if(logoutLink){
@@ -2525,7 +2502,7 @@
             {% endif %}
             <div class="sep"></div>
             <a href="{{ url_for('change_avatar') }}">👤 Customise</a>
-            <button type="button" data-open-account-modal>⚙️ Manage Account</button>
+            <button type="button" data-modal-open="manage-account">⚙️ Manage Account</button>
             <div class="sep"></div>
             <a href="{{ url_for('logout') }}" data-confirm-logout>🚪 Log Out</a>
           </div>
@@ -2561,11 +2538,11 @@
 
   <!-- GLOBAL Manage Account MODAL (available on ALL pages) -->
   {% if session.get('trainer') %}
-  <div id="manageAccountModal" class="modal-backdrop" aria-hidden="true">
+  <div id="manageAccountModal" class="modal-backdrop" aria-hidden="true" hidden data-modal-root="manage-account" data-modal-open-class="is-open" data-modal-lock-scroll="true">
     <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="accountModalTitle">
       <div class="modal-header">
         <h3 id="accountModalTitle">⚙️ Manage My Account</h3>
-        <button id="closeAccountModal" class="close-btn" aria-label="Close">×</button>
+        <button id="closeAccountModal" class="close-btn" aria-label="Close" data-modal-close>×</button>
       </div>
 
       <div class="settings-section">
@@ -2644,7 +2621,7 @@
 
   {% include "partials/trainer_profile_popover.html" %}
 
-  <div class="content-filter-modal" data-content-filter-modal hidden>
+  <div class="content-filter-modal" data-content-filter-modal hidden data-modal-root="content-filter" data-modal-open-class="is-open" data-modal-body-class="modal-open">
     <div class="content-filter-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="contentFilterTitle">
       <div class="content-filter-modal__halo"></div>
       <div class="content-filter-modal__body">
@@ -2665,7 +2642,8 @@
         <div class="content-filter-modal__actions">
           <button type="button"
                   class="content-filter-modal__close"
-                  data-content-filter-dismiss>
+                  data-content-filter-dismiss
+                  data-modal-close>
             Ok, I understand
           </button>
         </div>
@@ -3240,6 +3218,7 @@
     </div>
   </div>
 
+  <script src="{{ url_for('static', filename='js/modal-hub.js') }}"></script>
   <!-- === RDAB Session Memory === -->
 <script>
   // Save last page before navigating away

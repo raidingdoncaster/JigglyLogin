@@ -81,15 +81,15 @@
 {% if digital_codes.supported %}
 
 <!-- Upload modal -->
-<div class="digital-modal" id="digitalUploadModal" aria-hidden="true">
-  <div class="digital-modal__overlay" data-close-modal></div>
+<div class="digital-modal" id="digitalUploadModal" aria-hidden="true" hidden data-modal-root="upload" data-modal-open-class="is-open" data-modal-body-class="digital-modal-open" data-modal-lock-scroll="true">
+  <div class="digital-modal__overlay" data-modal-close></div>
   <div class="digital-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="uploadModalTitle">
     <div class="digital-modal__header">
       <div>
         <p class="digital-codes-eyebrow">Upload</p>
         <h3 id="uploadModalTitle">Add digital codes</h3>
       </div>
-      <button type="button" class="digital-modal__close" data-close-modal aria-label="Close">&times;</button>
+      <button type="button" class="digital-modal__close" data-modal-close aria-label="Close">&times;</button>
     </div>
     <form method="post" action="{{ url_for('admin_digital_codes_upload') }}" class="digital-form" id="uploadForm">
       <label>
@@ -117,7 +117,7 @@
         <input type="text" name="batch_label" maxlength="80" placeholder="GO Fest July drop">
       </label>
       <div class="digital-modal__actions">
-        <button type="button" class="btn" data-close-modal>Cancel</button>
+        <button type="button" class="btn" data-modal-close>Cancel</button>
         <button type="submit" class="btn primary">Upload</button>
       </div>
     </form>
@@ -125,15 +125,15 @@
 </div>
 
 <!-- Send modal -->
-<div class="digital-modal" id="digitalSendModal" aria-hidden="true">
-  <div class="digital-modal__overlay" data-close-modal></div>
+<div class="digital-modal" id="digitalSendModal" aria-hidden="true" hidden data-modal-root="send" data-modal-open-class="is-open" data-modal-body-class="digital-modal-open" data-modal-lock-scroll="true">
+  <div class="digital-modal__overlay" data-modal-close></div>
   <div class="digital-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="sendModalTitle">
     <div class="digital-modal__header">
       <div>
         <p class="digital-codes-eyebrow">Delivery</p>
         <h3 id="sendModalTitle">Send a digital code</h3>
       </div>
-      <button type="button" class="digital-modal__close" data-close-modal aria-label="Close">&times;</button>
+      <button type="button" class="digital-modal__close" data-modal-close aria-label="Close">&times;</button>
     </div>
     <form method="post" action="{{ url_for('admin_digital_codes_assign') }}" class="digital-form" id="sendForm">
       <div class="trainer-picker" data-trainer-picker>
@@ -208,7 +208,7 @@
       </div>
 
       <div class="digital-modal__actions">
-        <button type="button" class="btn" data-close-modal>Cancel</button>
+        <button type="button" class="btn" data-modal-close>Cancel</button>
         <button type="submit" class="btn primary">Send inbox code</button>
       </div>
     </form>
@@ -216,15 +216,15 @@
 </div>
 
 <!-- Confirmation modal -->
-<div class="digital-modal" id="digitalConfirmModal" aria-hidden="true">
-  <div class="digital-modal__overlay" data-close-confirm></div>
+<div class="digital-modal" id="digitalConfirmModal" aria-hidden="true" hidden data-modal-root="confirm" data-modal-open-class="is-open" data-modal-body-class="digital-modal-open" data-modal-lock-scroll="true">
+  <div class="digital-modal__overlay" data-modal-close></div>
   <div class="digital-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="confirmModalTitle">
     <div class="digital-modal__header">
       <div>
         <p class="digital-codes-eyebrow">Confirm</p>
         <h3 id="confirmModalTitle">Send this code?</h3>
       </div>
-      <button type="button" class="digital-modal__close" data-close-confirm aria-label="Close">&times;</button>
+      <button type="button" class="digital-modal__close" data-modal-close aria-label="Close">&times;</button>
     </div>
     <div class="confirm-summary">
       <dl>
@@ -264,39 +264,9 @@
   bucketPresets.forEach((preset) => {
     presetMap[preset.slug] = preset;
   });
-
-  const uploadModal = document.getElementById("digitalUploadModal");
   const sendModal = document.getElementById("digitalSendModal");
   const confirmModal = document.getElementById("digitalConfirmModal");
   let pendingForm = null;
-
-  function toggleModal(modal, show) {
-    if (!modal) return;
-    modal.setAttribute("aria-hidden", String(!show));
-    modal.classList.toggle("is-open", show);
-    document.body.classList.toggle("digital-modal-open", show);
-  }
-
-  document.querySelectorAll("[data-open-modal]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const target = btn.dataset.openModal;
-      if (target === "upload") toggleModal(uploadModal, true);
-      if (target === "send") toggleModal(sendModal, true);
-    });
-  });
-
-  document.querySelectorAll("[data-close-modal]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      toggleModal(uploadModal, false);
-      toggleModal(sendModal, false);
-    });
-  });
-  document.querySelectorAll("[data-close-confirm]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      toggleModal(confirmModal, false);
-      pendingForm = null;
-    });
-  });
 
   // Upload custom bucket toggle
   const uploadBucketSelect = document.querySelector("[data-upload-bucket]");
@@ -452,7 +422,11 @@
       if (confirmPreview) confirmPreview.innerHTML = buildPreviewText(trainerValue, bucketText, reasonText, rewardText);
 
       pendingForm = sendForm;
-      toggleModal(confirmModal, true);
+      if (window.ModalHub) {
+        window.ModalHub.open('confirm');
+      } else if (confirmModal) {
+        confirmModal.classList.add('is-open');
+      }
     });
   }
 
@@ -460,8 +434,13 @@
     confirmButton.addEventListener("click", () => {
       if (!pendingForm) return;
       pendingForm.dataset.confirmed = "true";
-      toggleModal(confirmModal, false);
-      toggleModal(sendModal, false);
+      if (window.ModalHub) {
+        window.ModalHub.close('confirm');
+        window.ModalHub.close('send');
+      } else {
+        confirmModal?.classList.remove('is-open');
+        sendModal?.classList.remove('is-open');
+      }
       pendingForm.submit();
       pendingForm = null;
     });
