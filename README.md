@@ -11,6 +11,11 @@ Use ./deploy.sh to deploy to Google
 
 "Signup failed due to server error. Please try again shortly"
 
+# When using codex to push, and you need to pull from git to codespaces run:
+git status
+git fetch origin
+git reset --hard origin/main
+
 # Check old deployments and revisions
 run in terminal for table of revisions, time and traffic %:
 gcloud run revisions list --service jigglylogin --region europe-west1
