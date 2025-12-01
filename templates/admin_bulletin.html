@@ -515,6 +515,7 @@
   background: #f8fafc;
   border-radius: 24px;
   width: min(640px, 95vw);
+  min-height: 0;
   max-height: 92vh;
   overflow: hidden;
   display: flex;
@@ -535,6 +536,10 @@
 .bulletin-modal__body {
   padding: 24px;
   overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
 }
 body.modal-open {
   overflow: hidden;

@@ -129,7 +129,7 @@
     <div class="advent-intro-sidecard">
       <p class="sidecard-eyebrow">Event Window</p>
       <p class="sidecard-heading">1 Dec → 26 Dec</p>
-      <p class="sidecard-copy">Doors open daily at 00:01 (UK). Unlock them before the next day to stay on track.</p>
+      <p class="sidecard-copy">Doors open daily at 00:01 (UK). Unlock them before the next day to stay on track. If you miss a day, you</p>
     </div>
   </div>
 
@@ -168,16 +168,16 @@
   <details class="advent-rules">
     <summary>Advent Calendar 2025 — Rules of Play</summary>
     <ul>
-      <li>The calendar runs from 1 December at 00:01 (UK) through 26 December at 23:59. Door 26 celebrates the Boxing Day epilogue.</li>
-      <li>You may open today’s door and, if needed, catch up on yesterday’s — earlier doors remain locked to keep the story linear.</li>
-      <li>Digital codes are awarded instantly via the RDAB inbox when the 12-day quest completes. Watch for the golden mail icon.</li>
-      <li>The Charizard plushie draw happens on 27 December; one qualifying trainer is selected at random and notified via inbox + Discord.</li>
-      <li>If Community Medals slip past 25 December, every Advent 25 awardee will receive the medal the moment the feature launches plus a bonus passport stamp for the delay.</li>
+      <li>The calendar runs from 1 December at 00:01 (UK) through 26 December at 23:59.</li>
+      <li>You may open today’s door and, if needed, catch up on yesterday’s — earlier doors remain locked if you miss them, so don't miss out!</li>
+      <li>Digital codes are awarded instantly via the RDAB inbox when the 12-day quest completes. Watch for the inbox notification.</li>
+      <li>The Charizard plushie draw happens on 27 December; one qualifying trainer is selected at random and notified via the RDAB inbox. Results will be posted on Campfire.</li>
+      <li>If the Community Medals feature is not released by 25 December, every 'Advent 25' medal awardee will receive the medal the moment the feature launches.</li>
     </ul>
   </details>
 
   {% set opened_days = state.opened_days %}
-  {% set openable_days = state.openable_days or [] %}
+  {% set openable_day = state.openable_day %}
 
   <div
     class="advent-grid compact"
@@ -187,7 +187,7 @@
     {% for day in range(1, 26) %}
       {% set day_config = config.get(day) %}
       {% set opened = day in opened_days %}
-      {% set is_openable = day in openable_days %}
+      {% set is_openable = day == openable_day %}
       <div
         class="advent-cell{% if opened %} is-opened{% elif is_openable %} is-openable{% else %} is-locked{% endif %}"
         data-day="{{ day }}"
@@ -1516,7 +1516,7 @@
   function updateBadge(cell, symbol, highlight = false) {
     const badge = cell.querySelector(".advent-badge");
     if (!badge) return;
-    badge.textContent = symbol || "\u00A0";
+    badge.textContent = symbol || "";
     if (highlight) {
       badge.classList.add("is-today");
     } else {
@@ -1555,7 +1555,9 @@
     content.appendChild(status);
   }
 
-  function renderOpenableCell(cell, day) {
+  function activateNextCell(day) {
+    if (!day) return;
+    const cell = document.querySelector(`.advent-cell[data-day="${day}"]`);
     if (!cell) return;
     cell.classList.remove("is-locked");
     cell.classList.add("is-openable");
@@ -1585,44 +1587,6 @@
     content.appendChild(hint);
     updateBadge(cell, "★", true);
     bindOpenForm(form);
-  }
-
-  function renderLockedCell(cell) {
-    if (!cell || cell.classList.contains("is-opened")) {
-      return;
-    }
-    cell.classList.remove("is-openable", "unlocking");
-    cell.classList.add("is-locked");
-    const content = cell.querySelector(".advent-cell-content");
-    if (!content) return;
-    content.innerHTML = "";
-    const placeholder = document.createElement("div");
-    placeholder.className = "advent-placeholder";
-    placeholder.textContent = "🔒";
-    content.appendChild(placeholder);
-    const status = document.createElement("small");
-    status.className = "advent-status";
-    status.textContent = "Locked";
-    content.appendChild(status);
-    updateBadge(cell, "", false);
-  }
-
-  function refreshOpenableCells(openableDays) {
-    if (!Array.isArray(openableDays)) {
-      return;
-    }
-    const targets = new Set(openableDays.map((value) => Number(value)));
-    document.querySelectorAll(".advent-cell").forEach((cell) => {
-      const day = Number(cell.dataset.day);
-      if (!Number.isFinite(day) || cell.classList.contains("is-opened")) {
-        return;
-      }
-      if (targets.has(day)) {
-        renderOpenableCell(cell, day);
-      } else {
-        renderLockedCell(cell);
-      }
-    });
   }
 
   function handleOpenError(cell, button, message) {
@@ -1664,7 +1628,7 @@
           if (payload.status === "ok") {
             playDoorCelebration(cell).then(() => {
               convertCellToOpened(cell, payload);
-              refreshOpenableCells(payload.openable_days || []);
+              activateNextCell(payload.next_openable_day);
               updateStatsUI(payload);
               updateQuestUI(payload.quests || []);
               setTimeout(
