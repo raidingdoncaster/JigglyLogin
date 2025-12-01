@@ -3,71 +3,173 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <meta name="theme-color" content="#4aa7dc">
+  <meta name="theme-color" content="#0b1629">
   <link rel="manifest" href="{{ url_for('manifest') }}">
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
   <title>{{ title if title else "RDAB Login" }}</title>
   <style>
     :root {
-      --bg-top: #7dd8ff;
-      --bg-bottom: #4aa7dc;
-      --panel: rgba(255, 255, 255, 0.14);
-      --panel-border: rgba(255, 255, 255, 0.32);
-      --text-main: #f7fbff;
-      --text-muted: #e5f1ff;
-      --button: rgba(255, 255, 255, 0.86);
-      --button-text: #16314f;
-      --button-alt: rgba(255, 255, 255, 0.18);
+      --bg-top: #0b1930;
+      --bg-bottom: #0f243f;
+      --aurora-1: rgba(94, 196, 255, 0.4);
+      --aurora-2: rgba(140, 255, 214, 0.35);
+      --aurora-3: rgba(214, 146, 255, 0.32);
+      --panel: rgba(10, 28, 55, 0.62);
+      --panel-border: rgba(255, 255, 255, 0.18);
+      --text-main: #f2f7ff;
+      --text-muted: #dbe7ff;
+      --button: linear-gradient(135deg, #f9f5ff, #dff1ff);
+      --button-text: #0d1c2f;
+      --button-alt: rgba(255, 255, 255, 0.1);
     }
 
     *, *::before, *::after { box-sizing: border-box; }
+
+    html, body { height: 100%; }
 
     body {
       margin: 0;
       min-height: 100vh;
       color: var(--text-main);
       font-family: 'Montserrat', system-ui, -apple-system, sans-serif;
-      background: linear-gradient(180deg, var(--bg-top), var(--bg-bottom));
+      background: radial-gradient(circle at 20% 20%, rgba(126, 204, 255, 0.12), transparent 32%),
+                  radial-gradient(circle at 80% 10%, rgba(160, 255, 224, 0.18), transparent 30%),
+                  linear-gradient(180deg, var(--bg-top), var(--bg-bottom));
       position: relative;
-      overflow-x: hidden;
+      overflow: hidden;
     }
 
     body::before {
       content: "";
       position: fixed;
-      inset: -10% -10% 0;
-      background: radial-gradient(circle at 20% 20%, rgba(255,255,255,0.4), transparent 40%),
-                  radial-gradient(circle at 80% 10%, rgba(255,255,255,0.28), transparent 36%),
-                  radial-gradient(circle at 40% 80%, rgba(255,255,255,0.32), transparent 40%);
+      inset: -12% -12% 0;
+      background: radial-gradient(120% 80% at 15% 10%, rgba(255,255,255,0.15), transparent 45%),
+                  radial-gradient(120% 90% at 85% 5%, rgba(255,255,255,0.12), transparent 40%),
+                  radial-gradient(80% 80% at 40% 90%, rgba(255,255,255,0.1), transparent 45%);
       opacity: 0.9;
-      filter: blur(40px);
+      filter: blur(34px);
       pointer-events: none;
       z-index: 0;
     }
 
-    .orb-layer {
+    .aurora-layer {
       position: fixed;
-      inset: -10% 0 0 0;
+      inset: 0;
+      pointer-events: none;
       overflow: hidden;
       z-index: 0;
     }
 
-    .orb {
+    .aurora {
       position: absolute;
-      border-radius: 50%;
-      background: radial-gradient(circle, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0.05) 70%);
-      animation: floatY 18s ease-in-out infinite;
-      filter: blur(2px);
+      width: 120%;
+      height: 60%;
+      left: -10%;
+      background: radial-gradient(ellipse at 50% 50%, var(--aurora-1), transparent 60%);
+      filter: blur(40px) saturate(120%);
+      opacity: 0.8;
+      animation: drift 18s ease-in-out infinite alternate;
     }
 
-    .orb:nth-child(1) { width: 240px; height: 240px; left: 6%; top: -6%; animation-duration: 24s; }
-    .orb:nth-child(2) { width: 180px; height: 180px; right: 12%; top: 12%; animation-duration: 19s; animation-delay: 4s; }
-    .orb:nth-child(3) { width: 320px; height: 320px; right: -6%; bottom: 8%; animation-duration: 26s; animation-delay: 2s; }
-    .orb:nth-child(4) { width: 160px; height: 160px; left: 18%; bottom: 4%; animation-duration: 17s; animation-delay: 6s; }
+    .aurora:nth-child(2) {
+      top: 20%;
+      background: radial-gradient(ellipse at 45% 50%, var(--aurora-2), transparent 60%);
+      animation-duration: 24s;
+      animation-delay: 2s;
+    }
 
-    @keyframes floatY {
-      0%, 100% { transform: translateY(0) translateX(0); }
-      50% { transform: translateY(18px) translateX(-6px); }
+    .aurora:nth-child(3) {
+      top: 40%;
+      background: radial-gradient(ellipse at 55% 50%, var(--aurora-3), transparent 60%);
+      animation-duration: 28s;
+      animation-delay: 4s;
+    }
+
+    @keyframes drift {
+      0% { transform: translateX(-4%) translateY(-2%) rotate(-1deg); }
+      50% { transform: translateX(4%) translateY(2%) rotate(1deg); }
+      100% { transform: translateX(-3%) translateY(-3%) rotate(-2deg); }
+    }
+
+    .festive-lights {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 90px;
+      display: flex;
+      justify-content: center;
+      gap: 14px;
+      padding-top: 12px;
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    .festive-lights::before {
+      content: "";
+      position: absolute;
+      top: 26px;
+      left: 6%;
+      right: 6%;
+      height: 3px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, rgba(255,255,255,0.6), rgba(255,255,255,0.1));
+      box-shadow: 0 6px 12px rgba(0,0,0,0.35);
+      opacity: 0.65;
+    }
+
+    .festive-lights .light {
+      width: 16px;
+      height: 24px;
+      border-radius: 50% 50% 55% 55%;
+      transform-origin: 50% -16px;
+      box-shadow: 0 6px 14px rgba(0,0,0,0.35);
+      animation: sway 2.6s ease-in-out infinite, twinkle 2.8s ease-in-out infinite alternate;
+      filter: saturate(120%);
+    }
+
+    .festive-lights .light:nth-child(odd) { animation-delay: 0.3s; }
+    .festive-lights .light:nth-child(3n) { animation-delay: 0.6s; }
+    .festive-lights .light:nth-child(5n) { animation-delay: 0.9s; }
+
+    .light.red { background: #ff6b6b; box-shadow: 0 6px 14px rgba(255,107,107,0.55); }
+    .light.green { background: #6bffb5; box-shadow: 0 6px 14px rgba(107,255,181,0.55); }
+    .light.blue { background: #7dc6ff; box-shadow: 0 6px 14px rgba(125,198,255,0.55); }
+    .light.gold { background: #ffd166; box-shadow: 0 6px 14px rgba(255,209,102,0.6); }
+
+    @keyframes sway {
+      0%, 100% { transform: rotate(-5deg); }
+      50% { transform: rotate(5deg); }
+    }
+
+    @keyframes twinkle {
+      0% { opacity: 0.6; filter: drop-shadow(0 0 4px rgba(255,255,255,0.65)); }
+      50% { opacity: 1; filter: drop-shadow(0 0 10px rgba(255,255,255,0.9)); }
+      100% { opacity: 0.7; filter: drop-shadow(0 0 6px rgba(255,255,255,0.75)); }
+    }
+
+    .snow {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        radial-gradient(2px 2px at 20% 20%, rgba(255,255,255,0.9), transparent),
+        radial-gradient(2px 2px at 40% 10%, rgba(255,255,255,0.9), transparent),
+        radial-gradient(2px 2px at 60% 30%, rgba(255,255,255,0.8), transparent),
+        radial-gradient(2px 2px at 80% 15%, rgba(255,255,255,0.85), transparent),
+        radial-gradient(2px 2px at 30% 70%, rgba(255,255,255,0.8), transparent),
+        radial-gradient(2px 2px at 70% 80%, rgba(255,255,255,0.9), transparent);
+      background-size: 240px 240px;
+      animation: snowfall 18s linear infinite;
+      opacity: 0.7;
+      z-index: 3;
+    }
+
+    .snow.snow--far { animation-duration: 28s; opacity: 0.4; filter: blur(1px); }
+
+    @keyframes snowfall {
+      0% { transform: translateY(-10%); }
+      100% { transform: translateY(110%); }
     }
 
     .page-shell {
@@ -147,10 +249,11 @@
       position: relative;
       overflow: hidden;
       border-radius: 22px;
-      background: rgba(255, 255, 255, 0.12);
-      border: 1px solid rgba(255, 255, 255, 0.35);
-      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.05), 0 16px 40px rgba(22, 49, 79, 0.25);
+      background: linear-gradient(145deg, rgba(255,255,255,0.08), rgba(255,255,255,0.16));
+      border: 1px solid rgba(255, 255, 255, 0.32);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08), 0 16px 40px rgba(10, 20, 35, 0.35);
       height: clamp(220px, 40vw, 260px);
+      touch-action: pan-y;
     }
 
     .carousel-track {
@@ -163,13 +266,45 @@
       flex: 0 0 100%;
       height: 100%;
       display: flex;
+      justify-content: center;
+      align-items: center;
+      background: radial-gradient(circle at 20% 20%, rgba(255,255,255,0.04), transparent 40%);
+      padding: 12px;
     }
 
     .carousel-slide img {
       width: 100%;
       height: 100%;
-      object-fit: cover;
+      object-fit: contain;
       display: block;
+      border-radius: 14px;
+      background: rgba(0,0,0,0.08);
+    }
+
+    .carousel-dots {
+      position: absolute;
+      bottom: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 8px;
+      z-index: 2;
+    }
+
+    .carousel-dots span {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.5);
+      border: 1px solid rgba(255,255,255,0.3);
+      transition: transform .2s ease, opacity .2s ease;
+      opacity: 0.6;
+    }
+
+    .carousel-dots span.is-active {
+      opacity: 1;
+      transform: scale(1.15);
+      background: #dff1ff;
     }
 
     .tips-card {
@@ -179,8 +314,8 @@
       gap: 16px;
       padding: 18px;
       border-radius: 22px;
-      background: rgba(0, 29, 61, 0.25);
-      border: 1px solid rgba(255,255,255,0.28);
+      background: linear-gradient(135deg, rgba(10, 32, 62, 0.8), rgba(12, 42, 84, 0.82));
+      border: 1px solid rgba(255,255,255,0.22);
       box-shadow: 0 14px 30px rgba(22, 49, 79, 0.24);
       text-align: left;
     }
@@ -188,39 +323,53 @@
     .tips-card h3 {
       margin: 0 0 6px;
       font-size: 1.05rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
 
-    .tips-card p { margin: 0; color: var(--text-muted); line-height: 1.5; }
+    .tips-card h3::before {
+      content: "★";
+      font-size: 0.95rem;
+      color: #ffd166;
+    }
+
+    .tips-card p {
+      margin: 0;
+      color: var(--text-muted);
+      line-height: 1.5;
+      transition: opacity .3s ease;
+      min-height: 48px;
+    }
 
     .spinner {
       position: relative;
-      width: 58px;
-      height: 58px;
+      width: 64px;
+      height: 64px;
       border-radius: 50%;
-      background: linear-gradient(180deg, #f44336 0 50%, #fff 50% 100%);
-      border: 4px solid #0f1c2d;
-      overflow: hidden;
-      animation: spin 1s linear infinite;
-      box-shadow: 0 0 0 4px rgba(255,255,255,0.35), 0 18px 30px rgba(22,49,79,0.35);
-    }
-
-    .spinner::after {
-      content: "";
-      position: absolute;
-      inset: 45% -4px 45% -4px;
-      background: #0f1c2d;
+      background: conic-gradient(from 0deg, #7dc6ff, #b1f1ff, #c6b3ff, #7dc6ff);
+      -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 12px), #000 calc(100% - 10px));
+      mask: radial-gradient(farthest-side, transparent calc(100% - 12px), #000 calc(100% - 10px));
+      animation: spin 1.1s linear infinite;
+      box-shadow: 0 0 25px rgba(125,198,255,0.35), 0 0 50px rgba(198,179,255,0.25);
     }
 
     .spinner::before {
       content: "";
       position: absolute;
-      inset: 22px;
+      inset: 12px;
       border-radius: 50%;
-      background: #f7fbff;
-      border: 4px solid #0f1c2d;
+      background: radial-gradient(circle, rgba(255,255,255,0.9) 0%, rgba(223,241,255,0.8) 60%, rgba(13,28,47,0.8) 100%);
+      animation: pulse 2.1s ease-in-out infinite;
+      box-shadow: inset 0 0 12px rgba(255,255,255,0.65);
     }
 
     @keyframes spin { to { transform: rotate(360deg); } }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(0.94); opacity: 0.9; }
+      50% { transform: scale(1); opacity: 1; }
+    }
 
     .footer-actions {
       display: grid;
@@ -256,6 +405,8 @@
       color: var(--text-main);
       box-shadow: 0 24px 60px rgba(0,0,0,0.45);
       position: relative;
+      max-height: 90vh;
+      overflow: auto;
     }
 
     .modal-close {
@@ -299,12 +450,28 @@
   </style>
 </head>
 <body>
-  <div class="orb-layer" aria-hidden="true">
-    <span class="orb"></span>
-    <span class="orb"></span>
-    <span class="orb"></span>
-    <span class="orb"></span>
+  <div class="aurora-layer" aria-hidden="true">
+    <span class="aurora"></span>
+    <span class="aurora"></span>
+    <span class="aurora"></span>
   </div>
+
+  <div class="festive-lights" aria-hidden="true">
+    <span class="light red"></span>
+    <span class="light gold"></span>
+    <span class="light blue"></span>
+    <span class="light green"></span>
+    <span class="light gold"></span>
+    <span class="light red"></span>
+    <span class="light blue"></span>
+    <span class="light green"></span>
+    <span class="light gold"></span>
+    <span class="light red"></span>
+    <span class="light blue"></span>
+  </div>
+
+  <div class="snow snow--far" aria-hidden="true"></div>
+  <div class="snow" aria-hidden="true"></div>
 
   <main class="page-shell">
     <div class="login-panel">
@@ -318,18 +485,17 @@
 
       <div class="carousel" data-gallery aria-label="Community moments">
         <div class="carousel-track" data-gallery-strip>
-          <div class="carousel-slide"><img src="{{ url_for('static', filename='gallery/placeholder1.svg') }}" alt="Community moment 1"></div>
-          <div class="carousel-slide"><img src="{{ url_for('static', filename='gallery/placeholder2.svg') }}" alt="Community moment 2"></div>
-          <div class="carousel-slide"><img src="{{ url_for('static', filename='gallery/placeholder3.svg') }}" alt="Community moment 3"></div>
-          <div class="carousel-slide"><img src="{{ url_for('static', filename='gallery/placeholder4.svg') }}" alt="Community moment 4"></div>
-          <div class="carousel-slide"><img src="{{ url_for('static', filename='gallery/placeholder5.svg') }}" alt="Community moment 5"></div>
+          {% for idx in range(1, 11) %}
+            <div class="carousel-slide"><img src="{{ url_for('static', filename='gallery/pic' + idx|string + '.png') }}" alt="Community moment {{ idx }}"></div>
+          {% endfor %}
         </div>
+        <div class="carousel-dots" data-gallery-dots aria-hidden="true"></div>
       </div>
 
       <div class="tips-card">
         <div>
-          <h3>Tips</h3>
-          <p>Keep your Trainer Name and PIN handy so you can hop into raids, track stamps, and redeem prizes smoothly.</p>
+          <h3 data-tip-title>Tips</h3>
+          <p data-tip-body>Keep your Trainer Name and PIN handy so you can hop into raids, track stamps, and redeem prizes smoothly.</p>
         </div>
         <div class="spinner" aria-hidden="true"></div>
       </div>
@@ -413,19 +579,112 @@
       if (gallery) {
         const strip = gallery.querySelector('[data-gallery-strip]');
         const slides = strip ? Array.from(strip.children) : [];
+        const dots = gallery.querySelector('[data-gallery-dots]');
         let index = 0;
+        let timer;
 
-        const advance = () => {
+        const renderDots = () => {
+          if (!dots) return;
+          dots.innerHTML = '';
+          slides.forEach((_, dotIndex) => {
+            const dot = document.createElement('span');
+            if (dotIndex === index) dot.classList.add('is-active');
+            dot.addEventListener('click', () => {
+              setSlide(dotIndex);
+              restartTimer();
+            });
+            dots.appendChild(dot);
+          });
+        };
+
+        const setSlide = (nextIndex) => {
           if (!strip || !slides.length) return;
-          index = (index + 1) % slides.length;
+          index = (nextIndex + slides.length) % slides.length;
           strip.style.transform = `translateX(-${index * 100}%)`;
+          renderDots();
+        };
+
+        const restartTimer = () => {
+          if (timer) clearInterval(timer);
+          if (!prefersReducedMotion && slides.length > 1) {
+            timer = setInterval(() => setSlide(index + 1), 6000);
+          }
+        };
+
+        const handleSwipe = () => {
+          let startX = 0;
+          let isPointerDown = false;
+
+          const onStart = (clientX) => { startX = clientX; isPointerDown = true; };
+          const onEnd = (clientX) => {
+            if (!isPointerDown) return;
+            const delta = clientX - startX;
+            if (Math.abs(delta) > 40) {
+              setSlide(index + (delta < 0 ? 1 : -1));
+              restartTimer();
+            }
+            isPointerDown = false;
+          };
+
+          gallery.addEventListener('pointerdown', (event) => onStart(event.clientX));
+          gallery.addEventListener('pointerup', (event) => onEnd(event.clientX));
+          gallery.addEventListener('pointercancel', () => { isPointerDown = false; });
+          gallery.addEventListener('touchstart', (event) => onStart(event.touches[0].clientX), { passive: true });
+          gallery.addEventListener('touchend', (event) => {
+            const point = event.changedTouches[0] || event.touches[0];
+            if (point) onEnd(point.clientX);
+          }, { passive: true });
         };
 
         if (slides.length) {
           strip.style.width = `${slides.length * 100}%`;
-          if (!prefersReducedMotion) {
-            setInterval(advance, 4000);
-          }
+          renderDots();
+          setSlide(0);
+          restartTimer();
+          handleSwipe();
+        }
+      }
+
+      const tipTitle = document.querySelector('[data-tip-title]');
+      const tipBody = document.querySelector('[data-tip-body]');
+      const tips = [
+        {
+          title: 'Tips',
+          body: 'Keep your Trainer Name and PIN handy so you can hop into raids, track stamps, and redeem prizes smoothly.',
+        },
+        {
+          title: 'Profile Refresh',
+          body: 'If you update your Trainer Name in Pokémon GO, tap Login then try your PIN again to pull in the new name.',
+        },
+        {
+          title: 'Need Assistance?',
+          body: 'DM Community Ambassadors on Campfire for quick help while support chat is being built.',
+        },
+        {
+          title: 'Protect Your PIN',
+          body: 'Treat your 4-digit PIN like a password—avoid sharing it and change it if you suspect someone else knows it.',
+        },
+      ];
+
+      if (tipTitle && tipBody && tips.length) {
+        let tipIndex = 0;
+
+        const renderTip = () => {
+          const { title, body } = tips[tipIndex];
+          tipTitle.textContent = title;
+          tipBody.style.opacity = '0';
+          requestAnimationFrame(() => {
+            tipBody.textContent = body;
+            tipBody.style.opacity = '1';
+          });
+        };
+
+        renderTip();
+        if (!prefersReducedMotion) {
+          setInterval(() => {
+            tipIndex = (tipIndex + 1) % tips.length;
+            renderTip();
+          }, 5200);
         }
       }
     });
