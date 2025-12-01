@@ -495,7 +495,7 @@
       <div class="tips-card">
         <div>
           <h3 data-tip-title>Tips</h3>
-          <p data-tip-body>Keep your Trainer Name and PIN handy so you can hop into raids, track stamps, and redeem prizes smoothly.</p>
+          <p data-tip-body>Keep your Trainer Name and PIN handy so you can access the app, track stamps, and redeem prizes smoothly.</p>
         </div>
         <div class="spinner" aria-hidden="true"></div>
       </div>
@@ -518,8 +518,8 @@
   <div class="modal-backdrop" data-login-modal role="dialog" aria-modal="true" aria-labelledby="login-dialog-title" hidden>
     <div class="modal-card">
       <button type="button" class="modal-close" data-login-close aria-label="Close login">✕</button>
-      <h2 id="login-dialog-title">Login</h2>
-      <p>Enter your Pokémon GO Trainer Name and the PIN you set up during sign-up.</p>
+      <h2 id="login-dialog-title">Login Help</h2>
+      <p>Enter your Pokémon GO Trainer Name and the PIN you set up during sign-up to login.</p>
       <form action="{{ url_for('login') }}" method="post" class="auth-form">
         <label for="login-username">Trainer Name</label>
         <input id="login-username" type="text" name="username" placeholder="Exact Trainer Name" required>
@@ -650,15 +650,15 @@
       const tips = [
         {
           title: 'Tips',
-          body: 'Keep your Trainer Name and PIN handy so you can hop into raids, track stamps, and redeem prizes smoothly.',
+          body: 'Keep your Trainer Name and PIN handy so you can hop into the app, track stamps, and redeem prizes smoothly.',
         },
         {
           title: 'Profile Refresh',
-          body: 'If you update your Trainer Name in Pokémon GO, tap Login then try your PIN again to pull in the new name.',
+          body: 'If you update your Trainer Name in Pokémon GO, you will need to let one of the admins know.',
         },
         {
           title: 'Need Assistance?',
-          body: 'DM Community Ambassadors on Campfire for quick help while support chat is being built.',
+          body: 'DM Community Ambassadors on Campfire for quick help while the support chat is being built.',
         },
         {
           title: 'Protect Your PIN',
