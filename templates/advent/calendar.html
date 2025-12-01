@@ -72,36 +72,20 @@
   <div class="advent-hero-logo">
     <img src="{{ url_for('static', filename='advent/advent25logo.png') }}" alt="Advent Calendar 2025">
   </div>
-  <div class="admin-header advent-header">
-    <div class="header-text">
-      <p class="advent-tag">
-        {% if is_test_mode %}
-          RDAB Live Event
-        {% else %}
-          25 days of RDAB cheer
-        {% endif %}
-      </p>
-      <h1>
-        {% if is_test_mode %}
-          🎄 Advent Calendar (Test Mode)
-        {% else %}
-          🎁 Advent Calendar
-        {% endif %}
-      </h1>
-      {% if is_test_mode %}
+  <p class="advent-tag advent-tagline">25 DAYS OF RDAB CHEER</p>
+
+  {% if is_test_mode %}
+    <div class="admin-header advent-header">
+      <div class="header-text">
+        <p class="advent-tag">RDAB Live Event</p>
+        <h1>🎄 Advent Calendar (Test Mode)</h1>
         <p>Effective day: <strong>{{ effective_day }}</strong>{% if day_override %} (override active){% endif %}</p>
         <div class="advent-controls">
           <p>Use <code>?day_override=&lt;1-25&gt;</code> on the URL to simulate different December days.</p>
         </div>
-      {% else %}
-        <p>Open the door that matches today's date to collect your Advent stamp and quote.</p>
-      {% endif %}
+      </div>
     </div>
-    <div class="header-tree">
-      <div class="tree"></div>
-      <div class="tree-shadow"></div>
-    </div>
-  </div>
+  {% endif %}
 
   <div class="advent-back-link">
     <a href="{{ url_for('dashboard') }}">← Back to Dashboard</a>
@@ -179,66 +163,72 @@
   {% set opened_days = state.opened_days %}
   {% set openable_day = state.openable_day %}
 
-  <div
-    class="advent-grid compact"
-    data-stamp-base="{{ url_for('static', filename='advent/') }}"
-    data-day-override="{{ day_override or '' }}"
-  >
-    {% for day in range(1, 26) %}
-      {% set day_config = config.get(day) %}
-      {% set opened = day in opened_days %}
-      {% set is_openable = day == openable_day %}
-      <div
-        class="advent-cell{% if opened %} is-opened{% elif is_openable %} is-openable{% else %} is-locked{% endif %}"
-        data-day="{{ day }}"
-        data-open-url="{{ url_for(open_endpoint, day=day) }}"
-      >
-        <div class="advent-lights" aria-hidden="true">
-          {% for idx in range(1, 11) %}
-            <span class="advent-light" style="--light-index: {{ idx }}"></span>
-          {% endfor %}
-        </div>
-        <div class="advent-day-label">
-          <span>Day {{ "%02d"|format(day) }}</span>
-          <span class="advent-badge{% if is_openable %} is-today{% endif %}">
-            {% if opened %}
-              ✨
-            {% elif is_openable %}
-              ★
-            {% else %}
-              &nbsp;
-            {% endif %}
-          </span>
-        </div>
-
-        <div class="advent-cell-content">
-          {% if opened and day_config %}
-            <img src="{{ url_for('static', filename='advent/' ~ day_config.stamp_png) }}" alt="Stamp for day {{ day }}">
-            <button
-              type="button"
-              class="message-btn"
-              data-day="{{ day }}"
-              data-message="{{ day_config.message|e }}"
-              data-stamp="{{ url_for('static', filename='advent/' ~ day_config.stamp_png) }}"
-            >
-              View quote
-            </button>
-            <small class="advent-status">Opened</small>
-          {% elif is_openable %}
-            <form class="open-day-form" method="POST" action="{{ url_for(open_endpoint, day=day) }}">
-              {% if day_override %}
-                <input type="hidden" name="day_override" value="{{ day_override }}">
+  <div class="advent-grid-wrapper">
+    <div
+      class="advent-grid compact"
+      data-stamp-base="{{ url_for('static', filename='advent/') }}"
+      data-day-override="{{ day_override or '' }}"
+    >
+      {% for day in range(1, 26) %}
+        {% set day_config = config.get(day) %}
+        {% set opened = day in opened_days %}
+        {% set is_openable = day in openable_days %}
+        <div
+          class="advent-cell{% if opened %} is-opened{% elif is_openable %} is-openable{% else %} is-locked{% endif %}"
+          data-day="{{ day }}"
+          data-open-url="{{ url_for(open_endpoint, day=day) }}"
+        >
+          <div class="advent-lights" aria-hidden="true">
+            {% for idx in range(1, 11) %}
+              <span class="advent-light" style="--light-index: {{ idx }}"></span>
+            {% endfor %}
+          </div>
+          <div class="advent-day-label">
+            <span>Day {{ "%02d"|format(day) }}</span>
+            <span class="advent-badge{% if is_openable %} is-today{% endif %}">
+              {% if opened %}
+                ✨
+              {% elif is_openable %}
+                ★
+              {% else %}
+                &nbsp;
               {% endif %}
-              <button type="submit" data-day="{{ day }}">Open</button>
-            </form>
-            <small class="advent-hint">Ready to unlock</small>
-          {% else %}
-            <div class="advent-placeholder">🔒</div>
-            <small class="advent-status">Locked</small>
-          {% endif %}
+            </span>
+          </div>
+
+          <div class="advent-cell-content">
+            {% if opened and day_config %}
+              <img src="{{ url_for('static', filename='advent/' ~ day_config.stamp_png) }}" alt="Stamp for day {{ day }}">
+              <button
+                type="button"
+                class="message-btn"
+                data-day="{{ day }}"
+                data-message="{{ day_config.message|e }}"
+                data-stamp="{{ url_for('static', filename='advent/' ~ day_config.stamp_png) }}"
+              >
+                View quote
+              </button>
+              <small class="advent-status">Opened</small>
+            {% elif is_openable %}
+              <form class="open-day-form" method="POST" action="{{ url_for(open_endpoint, day=day) }}">
+                {% if day_override %}
+                  <input type="hidden" name="day_override" value="{{ day_override }}">
+                {% endif %}
+                <button type="submit" data-day="{{ day }}">Open</button>
+              </form>
+              <small class="advent-hint">Ready to unlock</small>
+            {% else %}
+              <div class="advent-placeholder">🔒</div>
+              <small class="advent-status">Locked</small>
+            {% endif %}
+          </div>
         </div>
-      </div>
-    {% endfor %}
+      {% endfor %}
+    </div>
+    <div class="advent-tree-sidepiece" aria-hidden="true">
+      <div class="tree"></div>
+      <div class="tree-shadow"></div>
+    </div>
   </div>
 
   <div class="advent-modal" id="advent-modal" hidden>
@@ -535,6 +525,12 @@
   margin: 0 0 6px 0;
   color: #ffd6d9;
 }
+.advent-tag.advent-tagline {
+  text-align: center;
+  margin: 12px 0 22px;
+  font-size: 0.8rem;
+  letter-spacing: 0.32em;
+}
 .advent-controls {
   margin-top: 8px;
   font-size: 0.9rem;
@@ -544,12 +540,6 @@
   background: rgba(255, 255, 255, 0.15);
   padding: 2px 6px;
   border-radius: 6px;
-}
-.header-tree {
-  position: relative;
-  width: 160px;
-  height: 140px;
-  flex: 0 0 auto;
 }
 .header-text {
   position: relative;
@@ -593,6 +583,21 @@
   background: rgba(0, 0, 0, 0.35);
   filter: blur(8px);
   border-radius: 50%;
+}
+.advent-grid-wrapper {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 16px;
+  align-items: end;
+}
+.advent-tree-sidepiece {
+  position: relative;
+  width: 180px;
+  height: 180px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  pointer-events: none;
 }
 .advent-grid.compact {
   display: grid;
@@ -1278,11 +1283,22 @@
 @media (max-width: 900px) {
   .advent-grid.compact { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .advent-scene { padding: 16px; }
-  .header-tree { width: 120px; height: 110px; }
+  .advent-tagline { letter-spacing: 0.26em; }
+  .advent-grid-wrapper {
+    grid-template-columns: 1fr;
+    justify-items: center;
+  }
+  .advent-tree-sidepiece {
+    margin-top: 12px;
+  }
   .advent-intro-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 640px) {
   .advent-grid.compact { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .advent-tree-sidepiece {
+    width: 150px;
+    height: 160px;
+  }
 }
 @media (max-width: 420px) {
   .advent-grid.compact { grid-template-columns: repeat(1, minmax(0, 1fr)); }
