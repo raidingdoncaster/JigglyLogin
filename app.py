@@ -7185,8 +7185,11 @@ def dashboard():
     current_stamps = int(user.get("stamps", 0) or 0)
 
     most_recent_meetup = get_most_recent_meetup(trainer, campfire_username)
+
+    upcoming_events = fetch_upcoming_events()
+
     upcoming_widget_events = []
-    for ev in fetch_upcoming_events(limit=1):
+    for ev in upcoming_events[:1]:
         start_local = ev["start_local"]
         location = ev["location"] or ""
         short_location = location.split(",")[0].strip() if location else ""
@@ -7199,6 +7202,8 @@ def dashboard():
             "campfire_url": ev["campfire_url"],
             "cover_photo": ev["cover_photo_url"],
         })
+
+    calendar_events = serialize_calendar_events(upcoming_events)
 
     bulletin_posts = get_community_bulletin_posts()
     bulletin_preview = _bulletin_widget_preview(bulletin_posts)
@@ -7218,6 +7223,7 @@ def dashboard():
         account_type=normalize_account_type(user.get("account_type")),
         show_back=False,
         upcoming_meetups=upcoming_widget_events,
+        calendar_events=calendar_events,
         calendar_url=url_for("calendar_view"),
         show_catalog_app=SHOW_CATALOG_APP,
         show_city_perks_app=SHOW_CITY_PERKS_APP,
