@@ -8351,9 +8351,53 @@ def admin_bulletin():
     )
 
 
+@app.route("/admin/community-bulletin/compose", methods=["GET"])
+@admin_required
+def admin_bulletin_compose():
+    session["bulletin_compose_verified"] = False
+    if not _bulletin_supabase_enabled():
+        flash("Community Bulletin data source unavailable. Check Supabase credentials.", "error")
+        return redirect(url_for("admin_bulletin"))
+
+    posts = fetch_bulletin_posts_from_supabase(include_sections=True, status=None)
+    authors = _bulletin_admin_fetch_authors()
+
+    target_post_id = request.args.get("post_id")
+    target_post = None
+    if target_post_id:
+        target_post = next((p for p in posts if str(p.get("id")) == str(target_post_id)), None)
+
+    return render_template(
+        "admin_bulletin_compose.html",
+        supabase_enabled=True,
+        posts=posts,
+        authors=authors,
+        target_post=target_post,
+    )
+
+
+@app.route("/admin/community-bulletin/compose/verify", methods=["POST"])
+@admin_required
+def admin_bulletin_compose_verify():
+    payload = request.get_json(force=True, silent=True) or {}
+    password = (payload.get("admin_password") or request.form.get("admin_password") or "").strip()
+    if not password:
+        return jsonify({"success": False, "message": "Enter the admin dashboard password."}), 400
+
+    if not _admin_dashboard_gate_check(password):
+        return jsonify({"success": False, "message": "Incorrect admin dashboard password."}), 403
+
+    session["bulletin_compose_verified"] = True
+    session.modified = True
+    return jsonify({"success": True, "message": "Compose mode unlocked."})
+
+
 @app.route("/admin/community-bulletin/save", methods=["POST"])
 @admin_required
 def admin_bulletin_save():
+    if not session.get("bulletin_compose_verified"):
+        return jsonify({"error": "Re-enter the admin dashboard password on the Compose page to save posts."}), 403
+
     if not _bulletin_supabase_enabled():
         return jsonify({"error": "Bulletin service unavailable"}), 503
     payload = request.get_json(force=True, silent=True) or {}

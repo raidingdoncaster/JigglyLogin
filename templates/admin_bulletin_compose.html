@@ -1,0 +1,888 @@
+{% extends "base.html" %}
+
+{% block page_settings %}
+  {% set container_class = 'is-wide' %}
+{% endblock %}
+
+{% block content %}
+<section class="bulletin-compose">
+  <div class="bulletin-compose__header">
+    <div>
+      <p class="bulletin-admin__eyebrow">Community Ops</p>
+      <h1>✏️ Compose Bulletin Post</h1>
+      <p>Confirm the admin dashboard password, then draft or edit Community Bulletin posts in the full-page builder.</p>
+    </div>
+    <a class="pill-btn is-secondary" href="{{ url_for('admin_bulletin') }}">← Back to Community Bulletin</a>
+  </div>
+
+  {% if not supabase_enabled %}
+    <div class="bulletin-admin__alert">
+      <strong>Supabase is disabled.</strong>
+      <p>Enable Supabase credentials to manage the Community Bulletin.</p>
+    </div>
+  {% else %}
+    <div class="compose-gate" data-compose-gate>
+      <h2>Re-enter admin dashboard password</h2>
+      <p class="compose-gate__hint">For extra safety, unlock this page with the admin dashboard password before composing.</p>
+      <form class="compose-gate__form" data-compose-gate-form>
+        <label>
+          <span>Admin dashboard password</span>
+          <input type="password" name="admin_password" required autocomplete="current-password">
+        </label>
+        <div class="compose-gate__actions">
+          <button type="submit" class="pill-btn is-primary">Unlock compose mode</button>
+          <p class="compose-gate__error" data-compose-gate-error aria-live="polite"></p>
+        </div>
+      </form>
+    </div>
+
+    <section class="bulletin-card bulletin-builder is-locked"
+             data-compose-shell
+             data-posts='{{ posts|tojson|safe }}'
+             data-authors='{{ authors|tojson|safe }}'
+             data-target-post-id="{{ target_post.id if target_post else '' }}">
+      <div class="bulletin-card__head">
+        <div>
+          <h2>Bulletin Post Builder</h2>
+          <p>Set the essentials, add section blocks, and publish confidently.</p>
+        </div>
+        <div class="compose-actions">
+          <a class="pill-btn" href="{{ url_for('admin_bulletin') }}">View all posts</a>
+          <button type="button" class="pill-btn is-secondary" data-reset-builder>Reset</button>
+        </div>
+      </div>
+
+      <form id="bulletinBuilderForm" class="builder-form">
+        <input type="hidden" name="id" value="{{ target_post.id if target_post else '' }}">
+        <div class="builder-grid">
+          <label>
+            <span>Title</span>
+            <input type="text" name="title" required>
+          </label>
+          <label>
+            <span>Slug</span>
+            <input type="text" name="slug" required>
+          </label>
+          <label>
+            <span>Summary</span>
+            <textarea name="summary" rows="2"></textarea>
+          </label>
+          <label>
+            <span>Author</span>
+            <select name="author_id">
+              <option value="">— Select author —</option>
+            </select>
+          </label>
+          <label>
+            <span>Primary Tag</span>
+            <input type="text" name="tag" placeholder="Events">
+          </label>
+          <label>
+            <span>Category</span>
+            <input type="text" name="category" placeholder="Events">
+          </label>
+          <label>
+            <span>Read Time</span>
+            <input type="text" name="read_time" placeholder="5 min read">
+          </label>
+          <label>
+            <span>Hero Image URL</span>
+            <div class="input-with-btn">
+              <input type="text" name="hero_image" placeholder="https://.../heroes/slug.webp">
+              <button type="button" class="pill-btn is-secondary" data-upload-target="hero_image" data-upload-type="hero">Upload</button>
+            </div>
+          </label>
+          <label>
+            <span>Header Image URL</span>
+            <div class="input-with-btn">
+              <input type="text" name="header_image" placeholder="https://.../slides/slug/slide-01.webp">
+              <button type="button" class="pill-btn is-secondary" data-upload-target="header_image" data-upload-type="header">Upload</button>
+            </div>
+          </label>
+          <label>
+            <span>Tags (comma separated)</span>
+            <input type="text" name="tags" placeholder="events, go tour, tips">
+          </label>
+          <label>
+            <span>Status</span>
+            <select name="status">
+              <option value="draft">Draft</option>
+              <option value="published">Published</option>
+            </select>
+          </label>
+          <label>
+            <span>Publish Now</span>
+            <input type="datetime-local" name="published_at">
+          </label>
+          <label>
+            <span>Schedule Publish</span>
+            <input type="datetime-local" name="scheduled_publish_at">
+          </label>
+          <label class="checkbox-field">
+            <input type="checkbox" name="is_featured">
+            <span>Feature this post</span>
+          </label>
+        </div>
+
+        <div class="bulletin-card__head">
+          <div>
+            <h3>Content Sections</h3>
+            <p>Stack rich text, galleries, callouts, and links to tell the full story.</p>
+          </div>
+          <button type="button" class="pill-btn is-secondary" data-add-section>Add Section</button>
+        </div>
+
+        <div class="builder-sections" data-builder-sections>
+          <p class="builder-sections__empty">No sections yet. Add a block to begin.</p>
+        </div>
+
+        <div class="builder-actions">
+          <button type="submit" class="pill-btn is-primary">Save Post</button>
+          <button type="button" class="pill-btn" data-reset-builder>Clear Form</button>
+        </div>
+      </form>
+    </section>
+  {% endif %}
+</section>
+
+<style>
+.bulletin-compose__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.bulletin-admin__eyebrow { color: #475569; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; font-size: 0.85rem; margin: 0; }
+.bulletin-card {
+  background: #fff;
+  border-radius: 20px;
+  padding: 18px;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.1);
+  margin-top: 16px;
+}
+.bulletin-admin__alert {
+  border: 1px solid #fbbf24;
+  background: #fef9c3;
+  padding: 12px;
+  border-radius: 14px;
+  margin-top: 16px;
+}
+.bulletin-admin__alert p { margin: 6px 0 0; }
+.bulletin-card__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.bulletin-card__head h2, .bulletin-card__head h3 { margin: 0; }
+.bulletin-card__head p { margin: 4px 0 0; color: #475569; }
+.bulletin-card__head .pill-btn { margin-left: auto; }
+.bulletin-builder {
+  padding: 18px;
+}
+.builder-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+}
+.builder-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-weight: 600;
+  color: #1e293b;
+}
+.builder-grid input,
+.builder-grid textarea,
+.builder-grid select {
+  border-radius: 12px;
+  border: 1px solid #cbd5f5;
+  padding: 10px;
+  font-size: 1rem;
+}
+.checkbox-field {
+  align-items: center;
+  flex-direction: row;
+  gap: 10px;
+}
+.builder-sections {
+  background: #f8fafc;
+  border: 1px dashed #cbd5f5;
+  border-radius: 14px;
+  padding: 14px;
+  min-height: 140px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.builder-section {
+  background: #fff;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.builder-section__row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 8px;
+  align-items: center;
+}
+.builder-section label span { font-weight: 700; color: #0f172a; }
+.builder-section input,
+.builder-section textarea,
+.builder-section select {
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid #cbd5f5;
+  padding: 10px;
+  font-size: 0.95rem;
+}
+.section-config {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.section-config__list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.list-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 8px;
+  align-items: center;
+  background: #fff;
+  border-radius: 12px;
+  padding: 10px;
+  border: 1px solid #e2e8f0;
+}
+.builder-section__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.builder-actions {
+  text-align: right;
+  margin-top: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+.help-tip {
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  border: 1px solid #cbd5f5;
+  background: #fff;
+  cursor: help;
+  font-weight: 700;
+}
+.input-with-btn { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+.compose-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+.compose-gate {
+  border: 1px solid #cbd5f5;
+  background: #f8fafc;
+  border-radius: 16px;
+  padding: 16px;
+  margin: 16px 0;
+}
+.compose-gate__hint { color: #475569; margin: 6px 0 0; }
+.compose-gate__form {
+  display: grid;
+  gap: 10px;
+  max-width: 480px;
+}
+.compose-gate__form label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-weight: 600;
+}
+.compose-gate__form input {
+  border-radius: 10px;
+  border: 1px solid #cbd5f5;
+  padding: 10px;
+}
+.compose-gate__actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.compose-gate__error { color: #b91c1c; margin: 0; }
+.bulletin-builder.is-locked {
+  position: relative;
+  opacity: 0.45;
+  pointer-events: none;
+}
+.bulletin-builder.is-locked::after {
+  content: "Unlock compose mode to start editing";
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #0f172a;
+  font-weight: 700;
+  background: rgba(241, 245, 249, 0.8);
+  border-radius: 20px;
+}
+.builder-sections__empty { color: #64748b; margin: 0; }
+@media (max-width: 768px) {
+  .builder-grid { grid-template-columns: 1fr; }
+  .builder-section__row { grid-template-columns: 1fr; }
+}
+</style>
+
+{% if supabase_enabled %}
+<input type="file" id="bulletinUploadInput" accept="image/*" hidden>
+<script>
+(function () {
+  var builder = document.querySelector("[data-bulletin-builder]") || document.querySelector("[data-compose-shell]");
+  var composeShell = document.querySelector("[data-compose-shell]");
+  var gateForm = document.querySelector("[data-compose-gate-form]");
+  var gateError = document.querySelector("[data-compose-gate-error]");
+  var gateBox = document.querySelector("[data-compose-gate]");
+  var posts = [];
+  var authors = [];
+
+  if (!composeShell || !gateForm) return;
+
+  try { posts = JSON.parse(composeShell.dataset.posts || "[]"); } catch (err) { posts = []; }
+  try { authors = JSON.parse(composeShell.dataset.authors || "[]"); } catch (err) { authors = []; }
+  var targetPostId = composeShell.dataset.targetPostId;
+
+  var authorMap = {};
+  var form = document.getElementById("bulletinBuilderForm");
+  var sectionsContainer = form.querySelector("[data-builder-sections]");
+  var addSectionBtn = form.querySelector("[data-add-section]");
+  var resetBtns = document.querySelectorAll("[data-reset-builder]");
+  var uploadInput = document.getElementById("bulletinUploadInput");
+  var pendingUploadTarget = null;
+  var pendingUploadElement = null;
+  var pendingUploadType = null;
+
+  function lockBuilder() {
+    composeShell.classList.add("is-locked");
+    form.querySelectorAll("input, select, textarea, button").forEach(function (el) {
+      el.disabled = true;
+    });
+  }
+
+  function unlockBuilder() {
+    composeShell.classList.remove("is-locked");
+    form.querySelectorAll("input, select, textarea, button").forEach(function (el) {
+      el.disabled = false;
+    });
+    if (gateBox) {
+      gateBox.style.display = "none";
+    }
+  }
+
+  lockBuilder();
+
+  gateForm.addEventListener("submit", function (evt) {
+    evt.preventDefault();
+    gateError.textContent = "";
+    var payload = { admin_password: gateForm.elements.admin_password.value };
+    fetch("/admin/community-bulletin/compose/verify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    })
+      .then(function (resp) { return resp.json(); })
+      .then(function (data) {
+        if (!data.success) throw new Error(data.message || "Unable to unlock");
+        unlockBuilder();
+      })
+      .catch(function (err) {
+        gateError.textContent = err.message || "Incorrect password.";
+      });
+  });
+
+  authors.forEach(function (author) {
+    if (author && author.id) { authorMap[author.id] = author; }
+    var opt = document.createElement("option");
+    opt.value = author.id;
+    opt.textContent = author.display_name;
+    form.elements.author_id.appendChild(opt);
+  });
+
+  function localDateValue(isoString) {
+    if (!isoString) return "";
+    try {
+      var dt = new Date(isoString);
+      return dt.toISOString().substring(0, 16);
+    } catch (err) {
+      return "";
+    }
+  }
+
+  function clearSections() {
+    sectionsContainer.innerHTML = '<p class="builder-sections__empty">No sections yet. Add a block to begin.</p>';
+  }
+
+  function addSection(section) {
+    if (sectionsContainer.querySelector(".builder-sections__empty")) {
+      sectionsContainer.innerHTML = "";
+    }
+    var block = document.createElement("div");
+    block.className = "builder-section";
+    var sectionType = section && (section.section_type || section.type) ? (section.section_type || section.type) : "rich_text";
+    block.innerHTML = `
+      <div class="builder-section__row builder-section__controls">
+        <label>
+          <span>Section Type</span>
+          <select name="section_type">
+            <option value="rich_text">Rich Text</option>
+            <option value="detail-grid">Detail Grid</option>
+            <option value="callouts">Callouts</option>
+            <option value="carousel">Carousel</option>
+            <option value="media-block">Photo Block</option>
+            <option value="link-list">Link List</option>
+          </select>
+        </label>
+        <button type="button" class="help-tip" data-tooltip="" aria-label="Section help tooltip">?</button>
+      </div>
+      <label>
+        <span>Heading</span>
+        <input type="text" name="section_heading">
+      </label>
+      <div class="section-config" data-section-config></div>
+      <div class="builder-section__actions">
+        <button type="button" class="pill-btn is-secondary" data-move-up>▲</button>
+        <button type="button" class="pill-btn is-secondary" data-move-down>▼</button>
+        <button type="button" class="pill-btn is-danger" data-remove-section>Remove</button>
+      </div>
+    `;
+    block.querySelector("[name='section_type']").value = sectionType;
+    block.querySelector("[name='section_heading']").value = section && section.title ? section.title : "";
+    renderSectionConfig(block, section);
+    block.addEventListener("click", function (evt) {
+      if (evt.target.matches("[data-remove-section]")) {
+        block.remove();
+        if (!sectionsContainer.children.length) {
+          clearSections();
+        }
+      }
+      if (evt.target.matches("[data-move-up]")) {
+        var prev = block.previousElementSibling;
+        if (prev) sectionsContainer.insertBefore(block, prev);
+      }
+      if (evt.target.matches("[data-move-down]")) {
+        var next = block.nextElementSibling;
+        if (next) sectionsContainer.insertBefore(next, block);
+      }
+    });
+    return block;
+  }
+
+  var SECTION_TIPS = {
+    "rich_text": "Stack multi-paragraph stories. Blank lines create new paragraphs and you can drop in simple HTML (bold, italics, anchors).",
+    "detail-grid": "Great for schedules or quick stats. Add as many label/value pairs as you need.",
+    "callouts": "Use short highlight cards with an optional emoji, heading, and supporting copy.",
+    "carousel": "Upload a swipeable gallery. Each slide takes a Supabase image plus caption, and you can link out to a full album.",
+    "media-block": "Insert a standalone photo with caption/credit. Ideal for inline photography between text sections.",
+    "link-list": "Group external resources such as RSVP links, documents, or how-to guides.",
+  };
+
+  function ensureHelpTip(block, type) {
+    var tip = block.querySelector(".help-tip");
+    if (tip) {
+      tip.dataset.tooltip = SECTION_TIPS[type] || "Configure this section.";
+    }
+  }
+
+  function renderSectionConfig(block, section) {
+    var type = block.querySelector("[name='section_type']").value || "rich_text";
+    ensureHelpTip(block, type);
+    var payload = (section && section.payload) || {};
+    var config = block.querySelector("[data-section-config]");
+    config.innerHTML = "";
+
+    function setRichText(data) {
+      var text = "";
+      if (data && Array.isArray(data.body)) {
+        text = data.body.join("\n\n");
+      }
+      config.innerHTML = `
+        <label>
+          <span>Content</span>
+          <textarea rows="4" data-rich-text placeholder="Write your paragraphs. Use blank lines to separate blocks."></textarea>
+        </label>
+      `;
+      config.querySelector("[data-rich-text]").value = text;
+    }
+
+    function addDetailRow(list, data) {
+      var row = document.createElement("div");
+      row.className = "list-row";
+      row.dataset.detailRow = "true";
+      row.innerHTML = `
+        <input type="text" data-detail-label placeholder="Label" value="${data && data.label ? data.label : ""}">
+        <input type="text" data-detail-value placeholder="Value" value="${data && data.value ? data.value : ""}">
+        <input type="text" data-detail-meta placeholder="Meta (optional)" value="${data && data.meta ? data.meta : ""}">
+        <button type="button" class="pill-btn is-danger" data-remove-row>Remove</button>
+      `;
+      list.appendChild(row);
+    }
+
+    function addCalloutRow(list, data) {
+      var row = document.createElement("div");
+      row.className = "list-row";
+      row.dataset.calloutRow = "true";
+      row.innerHTML = `
+        <input type="text" data-callout-icon placeholder="Icon/Emoji" value="${data && data.icon ? data.icon : ""}">
+        <input type="text" data-callout-heading placeholder="Heading" value="${data && data.heading ? data.heading : ""}">
+        <input type="text" data-callout-body placeholder="Body" value="${data && data.body ? data.body : ""}">
+        <button type="button" class="pill-btn is-danger" data-remove-row>Remove</button>
+      `;
+      list.appendChild(row);
+    }
+
+    function addSlideRow(list, data) {
+      var row = document.createElement("div");
+      row.className = "list-row";
+      row.dataset.slideRow = "true";
+      row.innerHTML = `
+        <div class="input-with-btn">
+          <input type="text" data-slide-image placeholder="Image URL" value="${data && data.image ? data.image : ""}">
+          <button type="button" class="pill-btn is-secondary" data-upload-ref="prev" data-upload-type="slide">Upload</button>
+        </div>
+        <input type="text" data-slide-caption placeholder="Caption" value="${data && data.caption ? data.caption : ""}">
+        <button type="button" class="pill-btn is-danger" data-remove-row>Remove</button>
+      `;
+      list.appendChild(row);
+    }
+
+    function addLinkRow(list, data) {
+      var row = document.createElement("div");
+      row.className = "list-row";
+      row.dataset.linkRow = "true";
+      row.innerHTML = `
+        <input type="text" data-link-label placeholder="Label" value="${data && data.label ? data.label : ""}">
+        <input type="text" data-link-url placeholder="URL" value="${data && data.url ? data.url : ""}">
+        <input type="text" data-link-description placeholder="Description" value="${data && data.description ? data.description : ""}">
+        <button type="button" class="pill-btn is-danger" data-remove-row>Remove</button>
+      `;
+      list.appendChild(row);
+    }
+
+    function setDetailGrid(data) {
+      config.innerHTML = `
+        <div class="section-config__list" data-detail-list></div>
+        <button type="button" class="pill-btn is-secondary" data-add-detail>Add Detail</button>
+      `;
+      var list = config.querySelector("[data-detail-list]");
+      (data && Array.isArray(data.details) ? data.details : []).forEach(function (detail) { addDetailRow(list, detail); });
+      if (!list.children.length) { addDetailRow(list, {}); }
+    }
+
+    function setCallouts(data) {
+      config.innerHTML = `
+        <div class="section-config__list" data-callout-list></div>
+        <button type="button" class="pill-btn is-secondary" data-add-callout>Add Callout</button>
+      `;
+      var list = config.querySelector("[data-callout-list]");
+      (data && Array.isArray(data.callouts) ? data.callouts : []).forEach(function (callout) { addCalloutRow(list, callout); });
+      if (!list.children.length) { addCalloutRow(list, {}); }
+    }
+
+    function setCarousel(data) {
+      config.innerHTML = `
+        <label>
+          <span>Album URL (optional)</span>
+          <input type="text" data-carousel-album placeholder="https://.../album">
+        </label>
+        <label>
+          <span>Description</span>
+          <input type="text" data-carousel-description placeholder="Short description">
+        </label>
+        <div class="section-config__list" data-slide-list></div>
+        <button type="button" class="pill-btn is-secondary" data-add-slide>Add Slide</button>
+      `;
+      var list = config.querySelector("[data-slide-list]");
+      (data && Array.isArray(data.slides) ? data.slides : []).forEach(function (slide) { addSlideRow(list, slide); });
+      if (!list.children.length) { addSlideRow(list, {}); }
+      (config.querySelector("[data-carousel-album]") || {}).value = (data && data.album_url) || "";
+      (config.querySelector("[data-carousel-description]") || {}).value = (data && data.description) || "";
+    }
+
+    function setMediaBlock(data) {
+      config.innerHTML = `
+        <label>
+          <span>Image URL</span>
+          <div class="input-with-btn">
+            <input type="text" data-media-image placeholder="https://.../media.jpg">
+            <button type="button" class="pill-btn is-secondary" data-upload-ref="prev" data-upload-type="media">Upload</button>
+          </div>
+        </label>
+        <label>
+          <span>Alt Text</span>
+          <input type="text" data-media-alt placeholder="Describe the image">
+        </label>
+        <label>
+          <span>Caption</span>
+          <input type="text" data-media-caption placeholder="Short caption">
+        </label>
+        <label>
+          <span>Credit</span>
+          <input type="text" data-media-credit placeholder="Photographer or source">
+        </label>
+        <label class="checkbox-field">
+          <input type="checkbox" data-media-fullbleed>
+          <span>Full-bleed layout</span>
+        </label>
+      `;
+      (config.querySelector("[data-media-image]") || {}).value = (data && data.image) || "";
+      (config.querySelector("[data-media-alt]") || {}).value = (data && data.alt) || "";
+      (config.querySelector("[data-media-caption]") || {}).value = (data && data.caption) || "";
+      (config.querySelector("[data-media-credit]") || {}).value = (data && data.credit) || "";
+      var fullbleedToggle = config.querySelector("[data-media-fullbleed]");
+      if (fullbleedToggle) fullbleedToggle.checked = !!(data && data.fullbleed);
+    }
+
+    function setLinkList(data) {
+      config.innerHTML = `
+        <div class="section-config__list" data-link-list></div>
+        <button type="button" class="pill-btn is-secondary" data-add-link>Add Link</button>
+      `;
+      var list = config.querySelector("[data-link-list]");
+      (data && Array.isArray(data.links) ? data.links : []).forEach(function (link) { addLinkRow(list, link); });
+      if (!list.children.length) { addLinkRow(list, {}); }
+    }
+
+    if (type === "rich_text") {
+      setRichText(payload);
+    } else if (type === "detail-grid") {
+      setDetailGrid(payload);
+    } else if (type === "callouts") {
+      setCallouts(payload);
+    } else if (type === "carousel") {
+      setCarousel(payload);
+    } else if (type === "media-block") {
+      setMediaBlock(payload);
+    } else if (type === "link-list") {
+      setLinkList(payload);
+    }
+  }
+
+  sectionsContainer.addEventListener("change", function (evt) {
+    if (evt.target.matches("select[name='section_type']")) {
+      var block = evt.target.closest(".builder-section");
+      renderSectionConfig(block, null);
+    }
+  });
+
+  sectionsContainer.addEventListener("click", function (evt) {
+    if (evt.target.matches("[data-add-detail]") || evt.target.matches("[data-add-callout]") || evt.target.matches("[data-add-slide]") || evt.target.matches("[data-add-link]") || evt.target.matches("[data-remove-row]")) {
+      var block = evt.target.closest(".builder-section");
+      renderSectionConfig(block, { section_type: block.querySelector("[name='section_type']").value, payload: collectPayload(block) });
+    }
+  });
+
+  addSectionBtn.addEventListener("click", function () { addSection(); });
+
+  resetBtns.forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      form.reset();
+      form.elements.id.value = "";
+      clearSections();
+      addSection();
+    });
+  });
+
+  function loadPostIntoBuilder(postId) {
+    var post = posts.find(function (p) { return String(p.id) === String(postId); });
+    if (!post) return;
+    form.elements.id.value = post.id || "";
+    form.elements.title.value = post.title || "";
+    form.elements.slug.value = post.slug || "";
+    form.elements.summary.value = post.summary || "";
+    form.elements.author_id.value = post.author_id || "";
+    form.elements.category.value = post.category || "";
+    form.elements.tag.value = post.tag || "";
+    form.elements.tags.value = (post.tags || []).join(", ");
+    form.elements.read_time.value = post.read_time || "";
+    form.elements.hero_image.value = post.hero_image || "";
+    form.elements.header_image.value = post.header_image || "";
+    form.elements.status.value = (post.status || "draft").toLowerCase();
+    form.elements.published_at.value = localDateValue(post.published_at);
+    form.elements.scheduled_publish_at.value = localDateValue(post.scheduled_publish_at);
+    form.elements.is_featured.checked = !!post.is_featured;
+
+    clearSections();
+    (post.content_sections || []).forEach(function (section) { addSection(section); });
+    if (!sectionsContainer.children.length) { clearSections(); }
+  }
+
+  function collectPayload(block) {
+    var type = block.querySelector("[name='section_type']").value;
+    var payload = {};
+    if (type === "rich_text") {
+      var field = block.querySelector("[data-rich-text]");
+      payload.body = field ? field.value.split(/\n{2,}/).map(function (p) { return p.trim(); }).filter(Boolean) : [];
+    } else if (type === "detail-grid") {
+      payload.details = Array.from(block.querySelectorAll("[data-detail-row]")).map(function (row) {
+        return {
+          label: row.querySelector("[data-detail-label]").value,
+          value: row.querySelector("[data-detail-value]").value,
+          meta: row.querySelector("[data-detail-meta]").value,
+        };
+      }).filter(function (detail) { return detail.label || detail.value; });
+    } else if (type === "callouts") {
+      payload.callouts = Array.from(block.querySelectorAll("[data-callout-row]")).map(function (row) {
+        return {
+          icon: row.querySelector("[data-callout-icon]").value,
+          heading: row.querySelector("[data-callout-heading]").value,
+          body: row.querySelector("[data-callout-body]").value,
+        };
+      }).filter(function (callout) { return callout.heading || callout.body; });
+    } else if (type === "carousel") {
+      payload.slides = Array.from(block.querySelectorAll("[data-slide-row]")).map(function (row) {
+        return {
+          image: row.querySelector("[data-slide-image]").value,
+          caption: row.querySelector("[data-slide-caption]").value,
+        };
+      }).filter(function (slide) { return slide.image; });
+      payload.album_url = (block.querySelector("[data-carousel-album]") || {}).value || "";
+      payload.description = (block.querySelector("[data-carousel-description]") || {}).value || "";
+    } else if (type === "media-block") {
+      payload.image = (block.querySelector("[data-media-image]") || {}).value || "";
+      payload.alt = (block.querySelector("[data-media-alt]") || {}).value || "";
+      payload.caption = (block.querySelector("[data-media-caption]") || {}).value || "";
+      payload.credit = (block.querySelector("[data-media-credit]") || {}).value || "";
+      payload.fullbleed = (block.querySelector("[data-media-fullbleed]") || {}).checked || false;
+    } else if (type === "link-list") {
+      payload.links = Array.from(block.querySelectorAll("[data-link-row]")).map(function (row) {
+        return {
+          label: row.querySelector("[data-link-label]").value,
+          url: row.querySelector("[data-link-url]").value,
+          description: row.querySelector("[data-link-description]").value,
+        };
+      }).filter(function (link) { return link.label || link.url; });
+    }
+    return payload;
+  }
+
+  form.addEventListener("submit", function (evt) {
+    evt.preventDefault();
+    var sectionsData = Array.from(sectionsContainer.querySelectorAll(".builder-section")).map(function (block) {
+      var payload = collectPayload(block);
+      var type = block.querySelector("[name='section_type']").value;
+      if (type === "media-block" && !payload.image) { return null; }
+      return {
+        section_type: type,
+        heading: block.querySelector("[name='section_heading']").value,
+        payload: payload,
+      };
+    }).filter(Boolean);
+
+    var payload = {
+      id: form.elements.id.value || null,
+      title: form.elements.title.value,
+      slug: form.elements.slug.value,
+      summary: form.elements.summary.value,
+      author_id: form.elements.author_id.value || null,
+      category: form.elements.category.value,
+      tag: form.elements.tag.value,
+      read_time: form.elements.read_time.value,
+      hero_image: form.elements.hero_image.value,
+      header_image: form.elements.header_image.value,
+      tags: (form.elements.tags.value || "").split(",").map(function (tag) { return tag.trim(); }).filter(Boolean),
+      status: form.elements.status.value,
+      published_at: form.elements.published_at.value,
+      scheduled_publish_at: form.elements.scheduled_publish_at.value,
+      is_featured: form.elements.is_featured.checked,
+      sections: sectionsData,
+    };
+
+    fetch("/admin/community-bulletin/save", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    })
+      .then(function (resp) { return resp.json(); })
+      .then(function (data) {
+        if (!data.post) throw new Error(data.error || "Unable to save post");
+        alert("Post saved!");
+        window.location.href = "/admin/community-bulletin";
+      })
+      .catch(function (err) {
+        console.warn(err);
+        alert(err.message || "Unable to save post.");
+      });
+  });
+
+  document.addEventListener("click", function (evt) {
+    var btn = evt.target.closest("[data-upload-target], [data-upload-ref]");
+    if (!btn) return;
+    evt.preventDefault();
+    pendingUploadType = btn.dataset.uploadType || "attachment";
+    if (btn.dataset.uploadRef === "prev") {
+      pendingUploadElement = btn.previousElementSibling;
+      pendingUploadTarget = null;
+    } else {
+      pendingUploadTarget = btn.dataset.uploadTarget || null;
+      pendingUploadElement = null;
+    }
+    uploadInput.value = "";
+    uploadInput.click();
+  });
+
+  function setTargetValue(targetName, value) {
+    if (!targetName) return;
+    var field = document.querySelector("[name='" + targetName + "']");
+    if (field) field.value = value;
+  }
+
+  function uploadAsset(file, type) {
+    var formData = new FormData();
+    formData.append("asset", file);
+    return fetch("/admin/community-bulletin/upload?type=" + encodeURIComponent(type), {
+      method: "POST",
+      body: formData,
+    }).then(function (resp) { return resp.json(); });
+  }
+
+  uploadInput.addEventListener("change", function () {
+    if (!uploadInput.files.length) return;
+    var file = uploadInput.files[0];
+    uploadAsset(file, pendingUploadType || "attachment")
+      .then(function (data) {
+        if (!data.url) throw new Error(data.error || "Upload failed");
+        if (pendingUploadElement) {
+          pendingUploadElement.value = data.url;
+        } else if (pendingUploadTarget) {
+          setTargetValue(pendingUploadTarget, data.url);
+        }
+      })
+      .catch(function (err) {
+        console.warn(err);
+        alert(err.message || "Upload failed");
+      })
+      .finally(function () {
+        pendingUploadTarget = null;
+        pendingUploadElement = null;
+        pendingUploadType = null;
+      });
+  });
+
+  if (targetPostId) {
+    loadPostIntoBuilder(targetPostId);
+  } else {
+    clearSections();
+    addSection();
+  }
+})();
+</script>
+{% endif %}
+{% endblock %}

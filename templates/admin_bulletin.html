@@ -43,6 +43,19 @@
       </div>
     </div>
 
+    <section class="bulletin-card bulletin-actions">
+      <div class="bulletin-card__head">
+        <div>
+          <h2>Community Bulletin Actions</h2>
+        </div>
+      </div>
+      <div class="bulletin-actions__buttons">
+        <a class="pill-btn is-primary" href="{{ url_for('admin_bulletin_compose') }}">✏️ Compose Post</a>
+        <button type="button" class="pill-btn" data-open-modal="author">➕ Add Author</button>
+        <button type="button" class="pill-btn" data-open-modal="author-list">👥 View Authors</button>
+      </div>
+    </section>
+
     <div class="bulletin-admin__grid">
       <section class="bulletin-card">
         <div class="bulletin-card__head">
@@ -84,10 +97,8 @@
                 </td>
                 <td>
                   <div class="table-actions">
-                    <button type="button"
-                            class="pill-btn"
-                            data-edit-post
-                            data-post-id="{{ post.id }}">Edit</button>
+                    <a class="pill-btn"
+                       href="{{ url_for('admin_bulletin_compose', post_id=post.id) }}">Edit</a>
                     <button type="button"
                             class="pill-btn is-danger"
                             data-delete-post
@@ -131,20 +142,6 @@
         </ul>
       </section>
     </div>
-
-    <section class="bulletin-card bulletin-actions">
-      <div class="bulletin-card__head">
-        <div>
-          <h2>Community Bulletin Actions</h2>
-          <p>Launch focused workflows without crowding the dashboard.</p>
-        </div>
-      </div>
-      <div class="bulletin-actions__buttons">
-        <button type="button" class="pill-btn is-primary" data-open-modal="builder" data-new-post>✏️ Compose Post</button>
-        <button type="button" class="pill-btn" data-open-modal="author">➕ Add Author</button>
-        <button type="button" class="pill-btn" data-open-modal="author-list">👥 View Authors</button>
-      </div>
-    </section>
 
     <div class="bulletin-modal" data-modal="builder">
       <div class="bulletin-modal__backdrop" data-modal-close></div>
