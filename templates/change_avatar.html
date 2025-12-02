@@ -68,7 +68,7 @@
             <path d="M6 28a10 10 0 0 1 20 0Z" fill="#94a3b8"/>
           </svg>
         </span>
-        Avatars
+        <span class="sr-only">Avatars</span>
       </button>
       <button type="button"
               class="lab-tab"
@@ -82,7 +82,7 @@
             <path d="M8 22h16l-5-6-4 5-3-3Z" fill="#cbd5f5"/>
           </svg>
         </span>
-        Backgrounds
+        <span class="sr-only">Backgrounds</span>
       </button>
       <button type="button"
               class="lab-tab"
@@ -96,7 +96,7 @@
             <path d="M10 12h12v8H10z" fill="#64748b"/>
           </svg>
         </span>
-        Pass Themes
+        <span class="sr-only">Pass Themes</span>
       </button>
     </div>
 
@@ -250,18 +250,21 @@ body.customizer-locked {
   overflow:hidden;
 }
 .lab-shell {
-  min-height:100vh;
+  height:100vh;
   padding:12px;
+  box-sizing:border-box;
   display:flex;
   align-items:center;
   justify-content:center;
   background:radial-gradient(circle at top, #f1f5f9, #e2e8f0);
+  overflow:hidden;
 }
 .lab-frame {
   background:#fff;
   border-radius:28px;
   width:min(960px, 96vw);
-  height:min(720px, calc(100vh - 32px));
+  height:100%;
+  max-height:100%;
   display:grid;
   grid-template-rows:auto auto auto 1fr auto;
   gap:14px;
@@ -452,11 +455,13 @@ body.customizer-locked {
   display:flex;
   flex-direction:column;
   gap:0;
+  overflow:hidden;
 }
 .inventory-panel {
   flex:1;
   min-height:0;
   overflow:hidden;
+  display:flex;
   transition:opacity 0.2s ease;
 }
 .inventory-panel[hidden] {
@@ -472,6 +477,10 @@ body.customizer-locked {
   height:100%;
   overflow-y:auto;
   padding-right:8px;
+  flex:1;
+  min-height:0;
+  max-height:100%;
+  -webkit-overflow-scrolling:touch;
 }
 .inventory-grid::-webkit-scrollbar {
   width:6px;
@@ -586,16 +595,7 @@ body.customizer-locked {
 @media (max-width: 820px) {
   .lab-frame {
     width:100%;
-    height:calc(100vh - 20px);
     border-radius:0;
-  }
-  .inventory-grid {
-    grid-template-columns:repeat(3, minmax(0,1fr));
-  }
-}
-@media (max-width: 600px) {
-  .inventory-grid {
-    grid-template-columns:repeat(2, minmax(0,1fr));
   }
 }
 </style>
