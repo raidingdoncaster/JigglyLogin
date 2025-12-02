@@ -150,8 +150,16 @@
               <span class="mail-card__badge" data-mail-new-badge>New</span>
             {% endif %}
           </div>
+          {% set raw_snippet = msg.message|striptags|replace('\\r\\n', ' ')|replace('\\n', ' ') %}
+          {% if raw_snippet %}
+            {% set snippet = raw_snippet %}
+          {% elif is_digital and msg.get('digital_code') %}
+            {% set snippet = 'Your digital code: ' ~ msg.get('digital_code') %}
+          {% else %}
+            {% set snippet = 'Open to view message details.' %}
+          {% endif %}
           <p class="mail-card__snippet">
-            {{ msg.message|striptags|replace('\r\n', ' ')|replace('\n', ' ')|truncate(160) }}
+            {{ snippet|truncate(160) }}
           </p>
         </a>
         {% endif %}
@@ -200,6 +208,9 @@
   overflow:hidden;
   clip:rect(0,0,0,0);
   border:0;
+}
+.inbox-panel [hidden]{
+  display:none !important;
 }
 .inbox-panel{
   display:flex;
@@ -527,7 +538,7 @@
 }
 .mail-card__select{
   width:32px;
-  display:flex;
+  display:none;
   align-items:flex-start;
   justify-content:center;
   opacity:0;
@@ -539,6 +550,7 @@
   height:18px;
 }
 .inbox-panel.is-selecting .mail-card__select{
+  display:flex;
   opacity:1;
   pointer-events:auto;
 }

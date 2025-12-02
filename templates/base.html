@@ -161,6 +161,7 @@
     .inbox-panel-dialog{
       width:min(560px,calc(100% - 16px));
       max-height:78vh;
+      min-height:78vh;
       background:rgba(255,255,255,0.78);
       border-radius:32px;
       border:1px solid rgba(255,255,255,0.55);
@@ -1806,6 +1807,7 @@
         inboxOverlay.classList.add("is-visible");
         inboxOverlay.setAttribute("aria-hidden", "false");
         document.body.classList.add("has-inbox-panel");
+        bodyScrollLock.lock();
         setInboxButtonState(true);
         loadInboxPanel(inboxLastUrl);
       };
@@ -1815,6 +1817,7 @@
         inboxOverlay.classList.remove("is-visible");
         inboxOverlay.setAttribute("aria-hidden", "true");
         document.body.classList.remove("has-inbox-panel");
+        bodyScrollLock.unlock();
         setInboxButtonState(false);
         if (inboxBtn) {
           inboxBtn.focus({ preventScroll: true });
