@@ -153,17 +153,24 @@
         options.body = new FormData(form);
       }
       const response = await fetch(form.action, options);
+      const rawText = await response.text();
       let payload = {};
       try {
-        payload = await response.json();
+        payload = rawText ? JSON.parse(rawText) : {};
       } catch (jsonError) {
-        console.error("Trainer panel JSON parse failed:", jsonError);
+        console.error("Trainer panel JSON parse failed:", jsonError, rawText);
       }
+
       const success = response.ok && payload.success !== false;
+      const fallbackMessage = rawText
+        .replace(/<[^>]+>/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
       const message =
         payload.message ||
         payload.error ||
-        (success ? "Changes saved." : "Unable to save changes. Please try again.");
+        (success ? "Changes saved." : fallbackMessage) ||
+        "Unable to save changes. Please try again.";
 
       if (!success) {
         updatePanelAlert(root, "error", message);
@@ -228,6 +235,8 @@
       password: flow.querySelector('[data-delete-step="password"]'),
       confirm: flow.querySelector('[data-delete-step="confirm"]'),
     };
+    const dialog = flow.querySelector("[data-delete-dialog]");
+    const dialogTitle = flow.querySelector("[data-delete-dialog-title]");
     const alertBox = flow.querySelector("[data-delete-alert]");
     const continueBtn = flow.querySelector("[data-delete-continue]");
     const verifyBtn = flow.querySelector("[data-delete-verify]");
@@ -236,11 +245,42 @@
     const passwordForm = steps.password && steps.password.tagName === "FORM" ? steps.password : null;
     const verifyUrl = flow.getAttribute("data-delete-verify-url");
 
+    const globalModalOpen = () => {
+      const trainerModal = document.getElementById("trainerPanelModal");
+      const massStampOverlay = document.getElementById("massStampOverlay");
+      return (
+        (trainerModal && !trainerModal.hasAttribute("hidden")) ||
+        (massStampOverlay && !massStampOverlay.hasAttribute("hidden"))
+      );
+    };
+
+    const openDialog = () => {
+      if (!dialog) return;
+      dialog.hidden = false;
+      document.body.classList.add("modal-open");
+    };
+
+    const closeDialog = () => {
+      if (!dialog) return;
+      dialog.hidden = true;
+      if (!globalModalOpen()) {
+        document.body.classList.remove("modal-open");
+      }
+    };
+
     const setStep = (target) => {
       Object.entries(steps).forEach(([name, element]) => {
         if (!element) return;
         element.hidden = name !== target;
       });
+      if (target === "intro") {
+        closeDialog();
+      } else {
+        openDialog();
+        if (dialogTitle) {
+          dialogTitle.textContent = target === "confirm" ? "Final confirmation" : "Verify admin access";
+        }
+      }
     };
 
     const setAlert = (tone, message) => {
@@ -298,6 +338,14 @@
         if (target === "password" && passwordInput) {
           passwordInput.focus();
         }
+      });
+    });
+
+    const closeButtons = flow.querySelectorAll("[data-delete-close]");
+    closeButtons.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        setStep("intro");
+        setAlert("", "");
       });
     });
 
@@ -360,6 +408,16 @@
           setAlert("error", "Unable to verify admin password right now.");
         } finally {
           setButtonLoading(verifyBtn, false);
+        }
+      });
+    }
+
+    if (dialog) {
+      dialog.addEventListener("click", (evt) => {
+        const backdropClicked = evt.target === dialog;
+        if (backdropClicked) {
+          setStep("intro");
+          setAlert("", "");
         }
       });
     }

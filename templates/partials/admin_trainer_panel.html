@@ -162,41 +162,54 @@
             <button type="button" class="btn btn-secondary delete-step__primary" data-delete-continue>I understand, continue</button>
           </section>
 
-          <form class="delete-step" data-delete-step="password" novalidate hidden>
-            <p class="delete-step__eyebrow">Verify admin access</p>
-            <p class="delete-step__copy">
-              Confirm the admin dashboard password to continue this deletion. This ensures only authorised admins can wipe trainers.
-            </p>
-            <label for="deleteAdminPassword-{{ trainer.trainer_username }}">Admin dashboard password</label>
-            <input type="password"
-                   id="deleteAdminPassword-{{ trainer.trainer_username }}"
-                   name="admin_password"
-                   inputmode="text"
-                   autocomplete="current-password"
-                   placeholder="Enter admin dashboard password"
-                   data-delete-password
-                   required>
-            <div class="delete-step__actions">
-              <button type="button" class="btn btn-secondary" data-delete-back data-delete-back-step="intro">Back</button>
-              <button type="button" class="btn btn-danger" data-delete-verify data-loading-label="Verifying…">Verify password</button>
-            </div>
-          </form>
+          <div class="delete-dialog" data-delete-dialog hidden>
+            <div class="delete-dialog__panel">
+              <div class="delete-dialog__header">
+                <div>
+                  <p class="delete-dialog__eyebrow">Account removal</p>
+                  <h4 data-delete-dialog-title>Verify admin access</h4>
+                </div>
+                <button type="button" class="delete-dialog__close" aria-label="Close" data-delete-close>&times;</button>
+              </div>
+              <div class="delete-dialog__body">
+                <form class="delete-step" data-delete-step="password" novalidate hidden>
+                  <p class="delete-step__eyebrow">Verify admin access</p>
+                  <p class="delete-step__copy">
+                    Confirm the admin dashboard password to continue this deletion. This ensures only authorised admins can wipe trainers.
+                  </p>
+                  <label for="deleteAdminPassword-{{ trainer.trainer_username }}">Admin dashboard password</label>
+                  <input type="password"
+                         id="deleteAdminPassword-{{ trainer.trainer_username }}"
+                         name="admin_password"
+                         inputmode="text"
+                         autocomplete="current-password"
+                         placeholder="Enter admin dashboard password"
+                         data-delete-password
+                         required>
+                  <div class="delete-step__actions">
+                    <button type="button" class="btn btn-secondary" data-delete-back data-delete-back-step="intro">Back</button>
+                    <button type="button" class="btn btn-danger" data-delete-verify data-loading-label="Verifying…">Verify password</button>
+                  </div>
+                </form>
 
-          <form class="delete-step"
-                data-delete-step="confirm"
-                action="{{ url_for('admin_delete_trainer_account', username=trainer.trainer_username) }}"
-                method="post"
-                hidden>
-            <input type="hidden" name="delete_token" value="" data-delete-token>
-            <p class="delete-step__eyebrow">Final confirmation</p>
-            <p class="delete-step__copy delete-step__copy--strong">
-              You are deleting the account <strong class="identity-text">{{ trainer.trainer_username }}</strong> and all of its related data and assets, please tap to confirm this process.
-            </p>
-            <div class="delete-step__actions">
-              <button type="button" class="btn btn-secondary" data-delete-back data-delete-back-step="password">Back</button>
-              <button type="submit" class="btn btn-danger" data-delete-submit data-loading-label="Deleting…">Delete account now</button>
+                <form class="delete-step"
+                      data-delete-step="confirm"
+                      action="{{ url_for('admin_delete_trainer_account', username=trainer.trainer_username) }}"
+                      method="post"
+                      hidden>
+                  <input type="hidden" name="delete_token" value="" data-delete-token>
+                  <p class="delete-step__eyebrow">Final confirmation</p>
+                  <p class="delete-step__copy delete-step__copy--strong">
+                    You are deleting the account <strong class="identity-text">{{ trainer.trainer_username }}</strong> and all of its related data and assets, please tap to confirm this process.
+                  </p>
+                  <div class="delete-step__actions">
+                    <button type="button" class="btn btn-secondary" data-delete-back data-delete-back-step="password">Back</button>
+                    <button type="submit" class="btn btn-danger" data-delete-submit data-loading-label="Deleting…">Delete account now</button>
+                  </div>
+                </form>
+              </div>
             </div>
-          </form>
+          </div>
         </div>
       </div>
     </div>
@@ -383,6 +396,11 @@
   flex-direction:column;
   gap:10px;
 }
+.action-box-body[hidden],
+.delete-step[hidden],
+[data-delete-dialog][hidden] {
+  display:none !important;
+}
 .action-box form {
   display:flex;
   flex-direction:column;
@@ -485,6 +503,61 @@
 }
 .delete-step__primary {
   align-self:flex-start;
+}
+.delete-dialog {
+  position:fixed;
+  inset:0;
+  background:rgba(15,23,42,0.6);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:18px;
+  z-index:9600;
+}
+.delete-dialog__panel {
+  background:#fff;
+  width:min(540px, 100%);
+  border-radius:18px;
+  box-shadow:0 30px 70px rgba(15,23,42,0.4);
+  overflow:hidden;
+}
+.delete-dialog__header {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:16px 20px;
+  border-bottom:1px solid #e5e7eb;
+}
+.delete-dialog__eyebrow {
+  margin:0;
+  text-transform:uppercase;
+  letter-spacing:0.18em;
+  font-size:0.65rem;
+  color:#ef4444;
+}
+.delete-dialog__header h4 {
+  margin:4px 0 0;
+}
+.delete-dialog__close {
+  background:rgba(15,23,42,0.08);
+  border:0;
+  width:34px;
+  height:34px;
+  border-radius:50%;
+  font-size:1.3em;
+  cursor:pointer;
+}
+.delete-dialog__close:hover {
+  background:rgba(15,23,42,0.16);
+}
+.delete-dialog__body {
+  padding:20px;
+  max-height:70vh;
+  overflow:auto;
+  display:flex;
+  flex-direction:column;
+  gap:14px;
 }
 .panel-back-link {
   text-align:center;
