@@ -219,18 +219,7 @@
                 </div>
               {% endif %}
               <div class="calendar-modal__card-body">
-                <p class="calendar-modal__date">{{ ev.start_local_date }} · {{ ev.start_local_time }} – {{ ev.end_local_time }} (UK)</p>
-                {% if ev.location %}
-                  <p class="calendar-modal__location">📍 {{ ev.location }}</p>
-                {% endif %}
                 <h5 class="calendar-modal__title">{{ ev.title }}</h5>
-                <div class="calendar-modal__actions">
-                  {% if ev.campfire_url %}
-                    <a class="btn btn-secondary" href="{{ ev.campfire_url }}" target="_blank" rel="noopener">Campfire</a>
-                  {% endif %}
-                  <a class="btn btn-light" href="{{ ev.google_calendar_url }}" target="_blank" rel="noopener">Google</a>
-                  <a class="btn btn-light" href="{{ ev.ics_url }}">iOS</a>
-                </div>
               </div>
             </article>
           {% endfor %}
@@ -332,7 +321,7 @@
 .calendar-modal__card { display:flex; gap:12px; background:#f8fafc; border-radius:18px; overflow:hidden; box-shadow:0 10px 20px rgba(15,23,42,0.18); border:1px solid rgba(226,232,240,0.9); }
 .calendar-modal__media { width:110px; flex:0 0 110px; background:#e2e8f0; }
 .calendar-modal__media img { width:100%; height:100%; object-fit:cover; display:block; }
-.calendar-modal__card-body { padding:12px; display:flex; flex-direction:column; gap:8px; flex:1; }
+.calendar-modal__card-body { padding:12px; display:flex; flex-direction:column; gap:8px; flex:1; justify-content:center; }
 .calendar-modal__date { margin:0; font-size:0.82rem; color:#0f172a; font-weight:700; }
 .calendar-modal__location { margin:0; color:#475569; font-weight:600; }
 .calendar-modal__title { margin:0; font-size:1rem; color:#0f172a; }
