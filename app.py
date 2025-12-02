@@ -2424,8 +2424,14 @@ def adjust_stamps(trainer_username: str, count: int, reason: str, action: str, a
                 "p_awardedby": actor or "Admin",
             },
         ).execute()
+        if getattr(resp, "error", None):
+            return False, f"❌ Failed to update: {resp.error}"
         data = getattr(resp, "data", None) or {}
-        new_total = data.get("new_total")
+        if isinstance(data, list) and data:
+            data = data[0]
+        if isinstance(data, dict) and data.get("error"):
+            return False, f"❌ Failed to update: {data.get('error')}"
+        new_total = data.get("new_total") if isinstance(data, dict) else None
         return True, f"✅ Updated {trainer_username}. New total: {new_total}"
     except Exception as e:
         return False, f"❌ Failed to update: {e}"
