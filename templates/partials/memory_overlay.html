@@ -22,13 +22,13 @@
   position: relative;
   background: #030712;
   color: #f8fafc;
-  border-radius: 28px;
-  width: min(960px, 96vw);
-  height: min(88vh, 720px);
+  border-radius: 24px;
+  width: min(820px, 92vw);
+  height: min(82vh, 640px);
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 20px;
+  padding: 18px;
   box-shadow: 0 40px 70px rgba(2, 6, 23, 0.6);
   z-index: 1;
   outline: none;
@@ -62,7 +62,7 @@
 }
 .memory-overlay__media {
   flex: 1;
-  border-radius: 24px;
+  border-radius: 18px;
   background: #020617;
   display: flex;
   align-items: center;
@@ -85,7 +85,14 @@
   margin-top: auto;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
+}
+.memory-overlay__nav-row {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
 }
 .memory-overlay__nav {
   display: flex;
@@ -103,6 +110,28 @@
   font-size: 1.25rem;
   cursor: pointer;
   box-shadow: 0 10px 20px rgba(15, 23, 42, 0.45);
+}
+.memory-overlay__actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.memory-overlay__actions button {
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: rgba(15, 23, 42, 0.7);
+  color: #e2e8f0;
+  padding: 10px 14px;
+  border-radius: 14px;
+  cursor: pointer;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 10px 18px rgba(2, 6, 23, 0.3);
+}
+.memory-overlay__actions button svg {
+  width: 16px;
+  height: 16px;
 }
 .memory-overlay__zoom {
   display: inline-flex;
@@ -136,12 +165,82 @@
   cursor: pointer;
   box-shadow: 0 14px 30px rgba(249, 115, 22, 0.45);
 }
+.memory-overlay__album-panel {
+  position: absolute;
+  left: 18px;
+  right: 18px;
+  bottom: 110px;
+  background: rgba(2, 6, 23, 0.95);
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  border-radius: 18px;
+  padding: 12px;
+  box-shadow: 0 30px 60px rgba(2, 6, 23, 0.55);
+  max-height: 45vh;
+  overflow: auto;
+  z-index: 2;
+}
+.memory-overlay__album-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.memory-overlay__album-panel-header p {
+  margin: 0;
+  font-weight: 700;
+  color: #cbd5f5;
+  letter-spacing: 0.02em;
+}
+.memory-overlay__album-close {
+  border: none;
+  background: transparent;
+  color: #e2e8f0;
+  font-size: 1.1rem;
+  cursor: pointer;
+}
+.memory-overlay__album-thumbs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 10px;
+}
+.memory-overlay__thumb {
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  background: rgba(15, 23, 42, 0.7);
+  border-radius: 12px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  cursor: pointer;
+  color: #e2e8f0;
+  text-align: left;
+}
+.memory-overlay__thumb img {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: 8px;
+}
+.memory-overlay__thumb span {
+  font-weight: 600;
+  color: #cbd5f5;
+}
+.memory-overlay__thumb.is-active {
+  border-color: #3a8dde;
+  box-shadow: 0 0 0 2px rgba(58, 141, 222, 0.35);
+}
+.memory-overlay__share-hint {
+  margin: 0;
+  color: rgba(148, 163, 184, 0.9);
+  font-size: 0.85rem;
+}
 @media (max-width: 640px) {
   .memory-overlay__frame {
-    width: 100%;
-    height: 100%;
-    border-radius: 0;
-    padding: 18px;
+    width: 96vw;
+    height: 88vh;
+    border-radius: 18px;
+    padding: 16px;
   }
   .memory-overlay__nav {
     flex-wrap: wrap;
@@ -150,8 +249,16 @@
     width: 44px;
     height: 44px;
   }
+  .memory-overlay__actions {
+    width: 100%;
+    justify-content: center;
+  }
   .memory-overlay__close {
     width: 100%;
+  }
+  .memory-overlay__album-panel {
+    bottom: 118px;
+    max-height: 40vh;
   }
 }
 </style>
@@ -171,16 +278,45 @@
       <img data-memory-image src="" alt="">
     </div>
     <p class="memory-overlay__caption" data-memory-caption></p>
-    <div class="memory-overlay__bottom">
-      <div class="memory-overlay__nav">
-        <button type="button" data-memory-prev aria-label="Previous photo">‹</button>
-        <div class="memory-overlay__zoom">
-          <button type="button" data-memory-zoom-out aria-label="Zoom out">−</button>
-          <span data-memory-zoom-level>100%</span>
-          <button type="button" data-memory-zoom-in aria-label="Zoom in">+</button>
-        </div>
-        <button type="button" data-memory-next aria-label="Next photo">›</button>
+    <div class="memory-overlay__album-panel" id="memory-album-panel" data-memory-album-panel hidden>
+      <div class="memory-overlay__album-panel-header">
+        <p>Album photos</p>
+        <button type="button" class="memory-overlay__album-close" data-memory-album-close aria-label="Close album thumbnails">✕</button>
       </div>
+      <div class="memory-overlay__album-thumbs" data-memory-album-thumbs></div>
+    </div>
+    <div class="memory-overlay__bottom">
+      <div class="memory-overlay__nav-row">
+        <div class="memory-overlay__nav">
+          <button type="button" data-memory-prev aria-label="Previous photo">‹</button>
+          <div class="memory-overlay__zoom">
+            <button type="button" data-memory-zoom-out aria-label="Zoom out">−</button>
+            <span data-memory-zoom-level>100%</span>
+            <button type="button" data-memory-zoom-in aria-label="Zoom in">+</button>
+          </div>
+          <button type="button" data-memory-next aria-label="Next photo">›</button>
+        </div>
+        <div class="memory-overlay__actions">
+          <button type="button" data-memory-album-open aria-controls="memory-album-panel" aria-expanded="false">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="7" height="7" rx="1.5" />
+              <rect x="14" y="3" width="7" height="7" rx="1.5" />
+              <rect x="3" y="14" width="7" height="7" rx="1.5" />
+              <rect x="14" y="14" width="7" height="7" rx="1.5" />
+            </svg>
+            Album
+          </button>
+          <button type="button" data-memory-share>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 5v14" />
+              <path d="M18 11l-6-6-6 6" />
+              <path d="M5 19h14" />
+            </svg>
+            Save photo
+          </button>
+        </div>
+      </div>
+      <p class="memory-overlay__share-hint">Tap Album to jump to any photo or Save to share the current image.</p>
       <button type="button" class="memory-overlay__close" data-memory-close>Close photo ✕</button>
     </div>
   </div>

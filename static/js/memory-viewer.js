@@ -52,6 +52,11 @@
   var zoomInBtn = overlay.querySelector("[data-memory-zoom-in]");
   var zoomOutBtn = overlay.querySelector("[data-memory-zoom-out]");
   var closeEls = overlay.querySelectorAll("[data-memory-close]");
+  var albumBtn = overlay.querySelector("[data-memory-album-open]");
+  var albumPanel = overlay.querySelector("[data-memory-album-panel]");
+  var albumThumbs = overlay.querySelector("[data-memory-album-thumbs]");
+  var albumCloseBtn = overlay.querySelector("[data-memory-album-close]");
+  var shareBtn = overlay.querySelector("[data-memory-share]");
 
   function clampIndex(album, idx) {
     var total = (album.slides || []).length;
@@ -92,6 +97,68 @@
     return "Recently";
   }
 
+  function toggleAlbumPanel(forceOpen) {
+    if (!albumPanel) return;
+    var open = typeof forceOpen === "boolean" ? forceOpen : albumPanel.hidden;
+    albumPanel.hidden = !open;
+    if (albumBtn) {
+      albumBtn.setAttribute("aria-expanded", open ? "true" : "false");
+    }
+  }
+
+  function renderThumbnails(album) {
+    if (!albumThumbs || !album) return;
+    albumThumbs.innerHTML = "";
+    (album.slides || []).forEach(function (slide, idx) {
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "memory-overlay__thumb" + (idx === state.index ? " is-active" : "");
+      var img = document.createElement("img");
+      img.src = slide.image || "";
+      img.alt = slide.caption || album.title || "Memory photo";
+      var label = document.createElement("span");
+      label.textContent = "Photo " + (idx + 1);
+      btn.appendChild(img);
+      btn.appendChild(label);
+      btn.addEventListener("click", function () {
+        state.index = idx;
+        state.zoom = 1;
+        render();
+        toggleAlbumPanel(false);
+      });
+      albumThumbs.appendChild(btn);
+    });
+  }
+
+  function refreshActiveThumb(album) {
+    if (!albumThumbs || !album) return;
+    var buttons = albumThumbs.querySelectorAll(".memory-overlay__thumb");
+    buttons.forEach(function (btn, idx) {
+      btn.classList.toggle("is-active", idx === state.index);
+    });
+  }
+
+  function shareCurrentSlide() {
+    var album = albumMap[state.albumId];
+    if (!album) return;
+    var slide = (album.slides || [])[state.index];
+    if (!slide || !slide.image) return;
+    var shareData = {
+      title: album.title || "Memory photo",
+      text: slide.caption || album.title || "Memory photo",
+      url: slide.image,
+    };
+    if (navigator.canShare && navigator.canShare(shareData)) {
+      navigator.share(shareData).catch(function () {});
+      return;
+    }
+    if (navigator.share) {
+      navigator.share(shareData).catch(function () {});
+      return;
+    }
+    window.open(slide.image, "_blank");
+  }
+
   function render() {
     var album = albumMap[state.albumId];
     if (!album) return;
@@ -116,6 +183,7 @@
     if (progressEl) {
       progressEl.textContent = (state.index + 1) + "/" + slides.length;
     }
+    refreshActiveThumb(album);
     applyZoom();
   }
 
@@ -130,6 +198,8 @@
     overlay.hidden = false;
     overlay.classList.add("is-open");
     bodyLock.lock();
+    renderThumbnails(album);
+    toggleAlbumPanel(false);
     render();
     setTimeout(function () {
       frame && frame.focus();
@@ -143,6 +213,7 @@
     state.albumId = null;
     state.index = 0;
     state.zoom = 1;
+    toggleAlbumPanel(false);
     bodyLock.unlock();
   }
 
@@ -168,6 +239,21 @@
   });
   closeEls.forEach(function (btn) {
     btn.addEventListener("click", closeOverlay);
+  });
+  albumBtn && albumBtn.addEventListener("click", function () {
+    var album = albumMap[state.albumId];
+    if (!album) return;
+    if (albumThumbs && !albumThumbs.childElementCount) {
+      renderThumbnails(album);
+    }
+    toggleAlbumPanel(albumPanel ? albumPanel.hidden : true);
+  });
+  albumCloseBtn && albumCloseBtn.addEventListener("click", function () {
+    toggleAlbumPanel(false);
+    frame && frame.focus();
+  });
+  shareBtn && shareBtn.addEventListener("click", function () {
+    shareCurrentSlide();
   });
 
   overlay.addEventListener("click", function (evt) {
