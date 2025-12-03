@@ -2429,11 +2429,21 @@ def adjust_stamps(trainer_username: str, count: int, reason: str, action: str, a
     }
 
     try:
-        resp = supabase.table("lugia_ledger").insert(payload).execute()
-        if getattr(resp, "error", None):
-            return False, f"❌ Failed to update: {resp.error}"
+        ok = supabase_insert_row("lugia_ledger", payload)
+        if not ok:
+            try:
+                supabase_error = getattr(g, "supabase_last_error", "") or ""
+            except RuntimeError:
+                supabase_error = ""
+            detail = f" Details: {supabase_error}" if supabase_error else ""
+            return False, f"❌ Failed to update stamps.{detail}"
+
         return True, f"✅ Updated {trainer_username}. Applied {'+' if delta > 0 else ''}{delta} stamps."
     except Exception as e:
+        try:
+            g.supabase_last_error = str(e)
+        except RuntimeError:
+            pass
         return False, f"❌ Failed to update: {e}"
 
 @app.route("/admin/trainers/<username>/adjust-stamps", methods=["POST"], endpoint="admin_adjust_stamps_v2")
