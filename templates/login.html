@@ -273,13 +273,16 @@
     }
 
     .carousel-slide img {
-      width: 100%;
-      height: 100%;
+      max-width: 100%;
+      max-height: 100%;
+      width: auto;
+      height: auto;
       object-fit: contain;
       object-position: center;
       display: block;
-      border-radius: 0;
+      border-radius: 14px;
       background: #0b1629;
+      box-shadow: 0 0 0 10px #0b1629;
     }
 
     .carousel-dots {
