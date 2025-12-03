@@ -919,6 +919,7 @@
   top: 72px;
   width: min(420px, 100%);
   height: calc(100% - 72px);
+  min-height: 0;
   background: #fff;
   border-top-left-radius: 24px;
   border-bottom-left-radius: 24px;
@@ -978,7 +979,10 @@
 .bp-comments-content {
   padding: 16px 20px;
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -1351,6 +1355,7 @@ body.bp-modal-open {
   width: min(520px, calc(100% - 32px));
   max-width: 100%;
   max-height: calc(100% - 56px);
+  min-height: 0;
   display: flex;
   flex-direction: column;
   box-shadow: 0 20px 45px rgba(15, 23, 42, 0.2);
