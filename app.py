@@ -2404,7 +2404,6 @@ def adjust_stamps(trainer_username: str, count: int, reason: str, action: str, a
     if not supabase:
         return False, "Supabase client not initialized on server"
 
-    # validate number
     try:
         n = int(count)
         if n <= 0:
@@ -2413,26 +2412,27 @@ def adjust_stamps(trainer_username: str, count: int, reason: str, action: str, a
         return False, "Invalid count"
 
     delta = n if action == "award" else -n
+    awarded_by = (actor or "Admin").strip() or "Admin"
+    _, trainer_record = find_user(trainer_username)
+    campfire_username = ""
+    if trainer_record:
+        campfire_username = (trainer_record.get("campfire_username") or "").strip()
+
+    payload = {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "trainer": trainer_username,
+        "campfire": campfire_username,
+        "eventid": "",
+        "reason": reason or "",
+        "count": delta,
+        "awardedby": awarded_by,
+    }
 
     try:
-        resp = supabase.rpc(
-            "lugia_admin_adjust",
-            {
-                "p_trainer": trainer_username,
-                "p_delta": delta,
-                "p_reason": reason or "",
-                "p_awardedby": actor or "Admin",
-            },
-        ).execute()
+        resp = supabase.table("lugia_ledger").insert(payload).execute()
         if getattr(resp, "error", None):
             return False, f"❌ Failed to update: {resp.error}"
-        data = getattr(resp, "data", None) or {}
-        if isinstance(data, list) and data:
-            data = data[0]
-        if isinstance(data, dict) and data.get("error"):
-            return False, f"❌ Failed to update: {data.get('error')}"
-        new_total = data.get("new_total") if isinstance(data, dict) else None
-        return True, f"✅ Updated {trainer_username}. New total: {new_total}"
+        return True, f"✅ Updated {trainer_username}. Applied {'+' if delta > 0 else ''}{delta} stamps."
     except Exception as e:
         return False, f"❌ Failed to update: {e}"
 
