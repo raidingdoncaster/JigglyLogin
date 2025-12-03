@@ -633,7 +633,8 @@
   min-height:2.4em;
 }
 .mail-card--digital{
-  background:linear-gradient(120deg,rgba(255,192,203,0.25),rgba(255,249,196,0.9));
+  background:#fff7ed;
+  background:linear-gradient(120deg,#fff7ed,rgba(255,249,196,0.95));
   border-color:rgba(249,168,212,0.8);
   position:relative;
   animation:digitalPulse 6s ease-in-out infinite;
@@ -648,8 +649,9 @@
 .mail-card--digital::after{
   background-image:url("data:image/svg+xml,%3Csvg width='180' height='120' viewBox='0 0 180 120' xmlns='http://www.w3.org/2000/svg'%3E%3Cg opacity='0.35' stroke='%23f472b6' stroke-width='4' fill='none'%3E%3Cpath d='M-20 30 L50 0 L120 30 L190 0 L260 30'/%3E%3C/g%3E%3C/svg%3E");
   background-size:160px 110px;
-  opacity:0.45;
+  opacity:0.35;
   pointer-events:none;
+  mix-blend-mode:normal;
 }
 .actions-row{margin-top:20px;text-align:center;}
 .inbox-pagination{
