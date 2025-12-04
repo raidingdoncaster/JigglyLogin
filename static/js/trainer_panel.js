@@ -216,7 +216,11 @@
     if (mode !== "modal") return;
     if (root.dataset.panelFormsInit === "true") return;
     root.dataset.panelFormsInit = "true";
-    const forms = root.querySelectorAll("form");
+
+    // 🔐 IMPORTANT:
+    // Only forms that explicitly opt-in with [data-panel-ajax]
+    // will be handled via AJAX. Everything else submits normally.
+    const forms = root.querySelectorAll("form[data-panel-ajax]");
     forms.forEach((form) => {
       form.addEventListener("submit", (event) => {
         event.preventDefault();
