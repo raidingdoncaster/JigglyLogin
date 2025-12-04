@@ -5941,20 +5941,36 @@ def admin_trainers():
     # 📋 Fetch all accounts from Supabase.sheet1
     trainer_columns = "id, trainer_username, campfire_username, account_type, stamps, avatar_icon, trainer_card_background"
     try:
-        resp = None
-        try:
-            resp = supabase.table("sheet1").select(
-                f"{trainer_columns}, created_at"
-            ).execute()
-        except Exception as column_err:
-            print("⚠️ Trainer fetch with created_at failed, retrying without it:", column_err)
-            resp = supabase.table("sheet1").select(trainer_columns).execute()
-
+        resp = supabase.table("sheet1").select(trainer_columns).execute()
         all_trainers = (resp.data if resp else []) or []
+
+        first_seen_map = {}
+        try:
+            summary_resp = (
+                supabase.table("lugia_summary")
+                .select("trainer_username, campfire_username, first_seen")
+                .execute()
+            )
+            for row in summary_resp.data or []:
+                username_key = (row.get("trainer_username") or "").strip().lower()
+                campfire_key = (row.get("campfire_username") or "").strip().lower()
+                first_seen = row.get("first_seen")
+                if username_key and first_seen and username_key not in first_seen_map:
+                    first_seen_map[username_key] = first_seen
+                if campfire_key and first_seen and campfire_key not in first_seen_map:
+                    first_seen_map[campfire_key] = first_seen
+        except Exception as first_seen_err:
+            print("⚠️ Failed to fetch trainer first_seen dates:", first_seen_err)
+
         for entry in all_trainers:
             entry["account_type"] = normalize_account_type(entry.get("account_type"))
             entry.setdefault("avatar_icon", "avatar1.png")
             entry.setdefault("trainer_card_background", "default.png")
+            username_key = (entry.get("trainer_username") or "").strip().lower()
+            campfire_key = (entry.get("campfire_username") or "").strip().lower()
+            created_at = first_seen_map.get(username_key) or first_seen_map.get(campfire_key)
+            if created_at:
+                entry["created_at"] = created_at
             if entry["account_type"]:
                 account_types.add(entry["account_type"])
     except Exception as e:
