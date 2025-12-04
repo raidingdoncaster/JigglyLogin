@@ -2449,18 +2449,23 @@ def adjust_stamps(trainer_username: str, count: int, reason: str, action: str, a
 @app.route("/admin/trainers/<username>/adjust-stamps", methods=["POST"], endpoint="admin_adjust_stamps_v2")
 @app.route("/admin/trainers/<username>/adjust_stamps", methods=["POST"], endpoint="admin_adjust_stamps_legacy")
 def admin_adjust_stamps_route(username):
+    _require_admin()
     count = request.form.get("count", "0")
     action = request.form.get("action", "award")
     reason = request.form.get("reason", "")
 
-    actor = (
-        session.get("trainer_username")
-        or session.get("username")
-        or session.get("admin_username")
-        or "Admin"
-    )
+    actor = _current_actor()
 
     ok, msg = adjust_stamps(username, count, reason, action, actor)  # ← pass actor
+    if not ok:
+        try:
+            supa_error = getattr(g, "supabase_last_error", "") or ""
+        except RuntimeError:
+            supa_error = ""
+        detail = f" Supabase: {supa_error}" if supa_error else ""
+        print(
+            f"⚠️ Admin stamp adjust failed for {username} (actor={actor}, count={count}, action={action})." + detail
+        )
     if _is_trainer_panel_ajax():
         return _panel_action_response(ok, msg, username)
     flash(msg, "success" if ok else "error")
