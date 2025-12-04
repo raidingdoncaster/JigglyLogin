@@ -1880,6 +1880,8 @@ def _supabase_rest_insert(table: str, payload: dict) -> bool:
 def supabase_insert_row(table: str, payload: dict) -> bool:
     """Insert helper that retries via REST if the Supabase client errors."""
     last_error = None
+
+    # First try with the Supabase Python client
     if supabase:
         try:
             supabase.table(table).insert(payload).execute()
@@ -1893,12 +1895,19 @@ def supabase_insert_row(table: str, payload: dict) -> bool:
                 g.supabase_last_error = msg
             except RuntimeError:
                 pass
+
+    # Fallback to REST insert
     ok = _supabase_rest_insert(table, payload)
+
     if not ok and last_error:
         print(f"❌ Supabase insert ultimately failed after client+REST attempts: {last_error}")
+
     if ok:
         _clear_supabase_error()
-    return ok
+
+    # 🔑 Always return a boolean
+    return bool(ok)
+
 
 # ====== Policy registry ======
 POLICY_PAGES = [
@@ -2401,9 +2410,17 @@ import os, requests
 LUGIA_URL = os.getenv("LUGIA_WEBAPP_URL")
 
 def adjust_stamps(trainer_username: str, count: int, reason: str, action: str, actor: str = "Admin"):
+    """
+    Core stamp adjustment helper used by:
+      - Admin Trainer Manager
+      - Classic passport admin awards
+      - Catalog redemptions
+      - (and other features that call it)
+    """
     if not supabase:
         return False, "Supabase client not initialized on server"
 
+    # 1) Validate number
     try:
         n = int(count)
         if n <= 0:
@@ -2411,22 +2428,33 @@ def adjust_stamps(trainer_username: str, count: int, reason: str, action: str, a
     except Exception:
         return False, "Invalid count"
 
+    # 2) Work out delta: +n for award, -n for anything else (remove)
     delta = n if action == "award" else -n
+
+    # 3) Normalise actor and usernames
     awarded_by = (actor or "Admin").strip() or "Admin"
     normalized_username = (trainer_username or "").strip()
     resolved_username = normalized_username
     starting_stamps = None
     campfire_username = ""
 
-    _, trainer_record = find_user(trainer_username)
+    try:
+        _, trainer_record = find_user(normalized_username)
+    except Exception as e:
+        print("⚠️ find_user threw an exception in adjust_stamps:", e)
+        trainer_record = None
+
     if trainer_record:
         campfire_username = (trainer_record.get("campfire_username") or "").strip()
-        resolved_username = (trainer_record.get("trainer_username") or resolved_username).strip() or resolved_username
+        resolved_username = (
+            trainer_record.get("trainer_username") or resolved_username
+        ).strip() or resolved_username
         try:
             starting_stamps = int(trainer_record.get("stamps") or 0)
         except (TypeError, ValueError):
             starting_stamps = 0
 
+    # 4) Build ledger payload
     payload = {
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "trainer": resolved_username or normalized_username,
@@ -2438,6 +2466,7 @@ def adjust_stamps(trainer_username: str, count: int, reason: str, action: str, a
     }
 
     try:
+        # 5) Insert into lugia_ledger using our robust helper
         ok = supabase_insert_row("lugia_ledger", payload)
         if not ok:
             try:
@@ -2447,25 +2476,35 @@ def adjust_stamps(trainer_username: str, count: int, reason: str, action: str, a
             detail = f" Details: {supabase_error}" if supabase_error else ""
             return False, f"❌ Failed to update stamps.{detail}"
 
+        # 6) Update sheet1.stamps as a mirror
         new_total = None
         sync_warning = ""
+
         if trainer_record and resolved_username:
             base_total = starting_stamps if starting_stamps is not None else 0
             new_total = max(0, base_total + delta)
             try:
-                supabase.table("sheet1").update({"stamps": new_total}).eq("trainer_username", resolved_username).execute()
+                supabase.table("sheet1") \
+                    .update({"stamps": new_total}) \
+                    .eq("trainer_username", resolved_username) \
+                    .execute()
             except Exception as exc:
                 sync_warning = " Stamp total sync pending; please refresh shortly."
                 print(f"⚠️ Failed to sync sheet1 stamp total for {resolved_username}: {exc}")
 
-        message = f"✅ Updated {resolved_username or normalized_username}. Applied {'+' if delta > 0 else ''}{delta} stamps."
+        # 7) Build user-facing message
+        message = f"✅ Updated {resolved_username or normalized_username}. " \
+                  f"Applied {'+' if delta > 0 else ''}{delta} stamps."
         if new_total is not None:
             message += f" New total: {new_total}."
         if sync_warning:
             message += sync_warning
 
         return True, message
+
     except Exception as e:
+        # Catch anything unexpected so the route returns a clean JSON response instead of 500 HTML
+        print("❌ Unexpected exception in adjust_stamps:", e)
         try:
             g.supabase_last_error = str(e)
         except RuntimeError:
