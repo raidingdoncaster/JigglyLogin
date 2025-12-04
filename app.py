@@ -2413,14 +2413,23 @@ def adjust_stamps(trainer_username: str, count: int, reason: str, action: str, a
 
     delta = n if action == "award" else -n
     awarded_by = (actor or "Admin").strip() or "Admin"
-    _, trainer_record = find_user(trainer_username)
+    normalized_username = (trainer_username or "").strip()
+    resolved_username = normalized_username
+    starting_stamps = None
     campfire_username = ""
+
+    _, trainer_record = find_user(trainer_username)
     if trainer_record:
         campfire_username = (trainer_record.get("campfire_username") or "").strip()
+        resolved_username = (trainer_record.get("trainer_username") or resolved_username).strip() or resolved_username
+        try:
+            starting_stamps = int(trainer_record.get("stamps") or 0)
+        except (TypeError, ValueError):
+            starting_stamps = 0
 
     payload = {
         "timestamp": datetime.now(timezone.utc).isoformat(),
-        "trainer": trainer_username,
+        "trainer": resolved_username or normalized_username,
         "campfire": campfire_username,
         "eventid": "",
         "reason": reason or "",
@@ -2438,7 +2447,24 @@ def adjust_stamps(trainer_username: str, count: int, reason: str, action: str, a
             detail = f" Details: {supabase_error}" if supabase_error else ""
             return False, f"❌ Failed to update stamps.{detail}"
 
-        return True, f"✅ Updated {trainer_username}. Applied {'+' if delta > 0 else ''}{delta} stamps."
+        new_total = None
+        sync_warning = ""
+        if trainer_record and resolved_username:
+            base_total = starting_stamps if starting_stamps is not None else 0
+            new_total = max(0, base_total + delta)
+            try:
+                supabase.table("sheet1").update({"stamps": new_total}).eq("trainer_username", resolved_username).execute()
+            except Exception as exc:
+                sync_warning = " Stamp total sync pending; please refresh shortly."
+                print(f"⚠️ Failed to sync sheet1 stamp total for {resolved_username}: {exc}")
+
+        message = f"✅ Updated {resolved_username or normalized_username}. Applied {'+' if delta > 0 else ''}{delta} stamps."
+        if new_total is not None:
+            message += f" New total: {new_total}."
+        if sync_warning:
+            message += sync_warning
+
+        return True, message
     except Exception as e:
         try:
             g.supabase_last_error = str(e)
