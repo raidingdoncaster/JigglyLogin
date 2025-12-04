@@ -2415,7 +2415,10 @@ def adjust_stamps(trainer_username: str, count: int, reason: str, action: str, a
       - Admin Trainer Manager
       - Classic passport admin awards
       - Catalog redemptions
-      - (and other features that call it)
+    Uses the Supabase RPC `lugia_admin_adjust`, which:
+      - Writes the ledger row
+      - Updates the trainer's stamp total
+      - Returns the new total
     """
     if not supabase:
         return False, "Supabase client not initialized on server"
@@ -2431,80 +2434,41 @@ def adjust_stamps(trainer_username: str, count: int, reason: str, action: str, a
     # 2) Work out delta: +n for award, -n for anything else (remove)
     delta = n if action == "award" else -n
 
-    # 3) Normalise actor and usernames
+    # 3) Normalise actor and target username
     awarded_by = (actor or "Admin").strip() or "Admin"
-    normalized_username = (trainer_username or "").strip()
-    resolved_username = normalized_username
-    starting_stamps = None
-    campfire_username = ""
+    target_username = (trainer_username or "").strip()
 
     try:
-        _, trainer_record = find_user(normalized_username)
-    except Exception as e:
-        print("⚠️ find_user threw an exception in adjust_stamps:", e)
-        trainer_record = None
+        # 4) Use the Supabase RPC that encapsulates the ledger + total update
+        resp = supabase.rpc(
+            "lugia_admin_adjust",
+            {
+                "p_trainer": target_username,
+                "p_delta": delta,
+                "p_reason": reason or "",
+                "p_awardedby": awarded_by,
+            },
+        ).execute()
 
-    if trainer_record:
-        campfire_username = (trainer_record.get("campfire_username") or "").strip()
-        resolved_username = (
-            trainer_record.get("trainer_username") or resolved_username
-        ).strip() or resolved_username
-        try:
-            starting_stamps = int(trainer_record.get("stamps") or 0)
-        except (TypeError, ValueError):
-            starting_stamps = 0
-
-    # 4) Build ledger payload
-    payload = {
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-        "trainer": resolved_username or normalized_username,
-        "campfire": campfire_username,
-        "eventid": "",
-        "reason": reason or "",
-        "count": delta,
-        "awardedby": awarded_by,
-    }
-
-    try:
-        # 5) Insert into lugia_ledger using our robust helper
-        ok = supabase_insert_row("lugia_ledger", payload)
-        if not ok:
-            try:
-                supabase_error = getattr(g, "supabase_last_error", "") or ""
-            except RuntimeError:
-                supabase_error = ""
-            detail = f" Details: {supabase_error}" if supabase_error else ""
-            return False, f"❌ Failed to update stamps.{detail}"
-
-        # 6) Update sheet1.stamps as a mirror
+        data = getattr(resp, "data", None) or {}
         new_total = None
-        sync_warning = ""
+        # The RPC might return a dict or a list – handle both safely
+        if isinstance(data, dict):
+            new_total = data.get("new_total")
+        elif isinstance(data, list) and data:
+            maybe = data[0]
+            if isinstance(maybe, dict):
+                new_total = maybe.get("new_total")
 
-        if trainer_record and resolved_username:
-            base_total = starting_stamps if starting_stamps is not None else 0
-            new_total = max(0, base_total + delta)
-            try:
-                supabase.table("sheet1") \
-                    .update({"stamps": new_total}) \
-                    .eq("trainer_username", resolved_username) \
-                    .execute()
-            except Exception as exc:
-                sync_warning = " Stamp total sync pending; please refresh shortly."
-                print(f"⚠️ Failed to sync sheet1 stamp total for {resolved_username}: {exc}")
-
-        # 7) Build user-facing message
-        message = f"✅ Updated {resolved_username or normalized_username}. " \
-                  f"Applied {'+' if delta > 0 else ''}{delta} stamps."
+        # 5) Build a friendly message
+        msg = f"✅ Updated {target_username}. Applied {'+' if delta > 0 else ''}{delta} stamps."
         if new_total is not None:
-            message += f" New total: {new_total}."
-        if sync_warning:
-            message += sync_warning
+            msg += f" New total: {new_total}"
 
-        return True, message
+        return True, msg
 
     except Exception as e:
-        # Catch anything unexpected so the route returns a clean JSON response instead of 500 HTML
-        print("❌ Unexpected exception in adjust_stamps:", e)
+        # Store error so admin routes / AJAX can include it in logs
         try:
             g.supabase_last_error = str(e)
         except RuntimeError:
