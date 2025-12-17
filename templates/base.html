@@ -1899,6 +1899,18 @@
         });
       };
 
+      const removeInboxCard = (messageId) => {
+        if (!messageId) return;
+        document.querySelectorAll(`.mail-card[data-message-id='${CSS.escape(messageId)}']`).forEach((card) => {
+          const list = card.closest(".inbox-list");
+          card.remove();
+          if (list && !list.querySelector(".mail-card")) {
+            const empty = list.closest(".inbox-panel")?.querySelector("[data-empty-state]");
+            if (empty) empty.hidden = false;
+          }
+        });
+      };
+
       const closeReceiptModal = () => {
         if (!inboxReceiptOverlay) return;
         inboxReceiptFrame?.setAttribute("src", "");
@@ -1955,6 +1967,42 @@
         const panel = inboxMessageContent.querySelector(".inbox-message-panel");
         if (panel && panel.dataset.messageId) {
           setInboxCardReadState(panel.dataset.messageId, true);
+        }
+        const deleteBtn = inboxMessageContent.querySelector("[data-inbox-delete]");
+        if (deleteBtn && panel && panel.dataset.messageId) {
+          deleteBtn.addEventListener("click", async () => {
+            const messageId = panel.dataset.messageId;
+            const confirmed = window.confirm("Delete this message? This cannot be undone.");
+            if (!confirmed) return;
+            try {
+              const resp = await fetch("/api/inbox/bulk", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ action: "delete", message_ids: [messageId] }),
+              });
+              const data = await resp.json();
+              if (!data.success) {
+                alert(data.error || "Unable to delete this message right now.");
+                return;
+              }
+              const result = (data.results || []).find((r) => r.id === messageId);
+              if (!result || !result.success) {
+                alert("Unable to delete this message right now.");
+                return;
+              }
+              removeInboxCard(messageId);
+              closeInboxMessage();
+              if (!document.querySelector(".mail-card") && !document.querySelector("[data-empty-state][hidden=false]")) {
+                document.querySelectorAll("[data-empty-state]").forEach((empty) => (empty.hidden = false));
+              }
+              if (!inboxMessageOverlay) {
+                window.location.href = "/inbox";
+              }
+            } catch (err) {
+              console.error("Delete inbox message failed", err);
+              alert("Unable to delete this message right now.");
+            }
+          });
         }
       };
 

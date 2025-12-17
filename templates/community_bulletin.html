@@ -378,10 +378,10 @@
   inset: 0;
   background: rgba(2, 6, 23, 0.85);
   display: none;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  padding: 20px;
-  z-index: 1200;
+  padding: 96px 20px 20px;
+  z-index: 1500;
 }
 
 .cb-search-overlay.is-visible {
@@ -390,7 +390,7 @@
 
 .cb-search-panel {
   width: min(960px, 95vw);
-  max-height: 92vh;
+  max-height: calc(100vh - 160px);
   background: #fff;
   color: #0f172a;
   border-radius: 28px;
@@ -755,10 +755,13 @@ body.cb-modal-open {
     flex-wrap: wrap;
     justify-content: center;
   }
+  .cb-search-overlay {
+    padding: 80px 12px 16px;
+  }
   .cb-search-panel {
     width: 100%;
     padding: 16px;
-    max-height: 96vh;
+    max-height: calc(100vh - 140px);
   }
 }
 </style>

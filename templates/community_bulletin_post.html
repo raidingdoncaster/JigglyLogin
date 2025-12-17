@@ -34,22 +34,6 @@
   </div>
 </section>
 
-{% if memory_album %}
-<section class="bp-memory-banner">
-  <div>
-    <p class="bp-memory-eyebrow">Memory album</p>
-    <h3>View {{ memory_album.slide_count }} highlight photos from this post</h3>
-    <p>{{ memory_album.summary or post.summary }}</p>
-  </div>
-  <button type="button"
-          class="bp-memory-btn"
-          data-memory-launch="{{ memory_album.id }}"
-          data-memory-start="0">
-    View the full memory
-  </button>
-</section>
-{% endif %}
-
 <div class="bp-layout">
   <article class="bp-article"
            data-bulletin-slug="{{ post.slug }}"
@@ -194,66 +178,83 @@
     {% endfor %}
   </article>
 
-  <aside class="bp-sidebar">
-    <div class="bp-card">
-      <div class="bp-card-title">
-        <span>Author & Tags</span>
-      </div>
-      <div class="bp-share-row">
-        <button type="button" class="bp-copy-link" data-copy-link data-url="{{ request.url }}">Copy link</button>
-        <div class="bp-share-icons">
-          {% for handle in post.social_handles or [] %}
-          <a href="{{ handle.url }}" target="_blank" rel="noopener" title="{{ handle.label }}">{{ handle.icon }}</a>
-          {% endfor %}
-        </div>
-      </div>
-      {% if post.tags %}
-      <div class="bp-tag-list">
-        {% for tag in post.tags %}
-        <span class="bp-chip">{{ tag }}</span>
+</div>
+
+<div class="bp-widgets">
+  <div class="bp-card">
+    <div class="bp-card-title">
+      <span>Author & Tags</span>
+    </div>
+    <div class="bp-share-row">
+      <button type="button" class="bp-copy-link" data-copy-link data-url="{{ request.url }}">Copy link</button>
+      <div class="bp-share-icons">
+        {% for handle in post.social_handles or [] %}
+        <a href="{{ handle.url }}" target="_blank" rel="noopener" title="{{ handle.label }}">{{ handle.icon }}</a>
         {% endfor %}
-      </div>
-      {% endif %}
-      <div class="bp-author-card">
-        <img src="{{ (post.author_avatar or 'avatars/avatar1.png')|bulletin_media }}" alt="{{ post.author or 'RDAB Staff' }} avatar">
-        <div>
-          <strong>{{ post.author or 'RDAB Staff' }}</strong>
-          {% if post.author_link %}
-          <a href="{{ post.author_link }}" target="_blank" rel="noopener">{{ post.author_link }}</a>
-          {% endif %}
-          {% if post.author_bio %}
-          <p>{{ post.author_bio }}</p>
-          {% endif %}
-          {% if post.social_handles %}
-          <div class="bp-author-socials">
-            {% for handle in post.social_handles %}
-            <a href="{{ handle.url }}" target="_blank" rel="noopener">{{ handle.label }}</a>
-            {% endfor %}
-          </div>
-          {% endif %}
-        </div>
       </div>
     </div>
-
-    {% if related_posts %}
-    <div class="bp-card">
-      <div class="bp-card-title">
-        <span>Trending 🔥</span>
-      </div>
-      <div class="bp-related-list">
-        {% for related in related_posts %}
-        <a class="bp-related-item" href="{{ url_for('community_bulletin_post', slug=related.slug) }}">
-          <img src="{{ related.header_image|bulletin_media }}" alt="{{ related.title }}">
-          <div>
-            <strong>{{ related.title }}</strong>
-            <span>{{ related.author or 'RDAB Staff' }} • {{ related.published_at|to_date }}</span>
-          </div>
-        </a>
-        {% endfor %}
-      </div>
+    {% if post.tags %}
+    <div class="bp-tag-list">
+      {% for tag in post.tags %}
+      <span class="bp-chip">{{ tag }}</span>
+      {% endfor %}
     </div>
     {% endif %}
-  </aside>
+    <div class="bp-author-card">
+      <img src="{{ (post.author_avatar or 'avatars/avatar1.png')|bulletin_media }}" alt="{{ post.author or 'RDAB Staff' }} avatar">
+      <div>
+        <strong>{{ post.author or 'RDAB Staff' }}</strong>
+        {% if post.author_link %}
+        <a href="{{ post.author_link }}" target="_blank" rel="noopener">{{ post.author_link }}</a>
+        {% endif %}
+        {% if post.author_bio %}
+        <p>{{ post.author_bio }}</p>
+        {% endif %}
+        {% if post.social_handles %}
+        <div class="bp-author-socials">
+          {% for handle in post.social_handles %}
+          <a href="{{ handle.url }}" target="_blank" rel="noopener">{{ handle.label }}</a>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  {% if memory_album %}
+  <section class="bp-memory-banner">
+    <div>
+      <p class="bp-memory-eyebrow">Memory album</p>
+      <h3>View {{ memory_album.slide_count }} highlight photos from this post</h3>
+      <p>{{ memory_album.summary or post.summary }}</p>
+    </div>
+    <button type="button"
+            class="bp-memory-btn"
+            data-memory-launch="{{ memory_album.id }}"
+            data-memory-start="0">
+      View the full memory
+    </button>
+  </section>
+  {% endif %}
+
+  {% if related_posts %}
+  <div class="bp-card">
+    <div class="bp-card-title">
+      <span>Trending 🔥</span>
+    </div>
+    <div class="bp-related-list">
+      {% for related in related_posts %}
+      <a class="bp-related-item" href="{{ url_for('community_bulletin_post', slug=related.slug) }}">
+        <img src="{{ related.header_image|bulletin_media }}" alt="{{ related.title }}">
+        <div>
+          <strong>{{ related.title }}</strong>
+          <span>{{ related.author or 'RDAB Staff' }} • {{ related.published_at|to_date }}</span>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
 </div>
 
 <div class="bp-back-bottom">
@@ -512,7 +513,7 @@
 
 .bp-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 320px;
+  grid-template-columns: minmax(0, 1fr);
   gap: 24px;
 }
 
@@ -869,12 +870,6 @@
   color: #475569;
 }
 
-.bp-sidebar {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
-
 .bp-back-bottom {
   margin-top: 32px;
   text-align: center;
@@ -929,6 +924,7 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  touch-action: pan-y;
 }
 
 .bp-comments-panel.is-open .bp-comments-sheet {
@@ -986,6 +982,9 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
+  position: relative;
+  z-index: 1;
+  touch-action: pan-y;
 }
 
 .bp-comment {
@@ -1469,6 +1468,13 @@ body.bp-modal-open {
   background: #f97316;
 }
 
+.bp-widgets {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 18px;
+  margin-top: 24px;
+}
+
 .bp-like-particle {
   position: absolute;
   top: 50%;
@@ -1547,10 +1553,6 @@ body.bp-modal-open {
 @media (max-width: 1024px) {
   .bp-layout {
     grid-template-columns: 1fr;
-  }
-
-  .bp-sidebar {
-    order: -1;
   }
 }
 

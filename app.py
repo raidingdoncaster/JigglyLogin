@@ -656,10 +656,11 @@ def fetch_bulletin_comments_from_supabase(post_id: str) -> list[dict]:
                 profile_url = url_for("api_public_trainer_profile", username=trainer_username)
             except RuntimeError:
                 profile_url = f"/api/trainers/{quote_plus(trainer_username)}/profile"
+        avatar_icon = row.get("trainer_avatar") or _trainer_avatar_fallback(row.get("trainer_username"))
         comment = {
             "id": cid,
             "author": trainer_username or "Trainer",
-            "avatar": _trainer_avatar_fallback(row.get("trainer_username")),
+            "avatar": avatar_icon,
             "timestamp": row.get("created_at"),
             "body": row.get("body"),
             "replies": [],
@@ -8182,10 +8183,17 @@ def api_bulletin_comments(slug):
     if not clean_body:
         return jsonify({"error": "Comment cannot be empty"}), 400
     parent_comment_row = None
+    author_user = get_current_trainer_user()
+    trainer_avatar = None
+    if author_user:
+        trainer_avatar = author_user.get("avatar_icon")
+    if not trainer_avatar:
+        trainer_avatar = _trainer_avatar_fallback(trainer)
     insert_payload = {
         "post_id": post_id,
         "trainer_username": trainer,
         "body": clean_body,
+        "trainer_avatar": trainer_avatar,
     }
     if parent_id:
         parent_depth = _bulletin_comment_depth(post_id, parent_id)

@@ -17,16 +17,12 @@
         </div>
       </div>
       <div class="right">
-        {% if panel_mode %}
-          <a class="btn secondary"
-             href="{{ url_for('inbox', panel=1) }}"
-             data-inbox-panel-link="true">⬅ Inbox</a>
-          <button type="button"
-                  class="btn tertiary"
-                  data-inbox-panel-close>✕ Close</button>
-        {% else %}
-          <a class="btn secondary" href="{{ url_for('inbox') }}">⬅ Back to Inbox</a>
-        {% endif %}
+        <button type="button"
+                class="btn danger"
+                data-inbox-delete
+                aria-label="Delete message">
+          🗑 Delete
+        </button>
       </div>
     </div>
 
@@ -129,6 +125,7 @@
 .btn.primary { background:#3a8dde; color:#fff; box-shadow:0 8px 20px rgba(58,141,222,0.25); }
 .btn.secondary { background:#eef2ff; color:#3a8dde; }
 .btn.tertiary { background:#fff; color:#0f172a; box-shadow:0 4px 12px rgba(15,23,42,0.12); }
+.btn.danger { background:#fee2e2; color:#b91c1c; box-shadow:0 4px 12px rgba(239,68,68,0.2); }
 .aud { background:#f4f4f5; padding:2px 8px; border-radius:999px; font-size:.8em; font-weight:600; }
 .thread-card { margin-top:18px; padding:16px; border-radius:14px; background:#f8fafc; border:1px solid #e2e8f0; }
 .thread-header { font-weight:600; margin-bottom:12px; color:#0f172a; }

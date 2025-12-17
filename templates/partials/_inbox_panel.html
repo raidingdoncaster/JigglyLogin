@@ -100,6 +100,8 @@
       {% set read = trainer in (msg.read_by or []) %}
       {% set is_placeholder = msg.get('is_placeholder') %}
       {% set is_digital = msg.get('is_digital_code') %}
+      {% set metadata = msg.metadata or {} %}
+      {% set code_value = msg.get('digital_code') or metadata.get('reward_code') %}
       {% set message_url = url_for('inbox_message', message_id=msg.id) %}
       <article class="mail-card {{ 'is-read' if read else 'is-unread' }} {{ 'mail-card--digital' if is_digital else '' }}"
                data-message-id="{{ msg.id }}"
@@ -151,10 +153,11 @@
             {% endif %}
           </div>
           {% set raw_snippet = msg.message|striptags|replace('\\r\\n', ' ')|replace('\\n', ' ') %}
-          {% if raw_snippet %}
-            {% set snippet = raw_snippet %}
-          {% elif is_digital and msg.get('digital_code') %}
-            {% set snippet = 'Your digital code: ' ~ msg.get('digital_code') %}
+          {% set trimmed_snippet = raw_snippet|trim %}
+          {% if trimmed_snippet %}
+            {% set snippet = trimmed_snippet %}
+          {% elif is_digital and code_value %}
+            {% set snippet = 'Your digital code: ' ~ code_value %}
           {% else %}
             {% set snippet = 'Open to view message details.' %}
           {% endif %}
