@@ -524,11 +524,19 @@ function setWatchlistCount(count) {
   }
 }
 
+const scrollLock = window.__overlayLock || { lock(){}, unlock(){} };
+let modalLocked = false;
 function syncBodyScrollLock() {
   const modalOpen =
     (watchlistModal && !watchlistModal.classList.contains("hidden")) ||
     (tutorialModal && !tutorialModal.classList.contains("hidden"));
-  document.body.style.overflow = modalOpen ? "hidden" : "auto";
+  if (modalOpen === modalLocked) return;
+  modalLocked = modalOpen;
+  if (modalOpen) {
+    scrollLock.lock();
+  } else {
+    scrollLock.unlock();
+  }
 }
 
 function renderWatchlistMessage(message, count) {

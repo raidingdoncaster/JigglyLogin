@@ -266,6 +266,13 @@
     if (!refs) return;
     refs.modal.classList.add("is-open");
     refs.modal.removeAttribute("hidden");
+    if (window.OverlayManager) {
+      window.OverlayManager.open("content-filter", {
+        element: refs.modal,
+        backdrop: refs.modal,
+        onRequestClose: hideWarning,
+      });
+    }
     if (refs.match) {
       refs.match.textContent = decision.match || "phrase";
     }
@@ -279,6 +286,9 @@
     if (!refs) return;
     refs.modal.classList.remove("is-open");
     refs.modal.setAttribute("hidden", "hidden");
+    if (window.OverlayManager) {
+      window.OverlayManager.close("content-filter");
+    }
   }
 
   document.addEventListener("click", function (event) {

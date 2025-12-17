@@ -20,6 +20,7 @@
       fetch("/pwa-flag", { method: "POST" });
     }
   </script>
+  <script src="{{ url_for('static', filename='js/overlay-manager.js') }}"></script>
 
   <!-- iOS PWA -->
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -40,9 +41,20 @@
       --brand:#3a8dde;
       --brand2:#5eb8ff;
       --header-height:56px;
+      --z-overlay-base:9000;
+      --z-overlay:var(--z-overlay-base);
+      --z-modal:calc(var(--z-overlay-base) + 100);
+      --z-dialog:calc(var(--z-overlay-base) + 200);
       --identity-font:'Space Grotesk','JetBrains Mono','Source Code Pro','Consolas','SFMono-Regular',monospace;
     }
     *,*::before,*::after{box-sizing:border-box;}
+    html.is-scroll-locked,
+    body.is-scroll-locked{
+      overflow:hidden;
+      touch-action:none;
+      overscroll-behavior:none;
+      height:100%;
+    }
     body{
       margin:0;
       font-family:'Montserrat',sans-serif;
@@ -110,6 +122,8 @@
       width:44px; height:44px; display:flex; align-items:center; justify-content:center;
       padding:0; border:0; background:transparent; cursor:pointer; flex:0 0 auto;
     }
+    .nav-item img.nav-icon,
+    .nav-item svg{ pointer-events:none; }
     .nav-item img.nav-icon{ max-width:40px; max-height:40px; width:auto; height:auto; display:block; }
 
     /* Stamp container */
@@ -135,7 +149,7 @@
       align-items:flex-start;
       justify-content:center;
       padding:clamp(20px,8vh,60px) 16px 32px;
-      z-index:6500;
+      z-index:var(--z-overlay);
       opacity:0;
       pointer-events:none;
       transition:opacity .3s ease;
@@ -176,6 +190,7 @@
       transform:translateY(30px) scale(.94);
       opacity:0;
       transition:transform .5s cubic-bezier(.19,1,.22,1),opacity .35s ease;
+      z-index:var(--z-dialog);
     }
     .inbox-panel-overlay.is-visible .inbox-panel-dialog{
       transform:translateY(0) scale(1);
@@ -194,6 +209,7 @@
       border-radius:18px 18px 70px 70px;
       box-shadow:0 15px 30px rgba(15,23,42,0.25);
       opacity:0;
+      pointer-events:none;
     }
     .inbox-panel-overlay.is-visible .inbox-panel-dialog::before{
       animation:envelopeFlap .9s ease forwards .05s;
@@ -226,7 +242,7 @@
       justify-content:center;
       padding:80px 16px 24px;
       backdrop-filter:blur(4px);
-      z-index:7000;
+      z-index:var(--z-overlay);
       opacity:0;
       pointer-events:none;
       transition:opacity .25s ease;
@@ -252,6 +268,7 @@
       overscroll-behavior:contain;
       transform:translateY(20px);
       transition:transform .25s ease;
+      z-index:var(--z-dialog);
     }
     .inbox-message-overlay.is-visible .inbox-message-dialog,
     .inbox-receipt-overlay.is-visible .inbox-receipt-dialog{
@@ -434,7 +451,7 @@
     /* Modal: Manage Account */
     .modal-backdrop{
       position:fixed; inset:0; background:rgba(0,0,0,.45);
-      display:none; align-items:flex-end; justify-content:center; z-index:3000;
+      display:none; align-items:flex-end; justify-content:center; z-index:var(--z-overlay);
     }
     .modal-backdrop.is-open{display:flex;}
     .modal-backdrop[hidden]{display:none;}
@@ -444,6 +461,7 @@
       -webkit-overflow-scrolling:touch;
       overscroll-behavior:contain;
       animation:slideUp .25s ease-out;
+      z-index:var(--z-dialog);
     }
     @keyframes slideUp{ from{ transform:translateY(24px); opacity:.8;} to{ transform:none; opacity:1;} }
     .modal-header{
@@ -501,7 +519,7 @@
       align-items: center;
       justify-content: center;
       padding: 20px;
-      z-index: 1200;
+      z-index: var(--z-overlay);
       pointer-events: none;
       opacity: 0;
       transition: opacity 0.25s ease;
@@ -525,7 +543,7 @@
       -webkit-overflow-scrolling: touch;
       overscroll-behavior: contain;
       background: transparent;
-      z-index: 1;
+      z-index: var(--z-dialog);
       display: flex;
       flex-direction: column;
       gap: 16px;
@@ -1292,7 +1310,7 @@
     .content-filter-modal {
       position: fixed;
       inset: 0;
-      z-index: 7000;
+      z-index: var(--z-overlay);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -1317,6 +1335,7 @@
       overflow: hidden;
       -webkit-overflow-scrolling: touch;
       overscroll-behavior: contain;
+      z-index: var(--z-dialog);
     }
     .content-filter-modal__halo {
       position: absolute;
@@ -1432,32 +1451,11 @@
   <script src="{{ url_for('static', filename='js/content-filter.js') }}"></script>
 
   <script>
-    window.addEventListener("DOMContentLoaded",()=>{
-      if (document.body) {
-        document.body.style.overflow="auto";
-        delete document.body.dataset.scrollLocked;
-      }
-      const bodyScrollLock=(()=>{
-        let locks=0;
-        return{
-          lock(){
-            locks+=1;
-            if(locks===1){
-              document.body.dataset.scrollLocked="true";
-              document.body.style.overflow="hidden";
-            }
-          },
-          unlock(){
-            locks=Math.max(locks-1,0);
-            if(locks===0){
-              delete document.body.dataset.scrollLocked;
-              document.body.style.overflow="auto";
-            }
-          }
-        };
-      })();
-      window.__overlayLock=bodyScrollLock;
+    (function () {
+      const bodyScrollLock = window.__overlayLock || { lock(){}, unlock(){} };
+      const warnMissing = (label) => console.warn(`[Overlay] Missing ${label} node`);
 
+      window.addEventListener("DOMContentLoaded",()=>{
       const headerEl=document.querySelector(".site-header");
       const setHeaderOffset=()=>{
         if(!headerEl) return;
@@ -1485,6 +1483,9 @@
       const inboxOverlay = document.getElementById("inboxPanelOverlay");
       const inboxContent = document.getElementById("inboxPanelContent");
       let inboxLastUrl = "/inbox?panel=1";
+      if (!inboxBtn) warnMissing("inbox toggle button");
+      if (!inboxOverlay) warnMissing("inbox overlay");
+      if (!inboxContent) warnMissing("inbox content container");
 
       const setInboxButtonState = (isOpen) => {
         if (!inboxBtn) return;
@@ -1804,25 +1805,51 @@
       const openInboxPanel = (url) => {
         if (!inboxOverlay || !inboxContent) return;
         if (url) inboxLastUrl = url;
-        inboxOverlay.classList.add("is-visible");
-        inboxOverlay.setAttribute("aria-hidden", "false");
         document.body.classList.add("has-inbox-panel");
-        bodyScrollLock.lock();
+        if (window.OverlayManager) {
+          window.OverlayManager.open("inbox-panel", {
+            element: inboxOverlay,
+            backdrop: inboxOverlay,
+            onRequestClose: closeInboxPanel,
+            focusTarget: inboxBtn,
+            restoreFocus: false,
+          });
+        } else {
+          bodyScrollLock.lock();
+          inboxOverlay.classList.add("is-visible");
+          inboxOverlay.setAttribute("aria-hidden", "false");
+        }
         setInboxButtonState(true);
         loadInboxPanel(inboxLastUrl);
       };
 
       const closeInboxPanel = () => {
         if (!inboxOverlay) return;
-        inboxOverlay.classList.remove("is-visible");
-        inboxOverlay.setAttribute("aria-hidden", "true");
         document.body.classList.remove("has-inbox-panel");
-        bodyScrollLock.unlock();
+        if (window.OverlayManager) {
+          window.OverlayManager.close("inbox-panel");
+        } else {
+          inboxOverlay.classList.remove("is-visible");
+          inboxOverlay.setAttribute("aria-hidden", "true");
+          bodyScrollLock.unlock();
+        }
         setInboxButtonState(false);
         if (inboxBtn) {
           inboxBtn.focus({ preventScroll: true });
+        } else {
+          warnMissing("inbox toggle button");
         }
       };
+
+      if (window.OverlayManager) {
+        window.OverlayManager.register("inbox-panel", {
+          element: inboxOverlay,
+          backdrop: inboxOverlay,
+          onRequestClose: closeInboxPanel,
+          focusTarget: inboxBtn,
+          restoreFocus: false,
+        });
+      }
 
       window.RDAB = window.RDAB || {};
       window.RDAB.openInboxPanel = openInboxPanel;
@@ -1833,11 +1860,15 @@
       const inboxMessageContent = document.getElementById("inboxMessageContent");
       const inboxMessageClose = document.querySelector("[data-inbox-message-close]");
       let inboxMessageLastFocus = null;
+      if (!inboxMessageOverlay) warnMissing("inbox message overlay");
+      if (!inboxMessageContent) warnMissing("inbox message content");
 
       const inboxReceiptOverlay = document.getElementById("inboxReceiptOverlay");
       const inboxReceiptClose = document.querySelector("[data-inbox-receipt-close]");
       const inboxReceiptFrame = document.getElementById("inboxReceiptFrame");
       const inboxReceiptLoading = document.querySelector("[data-inbox-receipt-loading]");
+      if (!inboxReceiptOverlay) warnMissing("inbox receipt overlay");
+      if (!inboxReceiptFrame) warnMissing("inbox receipt frame");
 
       const setInboxCardReadState = (messageId, isRead) => {
         if (!messageId) return;
@@ -1856,11 +1887,15 @@
 
       const closeReceiptModal = () => {
         if (!inboxReceiptOverlay) return;
-        inboxReceiptOverlay.classList.remove("is-visible");
-        inboxReceiptOverlay.setAttribute("aria-hidden", "true");
         inboxReceiptFrame?.setAttribute("src", "");
         inboxReceiptLoading?.classList.remove("hidden");
-        bodyScrollLock.unlock();
+        if (window.OverlayManager) {
+          window.OverlayManager.close("inbox-receipt");
+        } else {
+          inboxReceiptOverlay.classList.remove("is-visible");
+          inboxReceiptOverlay.setAttribute("aria-hidden", "true");
+          bodyScrollLock.unlock();
+        }
       };
 
       const openReceiptModal = (url) => {
@@ -1868,11 +1903,20 @@
           window.open(url, "_blank", "noopener");
           return;
         }
-        inboxReceiptOverlay.classList.add("is-visible");
-        inboxReceiptOverlay.setAttribute("aria-hidden", "false");
         inboxReceiptLoading?.classList.remove("hidden");
         inboxReceiptFrame.src = url;
-        bodyScrollLock.lock();
+        if (window.OverlayManager) {
+          window.OverlayManager.open("inbox-receipt", {
+            element: inboxReceiptOverlay,
+            backdrop: inboxReceiptOverlay,
+            onRequestClose: closeReceiptModal,
+            restoreFocus: false,
+          });
+        } else {
+          inboxReceiptOverlay.classList.add("is-visible");
+          inboxReceiptOverlay.setAttribute("aria-hidden", "false");
+          bodyScrollLock.lock();
+        }
       };
 
       inboxReceiptFrame?.addEventListener("load", () => {
@@ -1926,21 +1970,50 @@
           return;
         }
         inboxMessageLastFocus = document.activeElement;
-        inboxMessageOverlay.classList.add("is-visible");
-        inboxMessageOverlay.setAttribute("aria-hidden", "false");
-        bodyScrollLock.lock();
+        if (window.OverlayManager) {
+          window.OverlayManager.open("inbox-message", {
+            element: inboxMessageOverlay,
+            backdrop: inboxMessageOverlay,
+            onRequestClose: closeInboxMessage,
+            focusTarget: inboxMessageLastFocus,
+            restoreFocus: false,
+          });
+        } else {
+          inboxMessageOverlay.classList.add("is-visible");
+          inboxMessageOverlay.setAttribute("aria-hidden", "false");
+          bodyScrollLock.lock();
+        }
         loadInboxMessageContent(url);
       };
 
       const closeInboxMessage = () => {
         if (!inboxMessageOverlay) return;
-        inboxMessageOverlay.classList.remove("is-visible");
-        inboxMessageOverlay.setAttribute("aria-hidden", "true");
-        bodyScrollLock.unlock();
+        if (window.OverlayManager) {
+          window.OverlayManager.close("inbox-message");
+        } else {
+          inboxMessageOverlay.classList.remove("is-visible");
+          inboxMessageOverlay.setAttribute("aria-hidden", "true");
+          bodyScrollLock.unlock();
+        }
         if (inboxMessageLastFocus && typeof inboxMessageLastFocus.focus === "function") {
           inboxMessageLastFocus.focus({ preventScroll: true });
         }
       };
+
+      if (window.OverlayManager) {
+        window.OverlayManager.register("inbox-message", {
+          element: inboxMessageOverlay,
+          backdrop: inboxMessageOverlay,
+          onRequestClose: closeInboxMessage,
+          restoreFocus: false,
+        });
+        window.OverlayManager.register("inbox-receipt", {
+          element: inboxReceiptOverlay,
+          backdrop: inboxReceiptOverlay,
+          onRequestClose: closeReceiptModal,
+          restoreFocus: false,
+        });
+      }
 
       inboxMessageOverlay?.addEventListener("click", (event) => {
         if (event.target === inboxMessageOverlay) {
@@ -1966,13 +2039,17 @@
         }
       });
 
-      if (inboxBtn && inboxOverlay && inboxContent) {
-        inboxBtn.addEventListener("click", (event) => {
-          event.preventDefault();
-          openInboxPanel("/inbox?panel=1");
-        });
-
-        inboxOverlay.addEventListener("click", (event) => {
+      if (inboxOverlay && inboxContent) {
+        document.addEventListener("click", (event) => {
+          const inboxToggle = event.target.closest("#inboxToggle");
+          if (inboxToggle) {
+            event.preventDefault();
+            openInboxPanel("/inbox?panel=1");
+            return;
+          }
+          if (!inboxOverlay.contains(event.target) && event.target !== inboxOverlay) {
+            return;
+          }
           if (event.target === inboxOverlay) {
             closeInboxPanel();
             return;
@@ -1990,9 +2067,9 @@
           }
         });
 
-        inboxOverlay.addEventListener("submit", (event) => {
+        document.addEventListener("submit", (event) => {
           const form = event.target.closest("[data-inbox-panel-form]");
-          if (!form) return;
+          if (!form || !form.closest("#inboxPanelOverlay")) return;
           event.preventDefault();
           const formData = new FormData(form);
           const url = new URL(form.getAttribute("action") || "/inbox", window.location.origin);
@@ -2004,71 +2081,84 @@
           }
           loadInboxPanel(url.pathname + "?" + url.searchParams.toString());
         });
-
-        document.addEventListener("keydown", (event) => {
-          if (event.key !== "Escape") return;
-          if (inboxReceiptOverlay && inboxReceiptOverlay.classList.contains("is-visible")) {
-            event.preventDefault();
-            closeReceiptModal();
-            return;
-          }
-          if (inboxMessageOverlay && inboxMessageOverlay.classList.contains("is-visible")) {
-            event.preventDefault();
-            closeInboxMessage();
-            return;
-          }
-          if (inboxOverlay.classList.contains("is-visible")) {
-            event.preventDefault();
-            closeInboxPanel();
-          }
-        });
       }
+
+      document.addEventListener("keydown", (event) => {
+        if (window.OverlayManager) return;
+        if (event.key !== "Escape") return;
+        if (inboxReceiptOverlay && inboxReceiptOverlay.classList.contains("is-visible")) {
+          event.preventDefault();
+          closeReceiptModal();
+          return;
+        }
+        if (inboxMessageOverlay && inboxMessageOverlay.classList.contains("is-visible")) {
+          event.preventDefault();
+          closeInboxMessage();
+          return;
+        }
+        if (inboxOverlay && inboxOverlay.classList.contains("is-visible")) {
+          event.preventDefault();
+          closeInboxPanel();
+        }
+      });
       enhanceInboxPanel(document);
 
       // Avatar dropdown
       const ab=document.getElementById("avatarToggle");
       const ad=document.getElementById("avatarDropdown");
+      if (!ab) warnMissing("avatar toggle");
+      if (!ad) warnMissing("avatar dropdown");
       const closeAvatarDropdown=()=>{
-        if(!ad) return;
+        if(!ad){
+          warnMissing("avatar dropdown");
+          return;
+        }
         ad.classList.remove("is-open");
         ad.setAttribute("aria-hidden","true");
       };
       const openAvatarDropdown=()=>{
-        if(!ad) return;
+        if(!ad){
+          warnMissing("avatar dropdown");
+          return;
+        }
         ad.classList.add("is-open");
         ad.setAttribute("aria-hidden","false");
       };
-      if(ab && ad){
-        ab.addEventListener("click",(e)=>{
-          e.stopPropagation();
-          if(ad.classList.contains("is-open")) closeAvatarDropdown();
+      document.addEventListener("click",(e)=>{
+        const toggle=e.target.closest("#avatarToggle");
+        const insideDropdown=ad && ad.contains(e.target);
+        if(toggle){
+          e.preventDefault();
+          if(ad && ad.classList.contains("is-open")) closeAvatarDropdown();
           else openAvatarDropdown();
-        });
-        document.addEventListener("click",(e)=>{
-          if(!ad.contains(e.target) && !ab.contains(e.target)) closeAvatarDropdown();
-        });
+          return;
+        }
+        if(ad && !insideDropdown){
+          closeAvatarDropdown();
+        }
+      });
+      if(ad){
         ad.addEventListener("click",(e)=>e.stopPropagation());
       }
       window.closeAvatarDropdown=closeAvatarDropdown;
       window.openAvatarDropdown=openAvatarDropdown;
-      const navProfileButton=document.querySelector("[data-nav-view-profile]");
-      if(navProfileButton){
-        navProfileButton.addEventListener("click",(event)=>{
-          event.preventDefault();
-          closeAvatarDropdown();
-          const username=(navProfileButton.getAttribute("data-nav-profile-username") || CURRENT_TRAINER_USERNAME || "").trim();
-          if(!username || !window.TrainerProfilePopover || typeof window.TrainerProfilePopover.open!=="function"){
-            return;
-          }
-          const displayName=navProfileButton.textContent.trim() || username;
-          window.TrainerProfilePopover.open({
-            username,
-            url: `/api/trainers/${encodeURIComponent(username)}/profile`,
-            displayName,
-            editable:true,
-          });
+      document.addEventListener("click",(event)=>{
+        const navProfileButton=event.target.closest("[data-nav-view-profile]");
+        if(!navProfileButton) return;
+        event.preventDefault();
+        closeAvatarDropdown();
+        const username=(navProfileButton.getAttribute("data-nav-profile-username") || CURRENT_TRAINER_USERNAME || "").trim();
+        if(!username || !window.TrainerProfilePopover || typeof window.TrainerProfilePopover.open!=="function"){
+          return;
+        }
+        const displayName=navProfileButton.textContent.trim() || username;
+        window.TrainerProfilePopover.open({
+          username,
+          url: `/api/trainers/${encodeURIComponent(username)}/profile`,
+          displayName,
+          editable:true,
         });
-      }
+      });
 
       document.querySelectorAll('[data-modal-open="manage-account"]').forEach((btn)=>{
         btn.addEventListener('click', closeAvatarDropdown);
@@ -2310,9 +2400,18 @@
             copyToast.hidden=true;
             copyToast.classList.remove("is-visible");
           }
-          overlay.hidden=false;
-          requestAnimationFrame(()=>overlay.classList.add("is-visible"));
-          bodyLock.lock();
+          if (window.OverlayManager) {
+            window.OverlayManager.open("trainer-profile", {
+              element: overlay,
+              backdrop: overlay,
+              onRequestClose: close,
+              focusTarget: options && options.trigger ? options.trigger : document.activeElement,
+            });
+          } else {
+            overlay.hidden=false;
+            requestAnimationFrame(()=>overlay.classList.add("is-visible"));
+            bodyLock.lock();
+          }
           setView("loading");
           const cacheKey=username.toLowerCase();
           if(cacheKey && cache[cacheKey]){
@@ -2347,7 +2446,11 @@
           closeTimer=setTimeout(()=>{
             overlay.hidden=true;
             setView("loading");
-            bodyLock.unlock();
+            if (window.OverlayManager) {
+              window.OverlayManager.close("trainer-profile");
+            } else {
+              bodyLock.unlock();
+            }
           },220);
         };
 
@@ -2359,6 +2462,7 @@
         });
 
         document.addEventListener("keydown",(evt)=>{
+          if(window.OverlayManager) return;
           if(evt.key==="Escape" && !overlay.hidden){
             close();
           }
@@ -2399,6 +2503,14 @@
           });
         }
 
+        if (window.OverlayManager) {
+          window.OverlayManager.register("trainer-profile", {
+            element: overlay,
+            backdrop: overlay,
+            onRequestClose: close,
+          });
+        }
+
         return { open, close };
       })();
 
@@ -2430,12 +2542,13 @@
       });
     });
 
-    function togglePin(id,btn){
+    window.togglePin=function togglePin(id,btn){
       const input=document.getElementById(id);
       if(!input) return;
       if(input.type==="password"){ input.type="text"; btn.textContent="Hide"; }
       else{ input.type="password"; btn.textContent="Show"; }
-    }
+    };
+    })();
   </script>
 </head>
 <body>
@@ -2541,11 +2654,11 @@
 
   <!-- GLOBAL Manage Account MODAL (available on ALL pages) -->
   {% if session.get('trainer') %}
-  <div id="manageAccountModal" class="modal-backdrop" aria-hidden="true" hidden data-modal-root="manage-account" data-modal-open-class="is-open" data-modal-lock-scroll="true">
+  <div id="manageAccountModal" class="modal-backdrop" aria-hidden="true" hidden data-modal-root="manage-account" data-modal-open-class="is-open" data-modal-lock-scroll="true" data-overlay="manage-account" data-overlay-open-class="is-open">
     <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="accountModalTitle">
       <div class="modal-header">
         <h3 id="accountModalTitle">⚙️ Manage My Account</h3>
-        <button id="closeAccountModal" class="close-btn" aria-label="Close" data-modal-close>×</button>
+        <button id="closeAccountModal" class="close-btn" aria-label="Close" data-modal-close data-overlay-close>×</button>
       </div>
 
       <div class="settings-section">
@@ -2624,7 +2737,7 @@
 
   {% include "partials/trainer_profile_popover.html" %}
 
-  <div class="content-filter-modal" data-content-filter-modal hidden data-modal-root="content-filter" data-modal-open-class="is-open" data-modal-body-class="modal-open">
+  <div class="content-filter-modal" data-content-filter-modal hidden data-modal-root="content-filter" data-modal-open-class="is-open" data-modal-body-class="modal-open" data-overlay="content-filter" data-overlay-open-class="is-open">
     <div class="content-filter-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="contentFilterTitle">
       <div class="content-filter-modal__halo"></div>
       <div class="content-filter-modal__body">
@@ -2646,6 +2759,7 @@
           <button type="button"
                   class="content-filter-modal__close"
                   data-content-filter-dismiss
+                  data-overlay-close
                   data-modal-close>
             Ok, I understand
           </button>
@@ -2658,7 +2772,7 @@
   <script>
   (function () {
     if (!('serviceWorker' in navigator)) return;
-    const SW_URL = '/service-worker.js?v=7';
+    const SW_URL = '/service-worker.js?v=TEMP_DISABLE';
     navigator.serviceWorker.register(SW_URL, { scope: '/' })
       .then(reg => reg.update())
       .then(() => navigator.serviceWorker.ready)
@@ -2681,10 +2795,13 @@
     aria-expanded="false"
     aria-controls="admin-quick-menu"
   >👑</button>
-  <div id="admin-quick-menu-overlay" class="admin-quick-menu-overlay" hidden></div>
+  <div id="admin-quick-menu-overlay" class="admin-quick-menu-overlay" hidden data-overlay-close></div>
   <div
     id="admin-quick-menu"
     class="admin-quick-menu{% if admin_gate_locked %} admin-quick-menu--locked{% endif %}"
+    data-overlay="admin-quick"
+    data-overlay-backdrop="#admin-quick-menu-overlay"
+    data-overlay-focus="#admin-fab"
     data-gate-enabled="{{ 'true' if admin_gate_enabled else 'false' }}"
     data-gate-verified="{{ 'true' if admin_gate_verified else 'false' }}"
     role="dialog"
@@ -2698,7 +2815,7 @@
         <p class="admin-quick-menu__eyebrow">Admin Tools</p>
         <h3>Quick Access</h3>
       </div>
-      <button type="button" id="admin-quick-menu-close" class="admin-quick-menu__close" aria-label="Close admin shortcuts">✕</button>
+      <button type="button" id="admin-quick-menu-close" class="admin-quick-menu__close" aria-label="Close admin shortcuts" data-overlay-close>✕</button>
     </div>
     <div
       id="admin-quick-menu-gate"
@@ -2760,8 +2877,9 @@
       display: flex; align-items: center; justify-content: center;
       font-size: 1.6em; border: none; cursor: pointer;
       box-shadow: 0 8px 18px rgba(58,141,222,0.4);
-      z-index: 4000; transition: transform 0.2s ease, background 0.2s ease;
+      z-index: calc(var(--z-overlay) - 50); transition: transform 0.2s ease, background 0.2s ease;
     }
+    .admin-fab * { pointer-events: none; }
     .admin-fab:focus-visible { outline: 3px solid rgba(255,255,255,0.9); outline-offset: 3px; }
     .admin-fab:hover,
     .admin-fab:active {
@@ -2772,7 +2890,7 @@
       position: fixed;
       inset: 0;
       background: rgba(15,23,42,0.5);
-      z-index: 3990;
+      z-index: var(--z-overlay);
       opacity: 0;
       transition: opacity 0.25s ease;
     }
@@ -2790,7 +2908,7 @@
       box-shadow: 0 -20px 45px rgba(15,23,42,0.25);
       transform: translateY(110%);
       transition: transform 0.28s ease;
-      z-index: 4010;
+      z-index: var(--z-dialog);
       min-height: clamp(260px, 50vh, 420px);
       display: flex;
       flex-direction: column;
@@ -2962,6 +3080,9 @@
       const sheet = document.getElementById("admin-quick-menu");
       const overlay = document.getElementById("admin-quick-menu-overlay");
       const closeBtn = document.getElementById("admin-quick-menu-close");
+      if (!fab) console.warn("[Overlay] Missing admin fab");
+      if (!sheet) console.warn("[Overlay] Missing admin quick menu sheet");
+      if (!overlay) console.warn("[Overlay] Missing admin quick menu overlay");
       if (!fab || !sheet || !overlay) return;
 
       const actions = sheet.querySelector(".admin-quick-menu__actions");
@@ -3131,16 +3252,24 @@
         });
       }
 
-      let hideOverlayTimer;
-
       const openSheet = () => {
         if (sheet.classList.contains("is-visible")) return;
-        clearTimeout(hideOverlayTimer);
-        overlay.hidden = false;
-        requestAnimationFrame(() => overlay.classList.add("is-visible"));
-        sheet.classList.add("is-visible");
-        sheet.setAttribute("aria-hidden", "false");
-        fab.setAttribute("aria-expanded", "true");
+        if (window.OverlayManager) {
+          window.OverlayManager.register("admin-quick", {
+            element: sheet,
+            backdrop: overlay,
+            focusTarget: fab,
+            restoreFocus: false,
+            onRequestClose: closeSheet,
+          });
+          window.OverlayManager.open("admin-quick");
+        } else {
+          overlay.hidden = false;
+          requestAnimationFrame(() => overlay.classList.add("is-visible"));
+          sheet.classList.add("is-visible");
+          sheet.setAttribute("aria-hidden", "false");
+          fab.setAttribute("aria-expanded", "true");
+        }
 
         if (gateEnabled && !gateVerified) {
           if (gateInput) {
@@ -3157,21 +3286,31 @@
             sheet.focus({ preventScroll: true });
           }
         }
-        document.addEventListener("keydown", handleEscape);
       };
 
       const closeSheet = () => {
         if (!sheet.classList.contains("is-visible")) return;
-        sheet.classList.remove("is-visible");
-        sheet.setAttribute("aria-hidden", "true");
-        fab.setAttribute("aria-expanded", "false");
-        overlay.classList.remove("is-visible");
-        hideOverlayTimer = window.setTimeout(() => {
+        if (window.OverlayManager) {
+          window.OverlayManager.close("admin-quick");
+        } else {
+          sheet.classList.remove("is-visible");
+          sheet.setAttribute("aria-hidden", "true");
+          fab.setAttribute("aria-expanded", "false");
+          overlay.classList.remove("is-visible");
           overlay.hidden = true;
-        }, 220);
-        document.removeEventListener("keydown", handleEscape);
+        }
         fab.focus({ preventScroll: true });
       };
+
+      if (window.OverlayManager) {
+        window.OverlayManager.register("admin-quick", {
+          element: sheet,
+          backdrop: overlay,
+          onRequestClose: closeSheet,
+          focusTarget: fab,
+          restoreFocus: false,
+        });
+      }
 
       const toggleSheet = () => {
         if (sheet.classList.contains("is-visible")) {
@@ -3181,22 +3320,24 @@
         }
       };
 
-      const handleEscape = (event) => {
-        if (event.key === "Escape") {
+      document.addEventListener("click", (event) => {
+        if (event.target.closest("#admin-fab")) {
+          event.preventDefault();
+          toggleSheet();
+          return;
+        }
+        if (overlay && event.target === overlay) {
+          closeSheet();
+          return;
+        }
+        if (closeBtn && event.target.closest("#admin-quick-menu-close")) {
           closeSheet();
         }
-      };
-
-      fab.addEventListener("click", (event) => {
-        event.preventDefault();
-        toggleSheet();
       });
-      overlay.addEventListener("click", closeSheet);
-      if (closeBtn) closeBtn.addEventListener("click", closeSheet);
     })();
   </script>
 
-  <div id="inboxPanelOverlay" class="inbox-panel-overlay" aria-hidden="true">
+  <div id="inboxPanelOverlay" class="inbox-panel-overlay" aria-hidden="true" data-overlay="inbox-panel">
     <div class="inbox-panel-dialog" role="dialog" aria-modal="true" aria-label="Trainer inbox panel">
       <div id="inboxPanelContent" class="inbox-panel-dialog__body" tabindex="-1">
         <div class="inbox-panel__loading">Loading inbox…</div>
@@ -3204,18 +3345,18 @@
     </div>
   </div>
 
-  <div id="inboxMessageOverlay" class="inbox-message-overlay" aria-hidden="true">
+  <div id="inboxMessageOverlay" class="inbox-message-overlay" aria-hidden="true" data-overlay="inbox-message">
     <div class="inbox-message-dialog" role="dialog" aria-modal="true" aria-label="Inbox message" tabindex="-1">
-      <button type="button" class="inbox-message-close" data-inbox-message-close aria-label="Close message">✕</button>
+      <button type="button" class="inbox-message-close" data-inbox-message-close data-overlay-close aria-label="Close message">✕</button>
       <div id="inboxMessageContent">
         <div class="inbox-panel__loading">Loading message…</div>
       </div>
     </div>
   </div>
 
-  <div id="inboxReceiptOverlay" class="inbox-receipt-overlay" aria-hidden="true">
+  <div id="inboxReceiptOverlay" class="inbox-receipt-overlay" aria-hidden="true" data-overlay="inbox-receipt">
     <div class="inbox-receipt-dialog" role="dialog" aria-modal="true" aria-label="Receipt details">
-      <button type="button" class="inbox-receipt-close" data-inbox-receipt-close aria-label="Close receipt">✕</button>
+      <button type="button" class="inbox-receipt-close" data-inbox-receipt-close data-overlay-close aria-label="Close receipt">✕</button>
       <div class="inbox-panel__loading" data-inbox-receipt-loading>Loading receipt…</div>
       <iframe id="inboxReceiptFrame" title="Receipt preview" loading="lazy"></iframe>
     </div>

@@ -27,14 +27,22 @@
     }
   }
 
-  function openModal(modal) {
+  function openModal(modal, trigger) {
     if (!modal) return;
     const openClass = getOpenClass(modal);
     modal.classList.add(openClass);
     modal.removeAttribute('hidden');
     modal.setAttribute('aria-hidden', 'false');
     body.classList.add(getBodyClass(modal));
-    if (modal.dataset.modalLockScroll === 'true' && window.__overlayLock && typeof window.__overlayLock.lock === 'function') {
+    if (window.OverlayManager) {
+      const id = modal.dataset.modalRoot || modal.id || 'modal';
+      window.OverlayManager.open(id, {
+        element: modal,
+        backdrop: modal,
+        onRequestClose: () => closeModal(modal),
+        focusTarget: trigger || document.activeElement,
+      });
+    } else if (modal.dataset.modalLockScroll === 'true' && window.__overlayLock && typeof window.__overlayLock.lock === 'function') {
       window.__overlayLock.lock();
     }
   }
@@ -47,7 +55,10 @@
     if (modal.dataset.modalKeepInDom !== 'true') {
       modal.hidden = true;
     }
-    if (modal.dataset.modalLockScroll === 'true' && window.__overlayLock && typeof window.__overlayLock.unlock === 'function') {
+    if (window.OverlayManager) {
+      const id = modal.dataset.modalRoot || modal.id || 'modal';
+      window.OverlayManager.close(id);
+    } else if (modal.dataset.modalLockScroll === 'true' && window.__overlayLock && typeof window.__overlayLock.unlock === 'function') {
       window.__overlayLock.unlock();
     }
     syncBodyClass(modal);
@@ -67,6 +78,15 @@
         closeModal(modal);
       }
     });
+
+    if (window.OverlayManager) {
+      window.OverlayManager.register(id, {
+        element: modal,
+        backdrop: modal,
+        onRequestClose: () => closeModal(modal),
+        openClass: getOpenClass(modal),
+      });
+    }
   }
 
   function bindOpeners(selector, resolveId) {
@@ -78,12 +98,15 @@
           event.preventDefault();
         }
         const entry = modalRegistry[modalId];
-        openModal(entry && entry.modal);
+        openModal(entry && entry.modal, trigger);
       });
     });
   }
 
   function setupKeyboardShortcuts() {
+    if (window.OverlayManager) {
+      return;
+    }
     document.addEventListener('keydown', (event) => {
       if (event.key !== 'Escape') return;
       const openModals = Object.values(modalRegistry)

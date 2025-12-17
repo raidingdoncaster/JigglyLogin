@@ -573,7 +573,7 @@
   display:none;
   align-items:center;
   justify-content:center;
-  z-index:2000;
+  z-index:var(--z-overlay);
 }
 .digital-modal.is-open {
   display:flex;
@@ -591,7 +591,10 @@
   width:min(620px, 90vw);
   max-height:90vh;
   overflow:auto;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior:contain;
   box-shadow:0 20px 40px rgba(15,23,42,0.25);
+  z-index:var(--z-dialog);
 }
 .digital-modal__header {
   display:flex;

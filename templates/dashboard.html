@@ -304,12 +304,12 @@
 .dashboard-bulletin__card-body span { font-size:0.8rem; color:#475569; }
 .dashboard-bulletin__empty { margin:0; color:#94a3b8; font-weight:600; }
 .calendar-modal-open { overflow:hidden; }
-.calendar-modal { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; z-index:7000; pointer-events:none; opacity:0; transition:opacity .28s ease; }
+.calendar-modal { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; z-index:var(--z-overlay); pointer-events:none; opacity:0; transition:opacity .28s ease; }
 .calendar-modal.is-visible { pointer-events:auto; opacity:1; }
 .calendar-modal__overlay { position:absolute; inset:0; background:rgba(15,23,42,0.55); backdrop-filter:blur(6px); opacity:0; transition:opacity .28s ease; }
 .calendar-modal.is-visible .calendar-modal__overlay { opacity:1; }
 .calendar-modal__dialog { position:relative; width:min(640px,calc(100% - 32px)); max-height:85vh; background:#0f172a; color:#f8fafc; border-radius:28px;
-  box-shadow:0 35px 65px rgba(15,23,42,0.45); transform:translateY(24px) scale(0.96); transition:transform .35s cubic-bezier(.22,1,.36,1), opacity .35s ease; opacity:0; overflow:hidden; display:flex; flex-direction:column; }
+  box-shadow:0 35px 65px rgba(15,23,42,0.45); transform:translateY(24px) scale(0.96); transition:transform .35s cubic-bezier(.22,1,.36,1), opacity .35s ease; opacity:0; overflow:hidden; display:flex; flex-direction:column; z-index:var(--z-dialog); }
 .calendar-modal.is-visible .calendar-modal__dialog { transform:translateY(0) scale(1); opacity:1; }
 .calendar-modal__header { padding:20px 24px; display:flex; align-items:center; justify-content:space-between; gap:16px; border-bottom:1px solid rgba(255,255,255,0.08); }
 .calendar-modal__eyebrow { margin:0; letter-spacing:0.3em; font-size:0.7rem; text-transform:uppercase; color:#94a3b8; }
@@ -317,7 +317,7 @@
 .calendar-modal__close { background:rgba(248,250,252,0.08); border:0; color:#fff; width:38px; height:38px; border-radius:50%; font-size:1.3rem; cursor:pointer; transition:background .2s ease, transform .2s ease; }
 .calendar-modal__close:hover { background:rgba(248,250,252,0.22); transform:rotate(6deg); }
 .calendar-modal__body { position:relative; padding:0; flex:1; background:#fff; border-radius:26px 26px 0 0; overflow:hidden; }
-.calendar-modal__list { display:flex; flex-direction:column; gap:12px; padding:14px; overflow-y:auto; max-height:55vh; }
+.calendar-modal__list { display:flex; flex-direction:column; gap:12px; padding:14px; overflow-y:auto; max-height:55vh; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; }
 .calendar-modal__card { display:flex; gap:12px; background:#f8fafc; border-radius:18px; overflow:hidden; box-shadow:0 10px 20px rgba(15,23,42,0.18); border:1px solid rgba(226,232,240,0.9); }
 .calendar-modal__media { width:110px; flex:0 0 110px; background:#e2e8f0; }
 .calendar-modal__media img { width:100%; height:100%; object-fit:cover; display:block; }
@@ -458,9 +458,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const overlay = calendarModal.querySelector('[data-calendar-overlay]');
     const closeBtn = calendarModal.querySelector('[data-calendar-close]');
     const dialog = calendarModal.querySelector('.calendar-modal__dialog');
+    const overlayLock = window.__overlayLock || { lock(){}, unlock(){} };
+    let calendarLocked = false;
+    if (!overlay) console.warn("[Overlay] Missing calendar overlay");
+    if (!dialog) console.warn("[Overlay] Missing calendar dialog");
 
     const toggleBodyLock = (shouldLock) => {
+      if (shouldLock === calendarLocked) return;
+      calendarLocked = shouldLock;
       document.body.classList.toggle('calendar-modal-open', shouldLock);
+      if (shouldLock) overlayLock.lock();
+      else overlayLock.unlock();
     };
 
     const showModal = () => {

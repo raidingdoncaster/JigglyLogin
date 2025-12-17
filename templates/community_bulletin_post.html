@@ -1677,8 +1677,14 @@ body.bp-modal-open {
   var loginApiEndpoint = loginModal && loginModal.dataset.loginEndpoint ? loginModal.dataset.loginEndpoint : loginApiUrl;
 
   var scrollLock = window.__overlayLock || {
-    lock: function () { document.body.style.overflow = "hidden"; },
-    unlock: function () { document.body.style.overflow = "auto"; },
+    lock: function () {
+      document.documentElement.classList.add("is-scroll-locked");
+      if (document.body) document.body.classList.add("is-scroll-locked");
+    },
+    unlock: function () {
+      document.documentElement.classList.remove("is-scroll-locked");
+      if (document.body) document.body.classList.remove("is-scroll-locked");
+    },
   };
 
   var bar = document.querySelector("[data-engagement-bar]");

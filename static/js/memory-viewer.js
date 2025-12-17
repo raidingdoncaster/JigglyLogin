@@ -1,6 +1,9 @@
 (function () {
   var overlay = document.querySelector("[data-memory-overlay]");
-  if (!overlay) return;
+  if (!overlay) {
+    console.warn("Memory overlay not found");
+    return;
+  }
 
   var payload = overlay.getAttribute("data-memory-albums") || "[]";
   var albums = [];
