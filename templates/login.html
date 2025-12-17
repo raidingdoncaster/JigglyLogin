@@ -672,7 +672,6 @@
         const startCarousel = () => {
           if (!strip || !slides.length) return;
           gallery.classList.remove('is-empty');
-          strip.style.width = `${slides.length * 100}%`;
           renderDots();
           setSlide(0);
           restartTimer();
