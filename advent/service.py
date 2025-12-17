@@ -17,6 +17,7 @@ from advent.models import AdventClaim
 DEFAULT_CONFIG_BASENAME = "advent_2025.json"
 SUPABASE_TABLE = "advent_claims"
 ADVENT_AWARD_ACTOR = "Advent Calendar"
+FORCED_OPENABLE_DAYS = {13}  # Temporary unlock for users impacted by the day 13 outage
 _CONFIG_CACHE: Dict[str, object] = {"data": None, "mtime": None, "path": None}
 
 
@@ -107,6 +108,10 @@ def get_advent_state_for_user(
         candidates = [today_day]
 
     openable_days = [day for day in candidates if day not in opened_lookup]
+    for forced_day in sorted(FORCED_OPENABLE_DAYS):
+        if 1 <= forced_day <= 25 and forced_day not in opened_lookup and forced_day not in openable_days:
+            openable_days.append(forced_day)
+    openable_days = sorted(openable_days)
     openable_day: Optional[int] = openable_days[0] if openable_days else None
 
     locked_days = [

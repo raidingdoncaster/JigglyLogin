@@ -12,6 +12,14 @@
     {% set _current_trainer_username = _session_trainer_obj %}
   {% endif %}
 
+  {% set nav_trainer_raw = session.get('trainer') %}
+  {% if nav_trainer_raw is mapping %}
+    {% set nav_username = nav_trainer_raw.get('username') or nav_trainer_raw.get('trainer_username') %}
+  {% else %}
+    {% set nav_username = nav_trainer_raw %}
+  {% endif %}
+  {% set nav_avatar = (current_avatar if current_avatar is defined else (avatar if avatar is defined else 'avatar1.png')) %}
+
   <script>
     // Detect if running as a PWA standalone (iOS + Android)
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches
@@ -35,6 +43,12 @@
 
   <!-- Google Fonts -->
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Montserrat:wght@400;600&family=Space+Grotesk:wght@400;600&display=swap" rel="stylesheet">
+  {% if nav_trainer_raw %}
+    <link rel="preload" as="image" href="{{ url_for('static', filename='nav/pikachu-card.png') }}">
+    <link rel="preload" as="image" href="{{ url_for('static', filename='nav/stamp-icon.png') }}">
+    <link rel="preload" as="image" href="{{ url_for('static', filename='nav/mail-icon.png') }}">
+    <link rel="preload" as="image" href="{{ url_for('static', filename='avatars/' ~ nav_avatar) }}">
+  {% endif %}
 
   <style>
     :root{
@@ -2570,19 +2584,33 @@
       {% if session.get('trainer') %}
         <!-- Dashboard -->
         <a href="{{ url_for('dashboard') }}" class="nav-item" title="Home / Dashboard">
-          <img src="{{ url_for('static', filename='nav/pikachu-card.png') }}" alt="Home" class="nav-icon">
+          <img src="{{ url_for('static', filename='nav/pikachu-card.png') }}"
+               alt="Home"
+               class="nav-icon"
+               decoding="async"
+               fetchpriority="high"
+               data-fallback-src="{{ url_for('static', filename='logo.png') }}">
         </a>
 
         <!-- Passport -->
         <a href="{{ url_for('passport') }}" class="stamp-container" title="Passport">
-          <img src="{{ url_for('static', filename='nav/stamp-icon.png') }}" alt="Passport">
+          <img src="{{ url_for('static', filename='nav/stamp-icon.png') }}"
+               alt="Passport"
+               decoding="async"
+               fetchpriority="high"
+               data-fallback-src="{{ url_for('static', filename='nav/stamp-icon.png') }}">
           <span class="stamp-count">{{ current_stamps or 0 }}</span>
         </a>
 
         <!-- Inbox -->
         <div class="inbox-wrapper" style="position:relative;">
           <button type="button" class="nav-item" id="inboxToggle" title="Inbox" aria-haspopup="dialog" aria-expanded="false">
-            <img src="{{ url_for('static', filename='nav/mail-icon.png') }}" alt="Inbox" class="nav-icon">
+            <img src="{{ url_for('static', filename='nav/mail-icon.png') }}"
+                 alt="Inbox"
+                 class="nav-icon"
+                 decoding="async"
+                 fetchpriority="high"
+                 data-fallback-src="{{ url_for('static', filename='logo.png') }}">
           </button>
           {% if inbox_unread and inbox_unread > 0 %}
             <span class="inbox-badge">{{ inbox_unread }}</span>
@@ -2590,17 +2618,14 @@
         </div>
 
         <!-- Avatar (profile hub) -->
-        {% set nav_trainer_raw = session.get('trainer') %}
-        {% if nav_trainer_raw is mapping %}
-          {% set nav_username = nav_trainer_raw.get('username') or nav_trainer_raw.get('trainer_username') %}
-        {% else %}
-          {% set nav_username = nav_trainer_raw %}
-        {% endif %}
-        {% set nav_avatar = (current_avatar if current_avatar is defined else (avatar if avatar is defined else 'avatar1.png')) %}
         <div class="avatar-wrapper">
           <button type="button" class="nav-item" id="avatarToggle" title="Account">
             <img src="{{ url_for('static', filename='avatars/' ~ nav_avatar) }}"
-                 alt="Avatar" class="nav-icon avatar-icon">
+                 alt="Avatar"
+                 class="nav-icon avatar-icon"
+                 decoding="async"
+                 fetchpriority="high"
+                 data-fallback-src="{{ url_for('static', filename='avatars/avatar1.png') }}">
           </button>
           <div id="avatarDropdown" class="avatar-dropdown" aria-hidden="true">
             <div class="avatar-dropdown__username">{{ nav_username or 'Trainer' }}</div>
@@ -2625,6 +2650,43 @@
         </div>
       {% endif %}
     </nav>
+    <script>
+      (function () {
+        const nav = document.querySelector(".nav-icons");
+        if (!nav) return;
+        const icons = Array.from(nav.querySelectorAll("img"));
+        if (!icons.length) return;
+
+        // Warm the cache to reduce intermittent fetch misses on Safari/PWA
+        const seen = new Set();
+        icons.forEach((img) => {
+          const src = img.currentSrc || img.src;
+          if (src && !seen.has(src)) {
+            seen.add(src);
+            const preloadImg = new Image();
+            preloadImg.decoding = "async";
+            preloadImg.src = src;
+          }
+        });
+
+        // Retry once with a cache-buster, then fall back to a safe asset
+        icons.forEach((img) => {
+          const originalSrc = img.currentSrc || img.src;
+          const fallbackSrc = img.dataset.fallbackSrc || originalSrc;
+          let retried = false;
+
+          img.addEventListener("error", () => {
+            if (!retried && originalSrc) {
+              retried = true;
+              const bust = originalSrc + (originalSrc.includes("?") ? "&" : "?") + "retry=" + Date.now();
+              img.src = bust;
+              return;
+            }
+            img.src = fallbackSrc;
+          });
+        });
+      })();
+    </script>
   </header>
 
   {% block page_settings %}{% endblock %}
