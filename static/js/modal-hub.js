@@ -30,19 +30,28 @@
   function openModal(modal, trigger) {
     if (!modal) return;
     const openClass = getOpenClass(modal);
+    const bodyClass = getBodyClass(modal);
     modal.classList.add(openClass);
     modal.removeAttribute('hidden');
     modal.setAttribute('aria-hidden', 'false');
-    body.classList.add(getBodyClass(modal));
+    body.classList.add(bodyClass);
+    let openedWithManager = false;
     if (window.OverlayManager) {
       const id = modal.dataset.modalRoot || modal.id || 'modal';
-      window.OverlayManager.open(id, {
-        element: modal,
-        backdrop: modal,
-        onRequestClose: () => closeModal(modal),
-        focusTarget: trigger || document.activeElement,
-      });
-    } else if (modal.dataset.modalLockScroll === 'true' && window.__overlayLock && typeof window.__overlayLock.lock === 'function') {
+      try {
+        window.OverlayManager.open(id, {
+          element: modal,
+          backdrop: modal,
+          onRequestClose: () => closeModal(modal),
+          focusTarget: trigger || document.activeElement,
+          openClass,
+        });
+        openedWithManager = true;
+      } catch (err) {
+        console.warn('[ModalHub] OverlayManager open failed, using fallback', err);
+      }
+    }
+    if (!openedWithManager && modal.dataset.modalLockScroll === 'true' && window.__overlayLock && typeof window.__overlayLock.lock === 'function') {
       window.__overlayLock.lock();
     }
   }
@@ -55,10 +64,17 @@
     if (modal.dataset.modalKeepInDom !== 'true') {
       modal.hidden = true;
     }
+    let closedWithManager = false;
     if (window.OverlayManager) {
       const id = modal.dataset.modalRoot || modal.id || 'modal';
-      window.OverlayManager.close(id);
-    } else if (modal.dataset.modalLockScroll === 'true' && window.__overlayLock && typeof window.__overlayLock.unlock === 'function') {
+      try {
+        window.OverlayManager.close(id);
+        closedWithManager = true;
+      } catch (err) {
+        console.warn('[ModalHub] OverlayManager close failed, using fallback', err);
+      }
+    }
+    if (!closedWithManager && modal.dataset.modalLockScroll === 'true' && window.__overlayLock && typeof window.__overlayLock.unlock === 'function') {
       window.__overlayLock.unlock();
     }
     syncBodyClass(modal);
@@ -80,12 +96,16 @@
     });
 
     if (window.OverlayManager) {
-      window.OverlayManager.register(id, {
-        element: modal,
-        backdrop: modal,
-        onRequestClose: () => closeModal(modal),
-        openClass: getOpenClass(modal),
-      });
+      try {
+        window.OverlayManager.register(id, {
+          element: modal,
+          backdrop: modal,
+          onRequestClose: () => closeModal(modal),
+          openClass: getOpenClass(modal),
+        });
+      } catch (err) {
+        console.warn('[ModalHub] OverlayManager register failed', err);
+      }
     }
   }
 

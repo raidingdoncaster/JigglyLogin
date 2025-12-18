@@ -2213,21 +2213,19 @@ document.addEventListener("DOMContentLoaded", function(){
 
     function lockScroll() {
       if (lockedScrollY !== null) return;
-      lockedScrollY = window.scrollY || window.pageYOffset || document.documentElement.scrollTop || 0;
-      document.body.style.position = "fixed";
-      document.body.style.top = `-${lockedScrollY}px`;
-      document.body.style.width = "100%";
-      document.body.classList.add("stamp-modal-open");
+      lockedScrollY =
+        window.scrollY ||
+        window.pageYOffset ||
+        document.documentElement.scrollTop ||
+        0;
       document.documentElement.classList.add("stamp-modal-open");
+      document.body.classList.add("stamp-modal-open");
     }
 
     function unlockScroll() {
       if (lockedScrollY === null) return;
       document.body.classList.remove("stamp-modal-open");
       document.documentElement.classList.remove("stamp-modal-open");
-      document.body.style.position = "";
-      document.body.style.top = "";
-      document.body.style.width = "";
       window.scrollTo(0, lockedScrollY);
       lockedScrollY = null;
     }

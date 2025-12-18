@@ -29,6 +29,17 @@
     }
   </script>
   <script src="{{ url_for('static', filename='js/overlay-manager.js') }}"></script>
+  <script>
+    // Hard-disable any previously registered service workers and cached assets while debugging overlays.
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.getRegistrations().then((regs) => {
+        regs.forEach((reg) => reg.unregister());
+      }).catch(() => {});
+      if (window.caches && typeof caches.keys === "function") {
+        caches.keys().then((keys) => keys.forEach((key) => caches.delete(key))).catch(() => {});
+      }
+    }
+  </script>
 
   <!-- iOS PWA -->
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1845,13 +1856,20 @@
         if (url) inboxLastUrl = url;
         document.body.classList.add("has-inbox-panel");
         if (overlayManagerReady) {
-          window.OverlayManager.open("inbox-panel", {
-            element: inboxOverlay,
-            backdrop: inboxOverlay,
-            onRequestClose: closeInboxPanel,
-            focusTarget: inboxBtn,
-            restoreFocus: false,
-          });
+          try {
+            window.OverlayManager.open("inbox-panel", {
+              element: inboxOverlay,
+              backdrop: inboxOverlay,
+              onRequestClose: closeInboxPanel,
+              focusTarget: inboxBtn,
+              restoreFocus: false,
+            });
+          } catch (err) {
+            console.warn("[Inbox] OverlayManager open failed, using fallback", err);
+            bodyScrollLock.lock();
+            inboxOverlay.classList.add("is-visible");
+            inboxOverlay.setAttribute("aria-hidden", "false");
+          }
         } else {
           bodyScrollLock.lock();
           inboxOverlay.classList.add("is-visible");
@@ -1869,7 +1887,14 @@
         }
         document.body.classList.remove("has-inbox-panel");
         if (overlayManagerReady) {
-          window.OverlayManager.close("inbox-panel");
+          try {
+            window.OverlayManager.close("inbox-panel");
+          } catch (err) {
+            console.warn("[Inbox] OverlayManager close failed, using fallback", err);
+            inboxOverlay.classList.remove("is-visible");
+            inboxOverlay.setAttribute("aria-hidden", "true");
+            bodyScrollLock.unlock();
+          }
         } else {
           inboxOverlay.classList.remove("is-visible");
           inboxOverlay.setAttribute("aria-hidden", "true");
@@ -1946,7 +1971,14 @@
         inboxReceiptFrame?.setAttribute("src", "");
         inboxReceiptLoading?.classList.remove("hidden");
         if (overlayManagerReady) {
-          window.OverlayManager.close("inbox-receipt");
+          try {
+            window.OverlayManager.close("inbox-receipt");
+          } catch (err) {
+            console.warn("[Inbox] OverlayManager close failed, using fallback", err);
+            inboxReceiptOverlay.classList.remove("is-visible");
+            inboxReceiptOverlay.setAttribute("aria-hidden", "true");
+            bodyScrollLock.unlock();
+          }
         } else {
           inboxReceiptOverlay.classList.remove("is-visible");
           inboxReceiptOverlay.setAttribute("aria-hidden", "true");
@@ -1962,12 +1994,19 @@
         inboxReceiptLoading?.classList.remove("hidden");
         inboxReceiptFrame.src = url;
         if (overlayManagerReady) {
-          window.OverlayManager.open("inbox-receipt", {
-            element: inboxReceiptOverlay,
-            backdrop: inboxReceiptOverlay,
-            onRequestClose: closeReceiptModal,
-            restoreFocus: false,
-          });
+          try {
+            window.OverlayManager.open("inbox-receipt", {
+              element: inboxReceiptOverlay,
+              backdrop: inboxReceiptOverlay,
+              onRequestClose: closeReceiptModal,
+              restoreFocus: false,
+            });
+          } catch (err) {
+            console.warn("[Inbox] OverlayManager open failed, using fallback", err);
+            inboxReceiptOverlay.classList.add("is-visible");
+            inboxReceiptOverlay.setAttribute("aria-hidden", "false");
+            bodyScrollLock.lock();
+          }
         } else {
           inboxReceiptOverlay.classList.add("is-visible");
           inboxReceiptOverlay.setAttribute("aria-hidden", "false");
@@ -2063,13 +2102,20 @@
         }
         inboxMessageLastFocus = document.activeElement;
         if (overlayManagerReady) {
-          window.OverlayManager.open("inbox-message", {
-            element: inboxMessageOverlay,
-            backdrop: inboxMessageOverlay,
-            onRequestClose: closeInboxMessage,
-            focusTarget: inboxMessageLastFocus,
-            restoreFocus: false,
-          });
+          try {
+            window.OverlayManager.open("inbox-message", {
+              element: inboxMessageOverlay,
+              backdrop: inboxMessageOverlay,
+              onRequestClose: closeInboxMessage,
+              focusTarget: inboxMessageLastFocus,
+              restoreFocus: false,
+            });
+          } catch (err) {
+            console.warn("[Inbox] OverlayManager open failed, using fallback", err);
+            inboxMessageOverlay.classList.add("is-visible");
+            inboxMessageOverlay.setAttribute("aria-hidden", "false");
+            bodyScrollLock.lock();
+          }
         } else {
           inboxMessageOverlay.classList.add("is-visible");
           inboxMessageOverlay.setAttribute("aria-hidden", "false");
@@ -2081,7 +2127,14 @@
       const closeInboxMessage = () => {
         if (!inboxMessageOverlay) return;
         if (overlayManagerReady) {
-          window.OverlayManager.close("inbox-message");
+          try {
+            window.OverlayManager.close("inbox-message");
+          } catch (err) {
+            console.warn("[Inbox] OverlayManager close failed, using fallback", err);
+            inboxMessageOverlay.classList.remove("is-visible");
+            inboxMessageOverlay.setAttribute("aria-hidden", "true");
+            bodyScrollLock.unlock();
+          }
         } else {
           inboxMessageOverlay.classList.remove("is-visible");
           inboxMessageOverlay.setAttribute("aria-hidden", "true");
@@ -2492,14 +2545,21 @@
             copyToast.hidden=true;
             copyToast.classList.remove("is-visible");
           }
+          let openedWithManager = false;
           if (window.OverlayManager) {
-            window.OverlayManager.open("trainer-profile", {
-              element: overlay,
-              backdrop: overlay,
-              onRequestClose: close,
-              focusTarget: options && options.trigger ? options.trigger : document.activeElement,
-            });
-          } else {
+            try {
+              window.OverlayManager.open("trainer-profile", {
+                element: overlay,
+                backdrop: overlay,
+                onRequestClose: close,
+                focusTarget: options && options.trigger ? options.trigger : document.activeElement,
+              });
+              openedWithManager = true;
+            } catch (err) {
+              console.warn("[TrainerProfile] OverlayManager open failed, using fallback", err);
+            }
+          }
+          if (!openedWithManager) {
             overlay.hidden=false;
             requestAnimationFrame(()=>overlay.classList.add("is-visible"));
             bodyLock.lock();
@@ -2539,7 +2599,12 @@
             overlay.hidden=true;
             setView("loading");
             if (window.OverlayManager) {
-              window.OverlayManager.close("trainer-profile");
+              try {
+                window.OverlayManager.close("trainer-profile");
+              } catch (err) {
+                console.warn("[TrainerProfile] OverlayManager close failed, using fallback", err);
+                bodyLock.unlock();
+              }
             } else {
               bodyLock.unlock();
             }
@@ -2596,11 +2661,15 @@
         }
 
         if (window.OverlayManager) {
-          window.OverlayManager.register("trainer-profile", {
-            element: overlay,
-            backdrop: overlay,
-            onRequestClose: close,
-          });
+          try {
+            window.OverlayManager.register("trainer-profile", {
+              element: overlay,
+              backdrop: overlay,
+              onRequestClose: close,
+            });
+          } catch (err) {
+            console.warn("[TrainerProfile] OverlayManager register failed", err);
+          }
         }
 
         return { open, close };
@@ -2907,22 +2976,6 @@
       </div>
     </div>
   </div>
-
-  <!-- Register Service Worker (single canonical URL) -->
-  <script>
-  (function () {
-    if (!('serviceWorker' in navigator)) return;
-    const SW_URL = '/service-worker.js?v=TEMP_DISABLE';
-    navigator.serviceWorker.register(SW_URL, { scope: '/' })
-      .then(reg => reg.update())
-      .then(() => navigator.serviceWorker.ready)
-      .then(() => {
-        console.log('✅ Service Worker ready');
-        document.dispatchEvent(new CustomEvent('rdab-sw-ready'));
-      })
-      .catch(err => console.error('❌ SW failed:', err));
-  })();
-  </script>
 
   {% if account_type == "Admin" %}
   {% set admin_gate_locked = admin_gate_enabled and not admin_gate_verified %}

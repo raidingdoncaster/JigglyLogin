@@ -7089,7 +7089,8 @@ def api_meetup_check_in():
     if now_utc < start_dt - timedelta(minutes=30) or now_utc > end_dt + timedelta(hours=6):
         return jsonify({"error": "Check-in not available"}), 403
 
-    user_id = user.get("id")
+    user_id = user.get("id") or user.get("trainer_username")
+    trainer_username = (user.get("trainer_username") or session.get("trainer") or "").strip()
     if not user_id:
         return jsonify({"error": "User record missing id"}), 500
 
@@ -7097,6 +7098,7 @@ def api_meetup_check_in():
         supabase.table("meetup_checkins").insert({
             "user_id": user_id,
             "event_id": event_id,
+            "trainer_username": trainer_username or None,
         }).execute()
     except Exception as exc:
         message = str(exc)
@@ -7105,7 +7107,6 @@ def api_meetup_check_in():
         print("⚠️ Supabase meetup_checkins insert failed:", exc)
         return jsonify({"error": "Unable to record check-in"}), 500
 
-    trainer_username = (user.get("trainer_username") or session.get("trainer") or "").strip()
     award_actor = "Meetup check-in"
     stamp_title = (event_row.get("name") or "Community Meetup").strip() or "Community Meetup"
     cover_url = event_row.get("cover_photo_url") or ""
@@ -7137,7 +7138,15 @@ def api_meetup_check_in():
             supabase.table("lugia_ledger").insert(payload).execute()
             return True, None
         except Exception as exc:
-            return False, str(exc)
+            # Retry without optional metadata if the table doesn't support it
+            try:
+                fallback_payload = payload.copy()
+                fallback_payload.pop("metadata", None)
+                fallback_payload.pop("image_url", None)
+                supabase.table("lugia_ledger").insert(fallback_payload).execute()
+                return True, None
+            except Exception as exc2:
+                return False, f"{exc}; fallback: {exc2}"
 
     awarded_entries = 0
     if account_type == "Kids Account":
