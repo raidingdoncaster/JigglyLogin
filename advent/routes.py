@@ -95,9 +95,9 @@ def _create_shared_advent_blueprint(
         {
             "id": "quest_25_doors",
             "title": "Holiday Hero Quest",
-            "description": "Open all 25 doors to enter the Holiday Charizard Plushie raffle and unlock the Advent 2025 community medal.",
+            "description": "Open any 24 doors to enter the Holiday Charizard Plushie raffle and unlock the Advent 2025 community medal.",
             "reward": "Plushie raffle entry + community medal",
-            "target_days": TOTAL_ADVENT_DAYS,
+            "target_days": 24,
             "icon": "charizard-medal",
         },
     )

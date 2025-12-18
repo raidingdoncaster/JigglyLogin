@@ -1119,6 +1119,7 @@ button.stamp-slot:focus-visible {
   transform:translateY(24px);
   transition:opacity 0.32s ease, transform 0.32s ease;
   pointer-events:none;
+  visibility:hidden;
 }
 .stamp-detail-modal[hidden] {
   display:none;
@@ -1127,11 +1128,13 @@ button.stamp-slot:focus-visible {
   opacity:1;
   transform:translateY(0);
   pointer-events:auto;
+  visibility:visible;
 }
 .stamp-detail-modal.is-closing {
   opacity:0;
   transform:translateY(24px);
   pointer-events:none;
+  visibility:visible;
 }
 .stamp-modal-overlay,
 .stamp-modal-bokeh,
@@ -2146,6 +2149,7 @@ document.addEventListener("DOMContentLoaded", function(){
   if (stampModal) {
     // Keep the modal in the DOM to avoid white flashes when animating open/close.
     stampModal.hidden = false;
+    stampModal.removeAttribute("hidden");
     stampModal.setAttribute("aria-hidden", "true");
     const stampButtons = document.querySelectorAll("[data-stamp-trigger]");
     const closeBtn = stampModal.querySelector("[data-stamp-modal-close]");

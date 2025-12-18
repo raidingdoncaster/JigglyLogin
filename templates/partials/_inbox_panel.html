@@ -103,7 +103,7 @@
       {% set metadata = msg.metadata or {} %}
       {% set code_value = msg.get('digital_code') or metadata.get('reward_code') %}
       {% set message_url = url_for('inbox_message', message_id=msg.id) %}
-      <article class="mail-card {{ 'is-read' if read else 'is-unread' }} {{ 'mail-card--digital' if is_digital else '' }}"
+      <article class="mail-card {{ 'is-read' if read else 'is-unread' }}"
                data-message-id="{{ msg.id }}"
                data-message-type="{{ (msg.type or '')|lower }}"
                data-message-read="{{ 'true' if read else 'false' }}"
@@ -146,9 +146,7 @@
             {% if msg.type %}
               <span class="type-pill">{{ msg.type }}</span>
             {% endif %}
-            {% if is_digital %}
-              <span class="mail-card__badge mail-card__badge--digital">Digital reward</span>
-            {% elif not read %}
+            {% if not read %}
               <span class="mail-card__badge" data-mail-new-badge>New</span>
             {% endif %}
           </div>

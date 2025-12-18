@@ -79,6 +79,21 @@
 .advent-2025-banner__link { display:inline-flex; border-radius:24px; overflow:hidden; box-shadow:0 18px 36px rgba(15,23,42,0.22); transition:transform 0.2s ease, box-shadow 0.2s ease; }
 .advent-2025-banner__link:hover { transform:translateY(-4px); box-shadow:0 24px 40px rgba(15,23,42,0.28); }
 .advent-2025-banner img { display:block; width:500px; max-width:100%; height:auto; }
+.meetup-checkin { margin-top:20px; padding:16px; background:#0f172a; color:#e2e8f0; border-radius:14px; border:1px solid rgba(148,163,184,0.35); box-shadow:0 20px 60px rgba(15,23,42,0.3); }
+.meetup-checkin__header { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+.meetup-checkin__title { margin:0; font-size:1.05rem; display:flex; align-items:center; gap:8px; }
+.meetup-checkin__pill { background:rgba(148,163,184,0.2); color:#e2e8f0; border-radius:999px; padding:4px 10px; font-size:0.8rem; }
+.meetup-checkin__list { margin:14px 0 0; display:grid; gap:10px; }
+.meetup-checkin__card { background:rgba(15,23,42,0.65); border:1px solid rgba(148,163,184,0.25); border-radius:12px; padding:12px; display:flex; gap:12px; align-items:center; }
+.meetup-checkin__thumb { width:60px; height:60px; border-radius:12px; object-fit:cover; background:#1e293b; border:1px solid rgba(148,163,184,0.25); }
+.meetup-checkin__body { flex:1; }
+.meetup-checkin__name { margin:0 0 4px; font-weight:700; }
+.meetup-checkin__meta { margin:0; font-size:0.9rem; color:#cbd5e1; }
+.meetup-checkin__actions { display:flex; align-items:center; gap:10px; }
+.meetup-checkin__status { font-size:0.9rem; color:#cbd5e1; }
+.btn-checkin { background:#22c55e; color:#0f172a; border:none; padding:10px 14px; border-radius:10px; font-weight:700; cursor:pointer; }
+.btn-checkin[disabled] { background:#94a3b8; cursor:not-allowed; color:#0f172a; }
+.meetup-checkin__empty { margin:10px 0 0; color:#cbd5e1; font-size:0.95rem; }
 </style>
 
 <!-- Widgets -->
@@ -131,6 +146,20 @@
     <button type="button" class="btn btn-calendar" data-calendar-launch data-calendar-url="{{ calendar_url }}">Open Calendar</button>
   </div>
 </div>
+{% if account_type == "Kids Account" or not campfire_username %}
+<div class="meetup-checkin" data-meetup-checkin data-meetup-active-url="{{ url_for('api_active_meetups') }}" data-meetup-checkin-url="{{ url_for('api_meetup_check_in') }}">
+  <div class="meetup-checkin__header">
+    <div class="meetup-checkin__title">
+      <span>✅ Check-in to today’s meetup</span>
+    </div>
+    <span class="meetup-checkin__pill">Kids-only</span>
+  </div>
+  <div class="meetup-checkin__list" data-meetup-checkin-list>
+    <p class="meetup-checkin__empty">Looking for live meetups…</p>
+  </div>
+  <p class="meetup-checkin__status" data-meetup-checkin-status></p>
+</div>
+{% endif %}
 <!-- Explore -->
 <div class="explore">
   <h3>🔍 Explore</h3>
@@ -370,6 +399,94 @@
   100%{transform:translateX(120%);}
 }
 </style>
+
+<script>
+  (() => {
+    const container = document.querySelector("[data-meetup-checkin]");
+    if (!container) return;
+    const list = container.querySelector("[data-meetup-checkin-list]");
+    const statusEl = container.querySelector("[data-meetup-checkin-status]");
+    const activeUrl = container.dataset.meetupActiveUrl;
+    const checkinUrl = container.dataset.meetupCheckinUrl;
+
+    const setStatus = (message, tone = "info") => {
+      if (!statusEl) return;
+      statusEl.textContent = message || "";
+      statusEl.dataset.tone = tone;
+    };
+
+    const renderEmpty = (message) => {
+      list.innerHTML = `<p class="meetup-checkin__empty">${message}</p>`;
+    };
+
+    const handleCheckin = async (btn, eventId) => {
+      if (!btn) return;
+      btn.disabled = true;
+      btn.textContent = "Checking in…";
+      setStatus("");
+      try {
+        const resp = await fetch(checkinUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Requested-With": "XMLHttpRequest",
+          },
+          body: JSON.stringify({ event_id: eventId }),
+        });
+        const payload = await resp.json().catch(() => ({}));
+        if (payload.ok) {
+          btn.textContent = "Checked in!";
+          btn.disabled = true;
+          setStatus(`Stamped for ${payload.event_name || "this meetup"}!`, "success");
+          return;
+        }
+        if (payload.reason === "already_checked_in") {
+          btn.textContent = "Already checked in";
+          setStatus("You already checked in for this meetup.", "info");
+          return;
+        }
+        throw new Error(payload.error || "Unable to check in.");
+      } catch (err) {
+        console.error(err);
+        btn.disabled = false;
+        btn.textContent = "Try again";
+        setStatus("We couldn't check you in. Please try again.", "error");
+      }
+    };
+
+    const renderEvents = (events) => {
+      if (!events || events.length === 0) {
+        renderEmpty("No active meetups right now. Check back soon!");
+        return;
+      }
+      list.innerHTML = "";
+      events.forEach((ev) => {
+        const card = document.createElement("div");
+        card.className = "meetup-checkin__card";
+        card.innerHTML = `
+          ${ev.cover_photo_url ? `<img class="meetup-checkin__thumb" src="${ev.cover_photo_url}" alt="">` : `<div class="meetup-checkin__thumb"></div>`}
+          <div class="meetup-checkin__body">
+            <p class="meetup-checkin__name">${ev.name || "Community Meetup"}</p>
+            <p class="meetup-checkin__meta">${ev.location || "Location coming soon"}</p>
+          </div>
+          <div class="meetup-checkin__actions">
+            <button type="button" class="btn-checkin" data-event-id="${ev.event_id}">Check in</button>
+          </div>
+        `;
+        const btn = card.querySelector("button[data-event-id]");
+        if (btn) {
+          btn.addEventListener("click", () => handleCheckin(btn, ev.event_id));
+        }
+        list.appendChild(card);
+      });
+    };
+
+    fetch(activeUrl, { headers: { "X-Requested-With": "XMLHttpRequest" } })
+      .then((resp) => resp.json().catch(() => []))
+      .then((events) => renderEvents(events))
+      .catch(() => renderEmpty("We couldn't load meetups. Please refresh."));
+  })();
+</script>
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {

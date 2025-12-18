@@ -293,13 +293,26 @@
       position:absolute;
       top:12px;
       right:12px;
-      width:38px;
-      height:38px;
+      width:42px;
+      height:42px;
       border-radius:50%;
-      border:none;
-      background:rgba(15,23,42,0.08);
-      font-size:1.1rem;
+      border:2px solid rgba(255,255,255,0.7);
+      background:linear-gradient(135deg,rgba(15,23,42,0.88),rgba(30,41,59,0.92));
+      color:#fff;
+      font-size:1.15rem;
+      font-weight:700;
       cursor:pointer;
+      box-shadow:0 10px 28px rgba(15,23,42,0.35), 0 0 0 1px rgba(15,23,42,0.18);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      z-index:2;
+      transition:transform .15s ease, box-shadow .15s ease, background .15s ease;
+    }
+    .inbox-message-close:hover,
+    .inbox-receipt-close:hover{
+      transform:translateY(-1px);
+      box-shadow:0 14px 32px rgba(15,23,42,0.4), 0 0 0 1px rgba(15,23,42,0.24);
     }
     #inboxMessageContent{
       min-height:120px;
@@ -1494,8 +1507,8 @@
 
       // Inbox modal panel
       const inboxBtn = document.getElementById("inboxToggle");
-      const inboxOverlay = document.getElementById("inboxPanelOverlay");
-      const inboxContent = document.getElementById("inboxPanelContent");
+      let inboxOverlay = document.getElementById("inboxPanelOverlay");
+      let inboxContent = document.getElementById("inboxPanelContent");
       const overlayManagerReady = Boolean(window.OverlayManager && typeof window.OverlayManager.open === "function");
       let inboxLastUrl = "/inbox?panel=1";
       if (!inboxBtn) warnMissing("inbox toggle button");
@@ -1797,7 +1810,11 @@
       };
 
       const loadInboxPanel = async (url) => {
-        if (!inboxContent) return;
+        inboxContent = inboxContent || document.getElementById("inboxPanelContent");
+        if (!inboxContent) {
+          console.warn("[Inbox] Overlay not found for user");
+          return;
+        }
         inboxLastUrl = url ? ensurePanelParam(url) : inboxLastUrl || "/inbox?panel=1";
         inboxContent.innerHTML = "<div class='inbox-panel__loading'>Loading inbox…</div>";
         try {
@@ -1819,6 +1836,8 @@
       };
 
       const openInboxPanel = (url) => {
+        inboxOverlay = inboxOverlay || document.getElementById("inboxPanelOverlay");
+        inboxContent = inboxContent || document.getElementById("inboxPanelContent");
         if (!inboxOverlay || !inboxContent) {
           console.warn("[Inbox] Overlay not found for user");
           return;
@@ -1843,6 +1862,7 @@
       };
 
       const closeInboxPanel = () => {
+        inboxOverlay = inboxOverlay || document.getElementById("inboxPanelOverlay");
         if (!inboxOverlay) {
           console.warn("[Inbox] Overlay not found for user");
           return;
