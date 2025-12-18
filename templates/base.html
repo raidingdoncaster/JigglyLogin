@@ -3556,6 +3556,102 @@
   </div>
 
   <script src="{{ url_for('static', filename='js/modal-hub.js') }}"></script>
+  <script>
+    // Safety net: ensure inbox and manage-account overlays open for all roles even if earlier scripts fail.
+    (() => {
+      const logWarn = (msg, err) => {
+        try { console.warn(msg, err || ""); } catch (_) {}
+      };
+
+      const fallbackShowOverlay = (el, openClass) => {
+        if (!el) return;
+        const cls = openClass || el.dataset.overlayOpenClass || el.dataset.modalOpenClass || "is-visible";
+        el.classList.add(cls);
+        el.removeAttribute("hidden");
+        el.hidden = false;
+        el.setAttribute("aria-hidden", "false");
+      };
+
+      const openInboxSafe = () => {
+        if (window.RDAB && typeof window.RDAB.openInboxPanel === "function") {
+          window.RDAB.openInboxPanel("/inbox?panel=1");
+          return;
+        }
+        const overlay = document.getElementById("inboxPanelOverlay");
+        if (!overlay) {
+          logWarn("[Inbox Safe] Overlay not found for user");
+          return;
+        }
+        if (window.OverlayManager && typeof window.OverlayManager.open === "function") {
+          try {
+            window.OverlayManager.open("inbox-panel", {
+              element: overlay,
+              backdrop: overlay,
+              restoreFocus: false,
+            });
+            return;
+          } catch (err) {
+            logWarn("[Inbox Safe] OverlayManager open failed", err);
+          }
+        }
+        fallbackShowOverlay(overlay);
+      };
+
+      const openManageAccountSafe = () => {
+        const modal = document.querySelector('[data-modal-root="manage-account"]');
+        if (!modal) {
+          logWarn("[ManageAccount Safe] Modal not found");
+          return;
+        }
+        if (window.ModalHub && typeof window.ModalHub.open === "function") {
+          try {
+            window.ModalHub.open("manage-account");
+            return;
+          } catch (err) {
+            logWarn("[ManageAccount Safe] ModalHub open failed", err);
+          }
+        }
+        if (window.OverlayManager && typeof window.OverlayManager.open === "function") {
+          try {
+            window.OverlayManager.open("manage-account", {
+              element: modal,
+              backdrop: modal,
+              onRequestClose: () => {
+                if (window.ModalHub && typeof window.ModalHub.close === "function") {
+                  window.ModalHub.close("manage-account");
+                  return;
+                }
+                modal.classList.remove(modal.dataset.modalOpenClass || "is-open");
+                modal.setAttribute("aria-hidden", "true");
+                modal.hidden = true;
+              },
+              openClass: modal.dataset.modalOpenClass || "is-open",
+            });
+            return;
+          } catch (err) {
+            logWarn("[ManageAccount Safe] OverlayManager open failed", err);
+          }
+        }
+        fallbackShowOverlay(modal, modal.dataset.modalOpenClass || "is-open");
+      };
+
+      document.addEventListener("click", (event) => {
+        const inboxBtn = event.target.closest("[data-inbox-toggle]");
+        if (inboxBtn) {
+          event.preventDefault();
+          event.stopImmediatePropagation();
+          openInboxSafe();
+          return;
+        }
+        const manageBtn = event.target.closest('[data-modal-open="manage-account"], [data-open-account-modal]');
+        if (manageBtn) {
+          event.preventDefault();
+          event.stopImmediatePropagation();
+          openManageAccountSafe();
+        }
+      }, true);
+    })();
+  </script>
   <!-- === RDAB Session Memory === -->
 <script>
   // Save last page before navigating away
