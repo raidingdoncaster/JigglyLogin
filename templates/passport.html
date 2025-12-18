@@ -1118,6 +1118,7 @@ button.stamp-slot:focus-visible {
   opacity:0;
   transform:translateY(24px);
   transition:opacity 0.32s ease, transform 0.32s ease;
+  pointer-events:none;
 }
 .stamp-detail-modal[hidden] {
   display:none;
@@ -1125,6 +1126,7 @@ button.stamp-slot:focus-visible {
 .stamp-detail-modal.is-visible {
   opacity:1;
   transform:translateY(0);
+  pointer-events:auto;
 }
 .stamp-detail-modal.is-closing {
   opacity:0;
@@ -2142,6 +2144,9 @@ document.addEventListener("DOMContentLoaded", function(){
 
   const stampModal = document.querySelector("[data-stamp-modal]");
   if (stampModal) {
+    // Keep the modal in the DOM to avoid white flashes when animating open/close.
+    stampModal.hidden = false;
+    stampModal.setAttribute("aria-hidden", "true");
     const stampButtons = document.querySelectorAll("[data-stamp-trigger]");
     const closeBtn = stampModal.querySelector("[data-stamp-modal-close]");
     const iconTarget = stampModal.querySelector("[data-stamp-modal-icon]");
@@ -2151,8 +2156,10 @@ document.addEventListener("DOMContentLoaded", function(){
     const descriptionTarget = stampModal.querySelector("[data-stamp-modal-description]");
     const effectsLayer = stampModal.querySelector("[data-stamp-effects]");
     const coinContainer = stampModal.querySelector("[data-stamp-coin-container]");
+    const isModalVisible = () =>
+      stampModal.classList.contains("is-visible") && stampModal.getAttribute("aria-hidden") === "false";
     const preventScroll = event => {
-      if (!stampModal.hidden) {
+      if (isModalVisible()) {
         event.preventDefault();
       }
     };
@@ -2290,7 +2297,6 @@ document.addEventListener("DOMContentLoaded", function(){
         bottomLabel: "IN RAIDING WE TRUST"
       });
 
-      stampModal.hidden = false;
       stampModal.setAttribute("aria-hidden", "false");
       lockScroll();
       setImmersiveMode(false);
@@ -2304,13 +2310,12 @@ document.addEventListener("DOMContentLoaded", function(){
     }
 
     function closeStampModal() {
-      if (stampModal.hidden || stampModal.classList.contains("is-closing")) {
+      if (!isModalVisible() || stampModal.classList.contains("is-closing")) {
         return;
       }
       stampModal.classList.add("is-closing");
       stampModal.classList.remove("is-visible");
       closeTimer = window.setTimeout(() => {
-        stampModal.hidden = true;
         stampModal.setAttribute("aria-hidden", "true");
         stampModal.classList.remove("is-closing");
         unlockScroll();
@@ -2337,7 +2342,7 @@ document.addEventListener("DOMContentLoaded", function(){
       }
     });
     window.addEventListener("keydown", function(event) {
-      if (event.key === "Escape" && !stampModal.hidden) {
+      if (event.key === "Escape" && isModalVisible()) {
         closeStampModal();
       }
     });

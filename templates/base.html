@@ -1496,10 +1496,12 @@
       const inboxBtn = document.getElementById("inboxToggle");
       const inboxOverlay = document.getElementById("inboxPanelOverlay");
       const inboxContent = document.getElementById("inboxPanelContent");
+      const overlayManagerReady = Boolean(window.OverlayManager && typeof window.OverlayManager.open === "function");
       let inboxLastUrl = "/inbox?panel=1";
       if (!inboxBtn) warnMissing("inbox toggle button");
       if (!inboxOverlay) warnMissing("inbox overlay");
       if (!inboxContent) warnMissing("inbox content container");
+      if (!overlayManagerReady) console.warn("[Inbox] OverlayManager unavailable; using fallback overlay handling");
 
       const setInboxButtonState = (isOpen) => {
         if (!inboxBtn) return;
@@ -1817,10 +1819,13 @@
       };
 
       const openInboxPanel = (url) => {
-        if (!inboxOverlay || !inboxContent) return;
+        if (!inboxOverlay || !inboxContent) {
+          console.warn("[Inbox] Overlay not found for user");
+          return;
+        }
         if (url) inboxLastUrl = url;
         document.body.classList.add("has-inbox-panel");
-        if (window.OverlayManager) {
+        if (overlayManagerReady) {
           window.OverlayManager.open("inbox-panel", {
             element: inboxOverlay,
             backdrop: inboxOverlay,
@@ -1838,9 +1843,12 @@
       };
 
       const closeInboxPanel = () => {
-        if (!inboxOverlay) return;
+        if (!inboxOverlay) {
+          console.warn("[Inbox] Overlay not found for user");
+          return;
+        }
         document.body.classList.remove("has-inbox-panel");
-        if (window.OverlayManager) {
+        if (overlayManagerReady) {
           window.OverlayManager.close("inbox-panel");
         } else {
           inboxOverlay.classList.remove("is-visible");
@@ -1855,7 +1863,7 @@
         }
       };
 
-      if (window.OverlayManager) {
+      if (overlayManagerReady && inboxOverlay) {
         window.OverlayManager.register("inbox-panel", {
           element: inboxOverlay,
           backdrop: inboxOverlay,
@@ -1863,6 +1871,8 @@
           focusTarget: inboxBtn,
           restoreFocus: false,
         });
+      } else if (!inboxOverlay) {
+        console.warn("[Inbox] Overlay not found for user");
       }
 
       window.RDAB = window.RDAB || {};
@@ -1915,7 +1925,7 @@
         if (!inboxReceiptOverlay) return;
         inboxReceiptFrame?.setAttribute("src", "");
         inboxReceiptLoading?.classList.remove("hidden");
-        if (window.OverlayManager) {
+        if (overlayManagerReady) {
           window.OverlayManager.close("inbox-receipt");
         } else {
           inboxReceiptOverlay.classList.remove("is-visible");
@@ -1931,7 +1941,7 @@
         }
         inboxReceiptLoading?.classList.remove("hidden");
         inboxReceiptFrame.src = url;
-        if (window.OverlayManager) {
+        if (overlayManagerReady) {
           window.OverlayManager.open("inbox-receipt", {
             element: inboxReceiptOverlay,
             backdrop: inboxReceiptOverlay,
@@ -2032,7 +2042,7 @@
           return;
         }
         inboxMessageLastFocus = document.activeElement;
-        if (window.OverlayManager) {
+        if (overlayManagerReady) {
           window.OverlayManager.open("inbox-message", {
             element: inboxMessageOverlay,
             backdrop: inboxMessageOverlay,
@@ -2050,7 +2060,7 @@
 
       const closeInboxMessage = () => {
         if (!inboxMessageOverlay) return;
-        if (window.OverlayManager) {
+        if (overlayManagerReady) {
           window.OverlayManager.close("inbox-message");
         } else {
           inboxMessageOverlay.classList.remove("is-visible");
@@ -2062,7 +2072,7 @@
         }
       };
 
-      if (window.OverlayManager) {
+      if (overlayManagerReady) {
         window.OverlayManager.register("inbox-message", {
           element: inboxMessageOverlay,
           backdrop: inboxMessageOverlay,
@@ -2101,52 +2111,52 @@
         }
       });
 
-      if (inboxOverlay && inboxContent) {
-        document.addEventListener("click", (event) => {
-          const inboxToggle = event.target.closest("#inboxToggle");
-          if (inboxToggle) {
-            event.preventDefault();
-            openInboxPanel("/inbox?panel=1");
-            return;
-          }
-          if (!inboxOverlay.contains(event.target) && event.target !== inboxOverlay) {
-            return;
-          }
-          if (event.target === inboxOverlay) {
-            closeInboxPanel();
-            return;
-          }
-          const closeTrigger = event.target.closest("[data-inbox-panel-close]");
-          if (closeTrigger) {
-            event.preventDefault();
-            closeInboxPanel();
-            return;
-          }
-          const link = event.target.closest("[data-inbox-panel-link]");
-          if (link) {
-            event.preventDefault();
-            loadInboxPanel(link.getAttribute("href"));
-          }
-        });
-
-        document.addEventListener("submit", (event) => {
-          const form = event.target.closest("[data-inbox-panel-form]");
-          if (!form || !form.closest("#inboxPanelOverlay")) return;
+      document.addEventListener("click", (event) => {
+        const inboxToggle = event.target.closest("[data-inbox-toggle]");
+        if (inboxToggle) {
           event.preventDefault();
-          const formData = new FormData(form);
-          const url = new URL(form.getAttribute("action") || "/inbox", window.location.origin);
-          formData.forEach((value, key) => {
-            url.searchParams.set(key, value);
-          });
-          if (!url.searchParams.get("panel")) {
-            url.searchParams.set("panel", "1");
-          }
-          loadInboxPanel(url.pathname + "?" + url.searchParams.toString());
+          event.stopPropagation();
+          openInboxPanel("/inbox?panel=1");
+          return;
+        }
+        if (!inboxOverlay) return;
+        if (!inboxOverlay.contains(event.target) && event.target !== inboxOverlay) {
+          return;
+        }
+        if (event.target === inboxOverlay) {
+          closeInboxPanel();
+          return;
+        }
+        const closeTrigger = event.target.closest("[data-inbox-panel-close]");
+        if (closeTrigger) {
+          event.preventDefault();
+          closeInboxPanel();
+          return;
+        }
+        const link = event.target.closest("[data-inbox-panel-link]");
+        if (link) {
+          event.preventDefault();
+          loadInboxPanel(link.getAttribute("href"));
+        }
+      });
+
+      document.addEventListener("submit", (event) => {
+        const form = event.target.closest("[data-inbox-panel-form]");
+        if (!form || !form.closest("#inboxPanelOverlay")) return;
+        event.preventDefault();
+        const formData = new FormData(form);
+        const url = new URL(form.getAttribute("action") || "/inbox", window.location.origin);
+        formData.forEach((value, key) => {
+          url.searchParams.set(key, value);
         });
-      }
+        if (!url.searchParams.get("panel")) {
+          url.searchParams.set("panel", "1");
+        }
+        loadInboxPanel(url.pathname + "?" + url.searchParams.toString());
+      });
 
       document.addEventListener("keydown", (event) => {
-        if (window.OverlayManager) return;
+        if (overlayManagerReady) return;
         if (event.key !== "Escape") return;
         if (inboxReceiptOverlay && inboxReceiptOverlay.classList.contains("is-visible")) {
           event.preventDefault();
@@ -2652,7 +2662,7 @@
 
         <!-- Inbox -->
         <div class="inbox-wrapper" style="position:relative;">
-          <button type="button" class="nav-item" id="inboxToggle" title="Inbox" aria-haspopup="dialog" aria-expanded="false">
+          <button type="button" class="nav-item" id="inboxToggle" data-inbox-toggle title="Inbox" aria-haspopup="dialog" aria-expanded="false">
             <img src="{{ url_for('static', filename='nav/mail-icon.png') }}"
                  alt="Inbox"
                  class="nav-icon"

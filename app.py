@@ -1819,6 +1819,7 @@ def serialize_calendar_events(events):
 # ====== Supabase setup ======
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
+EVENTS_CLUB_ID = "8166b35b-0f52-480e-8a0b-85c68f33cec0"
 
 supabase = None
 if USE_SUPABASE and create_client and SUPABASE_URL and SUPABASE_KEY:
@@ -6980,6 +6981,180 @@ def api_session_login():
         return jsonify({"success": True, "trainer": result.get("trainer")})
     status_code = 429 if result.get("locked") else 401
     return jsonify({"success": False, "error": result.get("error") or "Unable to log in."}), status_code
+
+
+@app.route("/api/meetups/active", methods=["GET"])
+def api_active_meetups():
+    if "trainer" not in session:
+        return jsonify({"error": "Login required"}), 401
+    user = get_current_trainer_user()
+    if not user:
+        return jsonify({"error": "Trainer not found"}), 404
+
+    account_type = normalize_account_type(user.get("account_type"))
+    campfire_username = (user.get("campfire_username") or "").strip()
+    if not (account_type == "Kids Account" or not campfire_username):
+        return jsonify({"error": "Access limited to kids accounts"}), 403
+    if not (USE_SUPABASE and supabase):
+        return jsonify({"error": "Meetup service unavailable"}), 503
+
+    try:
+        resp = (
+            supabase.table("events")
+            .select("id,event_id,name,start_time,end_time,location,url,cover_photo_url,club_id")
+            .eq("club_id", EVENTS_CLUB_ID)
+            .order("start_time", desc=False)
+            .execute()
+        )
+        rows = resp.data or []
+    except Exception as exc:
+        print("⚠️ Supabase active meetups fetch failed:", exc)
+        return jsonify({"error": "Unable to load meetups"}), 500
+
+    now_utc = datetime.now(timezone.utc)
+    sentinel = datetime.min.replace(tzinfo=timezone.utc)
+    active_events: list[dict] = []
+    for row in rows:
+        start_dt = parse_dt_safe(row.get("start_time"))
+        end_dt = parse_dt_safe(row.get("end_time"))
+        if start_dt <= sentinel or end_dt <= sentinel:
+            continue
+        if now_utc < start_dt - timedelta(minutes=30):
+            continue
+        if now_utc > end_dt + timedelta(hours=6):
+            continue
+
+        event_id = str(row.get("event_id") or row.get("id") or "").strip()
+        if not event_id:
+            continue
+
+        active_events.append({
+            "event_id": event_id,
+            "name": row.get("name") or "Community Meetup",
+            "start_time": row.get("start_time"),
+            "end_time": row.get("end_time"),
+            "location": row.get("location") or "",
+            "url": row.get("url") or "",
+            "cover_photo_url": row.get("cover_photo_url") or "",
+        })
+
+    return jsonify(active_events)
+
+
+@app.route("/api/meetups/check-in", methods=["POST"])
+def api_meetup_check_in():
+    if "trainer" not in session:
+        return jsonify({"error": "Login required"}), 401
+    user = get_current_trainer_user()
+    if not user:
+        return jsonify({"error": "Trainer not found"}), 404
+
+    account_type = normalize_account_type(user.get("account_type"))
+    campfire_username = (user.get("campfire_username") or "").strip()
+    if not (account_type == "Kids Account" or not campfire_username):
+        return jsonify({"error": "Access limited to kids accounts"}), 403
+    if not (USE_SUPABASE and supabase):
+        return jsonify({"error": "Meetup service unavailable"}), 503
+
+    payload = request.get_json(force=True, silent=True) or {}
+    event_id = (payload.get("event_id") or "").strip()
+    if not event_id:
+        return jsonify({"error": "event_id is required"}), 400
+
+    try:
+        resp = (
+            supabase.table("events")
+            .select("id,event_id,name,start_time,end_time,location,url,cover_photo_url,club_id")
+            .eq("club_id", EVENTS_CLUB_ID)
+            .eq("event_id", event_id)
+            .limit(1)
+            .execute()
+        )
+        rows = resp.data or []
+    except Exception as exc:
+        print("⚠️ Supabase event lookup failed:", exc)
+        return jsonify({"error": "Unable to load event"}), 500
+
+    event_row = rows[0] if rows else None
+    if not event_row:
+        return jsonify({"error": "Event not found"}), 404
+
+    start_dt = parse_dt_safe(event_row.get("start_time"))
+    end_dt = parse_dt_safe(event_row.get("end_time"))
+    sentinel = datetime.min.replace(tzinfo=timezone.utc)
+    if start_dt <= sentinel or end_dt <= sentinel:
+        return jsonify({"error": "Event time unavailable"}), 422
+
+    now_utc = datetime.now(timezone.utc)
+    if now_utc < start_dt - timedelta(minutes=30) or now_utc > end_dt + timedelta(hours=6):
+        return jsonify({"error": "Check-in not available"}), 403
+
+    user_id = user.get("id")
+    if not user_id:
+        return jsonify({"error": "User record missing id"}), 500
+
+    try:
+        supabase.table("meetup_checkins").insert({
+            "user_id": user_id,
+            "event_id": event_id,
+        }).execute()
+    except Exception as exc:
+        message = str(exc)
+        if "duplicate key value" in message or "unique constraint" in message or "already exists" in message:
+            return jsonify({"ok": False, "reason": "already_checked_in"})
+        print("⚠️ Supabase meetup_checkins insert failed:", exc)
+        return jsonify({"error": "Unable to record check-in"}), 500
+
+    trainer_username = (user.get("trainer_username") or session.get("trainer") or "").strip()
+    award_actor = "Meetup check-in"
+    stamp_title = (event_row.get("name") or "Community Meetup").strip() or "Community Meetup"
+    cover_url = event_row.get("cover_photo_url") or ""
+    event_metadata = {
+        "event_id": event_id,
+        "event_name": stamp_title,
+        "start_time": event_row.get("start_time"),
+        "end_time": event_row.get("end_time"),
+        "location": event_row.get("location"),
+        "url": event_row.get("url"),
+    }
+
+    def _insert_meetup_stamp(count: int) -> tuple[bool, str | None]:
+        payload = {
+            "trainer": trainer_username,
+            "campfire": campfire_username or None,
+            "reason": stamp_title,
+            "eventname": stamp_title,
+            "eventid": event_id,
+            "event_id": event_id,
+            "event_name": stamp_title,
+            "count": count,
+            "awardedby": award_actor,
+            "title": stamp_title,
+            "image_url": cover_url,
+            "metadata": event_metadata,
+        }
+        try:
+            supabase.table("lugia_ledger").insert(payload).execute()
+            return True, None
+        except Exception as exc:
+            return False, str(exc)
+
+    awarded_entries = 0
+    if account_type == "Kids Account":
+        for _ in range(2):
+            ok, err = _insert_meetup_stamp(1)
+            if not ok:
+                print("⚠️ Meetup check-in stamp award failed:", err)
+                return jsonify({"error": "Check-in recorded but stamp award failed"}), 500
+            awarded_entries += 1
+    else:
+        ok, err = _insert_meetup_stamp(2)
+        if not ok:
+            print("⚠️ Meetup check-in stamp award failed:", err)
+            return jsonify({"error": "Check-in recorded but stamp award failed"}), 500
+        awarded_entries += 2
+
+    return jsonify({"ok": True, "awarded": awarded_entries, "event_name": stamp_title})
 
 # ====== Sign Up ======
 def _trainer_exists(trainer_name: str) -> bool:
