@@ -7089,8 +7089,8 @@ def api_meetup_check_in():
     if now_utc < start_dt - timedelta(minutes=30) or now_utc > end_dt + timedelta(hours=6):
         return jsonify({"error": "Check-in not available"}), 403
 
-    user_id = user.get("id") or user.get("trainer_username")
     trainer_username = (user.get("trainer_username") or session.get("trainer") or "").strip()
+    user_id = trainer_username or (user.get("id") or "")
     if not user_id:
         return jsonify({"error": "User record missing id"}), 500
 
@@ -7098,7 +7098,6 @@ def api_meetup_check_in():
         supabase.table("meetup_checkins").insert({
             "user_id": user_id,
             "event_id": event_id,
-            "trainer_username": trainer_username or None,
         }).execute()
     except Exception as exc:
         message = str(exc)

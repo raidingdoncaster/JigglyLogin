@@ -2751,7 +2751,7 @@
 
         <!-- Inbox -->
         <div class="inbox-wrapper" style="position:relative;">
-          <button type="button" class="nav-item" id="inboxToggle" data-inbox-toggle title="Inbox" aria-haspopup="dialog" aria-expanded="false">
+          <button type="button" class="nav-item" id="inboxToggle" data-inbox-toggle title="Inbox" aria-haspopup="dialog" aria-expanded="false" onclick="return window.__openInboxSafe ? window.__openInboxSafe(event) : undefined;">
             <img src="{{ url_for('static', filename='nav/mail-icon.png') }}"
                  alt="Inbox"
                  class="nav-icon"
@@ -2784,13 +2784,14 @@
                     data-trainer-profile-url="{{ url_for('api_public_trainer_profile', username=nav_username) }}"
                     data-close-avatar
                     data-nav-view-profile
-                    data-nav-profile-username="{{ nav_username }}">
+                    data-nav-profile-username="{{ nav_username }}"
+                    onclick="return window.__openProfileSafe ? window.__openProfileSafe(event, this) : undefined;">
               👀 View Profile
             </button>
             {% endif %}
             <div class="sep"></div>
             <a href="{{ url_for('change_avatar') }}">👤 Customise</a>
-            <button type="button" data-modal-open="manage-account">⚙️ Manage Account</button>
+            <button type="button" data-modal-open="manage-account" onclick="return window.__openManageAccountSafe ? window.__openManageAccountSafe(event) : undefined;">⚙️ Manage Account</button>
             <div class="sep"></div>
             <a href="{{ url_for('logout') }}" data-confirm-logout>🚪 Log Out</a>
           </div>
@@ -3635,6 +3636,32 @@
         fallbackShowOverlay(modal, modal.dataset.modalOpenClass || "is-open");
       };
 
+      const openProfileSafe = (trigger) => {
+        const btn = trigger || document.querySelector("[data-nav-view-profile]");
+        const username = (btn && (btn.getAttribute("data-nav-profile-username") || btn.getAttribute("data-trainer-profile-username"))) || (window.CURRENT_TRAINER_USERNAME || "");
+        if (!username) return;
+        if (window.TrainerProfilePopover && typeof window.TrainerProfilePopover.open === "function") {
+          try {
+            window.TrainerProfilePopover.open({
+              username,
+              url: `/api/trainers/${encodeURIComponent(username)}/profile`,
+              displayName: (btn && btn.textContent || "").trim() || username,
+              editable: true,
+              trigger: btn || document.activeElement,
+            });
+            return;
+          } catch (err) {
+            logWarn("[Profile Safe] TrainerProfilePopover open failed", err);
+          }
+        }
+        // Fallback: navigate to profile API or dashboard (safer than no-op)
+        window.location.href = `/api/trainers/${encodeURIComponent(username)}/profile`;
+      };
+
+      window.__openInboxSafe = (evt) => { if (evt) { evt.preventDefault(); evt.stopImmediatePropagation(); } openInboxSafe(); return false; };
+      window.__openManageAccountSafe = (evt) => { if (evt) { evt.preventDefault(); evt.stopImmediatePropagation(); } openManageAccountSafe(); return false; };
+      window.__openProfileSafe = (evt, trigger) => { if (evt) { evt.preventDefault(); evt.stopImmediatePropagation(); } openProfileSafe(trigger || (evt && evt.currentTarget)); return false; };
+
       document.addEventListener("click", (event) => {
         const inboxBtn = event.target.closest("[data-inbox-toggle]");
         if (inboxBtn) {
@@ -3648,6 +3675,13 @@
           event.preventDefault();
           event.stopImmediatePropagation();
           openManageAccountSafe();
+          return;
+        }
+        const profileBtn = event.target.closest("[data-nav-view-profile]");
+        if (profileBtn) {
+          event.preventDefault();
+          event.stopImmediatePropagation();
+          openProfileSafe(profileBtn);
         }
       }, true);
     })();
