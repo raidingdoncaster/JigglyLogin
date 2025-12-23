@@ -2685,6 +2685,10 @@ def _describe_passport_reason(reason: str, event_name: str | None = None) -> tup
         ("beta", "Beta", "This stamp was awarded as a thanks for you helping us BETA test the RDAB App, we appreicate you!"),
         ("lccgowa", "lccgowa", "You unlocked this stamp for attending the GO Wild Area 2025: Community Celebration live event in the City of Doncaster alongside thousands of other trainers. Thanks for helping us get our city and community on the map!"),
         ("signup", "Signup", "This stamp was awarded to you for signing up to the RDAB app. Welcome!"),
+        ("newyear26", "newyear26", "This stamp was awarded to you for being a member of the community on December 31st 2025! Happy New Year! May your 2026 be prosperous, and filled with many more memories! Cheers!!")
+        ("birthday", "birthday", "Happy Happy Birthday!!! We hope you have a blessed day!")
+        ("awards25", "awards25", "This stamp is to commemorate your nomination for Trainer of the Year in the RDAB Wrapped 2026!")
+        ("cdex", "cdex", "Stamps for your participation and leaderboard scoring in the CDEX.")
     ]
 
     for needle, label, description in reason_map:
@@ -2785,6 +2789,14 @@ def get_passport_stamps(username: str, campfire_username: str | None = None):
                 icon = url_for("static", filename="icons/gowa.png")
             elif "beta" in rl:
                 icon = url_for("static", filename="icons/beta.png")
+            elif "newyear26" in rl:
+                icon = url_for("static", filename="icons/newyear26.png")
+            elif "birthday" in rl:
+                icon = url_for("static", filename="icons/birthday.png")
+            elif "awards25" in rl:
+                icon = url_for("static", filename="icons/awards25.png")
+            elif "cdex" in rl:
+                icon = url_for("static", filename="icons/cdex.png")
             
             elif event_id and event_id in event_map and event_map[event_id]:
                 icon = event_map[event_id]

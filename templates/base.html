@@ -2751,14 +2751,17 @@
 
         <!-- Inbox -->
         <div class="inbox-wrapper" style="position:relative;">
-          <button type="button" class="nav-item" id="inboxToggle" data-inbox-toggle title="Inbox" aria-haspopup="dialog" aria-expanded="false" onclick="return window.__openInboxSafe ? window.__openInboxSafe(event) : undefined;">
+          <a href="{{ url_for('inbox') }}"
+             class="nav-item"
+             id="inboxToggle"
+             title="Inbox">
             <img src="{{ url_for('static', filename='nav/mail-icon.png') }}"
                  alt="Inbox"
                  class="nav-icon"
                  decoding="async"
                  fetchpriority="high"
                  data-fallback-src="{{ url_for('static', filename='logo.png') }}">
-          </button>
+          </a>
           {% if inbox_unread and inbox_unread > 0 %}
             <span class="inbox-badge">{{ inbox_unread }}</span>
           {% endif %}
